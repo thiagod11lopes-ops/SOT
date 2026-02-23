@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - FROTA E PESSOAL</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --delete-red: #dc3545;
+            --green: #28a745;
+            --export-green: #21a221;
+            --import-blue: #007bff;
+        }
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); }
+        main { margin: 20px 10px; }
+        .tab-content { display: block; background-color: var(--white); padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .table-title { font-size: 22px; color: var(--primary-blue); font-weight: bold; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.35), 0 4px 14px rgba(0,0,0,0.22), 0 4px 16px rgba(74,105,189,0.4); }
+        .counter { font-size: 18px; font-weight: bold; color: var(--primary-blue); }
+        .sub-tabs { display: flex; justify-content: flex-start; border-bottom: 1px solid #ccc; margin-bottom: 20px; flex-wrap: wrap; }
+        .sub-tab-button { background-color: #e9e9e9; border: 1px solid #ccc; border-bottom: none; padding: 10px 15px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: bold; margin-right: 3px; text-shadow: 0 2px 4px rgba(0,0,0,0.22); }
+        .sub-tab-button.active { background-color: var(--white); border-color: var(--primary-blue); color: var(--primary-blue); text-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 4px 12px rgba(74,105,189,0.45); }
+        .sub-tab-content { display: none; padding: 10px 0; }
+        .sub-tab-content.active { display: block; }
+        .table-container { overflow-x: auto; border: 1px solid var(--gray); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); background-color: var(--white); }
+        table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+        th, td { border: 1px solid #e9ecef; padding: 10px; text-align: left; white-space: nowrap; font-size: 14px; }
+        thead th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        .action-buttons { display: flex; gap: 5px; justify-content: center; }
+        .action-buttons .delete-row-btn { background-color: var(--delete-red); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        .table-footer-controls button, .table-footer-controls label {
+            color: var(--white);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .add-row-btn { background-color: var(--primary-blue); }
+        .export-csv-btn { background-color: var(--export-green); }
+        .import-csv-label { background-color: var(--import-blue); }
+        .export-pdf-btn { background-color: #dc3545; }
+        td select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        td[contenteditable="true"]:focus { outline: 2px solid var(--primary-blue); }
+        .nome-cell { display: flex; align-items: center; gap: 8px; }
+        .drag-handle { cursor: grab; color: #6c757d; font-size: 16px; }
+        .dragging .drag-handle { cursor: grabbing; }
+        .nome-edit { flex: 1; min-width: 0; }
+        
+        /* Estilos para Escala de Pão */
+        .escala-pao-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .escala-pao-section { background: var(--white); padding: 20px; border-radius: 8px; border: 1px solid var(--gray); }
+        .escala-pao-section h3 { color: var(--primary-blue); margin-top: 0; margin-bottom: 15px; font-size: 18px; }
+        .escala-pao-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .escala-pao-table th, .escala-pao-table td { padding: 10px; border: 1px solid var(--gray); text-align: left; }
+        .escala-pao-table th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; }
+        .escala-pao-table tr:nth-child(even) { background-color: #f8f9fa; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-ativo { background-color: var(--green); color: white; }
+        .status-ferias { background-color: #ffc107; color: #333; }
+        .status-licenca { background-color: #dc3545; color: white; }
+        .periodo-inatividade-label { display: block; margin-top: 6px; font-size: 12px; color: #555; }
+        .calendario-semana { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+        .dia-calendario { background: var(--white); border: 2px solid var(--gray); border-radius: 8px; padding: 15px; text-align: center; }
+        .dia-calendario.hoje { border-color: var(--primary-blue); background: #e3f2fd; }
+        .dia-calendario.feriado { background: #fff3cd; border-color: #ffc107; }
+        .escala-mensal-nav { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+        .escala-mensal-nav button { background: var(--primary-blue); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .escala-mensal-nav button:hover { opacity: 0.9; }
+        .escala-mensal-nav span { font-weight: bold; font-size: 18px; color: var(--dark-gray); min-width: 180px; text-align: center; }
+        .calendario-mensal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 20px; }
+        .calendario-mensal .cabecalho-dia { padding: 8px; text-align: center; font-weight: bold; background: var(--primary-blue); color: white; border-radius: 4px; font-size: 12px; }
+        .dia-mensal { background: var(--white); border: 1px solid var(--gray); border-radius: 6px; padding: 10px; min-height: 70px; font-size: 12px; }
+        .dia-mensal.dia-outro-mes { opacity: 0.5; background: #f5f5f5; }
+        .dia-mensal.hoje { border-color: var(--primary-blue); background: #e3f2fd; }
+        .dia-mensal.feriado { background: #fff3cd; border-color: #ffc107; }
+        .dia-mensal .num-dia { font-weight: bold; color: var(--primary-blue); margin-bottom: 4px; }
+        .dia-mensal .responsavel-nome { font-weight: bold; color: var(--dark-gray); }
+        .dia-mensal .feriado-desc { color: #856404; font-size: 11px; }
+        .dia-mensal.fim-de-semana { background: #f8f9fa; color: #999; }
+        .dia-mensal.draggable-cell { cursor: grab; }
+        .dia-mensal.draggable-cell:active { cursor: grabbing; }
+        .dia-mensal.draggable-cell.dragging { opacity: 0.6; }
+        .dia-mensal.draggable-cell.drag-over { background: #e3f2fd; border-color: var(--primary-blue); }
+        .dia-mensal.excluivel { cursor: pointer; }
+        .dia-mensal.excluivel:hover { background: #ffebee; border-color: #dc3545; }
+        .escala-pao-botoes { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .escala-pao-botoes .btn-toggle-form { padding: 12px 20px; border-radius: 8px; border: 2px solid var(--primary-blue); background: var(--white); color: var(--primary-blue); font-weight: bold; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; }
+        .escala-pao-botoes .btn-toggle-form:hover { background: #e3f2fd; }
+        .escala-pao-botoes .btn-toggle-form.ativo { background: var(--primary-blue); color: white; }
+        .escala-pao-form-toggle.oculto { display: none !important; }
+        @keyframes piscar-erro { 0%, 100% { border-color: #dc3545; box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.4); } 50% { border-color: #dc3545; box-shadow: 0 0 8px 2px rgba(220, 53, 69, 0.6); } }
+        .periodo-inatividade-erro { border: 2px solid #dc3545 !important; animation: piscar-erro 0.6s ease-in-out 3; }
+        .dia-calendario .data { font-weight: bold; color: var(--primary-blue); margin-bottom: 10px; }
+        .dia-calendario .responsavel { font-size: 16px; font-weight: bold; color: var(--dark-gray); margin: 10px 0; }
+        .dia-calendario .btn-pular { background: #ff9800; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-top: 10px; }
+        .dia-calendario .btn-pular:hover { background: #f57c00; }
+        .feriados-list { max-height: 200px; overflow-y: auto; }
+        .feriado-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f8f9fa; margin-bottom: 5px; border-radius: 4px; }
+        .btn-small { padding: 5px 10px; font-size: 12px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-danger { background: var(--delete-red); color: white; }
+        .btn-primary { background: var(--primary-blue); color: white; }
+        .historico-list { max-height: 300px; overflow-y: auto; }
+        .historico-item { padding: 10px; border-bottom: 1px solid var(--gray); }
+        .historico-item:last-child { border-bottom: none; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; color: var(--dark-gray); }
+        .input-group input, .input-group select { width: 100%; padding: 8px; border: 1px solid var(--gray); border-radius: 4px; box-sizing: border-box; }
+        @media (max-width: 1200px) {
+            .escala-pao-container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div id="frotaPessoalSection" class="tab-content active">
+            <div class="sub-tabs">
+                <button class="sub-tab-button" data-sub-tab="rdvContent">RDV</button>
+                <button class="sub-tab-button active" data-sub-tab="frotaContent">Cadastro de Viaturas</button>
+                <button class="sub-tab-button" data-sub-tab="pessoalContent">Cadastro de Motoristas</button>
+                <button class="sub-tab-button" data-sub-tab="kmAtualContent">KM Atual</button>
+                <button class="sub-tab-button" data-sub-tab="psoContent">Protocolo de Sucessão Operacional (PSO)</button>
+                <button class="sub-tab-button" data-sub-tab="escalaContent">Escala</button>
+                <button class="sub-tab-button" data-sub-tab="abastecimentoContent">Abastecimento</button>
+                <button class="sub-tab-button" data-sub-tab="escalaPaoContent">Escala de Pão</button>
+            </div>                        
+            <div id="rdvContent" class="sub-tab-content">
+                <iframe src="RDV.html" id="rdvIframe" style="width: 100%; min-height: calc(100vh - 120px); height: calc(100vh - 120px); border: none;"></iframe>
+            </div>
+            <div id="frotaContent" class="sub-tab-content active">
+                <div class="table-controls">
+                    <h2 class="table-title">CADASTRO DE VIATURAS</h2>
+                    <div class="counter" id="frotaCounter">Veículos Cadastrados: 0</div>
+                </div>
+                <div class="table-container">
+                    <table id="frotaTable">
+                        <thead>
+                            <tr>
+                                <th>PLACA</th>
+                                <th>TIPO</th>
+                                <th>ANO</th>
+                                <th>ÚLTIMA TROCA (KM)</th>
+                                <th>CONFIRMA</th>
+                                <th>ALVO PRÓX. TROCA (KM)</th>
+                                <th>OPERANTE</th>
+                                <th>INOPERANTE</th>
+                                <th>CORREIA DENTADA (KM)</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer-controls" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="add-row-btn" id="addViaturaRowBtn"><i class="fas fa-plus"></i> Adicionar Viatura</button>
+                    <button class="export-csv-btn" id="exportViaturaBtn"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+                    <label class="import-csv-label" for="importViaturaInput"><i class="fas fa-upload"></i> Importar CSV</label>
+                    <input type="file" id="importViaturaInput" accept=".csv" style="display: none;">
+                </div>
+            </div>                        
+            <div id="pessoalContent" class="sub-tab-content">
+                 <div class="table-controls">
+                    <h2 class="table-title">CADASTRO DE MOTORISTAS</h2>
+                    <div class="counter" id="pessoalCounter">Membros Cadastrados: 0</div>
+                </div>
+                <div class="table-container">
+                    <table id="pessoalTable">
+                        <thead> <tr> <th>NOME</th> <th>AÇÕES</th> </tr> </thead>
+                        <tbody> </tbody>
+                    </table>
+                </div>
+                <div class="table-footer-controls" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="add-row-btn" id="addMotoristaRowBtn"><i class="fas fa-plus"></i> Adicionar Motorista</button>
+                    <button class="export-csv-btn" id="exportMotoristaBtn"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+                    <label class="import-csv-label" for="importMotoristaInput"><i class="fas fa-upload"></i> Importar CSV</label>
+                    <input type="file" id="importMotoristaInput" accept=".csv" style="display: none;">
+                </div>
+            </div>
+            <div id="kmAtualContent" class="sub-tab-content">
+                <div class="table-controls">
+                    <h2 class="table-title">QUILOMETRAGEM ATUAL DAS VIATURAS</h2>
+                    <div class="counter" id="kmAtualCounter">Viaturas: 0</div>
+                </div>
+                <div class="table-container">
+                    <table id="kmAtualTable">
+                        <thead>
+                            <tr>
+                                <th>PLACA</th>
+                                <th>TIPO</th>
+                                <th>ÚLTIMA QUILOMETRAGEM (KM)</th>
+                                <th>DATA DO REGISTRO</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kmAtualTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer-controls" style="margin-top: 15px; display: flex; gap: 10px;">
+                    <button class="export-pdf-btn" id="exportKmAtualPdfBtn"><i class="fas fa-file-pdf"></i> Gerar PDF</button>
+                </div>
+            </div>
+            <div id="psoContent" class="sub-tab-content">
+                <div class="table-controls">
+                    <h2 class="table-title">PROTOCOLO DE SUCESSÃO OPERACIONAL (PSO)</h2>
+                    <div class="counter" id="psoCounter">Registros: 0</div>
+                </div>
+                <div class="table-container">
+                    <table id="psoTable">
+                        <thead>
+                            <tr>
+                                <th>NOME</th>
+                                <th>REGRESSO</th>
+                                <th>ESCALA ROCHA</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="psoTableBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div class="table-footer-controls" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="add-row-btn" id="addPsoRowBtn"><i class="fas fa-plus"></i> Adicionar Linha</button>
+                </div>
+            </div>
+            <div id="escalaContent" class="sub-tab-content">
+                <iframe src="Escala13.html" style="width: 100%; height: 800px; border: none;"></iframe>
+            </div>
+            <div id="abastecimentoContent" class="sub-tab-content">
+                <iframe src="Abastecimento12.html" style="width: 100%; height: 800px; border: none;"></iframe>
+            </div>
+            <div id="escalaPaoContent" class="sub-tab-content">
+                <div class="table-controls">
+                    <h2 class="table-title">ESCALA DE PÃO</h2>
+                </div>
+                
+                <div class="escala-pao-botoes">
+                    <button type="button" class="btn-toggle-form" id="btnToggleIntegrantes" data-target="integrantesForm" aria-expanded="false">
+                        <i class="fas fa-users"></i> Integrantes
+                    </button>
+                    <button type="button" class="btn-toggle-form" id="btnToggleFeriados" data-target="feriadosForm" aria-expanded="false">
+                        <i class="fas fa-calendar-times"></i> Feriados
+                    </button>
+                    <button type="button" class="btn-toggle-form" id="btnArrastarCard" aria-pressed="false" title="Ative para arrastar os cards do calendário e trocar responsáveis">
+                        <i class="fas fa-arrows-alt"></i> Arrastar Card
+                    </button>
+                    <button type="button" class="btn-toggle-form" id="btnExcluirCard" aria-pressed="false" title="Ative para excluir um dia da escala ao clicar no card (a escala será reajustada)">
+                        <i class="fas fa-trash-alt"></i> Excluir Card
+                    </button>
+                    <button type="button" class="btn-primary btn-small" id="reiniciarEscalaBtn" style="margin-left: auto; background-color: #ff9800; padding: 10px 18px; border-radius: 8px; border: none; color: white; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;" title="Reinicia a escala a partir de hoje, garantindo que todos os integrantes ativos apareçam">
+                        <i class="fas fa-sync"></i> Reiniciar Escala
+                    </button>
+                </div>
+                <div class="escala-pao-container">
+                    <!-- Integrantes (apenas adicionar e retirar) -->
+                    <div id="integrantesForm" class="escala-pao-section escala-pao-form-toggle oculto">
+                        <datalist id="motoristasEscalaPaoDatalist"></datalist>
+                        <div class="input-group">
+                            <input type="text" id="novoIntegranteNome" list="motoristasEscalaPaoDatalist" placeholder="Selecione ou digite o nome do integrante" autocomplete="off">
+                            <button class="btn-primary btn-small" id="adicionarIntegranteBtn" style="margin-top: 10px; width: 100%;">
+                                <i class="fas fa-plus"></i> Adicionar
+                            </button>
+                        </div>
+                        <table class="escala-pao-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="integrantesTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Cadastro de Feriados -->
+                    <div id="feriadosForm" class="escala-pao-section escala-pao-form-toggle oculto">
+                        <div class="input-group">
+                            <label>Data do Feriado:</label>
+                            <input type="date" id="novoFeriadoData">
+                            <label style="margin-top: 10px;">Descrição:</label>
+                            <input type="text" id="novoFeriadoDesc" placeholder="Ex: Natal, Ano Novo...">
+                            <button class="btn-primary btn-small" id="adicionarFeriadoBtn" style="margin-top: 10px; width: 100%;">
+                                <i class="fas fa-plus"></i> Adicionar Feriado
+                            </button>
+                        </div>
+                        <div class="feriados-list" id="feriadosList">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Escala Mensal -->
+                <div class="escala-pao-section" style="margin-top: 20px;">
+                    <h3><i class="fas fa-calendar"></i> Escala Mensal</h3>
+                    <div class="escala-mensal-nav">
+                        <button type="button" id="escalaMensalPrev"><i class="fas fa-chevron-left"></i> Anterior</button>
+                        <span id="escalaMensalTitulo">Mês Ano</span>
+                        <button type="button" id="escalaMensalNext">Próximo <i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendario-mensal" id="calendarioMensal">
+                    </div>
+                </div>
+                
+                <!-- Histórico -->
+                <div class="escala-pao-section" style="margin-top: 20px;">
+                    <h3><i class="fas fa-history"></i> Histórico</h3>
+                    <div class="historico-list" id="historicoList">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal confirmar exclusão de card (Escala de Pão) -->
+    <div id="excluirCardModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 15% auto; padding: 0; border: 1px solid #888; width: 90%; max-width: 420px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; padding: 16px 20px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 18px;"><i class="fas fa-trash-alt"></i> Excluir dia da escala</h2>
+                <span class="close-modal" id="closeExcluirCardModal" style="color: white; font-size: 24px; font-weight: bold; cursor: pointer; line-height: 1;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <p id="excluirCardMensagem" style="margin: 0 0 8px 0; font-size: 15px;"></p>
+                <p style="margin: 0; font-size: 13px; color: #555;">A escala será reajustada, retrocedendo um dia para todos os integrantes a partir desta data.</p>
+            </div>
+            <div style="padding: 16px 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" id="excluirCardCancelar" style="background: #6c757d; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold;">Cancelar</button>
+                <button type="button" id="excluirCardConfirmar" style="background: #dc3545; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold;"><i class="fas fa-trash-alt"></i> Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Anotações PSO -->
+    <div id="psoAnotacoesModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #4a69bd 0%, #6c88c9 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 20px;"><i class="fas fa-sticky-note"></i> Anotações</h2>
+                <span class="close-modal" id="closePsoAnotacoesModal" style="color: white; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <textarea id="psoAnotacoesTextarea" placeholder="Digite suas anotações aqui..." style="width: 100%; min-height: 300px; padding: 12px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 14px; font-family: Arial, sans-serif; resize: vertical; box-sizing: border-box;"></textarea>
+            </div>
+            <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="salvarPsoAnotacoesBtn" style="background-color: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-save"></i> Salvar
+                </button>
+                <button id="cancelarPsoAnotacoesBtn" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="theme-listener.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+            let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+            let psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
+            
+            const subTabButtons = document.querySelectorAll('.sub-tab-button');
+            const subTabContents = document.querySelectorAll('.sub-tab-content');
+            const frotaTableBody = document.querySelector('#frotaTable tbody');
+            const pessoalTableBody = document.querySelector('#pessoalTable tbody');
+            
+            const saveData = (key, data) => {
+                localStorage.setItem(key, JSON.stringify(data));
+                window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+            };
+
+            const handleUpdate = (id, key, value, dataType) => {
+                const dataArray = dataType === 'viatura' ? viaturasCadastradas : motoristasCadastrados;
+                const item = dataArray.find(d => d.id === id);
+                if (item) {
+                    item[key] = value;
+                    saveData(dataType === 'viatura' ? 'viaturasCadastradas' : 'motoristasCadastrados', dataArray);
+                }
+            };
+
+            const handleFrotaCellEdit = (event) => {
+                const cell = event.target;
+                const rowId = cell.closest('tr').dataset.id;
+                const key = cell.dataset.key;
+                if (!key) return;
+                const index = viaturasCadastradas.findIndex(item => item.id === rowId);
+                if (index !== -1) {
+                    const valueToSave = cell.textContent.trim();
+                    viaturasCadastradas[index][key] = valueToSave;
+                    saveData('viaturasCadastradas', viaturasCadastradas);
+                }
+            };
+
+            const handleFrotaCheckboxChange = (event) => {
+                const checkbox = event.target;
+                const rowId = checkbox.closest('tr').dataset.id;
+                const key = checkbox.dataset.key;
+                if (!key) return;
+                const index = viaturasCadastradas.findIndex(item => item.id === rowId);
+                if (index !== -1) {
+                    viaturasCadastradas[index][key] = checkbox.checked;
+                    saveData('viaturasCadastradas', viaturasCadastradas);
+                }
+            };
+
+            const handleFrotaSelectChange = (event) => {
+                const select = event.target;
+                const rowId = select.closest('tr').dataset.id;
+                const index = viaturasCadastradas.findIndex(item => item.id === rowId);
+                if (index !== -1) {
+                    viaturasCadastradas[index]['tipo'] = select.value;
+                    saveData('viaturasCadastradas', viaturasCadastradas);
+                }
+            };
+
+            const attachViaturaRowListeners = (row) => {
+                row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+                    cell.addEventListener('blur', handleFrotaCellEdit);
+                });
+
+                row.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.addEventListener('change', handleFrotaCheckboxChange);
+                });
+
+                const select = row.querySelector('select');
+                if (select) {
+                    select.addEventListener('change', handleFrotaSelectChange);
+                }
+
+                const deleteBtn = row.querySelector('.delete-row-btn');
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', () => {
+                        if (confirm('Tem certeza que deseja excluir esta viatura?')) {
+                            const id = row.dataset.id;
+                            viaturasCadastradas = viaturasCadastradas.filter(v => v.id !== id);
+                            saveData('viaturasCadastradas', viaturasCadastradas);
+                            populateFrotaTable();
+                        }
+                    });
+                }
+            };
+
+            const populateFrotaTable = () => {
+                frotaTableBody.innerHTML = '';
+                viaturasCadastradas.forEach(viatura => {
+                    const row = frotaTableBody.insertRow();
+                    row.dataset.id = viatura.id;
+                    
+                    row.innerHTML = `
+                        <td contenteditable="true" data-key="placa">${viatura.placa || ''}</td>
+                        <td data-key="tipo">
+                            <select>
+                                <option value="Administrativa" ${viatura.tipo === 'Administrativa' ? 'selected' : ''}>Administrativa</option>
+                                <option value="Ambulância" ${viatura.tipo === 'Ambulância' ? 'selected' : ''}>Ambulância</option>
+                            </select>
+                        </td>
+                        <td contenteditable="true" data-key="ano">${viatura.ano || ''}</td>
+                        <td contenteditable="true" data-key="trocaOleoKm">${viatura.trocaOleoKm || ''}</td>
+                        <td><input type="checkbox" data-key="confirma" ${viatura.confirma ? 'checked' : ''}></td>
+                        <td contenteditable="true" data-key="proxTrocaKm">${viatura.proxTrocaKm || ''}</td>
+                        <td><input type="checkbox" data-key="operante" ${viatura.operante ? 'checked' : ''}></td>
+                        <td><input type="checkbox" data-key="inoperante" ${viatura.inoperante ? 'checked' : ''}></td>
+                        <td contenteditable="true" data-key="correiaDentadaKm">${viatura.correiaDentadaKm || ''}</td>
+                        <td class="action-buttons">
+                            <button class="delete-row-btn"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    `;
+                    attachViaturaRowListeners(row);
+                });
+                document.getElementById('frotaCounter').textContent = `Veículos Cadastrados: ${viaturasCadastradas.length}`;
+            };
+            
+            const populatePessoalTable = () => {
+                pessoalTableBody.innerHTML = '';
+                motoristasCadastrados.forEach(membro => {
+                     const row = pessoalTableBody.insertRow();
+                     row.dataset.id = membro.id;
+                     row.innerHTML = `
+                        <td contenteditable="true" data-key="nome">${membro.nome || ''}</td>
+                        <td class="action-buttons"><button class="delete-row-btn"><i class="fas fa-trash-alt"></i></button></td>
+                     `;
+                     
+                     row.querySelector('td[contenteditable="true"]').addEventListener('blur', () => {
+                        handleUpdate(membro.id, 'nome', row.cells[0].textContent, 'motorista');
+                     });
+
+                     row.querySelector('.delete-row-btn').addEventListener('click', () => {
+                        if (confirm('Tem certeza que deseja excluir este motorista?')) {
+                            motoristasCadastrados = motoristasCadastrados.filter(m => m.id !== membro.id);
+                            saveData('motoristasCadastrados', motoristasCadastrados);
+                            populatePessoalTable();
+                        }
+                     });
+                });
+                document.getElementById('pessoalCounter').textContent = `Membros Cadastrados: ${motoristasCadastrados.length}`;
+            };
+            
+            function exportToCSV(data, filename, headers) {
+                let csvContent = headers.join(';') + '\n';
+                data.forEach(item => {
+                    const row = headers.map(header => item[header] !== undefined ? item[header] : '');
+                    csvContent += row.join(';') + '\n';
+                });
+
+                const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                link.setAttribute("href", URL.createObjectURL(blob));
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function importFromCSV(event, dataType) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    const lines = text.split(/[\r\n]+/).filter(line => line.trim());
+                    if (lines.length <= 1) {
+                        alert('Arquivo CSV vazio ou inválido.');
+                        return;
+                    }
+
+                    if (!confirm(`Isso substituirá TODOS os dados de ${dataType === 'viatura' ? 'viaturas' : 'motoristas'}. Deseja continuar?`)) {
+                        event.target.value = '';
+                        return;
+                    }
+
+                    const headers = lines[0].split(';').map(h => h.trim());
+                    const newData = [];
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const values = lines[i].split(';');
+                        const obj = {};
+                        headers.forEach((header, index) => {
+                            let value = values[index] ? values[index].trim() : '';
+                            if (value === 'true') value = true;
+                            if (value === 'false') value = false;
+                            obj[header] = value;
+                        });
+                        if (!obj.id) {
+                            obj.id = `${dataType === 'viatura' ? 'v' : 'm'}_${Date.now()}_${i}`;
+                        }
+                        newData.push(obj);
+                    }
+
+                    if (dataType === 'viatura') {
+                        viaturasCadastradas = newData;
+                        saveData('viaturasCadastradas', viaturasCadastradas);
+                        populateFrotaTable();
+                    } else if (dataType === 'motorista') {
+                        motoristasCadastrados = newData;
+                        saveData('motoristasCadastrados', motoristasCadastrados);
+                        populatePessoalTable();
+                    }
+                    alert('Dados importados com sucesso!');
+                    event.target.value = '';
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
+            document.getElementById('exportViaturaBtn').addEventListener('click', () => {
+                const headers = ['id', 'placa', 'tipo', 'ano', 'trocaOleoKm', 'confirma', 'proxTrocaKm', 'operante', 'inoperante', 'correiaDentadaKm'];
+                exportToCSV(viaturasCadastradas, 'viaturas.csv', headers);
+            });
+
+            document.getElementById('importViaturaInput').addEventListener('change', (e) => importFromCSV(e, 'viatura'));
+            
+            document.getElementById('exportMotoristaBtn').addEventListener('click', () => {
+                const headers = ['id', 'nome'];
+                exportToCSV(motoristasCadastrados, 'motoristas.csv', headers);
+            });
+
+            document.getElementById('importMotoristaInput').addEventListener('change', (e) => importFromCSV(e, 'motorista'));
+            
+            document.getElementById('addViaturaRowBtn').addEventListener('click', () => {
+                const newViatura = { 
+                    id: `v_${Date.now()}`, placa: '', tipo: 'Administrativa', ano: '', 
+                    trocaOleoKm: '', confirma: false, proxTrocaKm: '', 
+                    operante: true, inoperante: false, correiaDentadaKm: '' 
+                };
+                viaturasCadastradas.push(newViatura);
+                saveData('viaturasCadastradas', viaturasCadastradas);
+                populateFrotaTable();
+            });
+            document.getElementById('addMotoristaRowBtn').addEventListener('click', () => {
+                const newMotorista = { id: `m_${Date.now()}`, nome: '' };
+                motoristasCadastrados.push(newMotorista);
+                saveData('motoristasCadastrados', motoristasCadastrados);
+                populatePessoalTable();
+            });
+
+            subTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.dataset.subTab;
+                    subTabButtons.forEach(btn => btn.classList.remove('active'));
+                    subTabContents.forEach(content => content.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    // Atualizar tabela de KM Atual quando a aba for ativada
+                    if (tabId === 'kmAtualContent') {
+                        populateKmAtualTable();
+                    }
+                    // Atualizar tabela PSO quando a aba for ativada
+                    if (tabId === 'psoContent') {
+                        populatePsoTable();
+                    }
+                    // Atualizar Escala de Pão quando a aba for ativada
+                    if (tabId === 'escalaPaoContent') {
+                        setTimeout(() => {
+                            if (typeof popularTabelaIntegrantes === 'function') {
+                                popularTabelaIntegrantes();
+                                popularListaFeriados();
+                                atualizarCalendarios();
+                                atualizarHistorico();
+                            }
+                        }, 100);
+                    }
+                });
+            });
+
+            // ========== FUNÇÕES PARA PROTOCOLO DE SUCESSÃO OPERACIONAL (PSO) ==========
+            
+            const savePsoData = () => {
+                localStorage.setItem('psoFila', JSON.stringify(psoFila));
+                window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+                updatePsoCounter();
+            };
+            
+            const updatePsoCounter = () => {
+                const counter = document.getElementById('psoCounter');
+                if (counter) {
+                    counter.textContent = `Registros: ${psoFila.length}`;
+                }
+            };
+            
+            // Função para popular a tabela PSO
+            const populatePsoTable = () => {
+                const psoTableBody = document.getElementById('psoTableBody');
+                if (!psoTableBody) return;
+                
+                psoTableBody.innerHTML = '';
+                
+                psoFila.forEach((item) => {
+                    const row = psoTableBody.insertRow();
+                    row.dataset.id = item.id;
+                    
+                    // Célula Nome
+                    const nomeCell = row.insertCell();
+                    nomeCell.contentEditable = true;
+                    nomeCell.dataset.key = 'nome';
+                    nomeCell.textContent = item.nome || '';
+                    nomeCell.style.fontWeight = '600';
+                    nomeCell.style.minWidth = '250px';
+                    nomeCell.addEventListener('blur', handlePsoCellEdit);
+                    nomeCell.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            nomeCell.blur();
+                        }
+                    });
+                    
+                    // Célula Último Regresso (com calendário e checkbox "Próximo")
+                    const regressoCell = row.insertCell();
+                    regressoCell.style.minWidth = '250px';
+                    regressoCell.style.padding = '6px';
+                    regressoCell.style.textAlign = 'center';
+
+                    // UI: calendário + checkbox "Próximo"
+                    const regressoWrap = document.createElement('div');
+                    regressoWrap.style.display = 'flex';
+                    regressoWrap.style.alignItems = 'center';
+                    regressoWrap.style.gap = '10px';
+                    regressoWrap.style.flexWrap = 'wrap';
+                    regressoWrap.style.justifyContent = 'center';
+
+                    const regressoDate = document.createElement('input');
+                    regressoDate.type = 'date';
+                    regressoDate.style.padding = '6px 8px';
+                    regressoDate.style.border = '1px solid #ccc';
+                    regressoDate.style.borderRadius = '6px';
+                    regressoDate.style.fontSize = '13px';
+                    // Valor salvo como yyyy-mm-dd (padrão do input date)
+                    if (item.ultimoRegressoData) {
+                        regressoDate.value = item.ultimoRegressoData;
+                    }
+                    regressoDate.addEventListener('change', () => {
+                        const itemIndex = psoFila.findIndex(i => i.id === item.id);
+                        if (itemIndex !== -1) {
+                            psoFila[itemIndex].ultimoRegressoData = regressoDate.value;
+                            savePsoData();
+                        }
+                    });
+
+                    const regressoLabel = document.createElement('label');
+                    regressoLabel.style.display = 'inline-flex';
+                    regressoLabel.style.alignItems = 'center';
+                    regressoLabel.style.gap = '6px';
+                    regressoLabel.style.cursor = 'pointer';
+                    regressoLabel.style.userSelect = 'none';
+
+                    const regressoCheckbox = document.createElement('input');
+                    regressoCheckbox.type = 'checkbox';
+                    regressoCheckbox.checked = !!item.ultimoRegressoProximo;
+
+                    const regressoText = document.createElement('span');
+                    regressoText.textContent = 'Próximo';
+                    regressoText.style.fontWeight = '600';
+                    regressoText.style.color = 'var(--primary-blue)';
+                    regressoText.style.fontSize = '14px';
+                    // Ocultar a palavra "Próximo" inicialmente
+                    regressoText.style.display = regressoCheckbox.checked ? 'inline' : 'none';
+
+                    // Função para atualizar a interface baseado no checkbox
+                    const updateProximoInterface = () => {
+                        if (regressoCheckbox.checked) {
+                            // Quando marcado: ocultar data, mostrar "Próximo" em vermelho e maior
+                            regressoDate.style.display = 'none';
+                            regressoText.style.display = 'inline';
+                            regressoText.style.color = '#dc3545'; // Vermelho
+                            regressoText.style.fontSize = '28px'; // Dobro do tamanho (14px * 2)
+                        } else {
+                            // Quando desmarcado: mostrar data, ocultar "Próximo"
+                            regressoDate.style.display = 'block';
+                            regressoText.style.display = 'none';
+                        }
+                    };
+
+                    // Inicializar a interface baseado no estado atual
+                    updateProximoInterface();
+
+                    // Atualizar interface quando o checkbox mudar
+                    regressoCheckbox.addEventListener('change', () => {
+                        const itemIndex = psoFila.findIndex(i => i.id === item.id);
+                        if (itemIndex !== -1) {
+                            psoFila[itemIndex].ultimoRegressoProximo = regressoCheckbox.checked;
+                            savePsoData();
+                        }
+                        updateProximoInterface();
+                    });
+
+                    regressoLabel.appendChild(regressoCheckbox);
+                    regressoLabel.appendChild(regressoText);
+                    regressoWrap.appendChild(regressoDate);
+                    regressoWrap.appendChild(regressoLabel);
+                    regressoCell.appendChild(regressoWrap);
+                    
+                    // Célula Escala Rocha (texto editável com estilo igual à palavra "Próximo")
+                    const observacoesCell = row.insertCell();
+                    observacoesCell.contentEditable = true;
+                    observacoesCell.dataset.key = 'observacoes';
+                    observacoesCell.textContent = item.observacoes || '';
+                    observacoesCell.style.minWidth = '300px';
+                    observacoesCell.style.textAlign = 'center';
+                    observacoesCell.style.color = '#dc3545'; // Vermelho (mesma cor da palavra "Próximo")
+                    observacoesCell.style.fontSize = '28px'; // Mesmo tamanho da palavra "Próximo"
+                    observacoesCell.style.fontWeight = '600';
+                    observacoesCell.addEventListener('blur', handlePsoCellEdit);
+                    observacoesCell.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            observacoesCell.blur();
+                        }
+                    });
+                    
+                    // Célula Ações
+                    const acoesCell = row.insertCell();
+                    acoesCell.className = 'action-buttons';
+                    acoesCell.style.textAlign = 'center';
+                    acoesCell.style.display = 'flex';
+                    acoesCell.style.gap = '8px';
+                    acoesCell.style.justifyContent = 'center';
+                    acoesCell.style.alignItems = 'center';
+                    
+                    // Botão Anotações
+                    const anotacoesBtn = document.createElement('button');
+                    anotacoesBtn.style.cssText = 'background-color: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;';
+                    anotacoesBtn.innerHTML = '<i class="fas fa-sticky-note"></i> Anotações';
+                    anotacoesBtn.title = 'Abrir Anotações';
+                    anotacoesBtn.addEventListener('click', () => abrirModalAnotacoes(item.id));
+                    acoesCell.appendChild(anotacoesBtn);
+                    
+                    // Botão Deletar
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-row-btn';
+                    deleteBtn.style.cssText = 'background-color: var(--delete-red); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                    deleteBtn.title = 'Remover Linha';
+                    deleteBtn.addEventListener('click', () => removePsoRow(item.id));
+                    acoesCell.appendChild(deleteBtn);
+                });
+                
+                updatePsoCounter();
+            };
+            
+            // Função para atualizar um campo editável
+            const handlePsoCellEdit = (event) => {
+                const cell = event.target;
+                const row = cell.closest('tr');
+                const rowId = row.dataset.id;
+                const field = cell.dataset.key;
+                
+                const itemIndex = psoFila.findIndex(item => item.id === rowId);
+                if (itemIndex !== -1) {
+                    let value = cell.textContent.trim();
+                    psoFila[itemIndex][field] = value;
+                    savePsoData();
+                }
+            };
+            
+            // Função para remover uma linha da tabela PSO
+            const removePsoRow = (id) => {
+                if (confirm('Tem certeza que deseja remover esta linha?')) {
+                    psoFila = psoFila.filter(item => item.id !== id);
+                    savePsoData();
+                    populatePsoTable();
+                }
+            };
+            
+            // Função para adicionar uma nova linha à tabela PSO
+            const addPsoRow = () => {
+                // Verificar se psoTableBody está disponível (buscar novamente se necessário)
+                const tableBody = document.getElementById('psoTableBody');
+                if (!tableBody) {
+                    console.error('psoTableBody não está disponível');
+                    alert('Erro: Tabela PSO não encontrada. Por favor, recarregue a página.');
+                    return;
+                }
+                
+                const novoRegistro = {
+                    id: `pso_${Date.now()}`,
+                    nome: '',
+                    ultimoRegressoData: '',
+                    ultimoRegressoProximo: false,
+                    observacoes: '',
+                    anotacoes: ''
+                };
+                psoFila.push(novoRegistro);
+                savePsoData();
+                populatePsoTable();
+                
+                // Focar na primeira célula editável da nova linha
+                setTimeout(() => {
+                    const rows = tableBody.querySelectorAll('tr');
+                    if (rows.length > 0) {
+                        const lastRow = rows[rows.length - 1];
+                        const firstCell = lastRow.querySelector('td[contenteditable="true"]');
+                        if (firstCell) {
+                            firstCell.focus();
+                            firstCell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
+                    }
+                }, 100);
+            };
+            
+            // Configurar event listeners dos botões PSO
+            const setupPsoEventListeners = () => {
+                // Também adicionar listener direto se o botão existir
+                const addPsoRowBtn = document.getElementById('addPsoRowBtn');
+                if (addPsoRowBtn) {
+                    // Remover listeners anteriores
+                    const newBtn = addPsoRowBtn.cloneNode(true);
+                    addPsoRowBtn.parentNode.replaceChild(newBtn, addPsoRowBtn);
+                    
+                    newBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('Botão Adicionar Linha clicado');
+                        addPsoRow();
+                    });
+                } else {
+                    console.warn('Botão addPsoRowBtn não encontrado no DOM');
+                }
+            };
+            
+            populateFrotaTable();
+            populatePessoalTable();
+            populateKmAtualTable();
+            populatePsoTable();
+            
+            // Configurar event listeners para PSO
+            setupPsoEventListeners();
+            
+            // ========== FUNÇÕES PARA MODAL DE ANOTAÇÕES ==========
+            
+            let psoAnotacoesItemId = null; // ID do item atual sendo editado
+            
+            // Função para abrir o modal de anotações
+            const abrirModalAnotacoes = (itemId) => {
+                psoAnotacoesItemId = itemId;
+                const item = psoFila.find(i => i.id === itemId);
+                const textarea = document.getElementById('psoAnotacoesTextarea');
+                const modal = document.getElementById('psoAnotacoesModal');
+                
+                if (item && textarea && modal) {
+                    textarea.value = item.anotacoes || '';
+                    modal.style.display = 'block';
+                    textarea.focus();
+                }
+            };
+            
+            // Função para fechar o modal de anotações
+            const fecharModalAnotacoes = () => {
+                const modal = document.getElementById('psoAnotacoesModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                    psoAnotacoesItemId = null;
+                }
+            };
+            
+            // Função para salvar anotações
+            const salvarAnotacoes = () => {
+                if (!psoAnotacoesItemId) return;
+                
+                const textarea = document.getElementById('psoAnotacoesTextarea');
+                const itemIndex = psoFila.findIndex(i => i.id === psoAnotacoesItemId);
+                
+                if (textarea && itemIndex !== -1) {
+                    psoFila[itemIndex].anotacoes = textarea.value.trim();
+                    savePsoData();
+                    fecharModalAnotacoes();
+                }
+            };
+            
+            // Event listeners do modal de anotações
+            const closePsoAnotacoesModal = document.getElementById('closePsoAnotacoesModal');
+            const salvarPsoAnotacoesBtn = document.getElementById('salvarPsoAnotacoesBtn');
+            const cancelarPsoAnotacoesBtn = document.getElementById('cancelarPsoAnotacoesBtn');
+            const psoAnotacoesModal = document.getElementById('psoAnotacoesModal');
+            
+            if (closePsoAnotacoesModal) {
+                closePsoAnotacoesModal.addEventListener('click', fecharModalAnotacoes);
+            }
+            
+            if (salvarPsoAnotacoesBtn) {
+                salvarPsoAnotacoesBtn.addEventListener('click', salvarAnotacoes);
+            }
+            
+            if (cancelarPsoAnotacoesBtn) {
+                cancelarPsoAnotacoesBtn.addEventListener('click', fecharModalAnotacoes);
+            }
+            
+            // Fechar modal ao clicar fora dele
+            if (psoAnotacoesModal) {
+                psoAnotacoesModal.addEventListener('click', (e) => {
+                    if (e.target === psoAnotacoesModal) {
+                        fecharModalAnotacoes();
+                    }
+                });
+            }
+            
+            // Fechar modal com ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && psoAnotacoesModal && psoAnotacoesModal.style.display === 'block') {
+                    fecharModalAnotacoes();
+                }
+            });
+            
+            // Reconfigurar listeners quando a aba PSO for ativada
+            const existingSubTabButtons = document.querySelectorAll('.sub-tab-button');
+            existingSubTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.dataset.subTab;
+                    if (tabId === 'psoContent') {
+                        // Aguardar um pouco para garantir que a aba está visível
+                        setTimeout(() => {
+                            setupPsoEventListeners();
+                        }, 100);
+                    }
+                });
+            });
+            
+            // Função para carregar e exibir quilometragem atual das viaturas
+            function populateKmAtualTable() {
+                const kmAtualTableBody = document.getElementById('kmAtualTableBody');
+                if (!kmAtualTableBody) return;
+                
+                // Buscar todas as viaturas cadastradas
+                const viaturas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+                
+                // Buscar todas as saídas (administrativas e ambulâncias)
+                const saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+                const saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+                const todasSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
+                
+                // Criar um mapa para armazenar a última quilometragem lançada de cada viatura
+                const ultimaKmPorViatura = {};
+
+                const obterTimestamp = (dataBase, horaBase) => {
+                    if (!dataBase) return 0;
+                    const iso = horaBase ? `${dataBase}T${horaBase}` : `${dataBase}T00:00`;
+                    const data = new Date(iso);
+                    return isNaN(data.getTime()) ? 0 : data.getTime();
+                };
+
+                // Processar todas as saídas para encontrar a última KM lançada (chegada ou saída)
+                todasSaidas.forEach(saida => {
+                    if (!saida.viatura) return;
+                    const placaViatura = saida.viatura.trim().toUpperCase();
+                    if (!placaViatura) return;
+
+                    const kmChegadaRaw = saida.kmChegada ? String(saida.kmChegada).trim() : '';
+                    const kmSaidaRaw = saida.kmSaida ? String(saida.kmSaida).trim() : '';
+                    const kmStr = kmChegadaRaw || kmSaidaRaw;
+                    if (!kmStr) return;
+
+                    const kmNum = parseFloat(kmStr.replace(/\./g, '').replace(',', '.'));
+                    if (isNaN(kmNum) || kmNum <= 0) return;
+
+                    const dataBase = saida.dataSaida || saida.dataPedido || saida.data || '';
+                    const horaBase = saida.horaSaida || saida.saida || saida.horaPedido || saida.hora || '';
+                    const timestamp = obterTimestamp(dataBase, horaBase);
+                    const kmTipo = kmChegadaRaw ? 'chegada' : 'saida';
+
+                    const atual = ultimaKmPorViatura[placaViatura];
+                    const deveAtualizar = !atual ||
+                        timestamp > atual.timestamp ||
+                        (timestamp === atual.timestamp && atual.kmTipo === 'saida' && kmTipo === 'chegada');
+
+                    if (deveAtualizar) {
+                        ultimaKmPorViatura[placaViatura] = {
+                            km: kmNum,
+                            kmTipo,
+                            timestamp,
+                            dataRegistro: dataBase
+                        };
+                    }
+                });
+                
+                // Limpar tabela
+                kmAtualTableBody.innerHTML = '';
+                
+                // Preencher tabela com todas as viaturas cadastradas
+                viaturas.forEach(viatura => {
+                    const row = kmAtualTableBody.insertRow();
+                    const placa = (viatura.placa || '').trim().toUpperCase();
+                    const tipo = viatura.tipo || '';
+                    const ultimaKm = ultimaKmPorViatura[placa];
+                    let dataExibicao = '-';
+                    if (ultimaKm && ultimaKm.dataRegistro) {
+                        const dataObj = new Date(`${ultimaKm.dataRegistro}T00:00:00`);
+                        dataExibicao = isNaN(dataObj.getTime())
+                            ? ultimaKm.dataRegistro
+                            : dataObj.toLocaleDateString('pt-BR');
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${placa || '-'}</td>
+                        <td>${tipo || '-'}</td>
+                        <td><strong>${ultimaKm ? Math.round(ultimaKm.km).toLocaleString('pt-BR') + ' km' : '-'}</strong></td>
+                        <td>${dataExibicao}</td>
+                    `;
+                });
+                
+                // Atualizar contador
+                const counter = document.getElementById('kmAtualCounter');
+                if (counter) {
+                    counter.textContent = `Viaturas: ${viaturas.length}`;
+                }
+            }
+            
+            // Atualizar tabela de KM Atual quando os dados mudarem
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'saidasAdministrativas' || e.key === 'saidasAmbulancias' || e.key === 'viaturasCadastradas') {
+                    populateKmAtualTable();
+                }
+            });
+            
+            // Escutar mensagens de atualização
+            window.addEventListener('message', function(e) {
+                if (e.data && e.data.type === 'refresh_all_data') {
+                    populateKmAtualTable();
+                }
+                if (e.data && e.data.type === 'escala_cell_marks_updated') {
+                    var escalaIframe = document.querySelector('#escalaContent iframe');
+                    if (escalaIframe && escalaIframe.contentWindow) {
+                        escalaIframe.contentWindow.postMessage({ type: 'escala_cell_marks_updated' }, '*');
+                    }
+                }
+                if (e.data && e.data.type === 'escala_data_updated') {
+                    var escalaIframe = document.querySelector('#escalaContent iframe');
+                    if (escalaIframe && escalaIframe.contentWindow) {
+                        escalaIframe.contentWindow.postMessage({ type: 'escala_data_updated', year: e.data.year, month: e.data.month }, '*');
+                    }
+                }
+                if (e.data && e.data.type === 'abrirRdvEDadosRdv') {
+                    var btnRdv = document.querySelector('.sub-tab-button[data-sub-tab="rdvContent"]');
+                    var rdvContent = document.getElementById('rdvContent');
+                    var subTabs = document.querySelectorAll('.sub-tab-content');
+                    var subBtns = document.querySelectorAll('.sub-tab-button');
+                    if (btnRdv && rdvContent) {
+                        subBtns.forEach(function(b) { b.classList.remove('active'); });
+                        subTabs.forEach(function(c) { c.classList.remove('active'); });
+                        btnRdv.classList.add('active');
+                        rdvContent.classList.add('active');
+                        setTimeout(function() {
+                            var iframeRdv = rdvContent.querySelector('iframe');
+                            if (iframeRdv && iframeRdv.contentWindow) {
+                                iframeRdv.contentWindow.postMessage({ type: 'openSubTab', subTabId: 'dados-rdv' }, '*');
+                            }
+                        }, 400);
+                    }
+                }
+            });
+            
+            // Função para gerar PDF da tabela de KM Atual
+            function gerarPdfKmAtual() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait' });
+                
+                // Título do documento (reduzido pela metade)
+                doc.setFontSize(8);
+                doc.text('QUILOMETRAGEM ATUAL DAS VIATURAS', 7, 10);
+                
+                // Data de geração (reduzida pela metade)
+                doc.setFontSize(5);
+                const dataGeracao = new Date().toLocaleDateString('pt-BR') + ' ' + new Date().toLocaleTimeString('pt-BR');
+                doc.text('Gerado em: ' + dataGeracao, 7, 14);
+                
+                // Obter dados da tabela
+                const table = document.getElementById('kmAtualTable');
+                if (!table) {
+                    alert('Tabela não encontrada!');
+                    return;
+                }
+                
+                // Cabeçalhos da tabela
+                const head = Array.from(table.tHead.rows[0].cells).map(th => th.textContent.trim());
+                
+                // Corpo da tabela
+                const body = [];
+                table.querySelectorAll('tbody tr').forEach(tr => {
+                    const rowData = Array.from(tr.cells).map(td => {
+                        let text = td.textContent.trim();
+                        // Remover tags HTML se houver
+                        text = text.replace(/<strong>/g, '').replace(/<\/strong>/g, '');
+                        return text;
+                    });
+                    body.push(rowData);
+                });
+                
+                // Gerar tabela no PDF (tamanhos reduzidos pela metade)
+                doc.autoTable({
+                    startY: 18,
+                    head: [head],
+                    body: body,
+                    theme: 'grid',
+                    styles: { 
+                        fontSize: 4.5, 
+                        cellPadding: 1.5, 
+                        overflow: 'linebreak',
+                        textColor: [51, 51, 51]
+                    },
+                    headStyles: { 
+                        fillColor: [74, 105, 189], 
+                        textColor: 255,
+                        fontStyle: 'bold',
+                        fontSize: 4.5
+                    },
+                    alternateRowStyles: { 
+                        fillColor: [248, 249, 250] 
+                    },
+                    margin: { top: 18, left: 7, right: 7 },
+                    columnStyles: {
+                        0: { cellWidth: 20 }, // PLACA (reduzido pela metade)
+                        1: { cellWidth: 25 }, // TIPO (reduzido pela metade)
+                        2: { cellWidth: 30 }, // ÚLTIMA QUILOMETRAGEM (reduzido pela metade)
+                        3: { cellWidth: 20 }  // DATA DO REGISTRO (reduzido pela metade)
+                    }
+                });
+                
+                // Salvar PDF
+                const filename = `Quilometragem_Atual_Viaturas_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+                doc.save(filename);
+            }
+            
+            // Botão para gerar PDF
+            const exportKmAtualPdfBtn = document.getElementById('exportKmAtualPdfBtn');
+            if (exportKmAtualPdfBtn) {
+                exportKmAtualPdfBtn.addEventListener('click', function() {
+                    gerarPdfKmAtual();
+                });
+            }
+            
+            // ==================== ESCALA DE PÃO ====================
+            
+            // Dados da Escala de Pão
+            let integrantesEscalaPao = JSON.parse(localStorage.getItem('integrantesEscalaPao')) || [];
+            let feriadosEscalaPao = JSON.parse(localStorage.getItem('feriadosEscalaPao')) || [];
+            let historicoEscalaPao = JSON.parse(localStorage.getItem('historicoEscalaPao')) || [];
+            let ultimoIndiceEscala = parseInt(localStorage.getItem('ultimoIndiceEscala')) || 0;
+            let puladosEscalaPao = JSON.parse(localStorage.getItem('puladosEscalaPao')) || {};
+            let escalaPaoInsercoes = JSON.parse(localStorage.getItem('escalaPaoInsercoes')) || [];
+            let diasExcluidosEscalaPao = JSON.parse(localStorage.getItem('diasExcluidosEscalaPao')) || [];
+            let arrastarCardAtivo = false;
+            let excluirCardAtivo = false;
+            
+            // Funções auxiliares
+            const salvarEscalaPao = () => {
+                localStorage.setItem('integrantesEscalaPao', JSON.stringify(integrantesEscalaPao));
+                localStorage.setItem('feriadosEscalaPao', JSON.stringify(feriadosEscalaPao));
+                localStorage.setItem('historicoEscalaPao', JSON.stringify(historicoEscalaPao));
+                localStorage.setItem('ultimoIndiceEscala', ultimoIndiceEscala.toString());
+                localStorage.setItem('puladosEscalaPao', JSON.stringify(puladosEscalaPao));
+                localStorage.setItem('escalaPaoInsercoes', JSON.stringify(escalaPaoInsercoes));
+                localStorage.setItem('diasExcluidosEscalaPao', JSON.stringify(diasExcluidosEscalaPao));
+                try { window.parent.postMessage({ type: 'escala_pao_updated' }, '*'); } catch (err) {}
+            };
+            
+            // Função para normalizar data (apenas dia, mês, ano, sem hora)
+            const normalizarData = (data) => {
+                const d = new Date(data);
+                d.setHours(0, 0, 0, 0);
+                return d;
+            };
+            
+            // Função para comparar duas datas (ignora hora)
+            const mesmaData = (data1, data2) => {
+                const d1 = normalizarData(data1);
+                const d2 = normalizarData(data2);
+                return d1.getTime() === d2.getTime();
+            };
+            
+            // Função para obter string de data no formato YYYY-MM-DD
+            const obterDataString = (data) => {
+                const d = normalizarData(data);
+                const ano = d.getFullYear();
+                const mes = String(d.getMonth() + 1).padStart(2, '0');
+                const dia = String(d.getDate()).padStart(2, '0');
+                return `${ano}-${mes}-${dia}`;
+            };
+
+            /** Normaliza string de data para YYYY-MM-DD (para comparação). Aceita YYYY-MM-DD ou DD/MM/YYYY. */
+            const normalizarDataString = (s) => {
+                if (!s || typeof s !== 'string') return '';
+                s = s.trim();
+                if (!s) return '';
+                if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+                const partes = s.split(/[/-]/);
+                if (partes.length === 3) {
+                    if (partes[0].length === 4) return `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+                    return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                }
+                return s;
+            };
+
+            const obterProximaQuarta = (data) => {
+                const base = normalizarData(data);
+                const diaSemana = base.getDay(); // 0=Domingo ... 3=Quarta
+                let diasAteQuarta = (3 - diaSemana + 7) % 7;
+                if (diasAteQuarta === 0) {
+                    diasAteQuarta = 7; // sempre próxima quarta, não a atual
+                }
+                const proxima = new Date(base);
+                proxima.setDate(proxima.getDate() + diasAteQuarta);
+                return normalizarData(proxima);
+            };
+
+            const obterDataReentrada = (dataBase) => {
+                let dataReentrada = obterProximaQuarta(dataBase);
+                if (!isDiaUtil(dataReentrada)) {
+                    dataReentrada = proximoDiaUtil(dataReentrada);
+                }
+                return dataReentrada;
+            };
+
+            const obterInsercaoNaData = (data) => {
+                const dataStr = obterDataString(data);
+                return escalaPaoInsercoes.find(i => i.data === dataStr);
+            };
+
+            const contarInsercoesAntes = (data) => {
+                const dataStr = obterDataString(data);
+                return escalaPaoInsercoes.filter(i => i.data < dataStr).length;
+            };
+
+            const formatarData = (data) => {
+                const d = normalizarData(data);
+                return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+            };
+            
+            const formatarDataCompleta = (data) => {
+                const d = normalizarData(data);
+                return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            };
+
+            /** Formata string YYYY-MM-DD para exibição DD/MM/YYYY */
+            const formatarDataStringParaExibicao = (s) => {
+                if (!s || typeof s !== 'string') return '';
+                const n = normalizarDataString(s.trim());
+                if (!n) return '';
+                const [a, m, d] = n.split('-');
+                return `${d}/${m}/${a}`;
+            };
+            
+            const isFeriado = (data) => {
+                const dataStr = obterDataString(data);
+                return feriadosEscalaPao.some(f => f.data === dataStr);
+            };
+            
+            const isDiaUtil = (data) => {
+                const d = normalizarData(data);
+                const dia = d.getDay();
+                return dia >= 1 && dia <= 5 && !isFeriado(d);
+            };
+            
+            const proximoDiaUtil = (data) => {
+                let proxima = normalizarData(data);
+                proxima.setDate(proxima.getDate() + 1);
+                while (!isDiaUtil(proxima)) {
+                    proxima.setDate(proxima.getDate() + 1);
+                    proxima = normalizarData(proxima);
+                }
+                return proxima;
+            };
+            /** Avança n dias úteis a partir da data. */
+            const adicionarDiasUteis = (data, n) => {
+                let d = normalizarData(data);
+                for (let i = 0; i < n; i++) {
+                    d = proximoDiaUtil(d);
+                }
+                return d;
+            };
+            /** Quantidade de dias excluídos da escala com data <= data. */
+            const contarExcluidosAteInclusive = (data) => {
+                const dataStr = obterDataString(normalizarData(data));
+                return diasExcluidosEscalaPao.filter(d => d <= dataStr).length;
+            };
+            
+            /** Todos os integrantes entram na escala (sem período de férias/destaque). */
+            const obterIntegrantesAtivos = (data) => {
+                return integrantesEscalaPao.slice();
+            };
+
+            // Função para obter a data de referência (primeira segunda-feira do período atual)
+            const obterDataReferencia = () => {
+                // Verifica se há uma data de referência salva no localStorage
+                const dataRefSalva = localStorage.getItem('escalaPaoDataReferencia');
+                if (dataRefSalva) {
+                    const dataRef = new Date(dataRefSalva);
+                    if (!isNaN(dataRef.getTime())) {
+                        const dataRefNormalizada = normalizarData(dataRef);
+                        // Verifica se a data salva não é muito antiga (mais de 1 ano)
+                        const hoje = normalizarData(new Date());
+                        const diffTempo = hoje.getTime() - dataRefNormalizada.getTime();
+                        const diffDias = diffTempo / (1000 * 60 * 60 * 24);
+                        
+                        // Se a data salva for muito antiga, recalcula
+                        if (diffDias > 365) {
+                            // Recalcula usando o mês atual
+                            const dataRefNova = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                            while (dataRefNova.getDay() !== 1) {
+                                dataRefNova.setDate(dataRefNova.getDate() + 1);
+                            }
+                            const dataRefNovaNormalizada = normalizarData(dataRefNova);
+                            localStorage.setItem('escalaPaoDataReferencia', dataRefNovaNormalizada.toISOString());
+                            return dataRefNovaNormalizada;
+                        }
+                        
+                        return dataRefNormalizada;
+                    }
+                }
+                
+                // Se não houver data salva, usa a primeira segunda-feira do mês atual
+                const hoje = new Date();
+                const dataRef = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                // Encontra a primeira segunda-feira do mês
+                while (dataRef.getDay() !== 1) {
+                    dataRef.setDate(dataRef.getDate() + 1);
+                }
+                
+                const dataRefNormalizada = normalizarData(dataRef);
+                
+                // Salva a data de referência
+                localStorage.setItem('escalaPaoDataReferencia', dataRefNormalizada.toISOString());
+                
+                return dataRefNormalizada;
+            };
+            
+            // Função para reiniciar a escala (útil para garantir que todos apareçam)
+            const reiniciarEscala = () => {
+                if (confirm('Deseja reiniciar a escala? Isso fará com que a escala recomece a partir de hoje, garantindo que todos os integrantes ativos apareçam na sequência correta.')) {
+                    // Remove a data de referência salva para recalcular
+                    localStorage.removeItem('escalaPaoDataReferencia');
+                    // Limpa os pulos anteriores
+                    puladosEscalaPao = {};
+                    // Limpa inserções pendentes
+                    escalaPaoInsercoes = [];
+                    // Limpa dias excluídos
+                    diasExcluidosEscalaPao = [];
+                    salvarEscalaPao();
+                    atualizarCalendarios();
+                    alert('Escala reiniciada com sucesso!');
+                }
+            };
+            
+            /** Responsável do dia na escala ORIGINAL (sem considerar dias excluídos na contagem). */
+            const obterResponsavelDiaOriginal = (data) => {
+                const dataNormalizada = normalizarData(data);
+                if (puladosEscalaPao[obterDataString(dataNormalizada)]) {
+                    return puladosEscalaPao[obterDataString(dataNormalizada)];
+                }
+                const insercao = obterInsercaoNaData(dataNormalizada);
+                if (insercao) {
+                    const integranteInserido = integrantesEscalaPao.find(i => i.id === insercao.integranteId);
+                    if (integranteInserido) return integranteInserido;
+                }
+                const ativos = obterIntegrantesAtivos(dataNormalizada);
+                if (ativos.length === 0) return null;
+                if (!isDiaUtil(dataNormalizada)) return null;
+                const dataReferencia = obterDataReferencia();
+                let diasUteis = 0;
+                let contador = new Date(dataReferencia);
+                while (contador <= dataNormalizada) {
+                    if (isDiaUtil(contador)) diasUteis++;
+                    contador.setDate(contador.getDate() + 1);
+                    contador = normalizarData(contador);
+                }
+                const insercoesAntes = contarInsercoesAntes(dataNormalizada);
+                const indice = (diasUteis - 1 + insercoesAntes) % ativos.length;
+                return ativos[indice];
+            };
+            
+            /** Responsável do dia: ao excluir um dia, o responsável do dia seguinte "cai" para este (e assim por diante). */
+            const obterResponsavelDia = (data) => {
+                const dataNormalizada = normalizarData(data);
+                const dataStr = obterDataString(dataNormalizada);
+                
+                if (puladosEscalaPao[dataStr]) {
+                    return puladosEscalaPao[dataStr];
+                }
+                const insercao = obterInsercaoNaData(dataNormalizada);
+                if (insercao) {
+                    const integranteInserido = integrantesEscalaPao.find(i => i.id === insercao.integranteId);
+                    if (integranteInserido) return integranteInserido;
+                }
+                const ativos = obterIntegrantesAtivos(dataNormalizada);
+                if (ativos.length === 0) return null;
+                if (!isDiaUtil(dataNormalizada)) return null;
+                
+                const k = contarExcluidosAteInclusive(dataNormalizada);
+                const dataDeslocada = adicionarDiasUteis(dataNormalizada, k);
+                return obterResponsavelDiaOriginal(dataDeslocada);
+            };
+            
+            // Modal Excluir Card: abre com data e nome do responsável; ao confirmar, exclui o dia e reajusta a escala
+            let pendenteExcluirCardDataStr = null;
+            const abrirModalExcluirCard = (dataStr, nomeResponsavel, dataNormalizada) => {
+                pendenteExcluirCardDataStr = dataStr;
+                const msg = document.getElementById('excluirCardMensagem');
+                if (msg) {
+                    msg.textContent = `Excluir o dia ${formatarDataCompleta(dataNormalizada)} (${nomeResponsavel}) da escala?`;
+                }
+                const modal = document.getElementById('excluirCardModal');
+                if (modal) modal.style.display = 'block';
+            };
+            const fecharModalExcluirCard = () => {
+                pendenteExcluirCardDataStr = null;
+                const modal = document.getElementById('excluirCardModal');
+                if (modal) modal.style.display = 'none';
+            };
+            const confirmarExcluirCard = () => {
+                if (!pendenteExcluirCardDataStr) return;
+                const dataStr = pendenteExcluirCardDataStr;
+                if (!diasExcluidosEscalaPao.includes(dataStr)) {
+                    diasExcluidosEscalaPao.push(dataStr);
+                    diasExcluidosEscalaPao.sort();
+                }
+                delete puladosEscalaPao[dataStr];
+                salvarEscalaPao();
+                atualizarCalendarios();
+                fecharModalExcluirCard();
+            };
+            
+            // Atualiza o datalist com os nomes do Cadastro de Motoristas (para select + digitação manual)
+            const atualizarDatalistMotoristas = () => {
+                const datalist = document.getElementById('motoristasEscalaPaoDatalist');
+                if (!datalist) return;
+                datalist.innerHTML = '';
+                const motoristas = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+                motoristas.forEach(m => {
+                    if (m.nome && String(m.nome).trim()) {
+                        const opt = document.createElement('option');
+                        opt.value = String(m.nome).trim();
+                        datalist.appendChild(opt);
+                    }
+                });
+            };
+            
+            // Integrantes (lista com status e período de inatividade)
+            const popularTabelaIntegrantes = () => {
+                atualizarDatalistMotoristas();
+                const tbody = document.getElementById('integrantesTableBody');
+                if (!tbody) return;
+                
+                tbody.innerHTML = '';
+                integrantesEscalaPao.forEach((integrante, index) => {
+                    const row = tbody.insertRow();
+                    row.dataset.index = String(index);
+                    const nomeEscapado = String(integrante.nome || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+                    row.innerHTML = `
+                        <td class="nome-cell">
+                            <input type="text" class="nome-edit" data-key="nome" list="motoristasEscalaPaoDatalist" value="${nomeEscapado}" placeholder="Selecione ou digite" autocomplete="off" style="width: 100%; min-width: 120px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </td>
+                        <td>
+                            <button class="btn-danger btn-small" data-index="${index}">
+                                <i class="fas fa-trash"></i> Remover
+                            </button>
+                        </td>
+                    `;
+                    const nomeInput = row.querySelector('input[data-key="nome"]');
+                    nomeInput.addEventListener('blur', (e) => {
+                        integrante.nome = (e.target.value || '').trim();
+                        salvarEscalaPao();
+                        atualizarCalendarios();
+                    });
+                    nomeInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') e.target.blur();
+                    });
+                    row.querySelector('.btn-danger').addEventListener('click', () => {
+                        if (confirm(`Remover ${integrante.nome} da escala?`)) {
+                            integrantesEscalaPao.splice(index, 1);
+                            salvarEscalaPao();
+                            popularTabelaIntegrantes();
+                            atualizarCalendarios();
+                        }
+                    });
+                });
+            };
+            
+            // Adicionar Integrante
+            const adicionarIntegranteBtn = document.getElementById('adicionarIntegranteBtn');
+            if (adicionarIntegranteBtn) {
+                adicionarIntegranteBtn.addEventListener('click', () => {
+                    const nome = document.getElementById('novoIntegranteNome').value.trim();
+                    
+                    if (!nome) {
+                        alert('Por favor, informe o nome do integrante.');
+                        return;
+                    }
+                    
+                    integrantesEscalaPao.push({ id: Date.now(), nome });
+                    salvarEscalaPao();
+                    document.getElementById('novoIntegranteNome').value = '';
+                    popularTabelaIntegrantes();
+                    atualizarCalendarios();
+                });
+            }
+            
+            // Gerenciamento de Feriados
+            const popularListaFeriados = () => {
+                const lista = document.getElementById('feriadosList');
+                if (!lista) return;
+                
+                lista.innerHTML = '';
+                feriadosEscalaPao.forEach((feriado, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'feriado-item';
+                    // Converte a string de data para objeto Date
+                    const partesData = feriado.data.split('-');
+                    const dataFeriado = new Date(parseInt(partesData[0]), parseInt(partesData[1]) - 1, parseInt(partesData[2]));
+                    item.innerHTML = `
+                        <span><strong>${formatarDataCompleta(dataFeriado)}</strong> - ${feriado.descricao}</span>
+                        <button class="btn-danger btn-small" data-index="${index}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+                    
+                    item.querySelector('.btn-danger').addEventListener('click', () => {
+                        feriadosEscalaPao.splice(index, 1);
+                        salvarEscalaPao();
+                        popularListaFeriados();
+                        atualizarCalendarios();
+                    });
+                    
+                    lista.appendChild(item);
+                });
+            };
+            
+            // Adicionar Feriado
+            const adicionarFeriadoBtn = document.getElementById('adicionarFeriadoBtn');
+            if (adicionarFeriadoBtn) {
+                adicionarFeriadoBtn.addEventListener('click', () => {
+                    const data = document.getElementById('novoFeriadoData').value;
+                    const descricao = document.getElementById('novoFeriadoDesc').value.trim();
+                    
+                    if (!data || !descricao) {
+                        alert('Por favor, preencha a data e a descrição do feriado.');
+                        return;
+                    }
+                    
+                    // Usar a data do input diretamente (YYYY-MM-DD) para não alterar o dia por fuso horário
+                    const dataStr = data;
+                    if (feriadosEscalaPao.some(f => f.data === dataStr)) {
+                        alert('Este feriado já está cadastrado.');
+                        return;
+                    }
+                    
+                    feriadosEscalaPao.push({ data: dataStr, descricao });
+                    salvarEscalaPao();
+                    document.getElementById('novoFeriadoData').value = '';
+                    document.getElementById('novoFeriadoDesc').value = '';
+                    popularListaFeriados();
+                    // Atualiza o calendário imediatamente para o feriado aparecer nos blocos da semana
+                    atualizarCalendarios();
+                });
+            }
+            
+            // Botão Reiniciar Escala
+            const reiniciarEscalaBtn = document.getElementById('reiniciarEscalaBtn');
+            if (reiniciarEscalaBtn) {
+                reiniciarEscalaBtn.addEventListener('click', () => {
+                    reiniciarEscala();
+                });
+            }
+
+            document.getElementById('btnToggleIntegrantes')?.addEventListener('click', () => {
+                const form = document.getElementById('integrantesForm');
+                const btn = document.getElementById('btnToggleIntegrantes');
+                if (form && btn) {
+                    form.classList.toggle('oculto');
+                    btn.classList.toggle('ativo');
+                    btn.setAttribute('aria-expanded', form.classList.contains('oculto') ? 'false' : 'true');
+                    if (!form.classList.contains('oculto')) atualizarDatalistMotoristas();
+                }
+            });
+            document.getElementById('btnToggleFeriados')?.addEventListener('click', () => {
+                const form = document.getElementById('feriadosForm');
+                const btn = document.getElementById('btnToggleFeriados');
+                if (form && btn) {
+                    form.classList.toggle('oculto');
+                    btn.classList.toggle('ativo');
+                    btn.setAttribute('aria-expanded', form.classList.contains('oculto') ? 'false' : 'true');
+                }
+            });
+            document.getElementById('btnArrastarCard')?.addEventListener('click', () => {
+                arrastarCardAtivo = !arrastarCardAtivo;
+                if (arrastarCardAtivo) {
+                    excluirCardAtivo = false;
+                    const btnExcluir = document.getElementById('btnExcluirCard');
+                    if (btnExcluir) { btnExcluir.classList.remove('ativo'); btnExcluir.setAttribute('aria-pressed', 'false'); }
+                }
+                const btn = document.getElementById('btnArrastarCard');
+                if (btn) {
+                    btn.classList.toggle('ativo', arrastarCardAtivo);
+                    btn.setAttribute('aria-pressed', arrastarCardAtivo ? 'true' : 'false');
+                }
+                atualizarCalendarios();
+            });
+            document.getElementById('btnExcluirCard')?.addEventListener('click', () => {
+                excluirCardAtivo = !excluirCardAtivo;
+                if (excluirCardAtivo) {
+                    arrastarCardAtivo = false;
+                    const btnArrastar = document.getElementById('btnArrastarCard');
+                    if (btnArrastar) { btnArrastar.classList.remove('ativo'); btnArrastar.setAttribute('aria-pressed', 'false'); }
+                }
+                const btn = document.getElementById('btnExcluirCard');
+                if (btn) {
+                    btn.classList.toggle('ativo', excluirCardAtivo);
+                    btn.setAttribute('aria-pressed', excluirCardAtivo ? 'true' : 'false');
+                }
+                atualizarCalendarios();
+            });
+            document.getElementById('closeExcluirCardModal')?.addEventListener('click', fecharModalExcluirCard);
+            document.getElementById('excluirCardCancelar')?.addEventListener('click', fecharModalExcluirCard);
+            document.getElementById('excluirCardConfirmar')?.addEventListener('click', confirmarExcluirCard);
+            document.getElementById('excluirCardModal')?.addEventListener('click', (e) => {
+                if (e.target && e.target.id === 'excluirCardModal') fecharModalExcluirCard();
+            });
+
+            const escalaMensalPrev = document.getElementById('escalaMensalPrev');
+            if (escalaMensalPrev) {
+                escalaMensalPrev.addEventListener('click', () => {
+                    escalaPaoMesAtual--;
+                    if (escalaPaoMesAtual < 0) { escalaPaoMesAtual = 11; escalaPaoAnoAtual--; }
+                    atualizarCalendarioMensal();
+                });
+            }
+            const escalaMensalNext = document.getElementById('escalaMensalNext');
+            if (escalaMensalNext) {
+                escalaMensalNext.addEventListener('click', () => {
+                    escalaPaoMesAtual++;
+                    if (escalaPaoMesAtual > 11) { escalaPaoMesAtual = 0; escalaPaoAnoAtual++; }
+                    atualizarCalendarioMensal();
+                });
+            }
+
+            const inpPeriodoInicio = document.getElementById('periodoInatividadeInicio');
+            const inpPeriodoFim = document.getElementById('periodoInatividadeFim');
+            if (inpPeriodoInicio) {
+                inpPeriodoInicio.addEventListener('input', () => inpPeriodoInicio.classList.remove('periodo-inatividade-erro'));
+                inpPeriodoInicio.addEventListener('change', () => inpPeriodoInicio.classList.remove('periodo-inatividade-erro'));
+            }
+            if (inpPeriodoFim) {
+                inpPeriodoFim.addEventListener('input', () => inpPeriodoFim.classList.remove('periodo-inatividade-erro'));
+                inpPeriodoFim.addEventListener('change', () => inpPeriodoFim.classList.remove('periodo-inatividade-erro'));
+            }
+            
+            // Atualizar Calendários
+            let escalaPaoMesAtual = (() => { const d = new Date(); return d.getMonth(); })();
+            let escalaPaoAnoAtual = (() => { const d = new Date(); return d.getFullYear(); })();
+
+            const atualizarCalendarios = () => {
+                atualizarCalendarioMensal();
+            };
+            
+            const atualizarCalendarioSemana = (containerId, semanaOffset) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                const hoje = normalizarData(new Date());
+                
+                // Encontra a segunda-feira da semana atual
+                const segundaSemanaAtual = new Date(hoje);
+                const diaSemanaHoje = segundaSemanaAtual.getDay();
+                
+                // Calcula quantos dias voltar para chegar na segunda-feira
+                let diasParaSegunda = 0;
+                if (diaSemanaHoje === 0) {
+                    diasParaSegunda = -6; // Domingo: volta 6 dias
+                } else if (diaSemanaHoje > 1) {
+                    diasParaSegunda = -(diaSemanaHoje - 1); // Terça a Sábado
+                }
+                // Se for segunda-feira, diasParaSegunda = 0 (já é segunda)
+                
+                segundaSemanaAtual.setDate(segundaSemanaAtual.getDate() + diasParaSegunda);
+                
+                // Adiciona semanas de offset (0 para semana atual, 1 para próxima)
+                segundaSemanaAtual.setDate(segundaSemanaAtual.getDate() + (semanaOffset * 7));
+                
+                const segunda = normalizarData(segundaSemanaAtual);
+                
+                const nomesDiasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+                
+                // Mostra os 5 dias úteis (segunda a sexta)
+                for (let i = 0; i < 5; i++) {
+                    const data = new Date(segunda);
+                    data.setDate(segunda.getDate() + i);
+                    const dataNormalizada = normalizarData(data);
+                    
+                    // Obtém o nome do dia da semana baseado na data real
+                    const diaRealSemana = dataNormalizada.getDay();
+                    const nomeDiaSemana = nomesDiasSemana[diaRealSemana];
+                    
+                    const diaDiv = document.createElement('div');
+                    diaDiv.className = 'dia-calendario';
+                    
+                    // Marca se é hoje (usando comparação normalizada)
+                    if (mesmaData(dataNormalizada, hoje)) {
+                        diaDiv.classList.add('hoje');
+                    }
+                    
+                    const dataStr = obterDataString(dataNormalizada);
+                    
+                    // Marca se é feriado
+                    if (isFeriado(dataNormalizada)) {
+                        diaDiv.classList.add('feriado');
+                        const feriado = feriadosEscalaPao.find(f => f.data === dataStr);
+                        const responsavel = obterResponsavelDia(dataNormalizada);
+                        diaDiv.innerHTML = `
+                            <div class="data">${nomeDiaSemana}<br>${formatarDataCompleta(dataNormalizada)}</div>
+                            <div style="color: #ff9800; font-weight: bold; margin: 10px 0;">
+                                <i class="fas fa-calendar-times"></i> FERIADO<br>
+                                ${feriado ? feriado.descricao : ''}
+                            </div>
+                            ${responsavel ? `<div class="responsavel">Responsável: ${responsavel.nome}</div>` : ''}
+                        `;
+                    } else if (isDiaUtil(dataNormalizada)) {
+                        const responsavel = obterResponsavelDia(dataNormalizada);
+                        diaDiv.innerHTML = `
+                            <div class="data">${nomeDiaSemana}<br>${formatarDataCompleta(dataNormalizada)}</div>
+                            ${responsavel ? `
+                                <div class="responsavel">${responsavel.nome}</div>
+                                <button class="btn-pular" data-data="${dataStr}">
+                                    <i class="fas fa-forward"></i> Pular/Adiar
+                                </button>
+                            ` : '<div style="color: #999;">Sem responsável</div>'}
+                        `;
+                        
+                        // Event listener para botão pular
+                        const btnPular = diaDiv.querySelector('.btn-pular');
+                        if (btnPular) {
+                            btnPular.addEventListener('click', () => {
+                                pularVez(dataNormalizada, responsavel);
+                            });
+                        }
+                    } else {
+                        // Fim de semana (não deveria acontecer pois só mostramos segunda a sexta)
+                        diaDiv.innerHTML = `
+                            <div class="data">${nomeDiaSemana}<br>${formatarDataCompleta(dataNormalizada)}</div>
+                            <div style="color: #999;">Fim de semana</div>
+                        `;
+                    }
+                    
+                    container.appendChild(diaDiv);
+                }
+            };
+
+            const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            const nomesDiasCurto = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+            const atualizarCalendarioMensal = () => {
+                const container = document.getElementById('calendarioMensal');
+                const titulo = document.getElementById('escalaMensalTitulo');
+                if (!container || !titulo) return;
+
+                titulo.textContent = `${nomesMeses[escalaPaoMesAtual]} ${escalaPaoAnoAtual}`;
+                container.innerHTML = '';
+
+                const primeiroDia = new Date(escalaPaoAnoAtual, escalaPaoMesAtual, 1);
+                const ultimoDia = new Date(escalaPaoAnoAtual, escalaPaoMesAtual + 1, 0);
+                const diaSemanaInicio = primeiroDia.getDay();
+                const totalDias = ultimoDia.getDate();
+                const hoje = normalizarData(new Date());
+
+                for (let i = 0; i < 7; i++) {
+                    const th = document.createElement('div');
+                    th.className = 'cabecalho-dia';
+                    th.textContent = nomesDiasCurto[i];
+                    container.appendChild(th);
+                }
+
+                const celulasVaziasInicio = diaSemanaInicio;
+                for (let i = 0; i < celulasVaziasInicio; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'dia-mensal dia-outro-mes';
+                    cell.innerHTML = '&nbsp;';
+                    container.appendChild(cell);
+                }
+
+                for (let dia = 1; dia <= totalDias; dia++) {
+                    const data = new Date(escalaPaoAnoAtual, escalaPaoMesAtual, dia);
+                    const dataNormalizada = normalizarData(data);
+                    const dataStr = obterDataString(dataNormalizada);
+                    const diaSemana = dataNormalizada.getDay();
+                    const ehFimDeSemana = diaSemana === 0 || diaSemana === 6;
+
+                    const cell = document.createElement('div');
+                    cell.className = 'dia-mensal';
+                    cell.dataset.data = dataStr;
+                    if (mesmaData(dataNormalizada, hoje)) cell.classList.add('hoje');
+                    if (isFeriado(dataNormalizada)) cell.classList.add('feriado');
+                    if (ehFimDeSemana) cell.classList.add('fim-de-semana');
+
+                    const feriado = feriadosEscalaPao.find(f => f.data === dataStr);
+                    const responsavel = isDiaUtil(dataNormalizada) ? obterResponsavelDia(dataNormalizada) : null;
+
+                    let conteudo = `<div class="num-dia">${dia}</div>`;
+                    if (feriado) {
+                        conteudo += `<div class="feriado-desc"><i class="fas fa-calendar-times"></i> ${feriado.descricao || 'Feriado'}</div>`;
+                        if (responsavel) conteudo += `<div class="responsavel-nome">${responsavel.nome}</div>`;
+                    } else if (responsavel) {
+                        conteudo += `<div class="responsavel-nome">${responsavel.nome}</div>`;
+                    }
+                    cell.innerHTML = conteudo;
+
+                    if (excluirCardAtivo && responsavel && !diasExcluidosEscalaPao.includes(dataStr)) {
+                        cell.classList.add('excluivel');
+                        cell.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            abrirModalExcluirCard(dataStr, responsavel.nome, dataNormalizada);
+                        });
+                    }
+                    if (responsavel && arrastarCardAtivo && !excluirCardAtivo) {
+                        cell.draggable = true;
+                        cell.classList.add('draggable-cell');
+                        cell.addEventListener('dragstart', (e) => {
+                            cell.classList.add('dragging');
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', dataStr);
+                            e.dataTransfer.setData('application/json', JSON.stringify({ dataStr }));
+                        });
+                        cell.addEventListener('dragend', () => {
+                            cell.classList.remove('dragging');
+                            document.querySelectorAll('.dia-mensal.drag-over').forEach(el => el.classList.remove('drag-over'));
+                        });
+                        cell.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            const src = e.dataTransfer.getData('text/plain');
+                            if (src && src !== dataStr) {
+                                e.dataTransfer.dropEffect = 'move';
+                                cell.classList.add('drag-over');
+                            }
+                        });
+                        cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+                        cell.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            cell.classList.remove('drag-over');
+                            const sourceDataStr = e.dataTransfer.getData('text/plain');
+                            if (!sourceDataStr || sourceDataStr === dataStr) return;
+                            const [sy, sm, sd] = sourceDataStr.split('-').map(Number);
+                            const sourceData = normalizarData(new Date(sy, sm - 1, sd));
+                            const sourceResponsavel = obterResponsavelDia(sourceData);
+                            const targetResponsavel = obterResponsavelDia(dataNormalizada);
+                            if (!sourceResponsavel || !targetResponsavel) return;
+                            puladosEscalaPao[sourceDataStr] = targetResponsavel;
+                            puladosEscalaPao[dataStr] = sourceResponsavel;
+                            salvarEscalaPao();
+                            atualizarCalendarios();
+                        });
+                    }
+
+                    container.appendChild(cell);
+                }
+
+                const totalCelulas = 7 * 6;
+                const celulasUsadas = celulasVaziasInicio + totalDias;
+                for (let i = celulasUsadas; i < totalCelulas; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'dia-mensal dia-outro-mes';
+                    cell.innerHTML = '&nbsp;';
+                    container.appendChild(cell);
+                }
+            };
+            
+            // Função para obter responsável original (sem considerar pulos; com deslocamento por dias excluídos)
+            const obterResponsavelOriginal = (data) => {
+                const dataNormalizada = normalizarData(data);
+                if (!isDiaUtil(dataNormalizada)) return null;
+                const k = contarExcluidosAteInclusive(dataNormalizada);
+                const dataDeslocada = adicionarDiasUteis(dataNormalizada, k);
+                return obterResponsavelDiaOriginal(dataDeslocada);
+            };
+            
+            // Função Pular Vez
+            const pularVez = (data, responsavel) => {
+                if (!responsavel) return;
+                
+                const dataNormalizada = normalizarData(data);
+                const dataStr = obterDataString(dataNormalizada);
+                
+                if (!confirm(`${responsavel.nome} não poderá trazer o pão em ${formatarDataCompleta(dataNormalizada)}. Trocar com o responsável do próximo dia útil?`)) {
+                    return;
+                }
+                
+                // Obtém a próxima data útil
+                const proximaData = proximoDiaUtil(dataNormalizada);
+                const proximaDataStr = obterDataString(proximaData);
+                
+                // Obtém quem é o responsável efetivo da próxima data (considerando pulos anteriores)
+                // Remove temporariamente a marcação atual da data pulada para não interferir
+                const tempPulado = puladosEscalaPao[dataStr];
+                delete puladosEscalaPao[dataStr];
+                const responsavelProximaData = obterResponsavelDia(proximaData);
+                // Restaura a marcação
+                if (tempPulado) {
+                    puladosEscalaPao[dataStr] = tempPulado;
+                }
+                
+                if (!responsavelProximaData) {
+                    alert('Não há responsável disponível para a próxima data.');
+                    return;
+                }
+                
+                // Realiza a troca:
+                // - O responsável pulado vai para a próxima data
+                // - O responsável da próxima data vem para a data atual
+                puladosEscalaPao[proximaDataStr] = responsavel;
+                puladosEscalaPao[dataStr] = responsavelProximaData;
+                
+                // Registra no histórico
+                historicoEscalaPao.unshift({
+                    data: dataStr,
+                    responsavel: responsavel.nome,
+                    acao: 'Pulado',
+                    proximaData: proximaDataStr,
+                    substituidoPor: responsavelProximaData.nome
+                });
+                
+                salvarEscalaPao();
+                atualizarCalendarios();
+                atualizarHistorico();
+            };
+            
+            // Atualizar Histórico
+            const atualizarHistorico = () => {
+                const historicoList = document.getElementById('historicoList');
+                if (!historicoList) return;
+                
+                historicoList.innerHTML = '';
+                
+                if (historicoEscalaPao.length === 0) {
+                    historicoList.innerHTML = '<div style="text-align: center; color: #999; padding: 20px;">Nenhum registro no histórico</div>';
+                    return;
+                }
+                
+                historicoEscalaPao.slice(0, 20).forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'historico-item';
+                    // Converte strings de data para objetos Date
+                    const partesData = item.data.split('-');
+                    const dataHistorico = new Date(parseInt(partesData[0]), parseInt(partesData[1]) - 1, parseInt(partesData[2]));
+                    
+                    if (item.acao === 'Pulado') {
+                        const partesProximaData = item.proximaData.split('-');
+                        const proximaDataHistorico = new Date(parseInt(partesProximaData[0]), parseInt(partesProximaData[1]) - 1, parseInt(partesProximaData[2]));
+                        if (item.substituidoPor) {
+                            div.innerHTML = `
+                                <strong>${formatarDataCompleta(dataHistorico)}</strong> - 
+                                ${item.responsavel} <span style="color: #ff9800;">(Pulado)</span><br>
+                                <small style="color: #666;">Substituído por ${item.substituidoPor}, adiado para ${formatarDataCompleta(proximaDataHistorico)}</small>
+                            `;
+                        } else {
+                            div.innerHTML = `
+                                <strong>${formatarDataCompleta(dataHistorico)}</strong> - 
+                                ${item.responsavel} <span style="color: #ff9800;">(Pulado)</span><br>
+                                <small style="color: #666;">Adiado para ${formatarDataCompleta(proximaDataHistorico)}</small>
+                            `;
+                        }
+                    } else {
+                        div.innerHTML = `
+                            <strong>${formatarDataCompleta(dataHistorico)}</strong> - 
+                            ${item.responsavel}
+                        `;
+                    }
+                    historicoList.appendChild(div);
+                });
+            };
+            
+            // Inicialização inicial se a aba Escala de Pão já estiver ativa
+            if (document.getElementById('escalaPaoContent')?.classList.contains('active')) {
+                setTimeout(() => {
+                    popularTabelaIntegrantes();
+                    popularListaFeriados();
+                    atualizarCalendarios();
+                    atualizarHistorico();
+                }, 100);
+            }
+            
+        });
+    </script>
+        
+    <script>
+        const userActivityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+
+        function notifyParentOfActivity() {
+            window.parent.postMessage({ type: 'user_activity' }, '*');
+        }
+
+        userActivityEvents.forEach(eventName => {
+            document.addEventListener(eventName, notifyParentOfActivity, { passive: true });
+        });
+    </script>
+</body>
+</html>

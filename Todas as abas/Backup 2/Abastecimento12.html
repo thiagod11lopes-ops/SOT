@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Abastecimento - Totais Manuais</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="api-service.js"></script>
+    <script src="data-service.js"></script>
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --success-green: #28a745;
+            --warning-orange: #ffc107;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-gray-bg);
+            color: var(--dark-gray);
+            font-weight: 500;
+        }
+        
+        header {
+            background-color: var(--white);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--gray);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .main-title {
+            font-size: 28px;
+            color: var(--primary-blue);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 0;
+        }
+        
+        .tabs-container {
+            background-color: var(--white);
+            border-bottom: 2px solid var(--gray);
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 0;
+        }
+        
+        .tab-button {
+            padding: 15px 40px;
+            background-color: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            color: var(--dark-gray);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tab-button:hover {
+            background-color: var(--light-gray-bg);
+            color: var(--primary-blue);
+        }
+        
+        .tab-button.active {
+            color: var(--primary-blue);
+            border-bottom-color: var(--primary-blue);
+            background-color: var(--light-gray-bg);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        main {
+            margin: 20px auto;
+            max-width: 1200px;
+            padding: 0 20px;
+        }
+        
+        .form-container {
+            background-color: var(--white);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .form-title {
+            color: var(--primary-blue);
+            margin-top: 0;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .form-subtitle {
+            color: var(--dark-gray);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: var(--light-gray-bg);
+            border-radius: 8px;
+        }
+        
+        .form-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .input-row {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .input-row select,
+        .input-row input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--gray);
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        
+        .combustivel-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .combustivel-card {
+            padding: 20px;
+            border-radius: 8px;
+            border: 3px solid;
+        }
+        
+        .combustivel-card.gasolina {
+            background-color: #fff3cd;
+            border-color: #f39c12;
+        }
+        
+        .combustivel-card.diesel {
+            background-color: #e9ecef;
+            border-color: #7f8c8d;
+        }
+        
+        .combustivel-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 18px;
+        }
+        
+        .combustivel-card.gasolina h3 {
+            color: #f39c12;
+        }
+        
+        .combustivel-card.diesel h3 {
+            color: #7f8c8d;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .input-group label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        
+        .combustivel-card.gasolina input {
+            border-color: #f39c12;
+        }
+        
+        .combustivel-card.diesel input {
+            border-color: #7f8c8d;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-salvar {
+            background-color: var(--success-green);
+            color: white;
+        }
+        
+        .btn-salvar:hover {
+            background-color: #218838;
+        }
+        
+        .btn-limpar {
+            background-color: var(--warning-orange);
+            color: white;
+        }
+        
+        .btn-limpar:hover {
+            background-color: #e0a800;
+        }
+        
+        .mensagem-sucesso {
+            display: none;
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 5px;
+            color: #155724;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .mensagem-sucesso i {
+            margin-right: 8px;
+        }
+        
+        /* Estilos para a aba Registros */
+        .registros-container {
+            background-color: var(--white);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .filtros-container {
+            background-color: var(--light-gray-bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        
+        .filtro-group {
+            flex: 1;
+        }
+        
+        .filtro-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .filtro-group select,
+        .filtro-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--gray);
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            box-sizing: border-box;
+        }
+        
+        .btn-filtrar {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: fit-content;
+        }
+        
+        .btn-filtrar:hover {
+            background-color: #3a5a9d;
+        }
+        
+        .btn-limpar-filtro {
+            background-color: var(--gray);
+            color: var(--dark-gray);
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: fit-content;
+        }
+        
+        .btn-limpar-filtro:hover {
+            background-color: #c0c0c0;
+        }
+        
+        .tabela-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        thead {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid var(--gray);
+        }
+        
+        td {
+            padding: 12px 15px;
+            border: 1px solid var(--gray);
+        }
+        
+        tbody tr:nth-child(even) {
+            background-color: var(--light-gray-bg);
+        }
+        
+        tbody tr:hover {
+            background-color: #e8e8e8;
+        }
+        
+        .sem-registros {
+            text-align: center;
+            padding: 40px;
+            color: var(--dark-gray);
+            font-size: 16px;
+        }
+        
+        .sem-registros i {
+            font-size: 48px;
+            color: var(--gray);
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .valor-formatado {
+            text-align: right;
+        }
+        
+        /* Modo Escuro */
+        body[data-theme="dark"],
+        body[data-theme="dark"] * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        body[data-theme="dark"] {
+            background-color: #1a1a1a !important;
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] header {
+            background-color: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+        body[data-theme="dark"] .main-title {
+            color: #6c88c9 !important;
+        }
+        body[data-theme="dark"] .tabs-container {
+            background-color: #2d2d2d !important;
+            border-bottom-color: #444 !important;
+        }
+        body[data-theme="dark"] .tab-button {
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .tab-button:hover {
+            background-color: #3d3d3d !important;
+            color: #6c88c9 !important;
+        }
+        body[data-theme="dark"] .tab-button.active {
+            color: #6c88c9 !important;
+            border-bottom-color: #6c88c9 !important;
+            background-color: #3d3d3d !important;
+        }
+        body[data-theme="dark"] .form-container {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border-color: #444 !important;
+        }
+        body[data-theme="dark"] .form-container label {
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .form-container input,
+        body[data-theme="dark"] .form-container select,
+        body[data-theme="dark"] .form-container textarea {
+            background-color: #1a1a1a !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] .combustivel-card {
+            background-color: #2d2d2d !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] .combustivel-card.gasolina {
+            border-left-color: #f39c12 !important;
+        }
+        body[data-theme="dark"] .combustivel-card.diesel {
+            border-left-color: #7f8c8d !important;
+        }
+        body[data-theme="dark"] .table-container {
+            background-color: #2d2d2d !important;
+        }
+        body[data-theme="dark"] table {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] table th {
+            background-color: #3d3d3d !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] table td {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] .mensagem-sucesso {
+            background-color: #1e4620 !important;
+            border-color: #28a745 !important;
+            color: #90ee90 !important;
+        }
+        body[data-theme="dark"] .sem-registros {
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .sem-registros i {
+            color: #666 !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 class="main-title">
+            <i class="fas fa-gas-pump"></i>
+            CONTROLE DE ABASTECIMENTO
+        </h1>
+    </header>
+    
+    <div class="tabs-container">
+        <button class="tab-button active" data-tab="adicionar-dados">
+            <i class="fas fa-plus-circle"></i>
+            Adicionar Dados
+        </button>
+        <button class="tab-button" data-tab="registros">
+            <i class="fas fa-list"></i>
+            Registros
+        </button>
+    </div>
+    
+    <main>
+        <!-- Aba Adicionar Dados -->
+        <div class="tab-content active" id="adicionar-dados">
+            <div class="form-container">
+                <h2 class="form-title">
+                    <i class="fas fa-gas-pump"></i>
+                    Adicionar Totais Manuais de Combustível
+                </h2>
+                <p class="form-subtitle">Use este formulário para adicionar totais de combustível do mês.</p>
+                
+                <div class="form-group">
+                    <label>Período:</label>
+                    <div class="input-row">
+                        <select id="mes">
+                            <option value="">Selecione o Mês</option>
+                            <option value="01">Janeiro</option>
+                            <option value="02">Fevereiro</option>
+                            <option value="03">Março</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Maio</option>
+                            <option value="06">Junho</option>
+                            <option value="07">Julho</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                        <input type="number" id="ano" placeholder="Ano" min="2000" max="2100">
+                    </div>
+                </div>
+
+                <div class="combustivel-grid">
+                    <div class="combustivel-card gasolina">
+                        <h3><i class="fas fa-fire"></i>Gasolina</h3>
+                        <div class="input-group">
+                            <label>Litros:</label>
+                            <input type="number" id="gasolinaLitros" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="input-group">
+                            <label>Valor (R$):</label>
+                            <input type="number" id="gasolinaValor" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="combustivel-card diesel">
+                        <h3><i class="fas fa-smog"></i>Diesel</h3>
+                        <div class="input-group">
+                            <label>Litros:</label>
+                            <input type="number" id="dieselLitros" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="input-group">
+                            <label>Valor (R$):</label>
+                            <input type="number" id="dieselValor" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-salvar" id="btnSalvar">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                    <button class="btn-limpar" id="btnLimpar">
+                        <i class="fas fa-eraser"></i> Limpar
+                    </button>
+                </div>
+
+                <div class="mensagem-sucesso" id="mensagemSucesso">
+                    <i class="fas fa-check-circle"></i> Dados salvos com sucesso!
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aba Registros -->
+        <div class="tab-content" id="registros">
+            <div class="registros-container">
+                <h2 class="form-title">
+                    <i class="fas fa-list"></i>
+                    Registros de Abastecimento
+                </h2>
+                
+                <div class="filtros-container">
+                    <div class="filtro-group">
+                        <label>Filtrar por Mês:</label>
+                        <select id="filtroMes">
+                            <option value="">Todos os meses</option>
+                            <option value="01">Janeiro</option>
+                            <option value="02">Fevereiro</option>
+                            <option value="03">Março</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Maio</option>
+                            <option value="06">Junho</option>
+                            <option value="07">Julho</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    <div class="filtro-group">
+                        <label>Filtrar por Ano:</label>
+                        <input type="number" id="filtroAno" placeholder="Todos os anos" min="2000" max="2100">
+                    </div>
+                    <button class="btn-filtrar" id="btnFiltrar">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    <button class="btn-limpar-filtro" id="btnLimparFiltro">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+                
+                <div class="tabela-container">
+                    <table id="tabelaRegistros">
+                        <thead>
+                            <tr>
+                                <th>Mês/Ano</th>
+                                <th>Gasolina - Litros</th>
+                                <th>Gasolina - Valor (R$)</th>
+                                <th>Diesel - Litros</th>
+                                <th>Diesel - Valor (R$)</th>
+                                <th>Total Litros</th>
+                                <th>Total Valor (R$)</th>
+                                <th>Data de Registro</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyRegistros">
+                            <!-- Registros serão inseridos aqui via JavaScript -->
+                        </tbody>
+                    </table>
+                    <div class="sem-registros" id="semRegistros" style="display: none;">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum registro encontrado.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="theme-listener.js"></script>
+    <script>
+        // Variáveis globais
+        let todosRegistros = [];
+        let registrosFiltrados = [];
+        
+        // Função para obter nome do mês
+        function getNomeMes(numeroMes) {
+            const meses = {
+                '01': 'Janeiro', '02': 'Fevereiro', '03': 'Março', '04': 'Abril',
+                '05': 'Maio', '06': 'Junho', '07': 'Julho', '08': 'Agosto',
+                '09': 'Setembro', '10': 'Outubro', '11': 'Novembro', '12': 'Dezembro'
+            };
+            return meses[numeroMes] || numeroMes;
+        }
+        
+        // Função para formatar data
+        function formatarData(dataISO) {
+            if (!dataISO) return 'N/A';
+            const data = new Date(dataISO);
+            return data.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Função para formatar valor monetário
+        function formatarValor(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor || 0);
+        }
+        
+        // Função para formatar número
+        function formatarNumero(numero) {
+            return new Intl.NumberFormat('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(numero || 0);
+        }
+        
+        // Função para carregar registros
+        function carregarRegistros() {
+            console.log('🔄 Carregando registros...');
+            todosRegistros = [];
+            
+            // Tentar carregar da API se disponível
+            if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+                // Se houver API, tentar carregar
+                // Por enquanto, vamos usar localStorage
+            }
+            
+            // Carregar do localStorage
+            try {
+                const dadosExistentes = localStorage.getItem('totaisManuaisCombustivel');
+                console.log('📦 Dados do localStorage (raw):', dadosExistentes);
+                
+                if (dadosExistentes && dadosExistentes.trim() !== '' && dadosExistentes !== '[]') {
+                    let dados = JSON.parse(dadosExistentes);
+                    console.log('📦 Dados parseados:', dados);
+                    console.log('📦 Tipo dos dados:', Array.isArray(dados) ? 'Array' : 'Object');
+                    
+                    // Se for um array, tentar converter para objeto
+                    if (Array.isArray(dados)) {
+                        if (dados.length > 0) {
+                            console.warn('⚠️ Dados estão em formato de array, tentando converter...');
+                            // Tentar converter array para objeto
+                            const dadosConvertidos = {};
+                            dados.forEach((item, index) => {
+                                if (item && item.periodoKey) {
+                                    dadosConvertidos[item.periodoKey] = item;
+                                } else if (item && item.ano && item.mes) {
+                                    const periodoKey = `${item.ano}-${String(item.mes).padStart(2, '0')}`;
+                                    dadosConvertidos[periodoKey] = item;
+                                }
+                            });
+                            dados = dadosConvertidos;
+                            // Salvar no formato correto
+                            localStorage.setItem('totaisManuaisCombustivel', JSON.stringify(dados));
+                            console.log('✅ Dados convertidos e salvos no formato correto');
+                        } else {
+                            console.warn('⚠️ Array vazio encontrado, usando objeto vazio');
+                            dados = {};
+                        }
+                    }
+                    
+                    // Garantir que é um objeto
+                    if (typeof dados !== 'object' || dados === null || Array.isArray(dados)) {
+                        console.warn('⚠️ Dados inválidos, inicializando objeto vazio');
+                        dados = {};
+                    }
+                    
+                    console.log('📦 Quantidade de registros encontrados:', Object.keys(dados).length);
+                    
+                    for (const [periodoKey, valores] of Object.entries(dados)) {
+                        console.log('📝 Processando registro:', periodoKey, valores);
+                        
+                        // Verificar se valores é um objeto válido
+                        if (!valores || typeof valores !== 'object' || Array.isArray(valores)) {
+                            console.warn('⚠️ Valores inválidos para período:', periodoKey);
+                            continue;
+                        }
+                        
+                        const partes = periodoKey.split('-');
+                        const ano = partes[0];
+                        const mes = partes[1];
+                        
+                        if (!ano || !mes) {
+                            console.warn('⚠️ Formato de período inválido:', periodoKey);
+                            continue;
+                        }
+                        
+                        todosRegistros.push({
+                            periodoKey: periodoKey,
+                            mes: mes,
+                            ano: parseInt(ano),
+                            gasolinaLitros: parseFloat(valores.gasolinaLitros) || 0,
+                            gasolinaValor: parseFloat(valores.gasolinaValor) || 0,
+                            dieselLitros: parseFloat(valores.dieselLitros) || 0,
+                            dieselValor: parseFloat(valores.dieselValor) || 0,
+                            dataSalvamento: valores.dataSalvamento || new Date().toISOString()
+                        });
+                    }
+                } else {
+                    console.log('ℹ️ Nenhum dado encontrado no localStorage');
+                }
+            } catch (e) {
+                console.error('❌ Erro ao carregar registros:', e);
+                // Se houver erro, tentar limpar dados corrompidos apenas se realmente corrompidos
+                try {
+                    const dadosExistentes = localStorage.getItem('totaisManuaisCombustivel');
+                    if (dadosExistentes && (dadosExistentes.trim() === '' || dadosExistentes === '[]')) {
+                        localStorage.removeItem('totaisManuaisCombustivel');
+                        console.log('🧹 Dados corrompidos removidos do localStorage');
+                    }
+                } catch (cleanError) {
+                    console.error('❌ Erro ao limpar dados corrompidos:', cleanError);
+                }
+            }
+            
+            console.log('✅ Total de registros carregados:', todosRegistros.length);
+            
+            // Ordenar por ano e mês (mais recente primeiro)
+            todosRegistros.sort((a, b) => {
+                if (b.ano !== a.ano) return b.ano - a.ano;
+                return parseInt(b.mes) - parseInt(a.mes);
+            });
+            
+            registrosFiltrados = [...todosRegistros];
+            console.log('✅ Registros filtrados:', registrosFiltrados.length);
+            renderizarTabela();
+        }
+        
+        // Função para renderizar tabela
+        function renderizarTabela() {
+            console.log('🎨 Renderizando tabela...');
+            const tbody = document.getElementById('tbodyRegistros');
+            const semRegistros = document.getElementById('semRegistros');
+            
+            // Verificar se os elementos existem (pode não existir se a aba não foi carregada ainda)
+            if (!tbody) {
+                console.warn('⚠️ Elemento tbodyRegistros não encontrado. A aba Registros pode não estar carregada.');
+                return;
+            }
+            
+            tbody.innerHTML = '';
+            
+            console.log('📊 Registros para renderizar:', registrosFiltrados.length);
+            
+            if (registrosFiltrados.length === 0) {
+                console.log('ℹ️ Nenhum registro para exibir');
+                if (semRegistros) {
+                    semRegistros.style.display = 'block';
+                }
+                return;
+            }
+            
+            if (semRegistros) {
+                semRegistros.style.display = 'none';
+            }
+            
+            registrosFiltrados.forEach((registro, index) => {
+                const totalLitros = registro.gasolinaLitros + registro.dieselLitros;
+                const totalValor = registro.gasolinaValor + registro.dieselValor;
+                
+                console.log(`📝 Renderizando registro ${index + 1}:`, registro);
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${getNomeMes(registro.mes)}/${registro.ano}</strong></td>
+                    <td class="valor-formatado">${formatarNumero(registro.gasolinaLitros)}</td>
+                    <td class="valor-formatado">${formatarValor(registro.gasolinaValor)}</td>
+                    <td class="valor-formatado">${formatarNumero(registro.dieselLitros)}</td>
+                    <td class="valor-formatado">${formatarValor(registro.dieselValor)}</td>
+                    <td class="valor-formatado"><strong>${formatarNumero(totalLitros)}</strong></td>
+                    <td class="valor-formatado"><strong>${formatarValor(totalValor)}</strong></td>
+                    <td>${formatarData(registro.dataSalvamento)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            console.log('✅ Tabela renderizada com sucesso!');
+        }
+        
+        // Função para filtrar registros
+        function filtrarRegistros() {
+            const filtroMes = document.getElementById('filtroMes').value;
+            const filtroAno = document.getElementById('filtroAno').value;
+            
+            registrosFiltrados = todosRegistros.filter(registro => {
+                const matchMes = !filtroMes || registro.mes === filtroMes;
+                const matchAno = !filtroAno || registro.ano === parseInt(filtroAno);
+                return matchMes && matchAno;
+            });
+            
+            renderizarTabela();
+        }
+        
+        // Função para limpar filtros
+        function limparFiltros() {
+            document.getElementById('filtroMes').value = '';
+            document.getElementById('filtroAno').value = '';
+            registrosFiltrados = [...todosRegistros];
+            renderizarTabela();
+        }
+        
+        // Aguardar carregamento completo da página
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Página carregada!');
+            
+            // Sistema de abas
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetTab = this.getAttribute('data-tab');
+                    
+                    // Remover active de todos
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Adicionar active ao selecionado
+                    this.classList.add('active');
+                    document.getElementById(targetTab).classList.add('active');
+                    
+                    // Se for a aba Registros, carregar os dados
+                    if (targetTab === 'registros') {
+                        carregarRegistros();
+                    }
+                });
+            });
+            
+            // Pegar elementos da aba Adicionar Dados
+            const btnSalvar = document.getElementById('btnSalvar');
+            const btnLimpar = document.getElementById('btnLimpar');
+            const mes = document.getElementById('mes');
+            const ano = document.getElementById('ano');
+            const gasolinaLitros = document.getElementById('gasolinaLitros');
+            const gasolinaValor = document.getElementById('gasolinaValor');
+            const dieselLitros = document.getElementById('dieselLitros');
+            const dieselValor = document.getElementById('dieselValor');
+            const mensagemSucesso = document.getElementById('mensagemSucesso');
+            
+            // Verificar se todos os elementos foram encontrados
+            if (!btnSalvar || !btnLimpar || !mes || !ano || !gasolinaLitros || 
+                !gasolinaValor || !dieselLitros || !dieselValor || !mensagemSucesso) {
+                console.error('Erro: Alguns elementos do formulário não foram encontrados!');
+                alert('Erro ao carregar o formulário. Por favor, recarregue a página.');
+                return;
+            }
+            
+            // Preencher ano atual
+            const anoAtual = new Date().getFullYear();
+            if (ano) {
+                ano.value = anoAtual;
+            }
+            
+            // Função para limpar campos
+            function limparCampos() {
+                console.log('Limpando campos...');
+                mes.value = '';
+                ano.value = anoAtual;
+                gasolinaLitros.value = '';
+                gasolinaValor.value = '';
+                dieselLitros.value = '';
+                dieselValor.value = '';
+            }
+            
+            // Botão Salvar
+            btnSalvar.addEventListener('click', function() {
+                console.log('Botão Salvar clicado!');
+                
+                const mesValue = mes.value;
+                const anoValue = ano.value;
+                
+                if (!mesValue || !anoValue) {
+                    alert('Por favor, selecione o mês e o ano.');
+                    return;
+                }
+                
+                const gasLitros = parseFloat(gasolinaLitros.value) || 0;
+                const gasValor = parseFloat(gasolinaValor.value) || 0;
+                const dieLitros = parseFloat(dieselLitros.value) || 0;
+                const dieValor = parseFloat(dieselValor.value) || 0;
+                
+                if (gasLitros === 0 && gasValor === 0 && dieLitros === 0 && dieValor === 0) {
+                    alert('Por favor, preencha pelo menos um valor.');
+                    return;
+                }
+                
+                // Salvar dados (usar API se disponível, senão localStorage)
+                (async function() {
+                    try {
+                        const periodoKey = anoValue + '-' + mesValue;
+                        const abastecimentoData = {
+                            mes: parseInt(mesValue),
+                            ano: parseInt(anoValue),
+                            gasolinaLitros: gasLitros,
+                            gasolinaValor: gasValor,
+                            dieselLitros: dieLitros,
+                            dieselValor: dieValor,
+                            tipo: 'TOTAL_MANUAL',
+                            dataSalvamento: new Date().toISOString()
+                        };
+                        
+                        // Tentar salvar na API se disponível
+                        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+                            try {
+                                await dataService.saveAbastecimento(abastecimentoData);
+                                console.log('✅ Dados salvos na API:', abastecimentoData);
+                            } catch (apiError) {
+                                console.warn('Erro ao salvar na API, usando localStorage:', apiError);
+                            }
+                        }
+                        
+                        // Sempre manter localStorage como backup
+                        let totaisManuais = {};
+                        try {
+                            const dadosExistentes = localStorage.getItem('totaisManuaisCombustivel');
+                            if (dadosExistentes && dadosExistentes.trim() !== '' && dadosExistentes !== '[]') {
+                                const dadosParsed = JSON.parse(dadosExistentes);
+                                // Garantir que é um objeto, não um array
+                                if (Array.isArray(dadosParsed)) {
+                                    console.warn('⚠️ Dados existentes estão em formato de array, convertendo...');
+                                    // Converter array para objeto
+                                    totaisManuais = {};
+                                    dadosParsed.forEach((item) => {
+                                        if (item && item.periodoKey) {
+                                            totaisManuais[item.periodoKey] = item;
+                                        } else if (item && item.ano && item.mes) {
+                                            const key = `${item.ano}-${String(item.mes).padStart(2, '0')}`;
+                                            totaisManuais[key] = item;
+                                        }
+                                    });
+                                } else if (typeof dadosParsed === 'object' && dadosParsed !== null) {
+                                    totaisManuais = dadosParsed;
+                                } else {
+                                    console.warn('⚠️ Dados existentes em formato inválido, inicializando objeto vazio');
+                                    totaisManuais = {};
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Erro ao ler dados existentes do localStorage:', e);
+                            totaisManuais = {};
+                        }
+                        
+                        // Garantir que totaisManuais é um objeto
+                        if (typeof totaisManuais !== 'object' || totaisManuais === null || Array.isArray(totaisManuais)) {
+                            totaisManuais = {};
+                        }
+                        
+                        totaisManuais[periodoKey] = {
+                            gasolinaLitros: gasLitros,
+                            gasolinaValor: gasValor,
+                            dieselLitros: dieLitros,
+                            dieselValor: dieValor,
+                            dataSalvamento: new Date().toISOString()
+                        };
+                        
+                        localStorage.setItem('totaisManuaisCombustivel', JSON.stringify(totaisManuais));
+                        console.log('✅ Dados salvos com sucesso:', totaisManuais[periodoKey]);
+                        console.log('✅ Todos os dados no localStorage:', totaisManuais);
+                        console.log('✅ Total de registros salvos:', Object.keys(totaisManuais).length);
+                        
+                        // Mostrar mensagem de sucesso
+                        mensagemSucesso.style.display = 'block';
+                        setTimeout(function() {
+                            mensagemSucesso.style.display = 'none';
+                        }, 3000);
+                        
+                        // Limpar campos
+                        limparCampos();
+                        
+                        // Sempre atualizar a lista de registros (mesmo que não esteja na aba Registros)
+                        carregarRegistros();
+                        
+                        // Se estiver na aba Registros, garantir que a tabela seja atualizada
+                        const abaRegistros = document.getElementById('registros');
+                        if (abaRegistros && abaRegistros.classList.contains('active')) {
+                            console.log('🔄 Aba Registros está ativa, atualizando tabela...');
+                            setTimeout(() => {
+                                renderizarTabela();
+                            }, 100);
+                        }
+                    } catch (e) {
+                        console.error('Erro ao salvar dados:', e);
+                        alert('Erro ao salvar os dados. Verifique se o modo privado do navegador está desativado ou se há espaço suficiente no armazenamento.');
+                    }
+                })();
+            });
+            
+            // Botão Limpar
+            btnLimpar.addEventListener('click', function() {
+                console.log('Botão Limpar clicado!');
+                limparCampos();
+            });
+            
+            // Event listeners para filtros na aba Registros
+            const btnFiltrar = document.getElementById('btnFiltrar');
+            const btnLimparFiltro = document.getElementById('btnLimparFiltro');
+            
+            if (btnFiltrar) {
+                btnFiltrar.addEventListener('click', filtrarRegistros);
+            }
+            
+            if (btnLimparFiltro) {
+                btnLimparFiltro.addEventListener('click', limparFiltros);
+            }
+            
+            // Permitir filtrar ao pressionar Enter nos campos de filtro
+            const filtroMes = document.getElementById('filtroMes');
+            const filtroAno = document.getElementById('filtroAno');
+            
+            if (filtroMes) {
+                filtroMes.addEventListener('change', filtrarRegistros);
+            }
+            
+            if (filtroAno) {
+                filtroAno.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        filtrarRegistros();
+                    }
+                });
+            }
+            
+            console.log('Event listeners configurados!');
+        });
+        
+        // Notificar atividade do usuário
+        const userActivityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+        function notifyParentOfActivity() {
+            window.parent.postMessage({ type: 'user_activity' }, '*');
+        }
+        userActivityEvents.forEach(function(eventName) {
+            document.addEventListener(eventName, notifyParentOfActivity, { passive: true });
+        });
+    </script>
+</body>
+</html>

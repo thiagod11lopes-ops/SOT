@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conselho de Gestão - Dashboard Executivo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+--tab-border: 1px solid #dee2e6;
+--gasolina-color: #f39c12;
+--diesel-color: #7f8c8d;
+}
+body {
+font-family: 'Arial', sans-serif;
+margin: 0;
+padding: 0;
+background-color: var(--light-gray-bg);
+color: var(--dark-gray);
+font-weight: 500;
+min-height: 100vh;
+}
+main {
+margin: 20px 10px;
+padding: 0;
+box-sizing: border-box;
+}
+.tab-content {
+display: block;
+background-color: var(--white);
+padding: 20px;
+border-radius: 8px;
+border: 1px solid var(--tab-border);
+box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.sub-tabs {
+display: flex;
+justify-content: flex-start;
+border-bottom: 1px solid #ccc;
+margin-bottom: 20px;
+flex-wrap: wrap;
+}
+.sub-tab-button {
+background-color: #e9e9e9;
+color: var(--dark-gray);
+border: 1px solid #ccc;
+border-bottom: none;
+padding: 10px 15px;
+border-radius: 6px 6px 0 0;
+cursor: pointer;
+font-size: 14px;
+font-weight: bold;
+margin-right: 3px;
+transition: background-color 0.3s ease;
+}
+.sub-tab-button:hover {
+background-color: #dcdcdc;
+}
+.sub-tab-button.active {
+background-color: var(--white);
+border-color: var(--primary-blue);
+border-bottom: none;
+position: relative;
+top: 1px;
+color: var(--primary-blue);
+}
+.sub-tab-content {
+display: none;
+padding: 10px 0;
+}
+.sub-tab-content.active {
+display: block;
+}
+.table-controls {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 15px;
+flex-wrap: wrap;
+gap: 10px;
+}
+.table-title {
+font-size: 22px;
+color: var(--primary-blue);
+font-weight: bold;
+margin: 0;
+}
+.year-filter-container {
+display: flex;
+align-items: center;
+gap: 10px;
+padding: 15px;
+border: 1px solid var(--gray);
+border-radius: 8px;
+background-color: var(--light-gray-bg);
+font-weight: bold;
+flex-wrap: wrap;
+justify-content: center;
+}
+.year-filter-container label, .year-filter-container select, .year-filter-container input {
+font-size: 16px;
+font-weight: bold;
+padding: 8px 12px;
+border: 1px solid #ced4da;
+border-radius: 5px;
+}
+.checkbox-filter-container {
+display: flex;
+gap: 15px;
+align-items: center;
+font-size: 16px;
+font-weight: bold;
+}
+.checkbox-filter-container label {
+display: flex;
+align-items: center;
+gap: 5px;
+cursor: pointer;
+}
+.table-container {
+overflow-x: auto;
+border: 1px solid var(--gray);
+border-radius: 8px;
+box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+background-color: var(--white);
+margin: 20px 0;
+}
+table {
+width: 100%;
+border-collapse: collapse;
+min-width: 400px;
+}
+th, td {
+border: 1px solid #e9ecef;
+padding: 10px;
+text-align: center;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+font-size: 14px;
+}
+thead th {
+background-color: var(--primary-blue);
+color: var(--white);
+font-weight: bold;
+text-transform: uppercase;
+font-size: 12px;
+}
+tbody tr:nth-child(even) {
+background-color: #f8f9fa;
+}
+tfoot tr {
+background-color: var(--primary-blue);
+color: var(--white);
+font-weight: bold;
+}
+.km-rodados-alto {
+color: #dc3545 !important;
+font-weight: bold !important;
+font-size: 15px !important;
+}
+td[rowspan] {
+background-color: #e3f2fd !important;
+border-left: 4px solid var(--primary-blue) !important;
+border-right: 2px solid var(--primary-blue) !important;
+vertical-align: middle !important;
+font-weight: bold !important;
+font-size: 15px !important;
+}
+.destino-agrupado {
+font-style: italic;
+color: #666;
+font-size: 13px;
+}
+#totalGeralText, #totalGeralKmText {
+margin-top: 15px;
+font-size: 20px;
+color: var(--primary-blue);
+text-align: center;
+font-weight: bold;
+}
+#dailyAverageText {
+font-size: 24px;
+color: var(--primary-blue);
+text-align: center;
+font-weight: bold;
+margin-top: 15px;
+}
+.chart-container {
+position: relative;
+width: 100%;
+height: 500px;
+}
+#rankingTablesContainer {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 20px;
+justify-content: center;
+margin-top: 20px;
+max-width: 1200px;
+margin-left: auto;
+margin-right: auto;
+}
+.ranking-section {
+background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+border: 2px solid #e9ecef;
+border-radius: 10px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+padding: 15px;
+transition: transform 0.3s ease, box-shadow 0.3s ease;
+min-height: 300px;
+}
+.ranking-section:hover {
+transform: translateY(-2px);
+box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+.ranking-section h3 {
+font-size: 16px;
+color: #2c3e50;
+text-align: center;
+margin-top: 0;
+margin-bottom: 12px;
+font-weight: 700;
+border-bottom: 2px solid #3498db;
+padding-bottom: 6px;
+}
+.ranking-section table {
+width: 100%;
+border-collapse: collapse;
+font-size: 13px;
+background: white;
+border-radius: 6px;
+overflow: hidden;
+box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.ranking-section table th {
+background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+color: white;
+padding: 8px 6px;
+text-align: center;
+font-weight: 600;
+font-size: 12px;
+text-transform: uppercase;
+letter-spacing: 0.2px;
+}
+.ranking-section table td {
+padding: 6px 5px;
+text-align: center;
+border-bottom: 1px solid #ecf0f1;
+font-size: 13px;
+transition: background-color 0.2s ease;
+}
+.ranking-section table tr:hover td {
+background-color: #f8f9fa;
+}
+.ranking-position {
+font-weight: bold;
+font-size: 14px;
+color: #2c3e50;
+}
+.ranking-row-1 {
+background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%) !important;
+color: #2c3e50 !important;
+font-weight: bold;
+}
+.ranking-row-2 {
+background: linear-gradient(135deg, #c0c0c0 0%, #ddd 100%) !important;
+color: #2c3e50 !important;
+font-weight: bold;
+}
+.ranking-row-3 {
+background: linear-gradient(135deg, #cd7f32 0%, #d4a574 100%) !important;
+color: white !important;
+font-weight: bold;
+}
+.ranking-row-1 .ranking-position::before { content: '🥇 '; }
+.ranking-row-2 .ranking-position::before { content: '🥈 '; }
+.ranking-row-3 .ranking-position::before { content: '🥉 '; }
+.pagination-controls {
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 15px;
+margin-top: 15px;
+font-weight: bold;
+}
+.pagination-controls button, .export-import-controls button {
+padding: 8px 16px;
+cursor: pointer;
+border-radius: 5px;
+border: 1px solid var(--primary-blue);
+background-color: var(--primary-blue);
+color: var(--white);
+font-weight: bold;
+}
+.pagination-controls button:disabled {
+background-color: var(--gray);
+border-color: var(--gray);
+cursor: not-allowed;
+}
+.export-import-controls {
+display: flex;
+gap: 10px;
+}
+.abastecimento-summary-panel {
+display: flex;
+justify-content: space-around;
+align-items: center;
+padding: 15px;
+margin: 15px 0;
+border-radius: 8px;
+background-color: var(--light-gray-bg);
+border: 1px solid var(--gray);
+box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+flex-wrap: wrap;
+gap: 20px;
+}
+.summary-item {
+display: flex;
+flex-direction: column;
+align-items: center;
+font-weight: bold;
+}
+.summary-item .label {
+font-size: 14px;
+color: var(--dark-gray);
+margin-bottom: 5px;
+display: flex;
+align-items: center;
+gap: 5px;
+}
+.summary-item .value {
+font-size: 18px;
+color: var(--primary-blue);
+}
+.summary-item .label .fa-fire {
+color: var(--gasolina-color);
+}
+.summary-item .label .fa-smog {
+color: var(--diesel-color);
+}
+.summary-divider {
+width: 1px;
+height: 40px;
+background-color: var(--gray);
+}
+.unscheduled-ranking-container {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+gap: 12px;
+margin-top: 15px;
+max-height: 350px;
+overflow-y: auto;
+}
+.unscheduled-ranking-card {
+background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+border: 1px solid #e9ecef;
+border-radius: 8px;
+padding: 12px;
+box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+transition: all 0.3s ease;
+position: relative;
+min-height: 70px;
+}
+.unscheduled-ranking-card:hover {
+transform: translateY(-2px);
+box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.unscheduled-ranking-card .position {
+font-size: 14px;
+font-weight: bold;
+color: #e84118;
+margin-bottom: 5px;
+}
+.unscheduled-ranking-card .sector-name {
+font-size: 15px;
+font-weight: 600;
+color: #2c3e50;
+margin-bottom: 8px;
+line-height: 1.2;
+}
+.unscheduled-ranking-card .stats {
+display: flex;
+justify-content: space-between;
+align-items: center;
+font-size: 13px;
+}
+.unscheduled-ranking-card .count {
+background: #e84118;
+color: white;
+padding: 3px 8px;
+border-radius: 12px;
+font-weight: bold;
+}
+.unscheduled-ranking-card .percentage {
+color: #6c757d;
+font-weight: 500;
+}
+.unscheduled-ranking-card.top-1 {
+border-left: 4px solid #ffd700;
+background: linear-gradient(135deg, #fff9e6 0%, #f8f9fa 100%);
+}
+.unscheduled-ranking-card.top-2 {
+border-left: 4px solid #c0c0c0;
+background: linear-gradient(135deg, #f5f5f5 0%, #f8f9fa 100%);
+}
+.unscheduled-ranking-card.top-3 {
+border-left: 4px solid #cd7f32;
+background: linear-gradient(135deg, #f4f1ed 0%, #f8f9fa 100%);
+}
+/* Management Board Dashboard Styles */
+.dashboard-header {text-align: center;padding: 30px 20px;background: linear-gradient(135deg, #4a69bd 0%, #6c88c9 100%);color: white;border-radius: 12px;margin-bottom: 30px;box-shadow: 0 4px 15px rgba(74, 105, 189, 0.3);}
+.dashboard-header h1 {margin: 0 0 10px 0;font-size: 32px;font-weight: 700;}
+.dashboard-header p {margin: 0;font-size: 16px;opacity: 0.95;}
+.kpi-grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));gap: 20px;margin-bottom: 30px;}
+.kpi-card {background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);border: 2px solid #e9ecef;border-radius: 12px;padding: 25px;box-shadow: 0 4px 15px rgba(0,0,0,0.08);transition: all 0.3s ease;position: relative;overflow: hidden;}
+.kpi-card::before {content: '';position: absolute;top: 0;left: 0;width: 100%;height: 4px;background: linear-gradient(90deg, #4a69bd, #6c88c9);}
+.kpi-card:hover {transform: translateY(-5px);box-shadow: 0 8px 25px rgba(0,0,0,0.15);}
+.kpi-card .icon {font-size: 36px;margin-bottom: 15px;color: #4a69bd;}
+.kpi-card .label {font-size: 14px;color: #6c757d;text-transform: uppercase;letter-spacing: 0.5px;margin-bottom: 10px;font-weight: 600;}
+.kpi-card .value {font-size: 32px;font-weight: 700;color: #2c3e50;margin-bottom: 5px;}
+.kpi-card .subvalue {font-size: 14px;color: #6c757d;}
+.charts-grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));gap: 25px;margin-bottom: 30px;}
+.chart-card {background: white;border: 1px solid #e9ecef;border-radius: 12px;padding: 20px;box-shadow: 0 2px 10px rgba(0,0,0,0.05);}
+.chart-card h3 {margin: 0 0 20px 0;font-size: 18px;color: #2c3e50;font-weight: 600;border-bottom: 2px solid #4a69bd;padding-bottom: 10px;}
+.chart-card .chart-container {height: 350px;}
+.dashboard-section {margin-bottom: 30px;}
+.dashboard-section-title {font-size: 24px;color: #2c3e50;font-weight: 700;margin-bottom: 20px;padding-bottom: 10px;border-bottom: 3px solid #4a69bd;}
+.mini-ranking-grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));gap: 20px;}
+.mini-ranking-card {background: white;border: 1px solid #e9ecef;border-radius: 10px;padding: 15px;box-shadow: 0 2px 8px rgba(0,0,0,0.05);}
+.mini-ranking-card h4 {margin: 0 0 15px 0;font-size: 16px;color: #2c3e50;font-weight: 600;text-align: center;border-bottom: 2px solid #3498db;padding-bottom: 8px;}
+.mini-ranking-item {display: flex;justify-content: space-between;align-items: center;padding: 8px 10px;margin-bottom: 5px;border-radius: 6px;background: #f8f9fa;transition: background 0.2s ease;}
+.mini-ranking-item:hover {background: #e9ecef;}
+.mini-ranking-item.top-1 {background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);font-weight: bold;}
+.mini-ranking-item.top-2 {background: linear-gradient(135deg, #c0c0c0 0%, #ddd 100%);font-weight: bold;}
+.mini-ranking-item.top-3 {background: linear-gradient(135deg, #cd7f32 0%, #d4a574 100%);color: white;font-weight: bold;}
+
+@media (max-width: 768px) {
+.year-filter-container { flex-direction: column; align-items: stretch; }
+.year-filter-container label, .year-filter-container select, .year-filter-container input { width: auto; }
+.table-container { width: 100%; }
+table { min-width: 100%; }
+thead th, tbody td { font-size: 12px; }
+#rankingTablesContainer {
+grid-template-columns: 1fr;
+gap: 15px;
+}
+.abastecimento-summary-panel { flex-direction: column; }
+.summary-divider { display: none; }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+</head>
+<style>
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    padding: 20px !important;
+    min-height: 100vh !important;
+}
+.sub-tab-content {
+    display: block !important;
+}
+#managementBoardContent {
+    display: block !important;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    max-width: 1800px;
+    margin: 0 auto;
+}
+.sub-tabs {
+    display: none !important;
+}
+</style>
+</head>
+<body>
+<div style="max-width: 1800px; margin: 0 auto;">
+<div id="managementBoardContent" class="sub-tab-content">
+<div class="dashboard-header">
+<h1><i class="fas fa-chart-line"></i> CONSELHO DE GESTÃO</h1>
+<p>Painel Executivo de Estatísticas e Indicadores de Transporte</p>
+</div>
+<div class="year-filter-container" style="margin-bottom: 20px;">
+<label for="filterMgmtYear">Filtrar por Ano:</label>
+<select id="filterMgmtYear"></select>
+<label for="filterMgmtMonth">Mês:</label>
+<select id="filterMgmtMonth">
+<option value="">Todos os Meses</option>
+<option value="0">Janeiro</option>
+<option value="1">Fevereiro</option>
+<option value="2">Março</option>
+<option value="3">Abril</option>
+<option value="4">Maio</option>
+<option value="5">Junho</option>
+<option value="6">Julho</option>
+<option value="7">Agosto</option>
+<option value="8">Setembro</option>
+<option value="9">Outubro</option>
+<option value="10">Novembro</option>
+<option value="11">Dezembro</option>
+</select>
+<button id="exportMgmtDataBtn" style="background-color: #27ae60; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 20px;">
+<i class="fas fa-download"></i> Exportar Dados
+</button>
+<button id="importMgmtDataBtn" style="background-color: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 10px;">
+<i class="fas fa-upload"></i> Importar Dados
+</button>
+<input type="file" id="importMgmtFileInput" accept=".json" style="display: none;">
+</div>
+<div class="kpi-grid">
+<div class="kpi-card"><div class="icon"><i class="fas fa-car"></i></div><div class="label">Total de Saídas</div><div class="value" id="mgmt-total-saidas">0</div><div class="subvalue" id="mgmt-saidas-breakdown">Adm: 0 | Amb: 0</div></div>
+<div class="kpi-card"><div class="icon"><i class="fas fa-road"></i></div><div class="label">KM Rodados</div><div class="value" id="mgmt-total-km">0</div><div class="subvalue">Quilômetros Totais</div></div>
+<div class="kpi-card" style="grid-column: span 1;">
+<div class="icon"><i class="fas fa-gas-pump"></i></div>
+<div class="label">Combustível Total</div>
+<div class="value" id="mgmt-total-fuel">R$ 0,00</div>
+<div class="subvalue" id="mgmt-total-fuel-litros" style="font-size: 14px; margin-bottom: 8px;">0 L</div>
+<div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+<div style="flex: 1; text-align: center;">
+<div style="font-size: 11px; opacity: 0.8; margin-bottom: 3px;">🟨 Gasolina</div>
+<div id="mgmt-gas-valor" style="font-size: 13px; font-weight: bold;">R$ 0,00</div>
+<div id="mgmt-gas-litros" style="font-size: 11px; opacity: 0.9;">0 L</div>
+</div>
+<div style="flex: 1; text-align: center;">
+<div style="font-size: 11px; opacity: 0.8; margin-bottom: 3px;">⬛ Diesel</div>
+<div id="mgmt-diesel-valor" style="font-size: 13px; font-weight: bold;">R$ 0,00</div>
+<div id="mgmt-diesel-litros" style="font-size: 11px; opacity: 0.9;">0 L</div>
+</div>
+</div>
+</div>
+<div class="kpi-card"><div class="icon"><i class="fas fa-chart-bar"></i></div><div class="label">Média Diária</div><div class="value" id="mgmt-daily-avg">0</div><div class="subvalue">Saídas por Dia</div></div>
+</div>
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-chart-pie"></i> Visão Geral de Dados</h2>
+<div class="charts-grid">
+<div class="chart-card"><h3>Saídas Mensais por Tipo</h3><div class="chart-container"><canvas id="mgmt-monthly-chart"></canvas></div></div>
+<div class="chart-card"><h3>Distribuição por Tipo de Veículo</h3><div class="chart-container"><canvas id="mgmt-type-distribution"></canvas></div></div>
+</div>
+</div>
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-trophy"></i> Rankings e Desempenho</h2>
+<div class="mini-ranking-grid">
+<div class="mini-ranking-card"><h4>🚗 Top Motoristas - Saídas</h4><div id="mgmt-drivers-ranking"></div></div>
+<div class="mini-ranking-card"><h4>🛣️ Top Motoristas - KM</h4><div id="mgmt-drivers-km-ranking"></div></div>
+<div class="mini-ranking-card"><h4>🚙 Top Viaturas Administrativas - Saídas</h4><div id="mgmt-vehicles-adm-ranking"></div></div>
+<div class="mini-ranking-card"><h4>🚑 Top Ambulâncias - Saídas</h4><div id="mgmt-vehicles-amb-ranking"></div></div>
+<div class="mini-ranking-card"><h4>🚙 Top Viaturas Administrativas - KM</h4><div id="mgmt-vehicles-adm-km-ranking"></div></div>
+<div class="mini-ranking-card"><h4>🚑 Top Ambulâncias - KM</h4><div id="mgmt-vehicles-amb-km-ranking"></div></div>
+</div>
+</div>
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-map-marked-alt"></i> Análise de Destinos e Setores</h2>
+<div class="charts-grid">
+<div class="chart-card"><h3>Top 10 Destinos por KM</h3><div class="chart-container"><canvas id="mgmt-destinations-chart"></canvas></div></div>
+<div class="chart-card"><h3>Top 10 Setores por KM</h3><div class="chart-container"><canvas id="mgmt-sectors-chart"></canvas></div></div>
+</div>
+</div>
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-exclamation-triangle"></i> Saídas Programadas vs Não Programadas</h2>
+<div class="charts-grid">
+<div class="chart-card"><h3>Distribuição de Programação</h3><div class="chart-container"><canvas id="mgmt-scheduled-chart"></canvas></div></div>
+</div>
+</div>
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-gas-pump"></i> Consumo de Combustível Mensal</h2>
+<div class="charts-grid">
+<div class="chart-card"><h3>Valores (R$)</h3><div class="chart-container"><canvas id="mgmt-fuel-valor-chart"></canvas></div></div>
+<div class="chart-card"><h3>Litros (L)</h3><div class="chart-container"><canvas id="mgmt-fuel-litros-chart"></canvas></div></div>
+</div>
+</div>
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-table"></i> Resumo Estatístico</h2>
+<div class="table-container"><table><thead><tr><th>Indicador</th><th>Valor</th><th>Detalhes</th></tr></thead><tbody id="mgmt-summary-table"></tbody></table></div>
+</div>
+</div>
+
+</main>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+function parseKmValue(kmString) {
+if (kmString === null || kmString === undefined || kmString === '') return 0;
+let str = String(kmString);
+let cleanedString = str.replace(/\./g, '');
+cleanedString = cleanedString.replace(',', '.');
+let number = parseFloat(cleanedString);
+return isNaN(number) ? 0 : number;
+}
+
+function normalizeString(str) {
+if (!str) return '';
+return str
+.toString()
+.toLowerCase()
+.normalize('NFD')
+.replace(/[\u0300-\u036f]/g, '')
+.replace(/\s+/g, ' ')
+.trim();
+}
+
+function areSimilar(str1, str2, threshold = 0.85) {
+const norm1 = normalizeString(str1);
+const norm2 = normalizeString(str2);
+if (norm1 === norm2) return true;
+if (norm1.includes(norm2) || norm2.includes(norm1)) {
+const longer = Math.max(norm1.length, norm2.length);
+const shorter = Math.min(norm1.length, norm2.length);
+if (shorter / longer >= threshold) return true;
+}
+return false;
+}
+
+function removeDuplicatesAndSimilar(items) {
+const uniqueItems = [];
+const normalizedMap = new Map();
+items.forEach(item => {
+if (!item) return;
+const itemStr = item.toString().trim();
+if (!itemStr) return;
+let isDuplicate = false;
+for (const [existing, original] of normalizedMap.entries()) {
+if (areSimilar(itemStr, existing)) {
+isDuplicate = true;
+break;
+}
+}
+if (!isDuplicate) {
+normalizedMap.set(itemStr, itemStr);
+uniqueItems.push(itemStr);
+}
+});
+return uniqueItems.sort((a, b) => a.localeCompare(b));
+}
+
+const barChartDataLabelsPlugin = {
+id: 'barChartDataLabels',
+afterDatasetsDraw(chart) {
+if (chart.config.type !== 'bar') return;
+const { ctx } = chart;
+ctx.save();
+ctx.font = 'bold 12px Arial';
+chart.data.datasets.forEach((dataset, i) => {
+const meta = chart.getDatasetMeta(i);
+if (!meta.hidden) {
+meta.data.forEach((element, index) => {
+const value = dataset.data[index];
+if (value === null || value === 0) return;
+const datasetUnit = dataset.barChartDataLabels?.unit;
+const chartUnit = chart.options.plugins?.barChartDataLabels?.unit;
+const unit = datasetUnit || chartUnit || '';
+let dataString;
+if (unit === 'R$') {
+dataString = value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+} else if (unit) {
+dataString = `${value.toLocaleString('pt-BR')} ${unit}`;
+} else {
+dataString = value.toLocaleString('pt-BR');
+}
+if (chart.options.indexAxis === 'y') {
+const textWidth = ctx.measureText(dataString).width;
+if (element.width < textWidth + 15) return;
+ctx.fillStyle = '#333';
+ctx.textAlign = 'right';
+ctx.textBaseline = 'middle';
+ctx.fillText(dataString, element.x - 8, element.y);
+} else {
+if (element.height < 25) return;
+ctx.fillStyle = 'white';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'top';
+ctx.fillText(dataString, element.x, element.y + 5);
+}
+});
+}
+});
+ctx.restore();
+}
+};
+Chart.register(barChartDataLabelsPlugin);
+const saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+const saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+const allSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
+const abastecimentosData = JSON.parse(localStorage.getItem('abastecimentos')) || [];
+let currentPage = 1;
+const rowsPerPage = 25;
+let monthlyExitsChart, destinationKmChart, sectorKmChart, unscheduledExitsChart, fuelChart;
+let mgmtMonthlyChart, mgmtTypeDistChart, mgmtDestChart, mgmtSectorChart, mgmtScheduledChart, mgmtFuelValorChart, mgmtFuelLitrosChart;
+const subTabButtons = document.querySelectorAll('#statisticsSection > .sub-tabs > .sub-tab-button');
+const subTabContents = document.querySelectorAll('#statisticsSection > .sub-tab-content');
+const nestedSubTabButtons = document.querySelectorAll('#chartsContent > .sub-tabs > .sub-tab-button');
+const nestedSubTabContents = document.querySelectorAll('#chartsContent > .sub-tab-content');
+const filterStatisticsYearSelect = document.getElementById('filterStatisticsYear');
+const filterStatisticsMonthSelect = document.getElementById('filterStatisticsMonth');
+const filterStatisticsMotoristaSelect = document.getElementById('filterStatisticsMotorista');
+const filterStatisticsDestinoSelect = document.getElementById('filterStatisticsDestino');
+const statisticsTableBody = document.querySelector('#statisticsTable tbody');
+const totalAdmByTypeCell = document.getElementById('totalAdmByTypeCell');
+const totalAmbByTypeCell = document.getElementById('totalAmbByTypeCell');
+const totalTableTotalCell = document.getElementById('totalTableTotalCell');
+const totalKmCell = document.getElementById('totalKmCell');
+const totalGeralText = document.getElementById('totalGeralText');
+const totalGeralKmText = document.getElementById('totalGeralKmText');
+const dailyAverageText = document.getElementById('dailyAverageText');
+const filterSaidasYearSelect = document.getElementById('filterSaidasYear');
+const filterSaidasMonthSelect = document.getElementById('filterSaidasMonth');
+const filterAdminCheckbox = document.getElementById('filterAdmin');
+const filterAmbuCheckbox = document.getElementById('filterAmbu');
+const filterSaidasMotoristaSelect = document.getElementById('filterSaidasMotorista');
+const filterSaidasDestinoSelect = document.getElementById('filterSaidasDestino');
+const filterSaidasSearchInput = document.getElementById('filterSaidasSearch');
+const saidasTableBody = document.getElementById('saidasTableBody');
+const prevPageBtn = document.getElementById('prevPageBtn');
+const nextPageBtn = document.getElementById('nextPageBtn');
+const pageInfo = document.getElementById('pageInfo');
+const filterRankingYearSelect = document.getElementById('filterRankingYear');
+const filterRankingMonthSelect = document.getElementById('filterRankingMonth');
+const filterRankingMotoristaSelect = document.getElementById('filterRankingMotorista');
+const filterRankingDestinoSelect = document.getElementById('filterRankingDestino');
+const driverExitsRankingTableBody = document.querySelector('#driverExitsRankingTable tbody');
+const driverKmRankingTableBody = document.querySelector('#driverKmRankingTable tbody');
+const vehicleAdmExitsRankingTableBody = document.querySelector('#vehicleAdmExitsRankingTable tbody');
+const vehicleAdmKmRankingTableBody = document.querySelector('#vehicleAdmKmRankingTable tbody');
+const vehicleAmbExitsRankingTableBody = document.querySelector('#vehicleAmbExitsRankingTable tbody');
+const vehicleAmbKmRankingTableBody = document.querySelector('#vehicleAmbKmRankingTable tbody');
+const filterMonthlyChartsYearSelect = document.getElementById('filterMonthlyChartsYear');
+const filterMonthlyChartsMonthSelect = document.getElementById('filterMonthlyChartsMonth');
+const filterDestinationChartsYearSelect = document.getElementById('filterDestinationChartsYear');
+const filterDestinationChartsMonthSelect = document.getElementById('filterDestinationChartsMonth');
+const filterSectorChartsYearSelect = document.getElementById('filterSectorChartsYear');
+const filterSectorChartsMonthSelect = document.getElementById('filterSectorChartsMonth');
+const filterUnscheduledChartsYearSelect = document.getElementById('filterUnscheduledChartsYear');
+const filterUnscheduledChartsMonthSelect = document.getElementById('filterUnscheduledChartsMonth');
+const filterFuelChartsYearSelect = document.getElementById('filterFuelChartsYear');
+const filterFuelChartsMonthSelect = document.getElementById('filterFuelChartsMonth');
+const exportJsonBtn = document.getElementById('exportJsonBtn');
+const importJsonInput = document.getElementById('importJsonInput');
+const totalGasolinaLitrosEl = document.getElementById('totalGasolinaLitros');
+const totalGasolinaValorEl = document.getElementById('totalGasolinaValor');
+const totalDieselLitrosEl = document.getElementById('totalDieselLitros');
+const totalDieselValorEl = document.getElementById('totalDieselValor');
+function parseDate(dtStr) {
+if (!dtStr || typeof dtStr !== 'string') return null;
+if (dtStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+const dateObj = new Date(dtStr + 'T00:00:00');
+return isNaN(dateObj.getTime()) ? null : dateObj;
+}
+const match = dtStr.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+if (match) {
+const [, day, month, year] = match;
+const isoStr = `${year}-${month}-${day}T00:00:00`;
+const dateObj = new Date(isoStr);
+return isNaN(dateObj.getTime()) ? null : dateObj;
+}
+const fallbackDate = new Date(dtStr);
+return isNaN(fallbackDate.getTime()) ? null : fallbackDate;
+}
+function parseDateTime(dateStr, timeStr) {
+const datePart = parseDate(dateStr);
+if (!datePart) return null;
+if (timeStr && typeof timeStr === 'string' && timeStr !== 'N/A') {
+const timeMatch = timeStr.match(/(\d{2}):(\d{2})/);
+if (timeMatch) {
+const [, hour, minute] = timeMatch;
+datePart.setHours(parseInt(hour, 10));
+datePart.setMinutes(parseInt(minute, 10));
+}
+}
+return datePart;
+}
+
+function formatDateToBR(dateStr) {
+if (!dateStr) return 'N/A';
+const date = parseDate(dateStr);
+if (!date) return dateStr;
+const day = String(date.getDate()).padStart(2, '0');
+const month = String(date.getMonth() + 1).padStart(2, '0');
+const year = date.getFullYear();
+return `${day}/${month}/${year}`;
+}
+
+function getHora(saida, type) {
+const typeUpper = type.toUpperCase();
+const typeLower = type.toLowerCase();
+const typeCamel = typeLower.charAt(0).toUpperCase() + typeLower.slice(1);
+const typeUpperNoAccent = typeUpper.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const typeLowerNoAccent = typeLower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const typeCamelNoAccent = typeCamel.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const possibleKeys = [
+`HORA ${typeUpper}`,
+`HORA ${typeUpperNoAccent}`,
+`hora${typeCamel}`,
+`hora${typeCamelNoAccent}`,
+`HORA_${typeUpper}`,
+`HORA_${typeUpperNoAccent}`,
+`hora_${typeLower}`,
+`hora_${typeLowerNoAccent}`,
+`hora ${typeLower}`,
+`hora ${typeLowerNoAccent}`
+];
+for (const key of possibleKeys) {
+if (saida.hasOwnProperty(key) && saida[key] != null && String(saida[key]).trim() !== '') {
+return saida[key];
+}
+}
+return 'N/A';
+}
+function populateFilters() {
+const currentYear = new Date().getFullYear();
+const years = new Set([currentYear]);
+const destinationsRaw = [];
+const motoristasRaw = [];
+for (let i = currentYear - 5; i <= currentYear + 1; i++) years.add(i);
+allSaidas.forEach(saida => {
+const date = parseDate(saida.dataSaida);
+if (date) years.add(date.getFullYear());
+if (saida.destino) {
+saida.destino.split(',').forEach(d => destinationsRaw.push(d.trim()));
+}
+if (saida.motorista) {
+motoristasRaw.push(saida.motorista.trim());
+}
+});
+const sortedYears = Array.from(years).sort((a, b) => b - a);
+const sortedDestinations = removeDuplicatesAndSimilar(destinationsRaw);
+const sortedMotoristas = removeDuplicatesAndSimilar(motoristasRaw);
+const allMonths = ["Todos os Meses", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const filterMonths = ["Todos", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const populateSelect = (selectElement, options, isMonth = false, isYear = false) => {
+if (!selectElement) return;
+selectElement.innerHTML = '';
+if (isYear) options.unshift('Todos os Anos');
+options.forEach((item, index) => {
+const option = document.createElement('option');
+if (isMonth) {
+option.value = index === 0 ? '' : index - 1;
+option.textContent = item;
+} else {
+option.value = item === 'Todos os Anos' ? '' : item;
+option.textContent = item;
+}
+selectElement.appendChild(option);
+});
+};
+const yearSelects = [filterStatisticsYearSelect, filterSaidasYearSelect, filterRankingYearSelect, filterMonthlyChartsYearSelect, filterDestinationChartsYearSelect, filterSectorChartsYearSelect, filterUnscheduledChartsYearSelect, filterFuelChartsYearSelect];
+yearSelects.forEach(sel => {
+populateSelect(sel, [...sortedYears], false, true);
+if(sel) sel.value = currentYear;
+});
+const monthSelects = [filterStatisticsMonthSelect, filterRankingMonthSelect, filterMonthlyChartsMonthSelect, filterDestinationChartsMonthSelect, filterSectorChartsMonthSelect, filterUnscheduledChartsMonthSelect, filterFuelChartsMonthSelect];
+monthSelects.forEach(sel => populateSelect(sel, allMonths, true));
+populateSelect(filterSaidasMonthSelect, filterMonths, true);
+const destinoSelects = [filterSaidasDestinoSelect, filterStatisticsDestinoSelect, filterRankingDestinoSelect];
+destinoSelects.forEach(sel => {
+if (!sel) return;
+sel.innerHTML = '<option value="">Todos</option>';
+sortedDestinations.forEach(dest => {
+const option = document.createElement('option');
+option.value = dest;
+option.textContent = dest;
+sel.appendChild(option);
+});
+});
+const motoristaSelects = [filterSaidasMotoristaSelect, filterStatisticsMotoristaSelect, filterRankingMotoristaSelect];
+motoristaSelects.forEach(sel => {
+if (!sel) return;
+sel.innerHTML = '<option value="">Todos</option>';
+sortedMotoristas.forEach(mot => {
+const option = document.createElement('option');
+option.value = mot;
+option.textContent = mot;
+sel.appendChild(option);
+});
+});
+}
+function getFilteredData(year, month, motorista = '', destino = '') {
+return allSaidas.filter(saida => {
+const exitDate = parseDate(saida.dataSaida);
+if (!exitDate) return false;
+const matchesYear = !year || exitDate.getFullYear() === parseInt(year);
+const matchesMonth = month === "" || exitDate.getMonth() === parseInt(month);
+const matchesMotorista = !motorista || (saida.motorista && normalizeString(saida.motorista) === normalizeString(motorista));
+const matchesDestino = !destino || (saida.destino && saida.destino.toLowerCase().includes(destino.toLowerCase()));
+return matchesYear && matchesMonth && matchesMotorista && matchesDestino;
+});
+}
+function updateAbastecimentoSummary() {
+const year = filterSaidasYearSelect.value;
+const month = filterSaidasMonthSelect.value;
+let totalGasolinaLitros = 0, totalGasolinaValor = 0;
+let totalDieselLitros = 0, totalDieselValor = 0;
+const filteredAbastecimentos = abastecimentosData.filter(ab => {
+const abDate = parseDate(ab.data);
+if (!abDate) return false;
+const matchesYear = !year || abDate.getFullYear() === parseInt(year);
+const matchesMonth = month === "" || abDate.getMonth() === parseInt(month);
+return matchesYear && matchesMonth;
+});
+filteredAbastecimentos.forEach(ab => {
+const litros = parseFloat(String(ab.litros || '0').replace(',', '.')) || 0;
+const valor = parseFloat(String(ab.valor || '0').replace(',', '.')) || 0;
+if (ab.gasolina) {
+totalGasolinaLitros += litros;
+totalGasolinaValor += valor;
+} else if (ab.diesel) {
+totalDieselLitros += litros;
+totalDieselValor += valor;
+}
+});
+totalGasolinaLitrosEl.textContent = `${totalGasolinaLitros.toFixed(2)} L`;
+totalGasolinaValorEl.textContent = totalGasolinaValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+totalDieselLitrosEl.textContent = `${totalDieselLitros.toFixed(2)} L`;
+totalDieselValorEl.textContent = totalDieselValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function renderSaidasTable() {
+const year = filterSaidasYearSelect.value;
+const month = filterSaidasMonthSelect.value;
+const showAdmin = filterAdminCheckbox.checked;
+const showAmbu = filterAmbuCheckbox.checked;
+const motorista = filterSaidasMotoristaSelect.value;
+const destino = filterSaidasDestinoSelect.value;
+const searchText = filterSaidasSearchInput.value.toLowerCase().trim();
+let totalKmRodados = 0;
+
+const filteredData = allSaidas.filter(saida => {
+const exitDate = parseDate(saida.dataSaida);
+if (!exitDate) return false;
+const matchesYear = !year || exitDate.getFullYear() === parseInt(year);
+const matchesMonth = month === "" || exitDate.getMonth() === parseInt(month);
+const matchesType = (saida.tipo === 'Administrativa' && showAdmin) || (saida.tipo === 'Ambulância' && showAmbu);
+const matchesMotorista = !motorista || (saida.motorista && normalizeString(saida.motorista) === normalizeString(motorista));
+const matchesDestino = !destino || (saida.destino && saida.destino.toLowerCase().includes(destino.toLowerCase()));
+let matchesSearch = true;
+if (searchText) {
+matchesSearch = Object.values(saida).some(value =>
+String(value).toLowerCase().includes(searchText)
+);
+}
+return matchesYear && matchesMonth && matchesType && matchesMotorista && matchesDestino && matchesSearch;
+});
+
+filteredData.sort((a, b) => {
+const dateA = parseDate(a.dataSaida);
+const dateB = parseDate(b.dataSaida);
+return dateB - dateA;
+});
+
+const groupedData = new Map();
+const kmRodadosContados = new Set();
+
+filteredData.forEach(saida => {
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+if (!groupedData.has(groupKey)) {
+groupedData.set(groupKey, []);
+}
+groupedData.get(groupKey).push(saida);
+});
+
+const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+currentPage = Math.min(Math.max(1, currentPage), totalPages > 0 ? totalPages : 1);
+const start = (currentPage - 1) * rowsPerPage;
+const end = start + rowsPerPage;
+const paginatedData = filteredData.slice(start, end);
+
+saidasTableBody.innerHTML = '';
+
+let currentIndex = 0;
+
+while (currentIndex < paginatedData.length) {
+const saida = paginatedData[currentIndex];
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+        
+const grupoNaPagina = paginatedData.filter((s, idx) => {
+const sKey = `${s.dataSaida}-${s.viatura}-${s.motorista}-${s.horaSaida || s.saida}`;
+return sKey === groupKey && idx >= currentIndex;
+});
+
+const kmRodadosVal = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+const kmRodadosKey = `${groupKey}-${kmRodadosVal}`;
+
+if (!kmRodadosContados.has(kmRodadosKey) && kmRodadosVal > 0) {
+totalKmRodados += kmRodadosVal;
+kmRodadosContados.add(kmRodadosKey);
+}
+
+grupoNaPagina.forEach((saidaDoGrupo, indexNoGrupo) => {
+const row = saidasTableBody.insertRow();
+const dataPedidoFormatted = saidaDoGrupo.dataPedido ? formatDateToBR(saidaDoGrupo.dataPedido) : 'N/A';
+const dataSaidaFormatted = saidaDoGrupo.dataSaida ? formatDateToBR(saidaDoGrupo.dataSaida) : 'N/A';
+
+row.insertCell().textContent = dataPedidoFormatted;
+row.insertCell().textContent = getHora(saidaDoGrupo, 'Pedido');
+row.insertCell().textContent = dataSaidaFormatted;
+row.insertCell().textContent = getHora(saidaDoGrupo, 'Saída');
+row.insertCell().textContent = saidaDoGrupo.tipo || 'N/A';
+row.insertCell().textContent = saidaDoGrupo.viatura || 'N/A';
+row.insertCell().textContent = saidaDoGrupo.motorista || 'N/A';
+
+const destinoCell = row.insertCell();
+let destinoText = saidaDoGrupo.destino || 'N/A';
+if (grupoNaPagina.length > 1 && indexNoGrupo > 0) {
+destinoText += ` (Agrupado com: ${grupoNaPagina[0].destino})`;
+destinoCell.classList.add('destino-agrupado');
+}
+destinoCell.textContent = destinoText;
+
+row.insertCell().textContent = saidaDoGrupo.setor || 'N/A';
+row.insertCell().textContent = (saidaDoGrupo.kmSaida !== null && saidaDoGrupo.kmSaida !== undefined) ? saidaDoGrupo.kmSaida : 'N/A';
+row.insertCell().textContent = (saidaDoGrupo.kmChegada !== null && saidaDoGrupo.kmChegada !== undefined) ? saidaDoGrupo.kmChegada : 'N/A';
+
+if (indexNoGrupo === 0) {
+const kmRodadosCell = row.insertCell();
+kmRodadosCell.textContent = kmRodadosVal > 0 ? kmRodadosVal.toLocaleString('pt-BR') : '0';
+kmRodadosCell.style.textAlign = 'center';
+kmRodadosCell.style.fontWeight = 'bold';
+                
+if (kmRodadosVal >= 200) {
+kmRodadosCell.classList.add('km-rodados-alto');
+}
+
+if (grupoNaPagina.length > 1) {
+kmRodadosCell.rowSpan = grupoNaPagina.length;
+kmRodadosCell.style.verticalAlign = 'middle';
+}
+}
+});
+
+currentIndex += grupoNaPagina.length;
+}
+
+pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+prevPageBtn.disabled = currentPage === 1;
+nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+updateAbastecimentoSummary();
+}
+
+function updateQuantitativeTable() {
+const year = filterStatisticsYearSelect.value;
+const month = filterStatisticsMonthSelect.value;
+const motorista = filterStatisticsMotoristaSelect.value;
+const destino = filterStatisticsDestinoSelect.value;
+const filteredData = getFilteredData(year, month, motorista, destino);
+const monthlyStats = {};
+let totalAdm = 0, totalAmb = 0, totalKm = 0;
+
+// *** RASTREIA KM JÁ CONTADOS ***
+const kmRodadosContados = new Set();
+
+filteredData.forEach(saida => {
+const date = parseDate(saida.dataSaida);
+if (!date) return;
+const monthYear = `${date.getFullYear()}-${date.getMonth()}`;
+if (!monthlyStats[monthYear]) {
+monthlyStats[monthYear] = { adm: 0, amb: 0, km: 0, month: date.getMonth(), year: date.getFullYear() };
+}
+if (saida.tipo === 'Administrativa') {
+monthlyStats[monthYear].adm++;
+totalAdm++;
+} else if (saida.tipo === 'Ambulância') {
+monthlyStats[monthYear].amb++;
+totalAmb++;
+}
+
+// *** EVITA CONTAR KM DUPLICADOS ***
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+const kmRodados = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+const kmRodadosKey = `${groupKey}-${kmRodados}`;
+
+if (!kmRodadosContados.has(kmRodadosKey) && kmRodados > 0) {
+monthlyStats[monthYear].km += kmRodados;
+totalKm += kmRodados;
+kmRodadosContados.add(kmRodadosKey);
+}
+});
+statisticsTableBody.innerHTML = '';
+const sortedMonths = Object.keys(monthlyStats).sort((a, b) => {
+const [yearA, monthA] = a.split('-').map(Number);
+const [yearB, monthB] = b.split('-').map(Number);
+if (yearA !== yearB) return yearA - yearB;
+return monthA - monthB;
+});
+let totalDaysProcessed = new Set();
+sortedMonths.forEach(monthYearKey => {
+const stats = monthlyStats[monthYearKey];
+const monthName = new Date(stats.year, stats.month).toLocaleString('pt-BR', { month: 'long' });
+const row = statisticsTableBody.insertRow();
+row.insertCell().textContent = `${monthName.charAt(0).toUpperCase() + monthName.slice(1)}/${stats.year}`;
+row.insertCell().textContent = stats.adm.toLocaleString('pt-BR');
+row.insertCell().textContent = stats.amb.toLocaleString('pt-BR');
+row.insertCell().textContent = (stats.adm + stats.amb).toLocaleString('pt-BR');
+row.insertCell().textContent = stats.km > 0 ? stats.km.toLocaleString('pt-BR') : '0';
+filteredData.filter(saida => {
+const date = parseDate(saida.dataSaida);
+return date && date.getFullYear() === stats.year && date.getMonth() === stats.month;
+}).forEach(saida => {
+totalDaysProcessed.add(saida.dataSaida);
+});
+});
+const totalDaysInPeriod = totalDaysProcessed.size;
+totalAdmByTypeCell.textContent = totalAdm.toLocaleString('pt-BR');
+totalAmbByTypeCell.textContent = totalAmb.toLocaleString('pt-BR');
+totalTableTotalCell.textContent = (totalAdm + totalAmb).toLocaleString('pt-BR');
+totalKmCell.textContent = totalKm.toLocaleString('pt-BR');
+totalGeralText.textContent = `Total Geral de Saídas: ${(totalAdm + totalAmb).toLocaleString('pt-BR')}`;
+totalGeralKmText.textContent = `Quilometragem Geral Rodada: ${totalKm.toLocaleString('pt-BR')} KM`;
+const totalSaidas = totalAdm + totalAmb;
+let dailyAverageTextContent = 'MÉDIA DIÁRIA DE SAÍDAS: N/A';
+if (totalSaidas > 0 && totalDaysInPeriod > 0) {
+const average = (totalSaidas / totalDaysInPeriod).toFixed(2).replace('.', ',');
+dailyAverageTextContent = `MÉDIA DIÁRIA DE SAÍDAS: ${average}`;
+}
+dailyAverageText.textContent = dailyAverageTextContent;
+}
+
+// *** FUNÇÃO CORRIGIDA DO RANKING ***
+function updateRankingTable() {
+const year = filterRankingYearSelect.value;
+const month = filterRankingMonthSelect.value;
+const motorista = filterRankingMotoristaSelect.value;
+const destino = filterRankingDestinoSelect.value;
+const filteredData = getFilteredData(year, month, motorista, destino);
+    
+const driverExits = {};
+const driverKm = {};
+const vehicleAdmExits = {};
+const vehicleAdmKm = {};
+const vehicleAmbExits = {};
+const vehicleAmbKm = {};
+    
+// *** RASTREIA KM JÁ CONTADOS PARA EVITAR DUPLICAÇÃO ***
+const kmRodadosContados = new Set();
+    
+filteredData.forEach(saida => {
+const kmRodados = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+        
+// *** CRIA CHAVE ÚNICA PARA IDENTIFICAR SAÍDAS AGRUPADAS ***
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+const kmRodadosKey = `${groupKey}-${kmRodados}`;
+        
+// *** CONTAGEM DE SAÍDAS (sempre conta todas) ***
+if (saida.motorista) {
+driverExits[saida.motorista] = (driverExits[saida.motorista] || 0) + 1;
+}
+        
+if (saida.viatura) {
+if (saida.tipo === 'Administrativa') {
+vehicleAdmExits[saida.viatura] = (vehicleAdmExits[saida.viatura] || 0) + 1;
+} else if (saida.tipo === 'Ambulância') {
+vehicleAmbExits[saida.viatura] = (vehicleAmbExits[saida.viatura] || 0) + 1;
+}
+}
+        
+// *** CONTAGEM DE KM (evita duplicação) ***
+if (!kmRodadosContados.has(kmRodadosKey) && kmRodados > 0) {
+kmRodadosContados.add(kmRodadosKey);
+            
+if (saida.motorista) {
+driverKm[saida.motorista] = (driverKm[saida.motorista] || 0) + kmRodados;
+}
+            
+if (saida.viatura) {
+if (saida.tipo === 'Administrativa') {
+vehicleAdmKm[saida.viatura] = (vehicleAdmKm[saida.viatura] || 0) + kmRodados;
+} else if (saida.tipo === 'Ambulância') {
+vehicleAmbKm[saida.viatura] = (vehicleAmbKm[saida.viatura] || 0) + kmRodados;
+}
+}
+}
+});
+    
+const rankAndRender = (data, tableBody, isKm = false) => {
+const sortedData = Object.entries(data)
+.sort(([, a], [, b]) => b - a)
+.slice(0, 10);
+tableBody.innerHTML = '';
+if (sortedData.length === 0) {
+const row = tableBody.insertRow();
+row.insertCell().colSpan = 3;
+row.cells[0].textContent = 'Nenhum dado encontrado para o período.';
+return;
+}
+sortedData.forEach(([key, value], index) => {
+const row = tableBody.insertRow();
+const positionCell = row.insertCell();
+row.className = index === 0 ? 'ranking-row-1' : index === 1 ? 'ranking-row-2' : index === 2 ? 'ranking-row-3' : '';
+positionCell.className = 'ranking-position';
+positionCell.textContent = index + 1;
+row.insertCell().textContent = key;
+row.insertCell().textContent = isKm ? `${value.toLocaleString('pt-BR')} KM` : value.toLocaleString('pt-BR');
+});
+};
+    
+rankAndRender(driverExits, driverExitsRankingTableBody, false);
+rankAndRender(driverKm, driverKmRankingTableBody, true);
+rankAndRender(vehicleAdmExits, vehicleAdmExitsRankingTableBody, false);
+rankAndRender(vehicleAdmKm, vehicleAdmKmRankingTableBody, true);
+rankAndRender(vehicleAmbExits, vehicleAmbExitsRankingTableBody, false);
+rankAndRender(vehicleAmbKm, vehicleAmbKmRankingTableBody, true);
+}
+
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+window.updateManagementBoard = function() {
+const filterMgmtYearSelect = document.getElementById('filterMgmtYear');
+const filterMgmtMonthSelect = document.getElementById('filterMgmtMonth');
+const year = filterMgmtYearSelect ? filterMgmtYearSelect.value : '';
+const month = filterMgmtMonthSelect ? filterMgmtMonthSelect.value : '';
+let filteredData = allSaidas;
+if (year) {
+filteredData = filteredData.filter(s => {const d = parseDate(s.dataSaida);return d && d.getFullYear() === parseInt(year);});
+}
+if (month !== '') {
+filteredData = filteredData.filter(s => {const d = parseDate(s.dataSaida);return d && d.getMonth() === parseInt(month);});
+}
+const kmRodadosContados = new Set();
+let totalKm = 0, totalAdm = 0, totalAmb = 0;
+filteredData.forEach(saida => {
+// Ignora saídas com ASD (A Ser Decidido)
+if (saida.motorista === 'ASD' || saida.viatura === 'ASD') return;
+
+if (saida.tipo === 'Administrativa') totalAdm++;
+else if (saida.tipo === 'Ambulância') totalAmb++;
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+const kmRodados = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+const kmRodadosKey = `${groupKey}-${kmRodados}`;
+if (!kmRodadosContados.has(kmRodadosKey) && kmRodados > 0) {totalKm += kmRodados;kmRodadosContados.add(kmRodadosKey);}
+});
+const totalSaidas = totalAdm + totalAmb;
+const el1 = document.getElementById('mgmt-total-saidas');
+const el2 = document.getElementById('mgmt-saidas-breakdown');
+const el3 = document.getElementById('mgmt-total-km');
+if (el1) el1.textContent = totalSaidas.toLocaleString('pt-BR');
+if (el2) el2.textContent = `Adm: ${totalAdm} | Amb: ${totalAmb}`;
+if (el3) el3.textContent = totalKm.toLocaleString('pt-BR');
+let filteredFuel = abastecimentosData;
+if (year) {
+filteredFuel = filteredFuel.filter(ab => {const d = parseDate(ab.data);return d && d.getFullYear() === parseInt(year);});
+}
+if (month !== '') {
+filteredFuel = filteredFuel.filter(ab => {const d = parseDate(ab.data);return d && d.getMonth() === parseInt(month);});
+}
+let totalFuel = 0, totalGas = 0, totalDiesel = 0;
+let totalFuelLitros = 0, totalGasLitros = 0, totalDieselLitros = 0;
+
+// Carrega totais manuais do localStorage
+const totaisManuais = JSON.parse(localStorage.getItem('totaisManuaisCombustivel')) || {};
+
+filteredFuel.forEach(ab => {
+const valor = parseFloat(String(ab.valor || '0').replace(',', '.')) || 0;
+const litros = parseFloat(String(ab.litros || '0').replace(',', '.')) || 0;
+totalFuel += valor;
+totalFuelLitros += litros;
+if (ab.gasolina) {
+totalGas += valor;
+totalGasLitros += litros;
+} else if (ab.diesel) {
+totalDiesel += valor;
+totalDieselLitros += litros;
+}
+});
+
+// Adiciona totais manuais se houver filtro específico de mês/ano
+if (year && month !== '') {
+const mesFormatado = String(parseInt(month) + 1).padStart(2, '0');
+const periodoKey = `${year}-${mesFormatado}`;
+const totaisManual = totaisManuais[periodoKey];
+if (totaisManual) {
+const gasLitros = parseFloat(totaisManual.gasolinaLitros) || 0;
+const gasValor = parseFloat(totaisManual.gasolinaValor) || 0;
+const dieLitros = parseFloat(totaisManual.dieselLitros) || 0;
+const dieValor = parseFloat(totaisManual.dieselValor) || 0;
+
+totalGas += gasValor;
+totalGasLitros += gasLitros;
+totalDiesel += dieValor;
+totalDieselLitros += dieLitros;
+totalFuel += (gasValor + dieValor);
+totalFuelLitros += (gasLitros + dieLitros);
+}
+}
+const elFuelTotal = document.getElementById('mgmt-total-fuel');
+const elFuelTotalLitros = document.getElementById('mgmt-total-fuel-litros');
+const elGasValor = document.getElementById('mgmt-gas-valor');
+const elGasLitros = document.getElementById('mgmt-gas-litros');
+const elDieselValor = document.getElementById('mgmt-diesel-valor');
+const elDieselLitros = document.getElementById('mgmt-diesel-litros');
+if (elFuelTotal) elFuelTotal.textContent = totalFuel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+if (elFuelTotalLitros) elFuelTotalLitros.textContent = totalFuelLitros.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
+if (elGasValor) elGasValor.textContent = totalGas.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+if (elGasLitros) elGasLitros.textContent = totalGasLitros.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
+if (elDieselValor) elDieselValor.textContent = totalDiesel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+if (elDieselLitros) elDieselLitros.textContent = totalDieselLitros.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
+const uniqueDays = new Set(filteredData.map(s => s.dataSaida)).size;
+const dailyAvg = uniqueDays > 0 ? (totalSaidas / uniqueDays).toFixed(2) : 0;
+const elDailyAvg = document.getElementById('mgmt-daily-avg');
+if (elDailyAvg) elDailyAvg.textContent = dailyAvg.toString().replace('.', ',');
+updateMgmtCharts(filteredData, filteredFuel, totalAdm, totalAmb);
+updateMgmtSummaryTable(totalSaidas, totalAdm, totalAmb, totalKm, totalFuel, dailyAvg);
+};
+
+function updateMgmtCharts(data, fuelData, totalAdm, totalAmb) {
+const filterMgmtYearSelect = document.getElementById('filterMgmtYear');
+const year = filterMgmtYearSelect ? filterMgmtYearSelect.value : '';
+let monthlyFilteredData = allSaidas;
+if (year) {
+monthlyFilteredData = monthlyFilteredData.filter(s => {const d = parseDate(s.dataSaida);return d && d.getFullYear() === parseInt(year);});
+}
+const monthlyCounts = Array(12).fill(0).map(() => ({ adm: 0, amb: 0 }));
+monthlyFilteredData.forEach(saida => {
+// Ignora saídas com ASD (A Ser Decidido)
+if (saida.motorista === 'ASD' || saida.viatura === 'ASD') return;
+
+const date = parseDate(saida.dataSaida);if (!date) return;const m = date.getMonth();if (saida.tipo === 'Administrativa') monthlyCounts[m].adm++;else if (saida.tipo === 'Ambulância') monthlyCounts[m].amb++;});
+const canvas1 = document.getElementById('mgmt-monthly-chart');
+if (canvas1) {
+if (mgmtMonthlyChart) mgmtMonthlyChart.destroy();
+mgmtMonthlyChart = new Chart(canvas1, {type: 'bar',data: {labels: MONTHS,datasets: [{label: 'Administrativas',data: monthlyCounts.map(m => m.adm),backgroundColor: 'rgba(74, 105, 189, 0.7)',borderColor: 'rgba(74, 105, 189, 1)',borderWidth: 1}, {label: 'Ambulâncias',data: monthlyCounts.map(m => m.amb),backgroundColor: 'rgba(232, 67, 14, 0.7)',borderColor: 'rgba(232, 67, 14, 1)',borderWidth: 1}]},options: {responsive: true,maintainAspectRatio: false,plugins: { legend: { position: 'top' } },scales: { y: { beginAtZero: true } }}});
+}
+const canvas2 = document.getElementById('mgmt-type-distribution');
+if (canvas2) {
+if (mgmtTypeDistChart) mgmtTypeDistChart.destroy();
+mgmtTypeDistChart = new Chart(canvas2, {
+type: 'doughnut',
+data: {
+labels: ['Administrativas', 'Ambulâncias'],
+datasets: [{
+data: [totalAdm, totalAmb],
+backgroundColor: ['rgba(74, 105, 189, 0.8)', 'rgba(232, 67, 14, 0.8)'],
+borderColor: ['rgba(74, 105, 189, 1)', 'rgba(232, 67, 14, 1)'],
+borderWidth: 2
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: 'bottom' },
+tooltip: {
+callbacks: {
+label: function(context) {
+const label = context.label || '';
+const value = context.parsed || 0;
+const total = context.dataset.data.reduce((a, b) => a + b, 0);
+const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+return label + ': ' + value + ' (' + percentage + '%)';
+}
+}
+},
+datalabels: {
+color: '#fff',
+font: { weight: 'bold', size: 16 },
+formatter: function(value, context) {
+const total = context.dataset.data.reduce((a, b) => a + b, 0);
+const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+return percentage + '%';
+}
+}
+}
+},
+plugins: [ChartDataLabels]
+});
+}
+updateMgmtRankings(data);
+updateMgmtDestinationsChart(data);
+updateMgmtSectorsChart(data);
+updateMgmtScheduledChart(data);
+updateMgmtFuelValorChart(fuelData);
+updateMgmtFuelLitrosChart(fuelData);
+}
+
+function updateMgmtRankings(data) {
+const kmRodadosContados = new Set();
+const driverExits = {}, driverKm = {}, vehicleAdmExits = {}, vehicleAmbExits = {}, vehicleAdmKm = {}, vehicleAmbKm = {};
+data.forEach(saida => {
+// Ignora saídas com ASD (A Ser Decidido)
+if (saida.motorista === 'ASD' || saida.viatura === 'ASD') return;
+
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+const kmRodados = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+const kmRodadosKey = `${groupKey}-${kmRodados}`;
+if (saida.motorista) driverExits[saida.motorista] = (driverExits[saida.motorista] || 0) + 1;
+if (saida.viatura) {
+if (saida.tipo === 'Administrativa') vehicleAdmExits[saida.viatura] = (vehicleAdmExits[saida.viatura] || 0) + 1;
+else if (saida.tipo === 'Ambulância') vehicleAmbExits[saida.viatura] = (vehicleAmbExits[saida.viatura] || 0) + 1;
+}
+if (!kmRodadosContados.has(kmRodadosKey) && kmRodados > 0) {
+kmRodadosContados.add(kmRodadosKey);
+if (saida.motorista) driverKm[saida.motorista] = (driverKm[saida.motorista] || 0) + kmRodados;
+if (saida.viatura) {
+if (saida.tipo === 'Administrativa') vehicleAdmKm[saida.viatura] = (vehicleAdmKm[saida.viatura] || 0) + kmRodados;
+else if (saida.tipo === 'Ambulância') vehicleAmbKm[saida.viatura] = (vehicleAmbKm[saida.viatura] || 0) + kmRodados;
+}
+}
+});
+const renderMiniRanking = (data, containerId, isKm = false) => {
+const sorted = Object.entries(data).sort(([, a], [, b]) => b - a).slice(0, 5);
+const container = document.getElementById(containerId);
+if (!container) return;
+container.innerHTML = sorted.map(([key, value], index) => {
+const className = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
+const displayValue = isKm ? `${value.toLocaleString('pt-BR')} KM` : value.toLocaleString('pt-BR');
+return `<div class="mini-ranking-item ${className}"><span>${key}</span><span>${displayValue}</span></div>`;
+}).join('');
+};
+renderMiniRanking(driverExits, 'mgmt-drivers-ranking');
+renderMiniRanking(driverKm, 'mgmt-drivers-km-ranking', true);
+renderMiniRanking(vehicleAdmExits, 'mgmt-vehicles-adm-ranking');
+renderMiniRanking(vehicleAmbExits, 'mgmt-vehicles-amb-ranking');
+renderMiniRanking(vehicleAdmKm, 'mgmt-vehicles-adm-km-ranking', true);
+renderMiniRanking(vehicleAmbKm, 'mgmt-vehicles-amb-km-ranking', true);
+}
+
+function updateMgmtDestinationsChart(data) {
+const kmRodadosContados = new Set();
+const destinationKm = {};
+data.forEach(saida => {
+// Ignora saídas com ASD (A Ser Decidido)
+if (saida.motorista === 'ASD' || saida.viatura === 'ASD') return;
+
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+const kmRodados = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+const kmRodadosKey = `${groupKey}-${kmRodados}`;
+if (saida.destino && !kmRodadosContados.has(kmRodadosKey) && kmRodados > 0) {
+kmRodadosContados.add(kmRodadosKey);
+saida.destino.split(',').forEach(d => {const dest = d.trim();destinationKm[dest] = (destinationKm[dest] || 0) + kmRodados;});
+}
+});
+const sorted = Object.entries(destinationKm).sort(([, a], [, b]) => b - a).slice(0, 10);
+const canvas = document.getElementById('mgmt-destinations-chart');
+if (canvas) {
+if (mgmtDestChart) mgmtDestChart.destroy();
+mgmtDestChart = new Chart(canvas, {type: 'bar',data: {labels: sorted.map(([dest]) => dest),datasets: [{label: 'KM Rodados',data: sorted.map(([, km]) => km),backgroundColor: 'rgba(39, 174, 96, 0.7)',borderColor: 'rgba(39, 174, 96, 1)',borderWidth: 1}]},options: {indexAxis: 'y',responsive: true,maintainAspectRatio: false,plugins: { legend: { display: false } },scales: { x: { beginAtZero: true } }}});
+}
+}
+
+function updateMgmtSectorsChart(data) {
+const kmRodadosContados = new Set();
+const sectorKm = {};
+data.forEach(saida => {
+// Ignora saídas com ASD (A Ser Decidido)
+if (saida.motorista === 'ASD' || saida.viatura === 'ASD') return;
+
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.horaSaida || saida.saida}`;
+const kmRodados = (parseKmValue(saida.kmChegada) || 0) - (parseKmValue(saida.kmSaida) || 0);
+const kmRodadosKey = `${groupKey}-${kmRodados}`;
+if (saida.setor && !kmRodadosContados.has(kmRodadosKey) && kmRodados > 0) {
+kmRodadosContados.add(kmRodadosKey);
+const sector = saida.setor.trim();
+sectorKm[sector] = (sectorKm[sector] || 0) + kmRodados;
+}
+});
+const sorted = Object.entries(sectorKm).sort(([, a], [, b]) => b - a).slice(0, 10);
+const canvas = document.getElementById('mgmt-sectors-chart');
+if (canvas) {
+if (mgmtSectorChart) mgmtSectorChart.destroy();
+mgmtSectorChart = new Chart(canvas, {type: 'bar',data: {labels: sorted.map(([sector]) => sector),datasets: [{label: 'KM Rodados',data: sorted.map(([, km]) => km),backgroundColor: 'rgba(155, 89, 182, 0.7)',borderColor: 'rgba(155, 89, 182, 1)',borderWidth: 1}]},options: {indexAxis: 'y',responsive: true,maintainAspectRatio: false,plugins: { legend: { display: false } },scales: { x: { beginAtZero: true } }}});
+}
+}
+
+function updateMgmtScheduledChart(data) {
+let scheduledCount = 0, unscheduledCount = 0;
+data.forEach(saida => {
+// Apenas saídas administrativas são consideradas neste cálculo
+if (saida.tipo !== 'Administrativa') return;
+
+const dataSaida = parseDate(saida.dataSaida);
+const dataPedido = parseDate(saida.dataPedido);
+if (dataSaida && dataPedido) {
+const dataLimite = new Date(dataSaida);
+dataLimite.setDate(dataLimite.getDate() - 1);
+dataLimite.setHours(10, 0, 0, 0);
+const dataPedidoHora = parseDateTime(saida.dataPedido, getHora(saida, 'Pedido'));
+if (dataPedidoHora && dataPedidoHora.getTime() <= dataLimite.getTime()) scheduledCount++;
+else unscheduledCount++;
+} else unscheduledCount++;
+});
+const canvas = document.getElementById('mgmt-scheduled-chart');
+if (canvas) {
+if (mgmtScheduledChart) mgmtScheduledChart.destroy();
+mgmtScheduledChart = new Chart(canvas, {
+type: 'doughnut',
+data: {
+labels: ['Programadas', 'Não Programadas'],
+datasets: [{
+data: [scheduledCount, unscheduledCount],
+backgroundColor: ['#4a69bd', '#e84118'],
+borderColor: ['#4a69bd', '#e84118'],
+borderWidth: 2
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: 'bottom' },
+tooltip: {
+callbacks: {
+label: function(context) {
+const label = context.label || '';
+const value = context.parsed || 0;
+const total = context.dataset.data.reduce((a, b) => a + b, 0);
+const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+return label + ': ' + value + ' (' + percentage + '%)';
+}
+}
+},
+datalabels: {
+color: '#fff',
+font: { weight: 'bold', size: 16 },
+formatter: function(value, context) {
+const total = context.dataset.data.reduce((a, b) => a + b, 0);
+const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+return percentage + '%';
+}
+}
+}
+},
+plugins: [ChartDataLabels]
+});
+}
+}
+
+// Gráfico de Valores (R$)
+function updateMgmtFuelValorChart(fuelData) {
+const monthlyFuel = Array(12).fill(0).map(() => ({ gasolinaValor: 0, dieselValor: 0 }));
+fuelData.forEach(ab => {
+const date = parseDate(ab.data);
+if (!date) return;
+const m = date.getMonth();
+const valor = parseFloat(String(ab.valor || '0').replace(',', '.')) || 0;
+if (ab.gasolina) {
+monthlyFuel[m].gasolinaValor += valor;
+} else if (ab.diesel) {
+monthlyFuel[m].dieselValor += valor;
+}
+});
+
+const totaisManuais = JSON.parse(localStorage.getItem('totaisManuaisCombustivel')) || {};
+const filterMgmtYearSelect = document.getElementById('filterMgmtYear');
+const year = filterMgmtYearSelect ? filterMgmtYearSelect.value : '';
+
+if (year) {
+for (let mes = 0; mes < 12; mes++) {
+const mesFormatado = String(mes + 1).padStart(2, '0');
+const periodoKey = `${year}-${mesFormatado}`;
+const totaisManual = totaisManuais[periodoKey];
+if (totaisManual) {
+monthlyFuel[mes].gasolinaValor += parseFloat(totaisManual.gasolinaValor) || 0;
+monthlyFuel[mes].dieselValor += parseFloat(totaisManual.dieselValor) || 0;
+}
+}
+}
+
+const canvas = document.getElementById('mgmt-fuel-valor-chart');
+if (canvas) {
+if (mgmtFuelValorChart) mgmtFuelValorChart.destroy();
+mgmtFuelValorChart = new Chart(canvas, {
+type: 'bar',
+data: {
+labels: MONTHS,
+datasets: [
+{
+label: 'Gasolina',
+data: monthlyFuel.map(m => m.gasolinaValor),
+backgroundColor: 'rgba(255, 193, 7, 0.9)',
+borderColor: 'rgba(255, 193, 7, 1)',
+borderWidth: 2,
+barThickness: 'flex',
+maxBarThickness: 60
+},
+{
+label: 'Diesel',
+data: monthlyFuel.map(m => m.dieselValor),
+backgroundColor: 'rgba(52, 73, 94, 0.9)',
+borderColor: 'rgba(52, 73, 94, 1)',
+borderWidth: 2,
+barThickness: 'flex',
+maxBarThickness: 60
+}
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { 
+position: 'top',
+labels: {
+font: { size: 14, weight: 'bold' },
+padding: 15
+}
+},
+tooltip: {
+backgroundColor: 'rgba(0, 0, 0, 0.8)',
+titleFont: { size: 14, weight: 'bold' },
+bodyFont: { size: 13 },
+padding: 12,
+callbacks: {
+label: function(context) {
+return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+}
+}
+},
+scales: {
+x: { grid: { display: false } },
+y: {
+beginAtZero: true,
+title: {
+display: true,
+text: 'Valor (R$)',
+font: { size: 14, weight: 'bold' }
+},
+ticks: {
+callback: function(value) {
+return 'R$ ' + value.toLocaleString('pt-BR');
+},
+font: { size: 12 }
+}
+}
+}
+}
+});
+}
+}
+
+// Gráfico de Litros (L)
+function updateMgmtFuelLitrosChart(fuelData) {
+const monthlyFuel = Array(12).fill(0).map(() => ({ gasolinaLitros: 0, dieselLitros: 0 }));
+fuelData.forEach(ab => {
+const date = parseDate(ab.data);
+if (!date) return;
+const m = date.getMonth();
+const litros = parseFloat(String(ab.litros || '0').replace(',', '.')) || 0;
+if (ab.gasolina) {
+monthlyFuel[m].gasolinaLitros += litros;
+} else if (ab.diesel) {
+monthlyFuel[m].dieselLitros += litros;
+}
+});
+
+const totaisManuais = JSON.parse(localStorage.getItem('totaisManuaisCombustivel')) || {};
+const filterMgmtYearSelect = document.getElementById('filterMgmtYear');
+const year = filterMgmtYearSelect ? filterMgmtYearSelect.value : '';
+
+if (year) {
+for (let mes = 0; mes < 12; mes++) {
+const mesFormatado = String(mes + 1).padStart(2, '0');
+const periodoKey = `${year}-${mesFormatado}`;
+const totaisManual = totaisManuais[periodoKey];
+if (totaisManual) {
+monthlyFuel[mes].gasolinaLitros += parseFloat(totaisManual.gasolinaLitros) || 0;
+monthlyFuel[mes].dieselLitros += parseFloat(totaisManual.dieselLitros) || 0;
+}
+}
+}
+
+const canvas = document.getElementById('mgmt-fuel-litros-chart');
+if (canvas) {
+if (mgmtFuelLitrosChart) mgmtFuelLitrosChart.destroy();
+mgmtFuelLitrosChart = new Chart(canvas, {
+type: 'bar',
+data: {
+labels: MONTHS,
+datasets: [
+{
+label: 'Gasolina',
+data: monthlyFuel.map(m => m.gasolinaLitros),
+backgroundColor: 'rgba(255, 235, 59, 0.9)',
+borderColor: 'rgba(255, 235, 59, 1)',
+borderWidth: 2,
+barThickness: 'flex',
+maxBarThickness: 60
+},
+{
+label: 'Diesel',
+data: monthlyFuel.map(m => m.dieselLitros),
+backgroundColor: 'rgba(96, 125, 139, 0.9)',
+borderColor: 'rgba(96, 125, 139, 1)',
+borderWidth: 2,
+barThickness: 'flex',
+maxBarThickness: 60
+}
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { 
+position: 'top',
+labels: {
+font: { size: 14, weight: 'bold' },
+padding: 15
+}
+},
+tooltip: {
+backgroundColor: 'rgba(0, 0, 0, 0.8)',
+titleFont: { size: 14, weight: 'bold' },
+bodyFont: { size: 13 },
+padding: 12,
+callbacks: {
+label: function(context) {
+return context.dataset.label + ': ' + context.parsed.y.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
+}
+}
+}
+},
+scales: {
+x: { grid: { display: false } },
+y: {
+beginAtZero: true,
+title: {
+display: true,
+text: 'Litros (L)',
+font: { size: 14, weight: 'bold' }
+},
+ticks: {
+callback: function(value) {
+return value.toLocaleString('pt-BR') + ' L';
+},
+font: { size: 12 }
+}
+}
+}
+}
+});
+}
+}
+
+function updateMgmtSummaryTable(totalSaidas, totalAdm, totalAmb, totalKm, totalFuel, dailyAvg) {
+const tbody = document.getElementById('mgmt-summary-table');
+if (!tbody) return;
+tbody.innerHTML = `<tr><td>Total de Saídas</td><td>${totalSaidas.toLocaleString('pt-BR')}</td><td>Administrativas: ${totalAdm} | Ambulâncias: ${totalAmb}</td></tr><tr><td>KM Rodados</td><td>${totalKm.toLocaleString('pt-BR')} KM</td><td>Total acumulado</td></tr><tr><td>Combustível Gasto</td><td>${totalFuel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td><td>Gasolina + Diesel</td></tr><tr><td>Média Diária</td><td>${dailyAvg.toString().replace('.', ',')}</td><td>Saídas por dia</td></tr>`;
+}
+
+
+// Funções de Importar/Exportar para Conselho de Gestão
+function exportMgmtData() {
+const data = {
+saidasAdministrativas: JSON.parse(localStorage.getItem('saidasAdministrativas')) || [],
+saidasAmbulancias: JSON.parse(localStorage.getItem('saidasAmbulancias')) || [],
+abastecimentos: JSON.parse(localStorage.getItem('abastecimentos')) || [],
+exportDate: new Date().toISOString()
+};
+const dataStr = JSON.stringify(data, null, 2);
+const blob = new Blob([dataStr], { type: 'application/json' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `conselho_gestao_dados_${new Date().toISOString().split('T')[0]}.json`;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+alert('✓ Dados exportados com sucesso!');
+}
+
+function importMgmtData(event) {
+const file = event.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = function(e) {
+try {
+const data = JSON.parse(e.target.result);
+if (data.saidasAdministrativas) {
+localStorage.setItem('saidasAdministrativas', JSON.stringify(data.saidasAdministrativas));
+}
+if (data.saidasAmbulancias) {
+localStorage.setItem('saidasAmbulancias', JSON.stringify(data.saidasAmbulancias));
+}
+if (data.abastecimentos) {
+localStorage.setItem('abastecimentos', JSON.stringify(data.abastecimentos));
+}
+alert('✓ Dados importados com sucesso!\n\nRecarregando página...');
+location.reload();
+} catch (error) {
+alert('❌ Erro ao importar dados: ' + error.message);
+}
+};
+reader.readAsText(file);
+}
+
+const exportMgmtDataBtn = document.getElementById('exportMgmtDataBtn');
+const importMgmtDataBtn = document.getElementById('importMgmtDataBtn');
+const importMgmtFileInput = document.getElementById('importMgmtFileInput');
+
+if (exportMgmtDataBtn) {
+exportMgmtDataBtn.addEventListener('click', exportMgmtData);
+}
+
+if (importMgmtDataBtn) {
+importMgmtDataBtn.addEventListener('click', () => {
+importMgmtFileInput.click();
+});
+}
+
+if (importMgmtFileInput) {
+importMgmtFileInput.addEventListener('change', importMgmtData);
+}
+
+// Adicionar event listeners aos filtros do Conselho de Gestão
+const filterMgmtYearSelect = document.getElementById('filterMgmtYear');
+const filterMgmtMonthSelect = document.getElementById('filterMgmtMonth');
+
+if (filterMgmtYearSelect) {
+// Popular o select de ano
+const currentYear = new Date().getFullYear();
+const years = [];
+for (let i = currentYear - 5; i <= currentYear + 1; i++) years.push(i);
+years.sort((a, b) => b - a);
+filterMgmtYearSelect.innerHTML = '<option value="">Todos os Anos</option>';
+years.forEach(year => {
+const option = document.createElement('option');
+option.value = year;
+option.textContent = year;
+filterMgmtYearSelect.appendChild(option);
+});
+filterMgmtYearSelect.value = currentYear;
+
+filterMgmtYearSelect.addEventListener('change', () => {
+if (window.updateManagementBoard) window.updateManagementBoard();
+});
+}
+
+if (filterMgmtMonthSelect) {
+filterMgmtMonthSelect.addEventListener('change', () => {
+if (window.updateManagementBoard) window.updateManagementBoard();
+});
+}
+
+subTabButtons.forEach(button => {
+button.addEventListener('click', () => {
+const targetTab = button.dataset.subTab;
+subTabButtons.forEach(btn => btn.classList.remove('active'));
+subTabContents.forEach(content => content.classList.remove('active'));
+button.classList.add('active');
+document.getElementById(targetTab).classList.add('active');
+if (targetTab === 'quantitativeContent') updateQuantitativeTable();
+if (targetTab === 'saidasContent') renderSaidasTable();
+if (targetTab === 'rankingContent') updateRankingTable();
+if (targetTab === 'managementBoardContent') {
+setTimeout(() => {
+if (window.updateManagementBoard) window.updateManagementBoard();
+}, 100);
+}
+});
+});
+
+populateFilters();
+updateQuantitativeTable();
+});
+</script>
+</body>
+</html>
+<script>
+// Inicialização automática do Conselho de Gestão
+(function() {
+    console.log('=== CG.html Inicializando ===');
+    
+    // Garantir que o conteúdo está visível
+    const mgmtContent = document.getElementById('managementBoardContent');
+    if (mgmtContent) {
+        mgmtContent.style.display = 'block';
+        mgmtContent.classList.add('active');
+        console.log('✓ Conteúdo ativado');
+    } else {
+        console.error('✗ managementBoardContent não encontrado!');
+    }
+    
+    // Aguardar carregamento completo
+    window.addEventListener('load', function() {
+        console.log('✓ Página carregada');
+        
+        setTimeout(() => {
+            console.log('Tentando executar updateManagementBoard...');
+            
+            if (typeof updateManagementBoard === 'function') {
+                try {
+                    updateManagementBoard();
+                    console.log('✓ updateManagementBoard() executado com sucesso');
+                } catch (e) {
+                    console.error('✗ Erro ao executar updateManagementBoard:', e);
+                }
+            } else if (window.updateManagementBoard) {
+                try {
+                    window.updateManagementBoard();
+                    console.log('✓ window.updateManagementBoard() executado com sucesso');
+                } catch (e) {
+                    console.error('✗ Erro ao executar window.updateManagementBoard:', e);
+                }
+            } else {
+                console.error('✗ updateManagementBoard não encontrado!');
+                console.log('Funções disponíveis:', Object.keys(window).filter(k => k.includes('update')));
+            }
+        }, 1500);
+    });
+})();
+</script>

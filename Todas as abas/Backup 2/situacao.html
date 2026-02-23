@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Situação das Viaturas - Sistema Integrado</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+--tab-inactive-bg: #e9ecef;
+--tab-active-bg: var(--white);
+--tab-border: 1px solid #dee2e6;
+--danger-red: #dc3545;
+--warning-orange: #fd7e14;
+--success-green: #28a745;
+--priority-purple: #6f42c1;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); color: var(--dark-gray); font-weight: 500; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.tabs { display: flex; border-bottom: 2px solid var(--primary-blue); margin-bottom: 20px; background-color: var(--white); border-radius: 8px 8px 0 0; overflow: hidden; }
+.tabs a { text-decoration: none; color: inherit; flex: 1; display: flex; }
+.tab-button { background-color: var(--tab-inactive-bg); color: var(--dark-gray); border: none; padding: 15px 25px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.tab-button:hover:not(.active) { background-color: #e2e6ea; }
+.tab-button.active { background-color: var(--primary-blue); color: var(--white); }
+.tab-content { display: none; background-color: var(--white); padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.tab-content.active { display: block; }
+.page-title { font-size: 28px; color: var(--primary-blue); text-align: center; font-weight: bold; margin: 0 0 30px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.table-container { overflow-x: auto; border: 2px solid var(--primary-blue); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); background-color: var(--white); margin-top: 20px; }
+.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.data-table th, .data-table td { border: 1px solid var(--tab-border); padding: 15px; }
+.data-table th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; text-transform: uppercase; font-size: 12px; position: sticky; top: 0; }
+.data-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
+
+/* Estilo para anotações em vermelho e negrito */
+.data-table td.annotation-cell {
+color: var(--danger-red);
+font-weight: bold;
+}
+
+.filter-container { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 20px; background-color: var(--light-gray-bg); border-radius: 8px; }
+.filter-container .form-group { flex: 1; min-width: 200px; }
+.filter-container label { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+.filter-container select, .filter-container input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--gray); background-color: var(--white); }
+.btn { background-color: var(--primary-blue); color: var(--white); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; }
+.btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-priority { background-color: var(--priority-purple); }
+.btn-priority:hover { background-color: #5a32a3; }
+.global-actions { margin-bottom: 15px; display: flex; gap: 10px; }
+.checklist-cell {
+text-align: center;
+vertical-align: middle;
+min-width: 100px;
+}
+.checklist-item {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 8px;
+padding: 5px;
+}
+.checklist-item input[type="checkbox"] {
+width: 20px;
+height: 20px;
+cursor: pointer;
+accent-color: var(--primary-blue);
+}
+.checklist-item.priority input[type="checkbox"] {
+accent-color: var(--priority-purple);
+}
+.checklist-item label {
+cursor: pointer;
+font-size: 14px;
+font-weight: bold;
+user-select: none;
+}
+.actions-cell {
+text-align: center;
+vertical-align: middle;
+min-width: 120px;
+}
+.action-buttons {
+display: flex;
+gap: 8px;
+justify-content: center;
+align-items: center;
+}
+.btn-action {
+border: none;
+padding: 8px 12px;
+border-radius: 6px;
+cursor: pointer;
+font-size: 13px;
+font-weight: bold;
+display: inline-flex;
+align-items: center;
+gap: 5px;
+transition: all 0.3s ease;
+}
+.btn-action:hover {
+transform: translateY(-2px);
+box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.btn-edit {
+background-color: var(--warning-orange);
+color: var(--white);
+}
+.btn-edit:hover {
+background-color: #e56b0f;
+}
+.btn-delete {
+background-color: var(--danger-red);
+color: var(--white);
+}
+.btn-delete:hover {
+background-color: #c82333;
+}
+.modal {
+display: none;
+position: fixed;
+z-index: 1000;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.5);
+animation: fadeIn 0.3s ease;
+}
+.modal.active {
+display: flex;
+justify-content: center;
+align-items: center;
+}
+.modal-content {
+background-color: var(--white);
+padding: 30px;
+border-radius: 12px;
+box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+max-width: 700px;
+width: 90%;
+max-height: 80vh;
+overflow-y: auto;
+animation: slideDown 0.3s ease;
+}
+.modal-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 20px;
+padding-bottom: 15px;
+border-bottom: 2px solid var(--primary-blue);
+}
+.modal-header h2 {
+margin: 0;
+color: var(--primary-blue);
+font-size: 22px;
+}
+.close-modal {
+background: none;
+border: none;
+font-size: 28px;
+cursor: pointer;
+color: var(--dark-gray);
+line-height: 1;
+padding: 0;
+width: 30px;
+height: 30px;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+.close-modal:hover {
+color: var(--danger-red);
+}
+.modal-body {
+margin-bottom: 20px;
+}
+.form-group-modal {
+margin-bottom: 20px;
+}
+.form-group-modal label {
+display: block;
+margin-bottom: 8px;
+font-weight: bold;
+color: var(--dark-gray);
+}
+.form-group-modal input,
+.form-group-modal textarea {
+width: 100%;
+padding: 10px;
+border: 1px solid var(--gray);
+border-radius: 6px;
+font-size: 14px;
+font-family: inherit;
+}
+.form-group-modal textarea {
+min-height: 100px;
+resize: vertical;
+}
+.modal-footer {
+display: flex;
+gap: 10px;
+justify-content: flex-end;
+}
+.btn-cancel {
+background-color: var(--gray);
+color: var(--dark-gray);
+}
+.btn-cancel:hover {
+background-color: #c5c5c5;
+}
+.btn-save {
+background-color: var(--success-green);
+color: var(--white);
+}
+.btn-save:hover {
+background-color: #218838;
+}
+
+/* Estilos para o Modal de Prioridades */
+.priority-list {
+list-style: none;
+padding: 0;
+margin: 0;
+}
+.priority-item {
+background-color: var(--light-gray-bg);
+border: 2px solid var(--priority-purple);
+border-radius: 8px;
+padding: 15px;
+margin-bottom: 10px;
+cursor: grab;
+transition: all 0.2s ease;
+display: flex;
+align-items: center;
+gap: 15px;
+user-select: none;
+}
+.priority-item:active {
+cursor: grabbing;
+}
+.priority-item:hover {
+background-color: #f0e6ff;
+box-shadow: 0 4px 12px rgba(111, 66, 193, 0.2);
+transform: translateY(-2px);
+}
+.priority-item.dragging {
+opacity: 0.4;
+cursor: grabbing;
+}
+.priority-item.drag-over {
+border-color: var(--success-green);
+background-color: #e8f5e9;
+border-style: dashed;
+}
+.priority-number {
+background-color: var(--priority-purple);
+color: var(--white);
+font-weight: bold;
+font-size: 18px;
+min-width: 50px;
+height: 50px;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+}
+.priority-content {
+flex: 1;
+}
+.priority-viatura {
+font-weight: bold;
+font-size: 16px;
+color: var(--primary-blue);
+margin-bottom: 5px;
+}
+.priority-details {
+font-size: 14px;
+color: var(--dark-gray);
+}
+.priority-item-label {
+font-weight: bold;
+}
+.priority-annotation {
+color: var(--danger-red);
+font-weight: bold;
+}
+.priority-delete-btn {
+background-color: var(--danger-red);
+color: var(--white);
+border: none;
+border-radius: 50%;
+width: 35px;
+height: 35px;
+display: flex;
+align-items: center;
+justify-content: center;
+cursor: pointer;
+flex-shrink: 0;
+transition: all 0.3s ease;
+font-size: 16px;
+}
+.priority-delete-btn:hover {
+background-color: #c82333;
+transform: scale(1.1);
+box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
+}
+.priority-empty {
+text-align: center;
+padding: 40px 20px;
+color: var(--gray);
+font-size: 16px;
+}
+.priority-empty i {
+font-size: 48px;
+margin-bottom: 15px;
+display: block;
+}
+.priority-instructions {
+background-color: #f0e6ff;
+border-left: 4px solid var(--priority-purple);
+padding: 12px 15px;
+margin-bottom: 20px;
+border-radius: 4px;
+font-size: 14px;
+}
+.priority-instructions i {
+color: var(--priority-purple);
+margin-right: 8px;
+}
+
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+@keyframes slideDown {
+from { transform: translateY(-50px); opacity: 0; }
+to { transform: translateY(0); opacity: 1; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="tabs">
+<a href="vistoriar.html"><button class="tab-button"><i class="fas fa-car"></i> Vistoriar Viatura</button></a>
+<a href="historico.html"><button class="tab-button"><i class="fas fa-history"></i> Histórico</button></a>
+<a href="situacao.html"><button class="tab-button active"><i class="fas fa-info-circle"></i> Situação</button></a>
+<a href="responsabilidades.html"><button class="tab-button"><i class="fas fa-users"></i> Responsabilidades</button></a>
+<a href="vtr-oficina.html"><button class="tab-button"><i class="fas fa-tools"></i> Registro de Manutenções</button></a>
+</div>
+<div id="status" class="tab-content active">
+<h1 class="page-title"><i class="fas fa-info-circle"></i> Situação das Viaturas</h1>
+<p style="text-align: center; margin-top: -20px; margin-bottom: 20px;">Esta tabela exibe apenas as anotações <strong>da última vistoria de cada viatura</strong> que estão pendentes. Itens já resolvidos aparecem apenas no Histórico.</p>
+<div class="global-actions">
+<button id="btnPdf" class="btn"><i class="fas fa-file-pdf"></i> Gerar PDF da Situação</button>
+<button id="btnPrioridades" class="btn btn-priority"><i class="fas fa-star"></i> Prioridades</button>
+</div>
+<div class="filter-container">
+<div class="form-group">
+<label for="filterDate">Data</label>
+<input type="date" id="filterDate">
+</div>
+<div class="form-group">
+<label for="filterViatura">Viatura</label>
+<select id="filterViatura"></select>
+</div>
+<div class="form-group">
+<label for="filterMotorista">Motorista</label>
+<select id="filterMotorista"></select>
+</div>
+<div class="form-group">
+<label for="filterSearch"><i class="fas fa-search"></i> Pesquisar</label>
+<input type="search" id="filterSearch" placeholder="Busque em qualquer campo...">
+</div>
+</div>
+<div class="table-container">
+<table class="data-table" id="statusTable">
+<thead>
+<tr>
+<th>Data da Vistoria</th>
+<th>Viatura</th>
+<th>Motorista</th>
+<th>Item com Anotação</th>
+<th>Anotação</th>
+<th>Marcar Problema</th>
+<th>Prioridades</th>
+<th>Imprimir</th>
+<th>Ações</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<!-- Modal de Edição -->
+<div id="editModal" class="modal">
+<div class="modal-content">
+<div class="modal-header">
+<h2><i class="fas fa-edit"></i> Editar Anotação</h2>
+<button class="close-modal" onclick="closeEditModal()">&times;</button>
+</div>
+<div class="modal-body">
+<div class="form-group-modal">
+<label>Data da Vistoria</label>
+<input type="text" id="editData" readonly style="background-color: #f0f0f0;">
+</div>
+<div class="form-group-modal">
+<label>Viatura</label>
+<input type="text" id="editViatura" readonly style="background-color: #f0f0f0;">
+</div>
+<div class="form-group-modal">
+<label>Motorista</label>
+<input type="text" id="editMotorista" readonly style="background-color: #f0f0f0;">
+</div>
+<div class="form-group-modal">
+<label>Item</label>
+<input type="text" id="editItem" readonly style="background-color: #f0f0f0;">
+</div>
+<div class="form-group-modal">
+<label for="editNota">Anotação</label>
+<textarea id="editNota" placeholder="Digite a anotação..."></textarea>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-cancel" onclick="closeEditModal()">
+<i class="fas fa-times"></i> Cancelar
+</button>
+<button class="btn btn-save" onclick="saveEdit()">
+<i class="fas fa-save"></i> Salvar
+</button>
+</div>
+</div>
+</div>
+
+<!-- Modal de Prioridades -->
+<div id="priorityModal" class="modal">
+<div class="modal-content">
+<div class="modal-header">
+<h2><i class="fas fa-star"></i> Gerenciar Prioridades</h2>
+<button class="close-modal" onclick="closePriorityModal()">&times;</button>
+</div>
+<div class="modal-body">
+<div class="priority-instructions">
+<i class="fas fa-hand-pointer"></i>
+<strong>Instruções:</strong> Arraste os itens com o mouse (segurando o botão esquerdo) para reorganizar as prioridades. Clique no botão vermelho para excluir.
+</div>
+<ul id="priorityList" class="priority-list"></ul>
+</div>
+<div class="modal-footer">
+<button id="btnPriorityPdf" class="btn">
+<i class="fas fa-file-pdf"></i> Gerar PDF
+</button>
+<button class="btn btn-cancel" onclick="closePriorityModal()">
+<i class="fas fa-times"></i> Fechar
+</button>
+</div>
+</div>
+</div>
+
+<!-- Modal de Seleção de PDF -->
+<div id="pdfSelectionModal" class="modal">
+<div class="modal-content" style="max-width: 800px;">
+<div class="modal-header">
+<h2><i class="fas fa-file-pdf"></i> Gerar PDF da Situação</h2>
+<button class="close-modal" onclick="closePdfSelectionModal()">&times;</button>
+</div>
+<div class="modal-body">
+<div class="priority-instructions">
+<i class="fas fa-info-circle"></i>
+<strong>Escolha uma opção:</strong> Gere um PDF único com todas as viaturas ou PDFs separados por viatura.
+</div>
+<div style="margin-bottom: 20px;">
+<button id="btnPdfUnificado" class="btn" style="width: 100%; margin-bottom: 10px; background-color: var(--success-green);">
+<i class="fas fa-file-pdf"></i> Gerar PDF Único (Todas as Viaturas)
+</button>
+<button id="btnPdfSeparado" class="btn" style="width: 100%; background-color: var(--warning-orange);">
+<i class="fas fa-layer-group"></i> Gerar PDFs Separados por Viatura
+</button>
+</div>
+<div id="viaturasSelectionContainer" style="display: none;">
+<div style="background-color: var(--light-gray-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+<label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: bold;">
+<input type="checkbox" id="selectAllViaturas" style="transform: scale(1.3);">
+Selecionar Todas as Viaturas
+</label>
+</div>
+<div id="viaturasCheckboxList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--gray); border-radius: 8px; padding: 15px; background-color: var(--white);"></div>
+<div style="margin-top: 15px; padding: 10px; background-color: var(--light-blue-bg); border-radius: 5px;">
+<p style="margin: 5px 0;"><strong>Total de viaturas selecionadas:</strong> <span id="totalViaturasCount">0</span></p>
+</div>
+<button id="btnGerarPdfsSelecionados" class="btn btn-save" style="width: 100%; margin-top: 15px;">
+<i class="fas fa-download"></i> Baixar PDFs das Viaturas Selecionadas
+</button>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-cancel" onclick="closePdfSelectionModal()">
+<i class="fas fa-times"></i> Fechar
+</button>
+</div>
+</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+let inspections = [];
+const statusTableBody = document.querySelector('#statusTable tbody');
+const filterDate = document.getElementById('filterDate');
+const filterViatura = document.getElementById('filterViatura');
+const filterMotorista = document.getElementById('filterMotorista');
+const filterSearch = document.getElementById('filterSearch');
+const btnPdf = document.getElementById('btnPdf');
+const btnPrioridades = document.getElementById('btnPrioridades');
+let currentEditData = null;
+let draggedElement = null;
+window.priorityAnnotationsSnapshot = [];
+
+function formatDate(d) {
+if (!d) return '';
+const [y, m, day] = d.split('-');
+return `${day}/${m}/${y}`;
+}
+
+// Expor formatDate globalmente para uso em outras funções fora do escopo do DOMContentLoaded
+window.formatDate = formatDate;
+
+// NOVA FUNÇÃO: Retorna data atual no formato YYYY-MM-DD
+function getCurrentDate() {
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, '0');
+const day = String(now.getDate()).padStart(2, '0');
+return `${year}-${month}-${day}`;
+}
+
+function loadData() {
+try {
+inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+} catch (e) {
+console.error('Erro ao carregar vistorias:', e);
+inspections = [];
+}
+}
+
+function saveData() {
+try {
+localStorage.setItem('vistorias', JSON.stringify(inspections));
+} catch (e) {
+console.error('Erro ao salvar vistorias:', e);
+alert('Erro ao salvar alterações!');
+}
+}
+
+function loadValidInspectionItems() {
+try {
+const itensVistoria = JSON.parse(localStorage.getItem('itensVistoria') || '[]');
+return itensVistoria.length > 0 ? itensVistoria : [];
+} catch (e) {
+console.error('Erro ao carregar itens de vistoria:', e);
+return [];
+}
+}
+
+function loadViaturasComProblemas() {
+try {
+return JSON.parse(localStorage.getItem('viaturasComProblemas') || '{}');
+} catch (e) {
+console.error('Erro ao carregar viaturas com problemas:', e);
+return {};
+}
+}
+
+function saveViaturasComProblemas(data) {
+try {
+localStorage.setItem('viaturasComProblemas', JSON.stringify(data));
+window.parent.postMessage({ type: 'viaturas_problemas_update' }, '*');
+} catch (e) {
+console.error('Erro ao salvar viaturas com problemas:', e);
+}
+}
+
+function loadPrioridades() {
+try {
+return JSON.parse(localStorage.getItem('prioridades') || '[]');
+} catch (e) {
+console.error('Erro ao carregar prioridades:', e);
+return [];
+}
+}
+
+function loadImprimirItems() {
+try {
+return JSON.parse(localStorage.getItem('imprimirItems') || '{}');
+} catch (e) {
+console.error('Erro ao carregar itens para impressão:', e);
+return {};
+}
+}
+
+function saveImprimirItems(data) {
+try {
+localStorage.setItem('imprimirItems', JSON.stringify(data));
+console.log('Itens para impressão salvos:', data);
+} catch (e) {
+console.error('Erro ao salvar itens para impressão:', e);
+}
+}
+
+function savePrioridades(prioridades) {
+try {
+localStorage.setItem('prioridades', JSON.stringify(prioridades));
+console.log('Prioridades salvas:', prioridades);
+} catch (e) {
+console.error('Erro ao salvar prioridades:', e);
+}
+}
+
+function populateFilters() {
+const validItemNames = loadValidInspectionItems();
+const inspectionsWithPendingNotes = inspections.filter(insp => {
+if (insp.status === 'OFICINA') return false;
+return (insp.resultados || []).some(res => {
+const hasNote = res.nota && res.nota.trim() !== '' && res.resolvido === false;
+const isValidItem = validItemNames.length === 0 || validItemNames.includes(res.item);
+return hasNote && isValidItem;
+});
+});
+
+const allViaturas = [...new Set(inspectionsWithPendingNotes.map(i => i.placa))].sort();
+const allMotoristas = [...new Set(inspectionsWithPendingNotes.map(i => i.motorista))].sort();
+
+filterViatura.innerHTML = '<option value="">Todas as Viaturas</option>';
+allViaturas.forEach(placa => {
+filterViatura.innerHTML += `<option value="${placa}">${placa}</option>`;
+});
+
+filterMotorista.innerHTML = '<option value="">Todos os Motoristas</option>';
+allMotoristas.forEach(motorista => {
+filterMotorista.innerHTML += `<option value="${motorista}">${motorista}</option>`;
+});
+}
+
+function getFilteredAnnotations() {
+const dateValue = filterDate.value;
+const viaturaValue = filterViatura.value;
+const motoristaValue = filterMotorista.value;
+const searchValue = filterSearch.value.trim().toLowerCase();
+const validItemNames = loadValidInspectionItems();
+
+// NOVA LÓGICA: Pega apenas a última vistoria de cada viatura
+const latestInspectionsByViatura = new Map();
+inspections
+.filter(i => i.status !== 'OFICINA')
+.forEach(inspection => {
+const existing = latestInspectionsByViatura.get(inspection.placa);
+if (!existing || new Date(inspection.data) > new Date(existing.data)) {
+latestInspectionsByViatura.set(inspection.placa, inspection);
+}
+});
+
+// Converte para array apenas as últimas vistorias
+let filteredInspections = Array.from(latestInspectionsByViatura.values());
+
+// Aplica filtros
+if (dateValue) filteredInspections = filteredInspections.filter(i => i.data === dateValue);
+if (viaturaValue) filteredInspections = filteredInspections.filter(i => i.placa === viaturaValue);
+if (motoristaValue) filteredInspections = filteredInspections.filter(i => i.motorista === motoristaValue);
+
+// Extrai anotações pendentes apenas das últimas vistorias
+let allAnnotations = filteredInspections.flatMap(inspection =>
+(inspection.resultados || [])
+.filter(res => res.nota && res.nota.trim() !== '' && res.resolvido === false)
+.filter(res => {
+if (validItemNames.length === 0) return true;
+return validItemNames.includes(res.item);
+})
+.map(res => ({
+...res,
+data: inspection.data,
+placa: inspection.placa,
+motorista: inspection.motorista,
+uniqueId: `${inspection.placa}_${res.item}_${res.nota}`.replace(/\s/g, '_').replace(/[^\w-]/g, ''),
+inspectionRef: inspection
+}))
+);
+
+// Aplica filtro de pesquisa
+if (searchValue) {
+allAnnotations = allAnnotations.filter(a => {
+const searchableContent = [a.placa, a.motorista, a.item, a.nota].join(' ').toLowerCase();
+return searchableContent.includes(searchValue);
+});
+}
+
+return allAnnotations.sort((a, b) => new Date(b.data) - new Date(a.data));
+}
+
+function handleCheckboxChange(event) {
+const checkbox = event.target;
+const uniqueId = checkbox.dataset.id;
+const placa = checkbox.dataset.placa;
+const item = checkbox.dataset.item;
+const nota = checkbox.dataset.nota;
+
+let viaturasComProblemas = loadViaturasComProblemas();
+
+if (checkbox.checked) {
+if (!viaturasComProblemas[placa]) {
+viaturasComProblemas[placa] = [];
+}
+viaturasComProblemas[placa].push({
+id: uniqueId,
+item: item,
+nota: nota
+});
+} else {
+if (viaturasComProblemas[placa]) {
+viaturasComProblemas[placa] = viaturasComProblemas[placa].filter(p => p.id !== uniqueId);
+if (viaturasComProblemas[placa].length === 0) {
+delete viaturasComProblemas[placa];
+}
+}
+}
+
+saveViaturasComProblemas(viaturasComProblemas);
+}
+
+function handlePriorityCheckboxChange(event) {
+const checkbox = event.target;
+const uniqueId = checkbox.dataset.id;
+let prioridades = loadPrioridades();
+
+if (checkbox.checked) {
+if (!prioridades.includes(uniqueId)) {
+prioridades.push(uniqueId);
+console.log('Adicionado à prioridade:', uniqueId);
+}
+} else {
+prioridades = prioridades.filter(id => id !== uniqueId);
+console.log('Removido da prioridade:', uniqueId);
+}
+
+savePrioridades(prioridades);
+}
+
+function openEditModal(annotation) {
+currentEditData = annotation;
+document.getElementById('editData').value = formatDate(annotation.data);
+document.getElementById('editViatura').value = annotation.placa;
+document.getElementById('editMotorista').value = annotation.motorista;
+document.getElementById('editItem').value = annotation.item;
+document.getElementById('editNota').value = annotation.nota;
+document.getElementById('editModal').classList.add('active');
+}
+
+window.closeEditModal = function() {
+document.getElementById('editModal').classList.remove('active');
+currentEditData = null;
+}
+
+window.saveEdit = function() {
+if (!currentEditData) return;
+
+const newNota = document.getElementById('editNota').value.trim();
+if (!newNota) {
+alert('A anotação não pode estar vazia!');
+return;
+}
+
+const inspection = inspections.find(insp =>
+insp.data === currentEditData.data &&
+insp.placa === currentEditData.placa &&
+insp.motorista === currentEditData.motorista
+);
+
+if (inspection && inspection.resultados) {
+const resultado = inspection.resultados.find(res =>
+res.item === currentEditData.item &&
+res.nota === currentEditData.nota
+);
+
+if (resultado) {
+resultado.nota = newNota;
+saveData();
+closeEditModal();
+populateFilters();
+populateStatusTable();
+alert('Anotação atualizada com sucesso!');
+}
+}
+}
+
+// CORRIGIDO: Adiciona data de resolução ao marcar como resolvido
+function deleteAnnotation(annotation) {
+if (!confirm(`Tem certeza que deseja marcar esta anotação como RESOLVIDA?\n\nViatura: ${annotation.placa}\nItem: ${annotation.item}\nAnotação: ${annotation.nota}\n\nEla será removida da Situação mas permanecerá no Histórico com a data de resolução.`)) {
+return;
+}
+
+const inspection = inspections.find(insp =>
+insp.data === annotation.data &&
+insp.placa === annotation.placa &&
+insp.motorista === annotation.motorista
+);
+
+if (inspection && inspection.resultados) {
+const resultado = inspection.resultados.find(res =>
+res.item === annotation.item &&
+res.nota === annotation.nota
+);
+
+if (resultado) {
+resultado.resolvido = true;
+resultado.dataResolucao = getCurrentDate(); // ADICIONA DATA DE RESOLUÇÃO
+console.log('Item resolvido:', resultado);
+saveData();
+populateFilters();
+populateStatusTable();
+alert('Anotação marcada como resolvida! Verifique o Histórico para ver o item traçado.');
+}
+}
+}
+
+function populateStatusTable() {
+statusTableBody.innerHTML = '';
+const allAnnotations = getFilteredAnnotations();
+const viaturasComProblemas = loadViaturasComProblemas();
+const prioridades = loadPrioridades();
+const imprimirItems = loadImprimirItems();
+
+console.log(`📋 Carregando aba Situação...`);
+console.log(`   Total de anotações pendentes: ${allAnnotations.length}`);
+console.log(`   Configurações existentes: ${Object.keys(imprimirItems).length}`);
+
+// Inicializar novos itens como true (marcados para impressão)
+// IMPORTANTE: Isso garante que todos os itens pendentes sejam marcados por padrão
+let needsSave = false;
+let newItemsCount = 0;
+allAnnotations.forEach(a => {
+if (!(a.uniqueId in imprimirItems)) {
+console.log(`🆕 Novo item detectado - Auto-marcando como true:`);
+console.log(`   Placa: ${a.placa} | Item: ${a.item}`);
+console.log(`   UniqueId: ${a.uniqueId}`);
+imprimirItems[a.uniqueId] = true;
+needsSave = true;
+newItemsCount++;
+}
+});
+if (needsSave) {
+console.log(`✅ ${newItemsCount} novo(s) item(ns) inicializado(s) e salvo(s) no localStorage`);
+saveImprimirItems(imprimirItems);
+console.log(`📊 Total de configurações agora: ${Object.keys(imprimirItems).length}`);
+}
+
+if (allAnnotations.length === 0) {
+const row = document.createElement('tr');
+const cell = document.createElement('td');
+cell.colSpan = 9;
+cell.style.textAlign = 'center';
+cell.textContent = 'Nenhuma anotação pendente encontrada. Todas as viaturas estão OK!';
+row.appendChild(cell);
+statusTableBody.appendChild(row);
+return;
+}
+
+allAnnotations.forEach(a => {
+const isChecked = viaturasComProblemas[a.placa]?.some(p => p.id === a.uniqueId) || false;
+const isPriority = prioridades.includes(a.uniqueId);
+const isPrintable = imprimirItems[a.uniqueId] === true; // Só é imprimível se estiver explicitamente marcado como true
+const row = document.createElement('tr');
+
+// Data
+const cellData = document.createElement('td');
+cellData.textContent = formatDate(a.data);
+row.appendChild(cellData);
+
+// Placa
+const cellPlaca = document.createElement('td');
+cellPlaca.textContent = a.placa;
+row.appendChild(cellPlaca);
+
+// Motorista
+const cellMotorista = document.createElement('td');
+cellMotorista.textContent = a.motorista;
+row.appendChild(cellMotorista);
+
+// Item
+const cellItem = document.createElement('td');
+cellItem.textContent = a.item;
+row.appendChild(cellItem);
+
+// Anotação - VERMELHO E NEGRITO
+const cellNota = document.createElement('td');
+cellNota.className = 'annotation-cell';
+cellNota.textContent = a.nota;
+row.appendChild(cellNota);
+
+// Checklist Problema
+const cellCheckbox = document.createElement('td');
+cellCheckbox.className = 'checklist-cell';
+const checklistDiv = document.createElement('div');
+checklistDiv.className = 'checklist-item';
+
+const checkbox = document.createElement('input');
+checkbox.type = 'checkbox';
+checkbox.id = `check_${a.uniqueId}`;
+checkbox.dataset.id = a.uniqueId;
+checkbox.dataset.placa = a.placa;
+checkbox.dataset.item = a.item;
+checkbox.dataset.nota = a.nota;
+checkbox.checked = isChecked;
+checkbox.addEventListener('change', handleCheckboxChange);
+
+const label = document.createElement('label');
+label.htmlFor = `check_${a.uniqueId}`;
+label.textContent = isChecked ? 'Marcado' : 'Marcar';
+label.style.color = isChecked ? '#28a745' : '#6c757d';
+
+checkbox.addEventListener('change', function() {
+label.textContent = this.checked ? 'Marcado' : 'Marcar';
+label.style.color = this.checked ? '#28a745' : '#6c757d';
+});
+
+checklistDiv.appendChild(checkbox);
+checklistDiv.appendChild(label);
+cellCheckbox.appendChild(checklistDiv);
+row.appendChild(cellCheckbox);
+
+// Checklist Prioridade
+const cellPriority = document.createElement('td');
+cellPriority.className = 'checklist-cell';
+const priorityDiv = document.createElement('div');
+priorityDiv.className = 'checklist-item priority';
+
+const priorityCheckbox = document.createElement('input');
+priorityCheckbox.type = 'checkbox';
+priorityCheckbox.id = `priority_${a.uniqueId}`;
+priorityCheckbox.dataset.id = a.uniqueId;
+priorityCheckbox.checked = isPriority;
+priorityCheckbox.addEventListener('change', handlePriorityCheckboxChange);
+
+const priorityLabel = document.createElement('label');
+priorityLabel.htmlFor = `priority_${a.uniqueId}`;
+priorityLabel.textContent = isPriority ? 'Marcado' : 'Marcar';
+priorityLabel.style.color = isPriority ? '#6f42c1' : '#6c757d';
+
+priorityCheckbox.addEventListener('change', function() {
+priorityLabel.textContent = this.checked ? 'Marcado' : 'Marcar';
+priorityLabel.style.color = this.checked ? '#6f42c1' : '#6c757d';
+});
+
+priorityDiv.appendChild(priorityCheckbox);
+priorityDiv.appendChild(priorityLabel);
+cellPriority.appendChild(priorityDiv);
+row.appendChild(cellPriority);
+
+// Checklist Imprimir
+const cellPrint = document.createElement('td');
+cellPrint.className = 'checklist-cell';
+const printDiv = document.createElement('div');
+printDiv.className = 'checklist-item';
+
+const printCheckbox = document.createElement('input');
+printCheckbox.type = 'checkbox';
+printCheckbox.id = `print_${a.uniqueId}`;
+printCheckbox.dataset.id = a.uniqueId;
+printCheckbox.checked = isPrintable;
+printCheckbox.addEventListener('change', function() {
+console.log('🔄 Checkbox alterado!');
+console.log('  UniqueId:', this.dataset.id);
+console.log('  Novo valor:', this.checked);
+const imprimirData = loadImprimirItems();
+imprimirData[this.dataset.id] = this.checked;
+saveImprimirItems(imprimirData);
+console.log('  ✅ Salvo no localStorage');
+printLabel.textContent = this.checked ? 'Sim' : 'Não';
+printLabel.style.color = this.checked ? '#28a745' : '#dc3545';
+});
+
+const printLabel = document.createElement('label');
+printLabel.htmlFor = `print_${a.uniqueId}`;
+printLabel.textContent = isPrintable ? 'Sim' : 'Não';
+printLabel.style.color = isPrintable ? '#28a745' : '#dc3545';
+
+printDiv.appendChild(printCheckbox);
+printDiv.appendChild(printLabel);
+cellPrint.appendChild(printDiv);
+row.appendChild(cellPrint);
+
+// Ações (Editar e Resolver)
+const cellActions = document.createElement('td');
+cellActions.className = 'actions-cell';
+const actionsDiv = document.createElement('div');
+actionsDiv.className = 'action-buttons';
+
+const btnEdit = document.createElement('button');
+btnEdit.className = 'btn-action btn-edit';
+btnEdit.innerHTML = '<i class="fas fa-edit"></i> Editar';
+btnEdit.onclick = () => openEditModal(a);
+
+const btnResolve = document.createElement('button');
+btnResolve.className = 'btn-action btn-delete';
+btnResolve.innerHTML = '<i class="fas fa-check"></i> Resolver';
+btnResolve.title = 'Marcar como resolvido';
+btnResolve.onclick = () => deleteAnnotation(a);
+
+actionsDiv.appendChild(btnEdit);
+actionsDiv.appendChild(btnResolve);
+cellActions.appendChild(actionsDiv);
+row.appendChild(cellActions);
+
+statusTableBody.appendChild(row);
+});
+}
+
+function generatePdf() {
+openPdfSelectionModal();
+}
+
+function generatePdfUnificado() {
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+const filteredData = getFilteredAnnotations();
+const imprimirItems = loadImprimirItems();
+
+// Filtrar apenas itens marcados para impressão
+const printableData = filteredData.filter(a => imprimirItems[a.uniqueId] === true);
+
+if (printableData.length === 0) {
+alert('Nenhuma anotação marcada para impressão. Marque os itens na coluna "Imprimir" e tente novamente.');
+return;
+}
+
+const tableHead = [['Data Vistoria', 'Viatura', 'Motorista', 'Item', 'Anotação Pendente']];
+const tableBody = printableData.map(a => [formatDate(a.data), a.placa, a.motorista, a.item, a.nota]);
+
+doc.autoTable({
+head: tableHead,
+body: tableBody,
+startY: 20,
+headStyles: { fillColor: [74, 105, 189] },
+styles: { fontSize: 9 }
+});
+
+doc.text("Situação de Vistorias (Pendências Atuais)", 14, 15);
+doc.save(`situacao_vistorias_${new Date().toISOString().slice(0, 10)}.pdf`);
+alert(`PDF único gerado com sucesso!\n\nTotal de itens incluídos: ${printableData.length}`);
+closePdfSelectionModal();
+}
+
+function generatePdfPorViatura(placa) {
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+const allData = getFilteredAnnotations();
+const imprimirItems = loadImprimirItems();
+
+// Filtrar apenas itens marcados para impressão
+const viaturaData = allData.filter(a => a.placa === placa && imprimirItems[a.uniqueId] === true);
+
+if (viaturaData.length === 0) {
+return null;
+}
+
+const tableHead = [['Data Vistoria', 'Motorista', 'Item', 'Anotação Pendente']];
+const tableBody = viaturaData.map(a => [formatDate(a.data), a.motorista, a.item, a.nota]);
+
+doc.text(`Situação da Viatura: ${placa}`, 14, 15);
+doc.setFontSize(10);
+doc.text(`Data de Geração: ${formatDate(new Date().toISOString().split('T')[0])}`, 14, 22);
+
+doc.autoTable({
+head: tableHead,
+body: tableBody,
+startY: 30,
+headStyles: { fillColor: [74, 105, 189] },
+styles: { fontSize: 10 }
+});
+
+return doc;
+}
+
+function openPdfSelectionModal() {
+document.getElementById('pdfSelectionModal').classList.add('active');
+document.getElementById('viaturasSelectionContainer').style.display = 'none';
+}
+
+window.closePdfSelectionModal = function() {
+document.getElementById('pdfSelectionModal').classList.remove('active');
+}
+
+function populateViaturasSelection() {
+const allData = getFilteredAnnotations();
+const viaturas = [...new Set(allData.map(a => a.placa))].sort();
+const viaturasCheckboxList = document.getElementById('viaturasCheckboxList');
+const selectAllViaturas = document.getElementById('selectAllViaturas');
+const totalViaturasCount = document.getElementById('totalViaturasCount');
+
+viaturasCheckboxList.innerHTML = '';
+
+if (viaturas.length === 0) {
+viaturasCheckboxList.innerHTML = '<p style="text-align: center; color: var(--gray);">Nenhuma viatura com anotações pendentes.</p>';
+document.getElementById('btnGerarPdfsSelecionados').disabled = true;
+return;
+}
+
+document.getElementById('btnGerarPdfsSelecionados').disabled = false;
+
+viaturas.forEach(placa => {
+const count = allData.filter(a => a.placa === placa).length;
+const div = document.createElement('div');
+div.style.cssText = 'padding: 10px; margin-bottom: 8px; background-color: var(--light-gray-bg); border-radius: 5px; border: 1px solid var(--gray);';
+
+const label = document.createElement('label');
+label.style.cssText = 'display: flex; align-items: center; gap: 10px; cursor: pointer;';
+
+const checkbox = document.createElement('input');
+checkbox.type = 'checkbox';
+checkbox.className = 'viatura-checkbox';
+checkbox.value = placa;
+checkbox.style.transform = 'scale(1.2)';
+checkbox.addEventListener('change', updateViaturasCount);
+
+const text = document.createElement('span');
+text.innerHTML = `<strong><i class="fas fa-car"></i> ${placa}</strong> <span style="color: var(--danger-red); font-size: 14px;">(${count} anotaç${count > 1 ? 'ões' : 'ão'})</span>`;
+
+label.appendChild(checkbox);
+label.appendChild(text);
+div.appendChild(label);
+viaturasCheckboxList.appendChild(div);
+});
+
+selectAllViaturas.checked = false;
+selectAllViaturas.addEventListener('change', function() {
+document.querySelectorAll('.viatura-checkbox').forEach(cb => {
+cb.checked = this.checked;
+});
+updateViaturasCount();
+});
+
+updateViaturasCount();
+}
+
+function updateViaturasCount() {
+const checkedCount = document.querySelectorAll('.viatura-checkbox:checked').length;
+document.getElementById('totalViaturasCount').textContent = checkedCount;
+}
+
+async function generatePdfsSeparados() {
+const selectedViaturas = Array.from(document.querySelectorAll('.viatura-checkbox:checked')).map(cb => cb.value);
+
+if (selectedViaturas.length === 0) {
+alert('Selecione pelo menos uma viatura para gerar os PDFs.');
+return;
+}
+
+const confirmMsg = `Você está prestes a gerar ${selectedViaturas.length} PDF(s) separado(s).\n\nOs arquivos serão baixados automaticamente.\n\nDeseja continuar?`;
+if (!confirm(confirmMsg)) return;
+
+const btnGerar = document.getElementById('btnGerarPdfsSelecionados');
+btnGerar.disabled = true;
+btnGerar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando PDFs...';
+
+for (let i = 0; i < selectedViaturas.length; i++) {
+const placa = selectedViaturas[i];
+const doc = generatePdfPorViatura(placa);
+if (doc) {
+doc.save(`situacao_${placa}_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+if (i < selectedViaturas.length - 1) {
+await new Promise(resolve => setTimeout(resolve, 500));
+}
+}
+
+btnGerar.disabled = false;
+btnGerar.innerHTML = '<i class="fas fa-download"></i> Baixar PDFs das Viaturas Selecionadas';
+alert(`${selectedViaturas.length} PDF(s) gerado(s) com sucesso!`);
+closePdfSelectionModal();
+}
+
+function openPriorityModal() {
+console.log('Abrindo modal de prioridades...');
+populatePriorityList();
+document.getElementById('priorityModal').classList.add('active');
+}
+
+window.closePriorityModal = function() {
+document.getElementById('priorityModal').classList.remove('active');
+}
+
+function deletePriority(uniqueId) {
+if (!confirm('Deseja remover este item das prioridades?\n\nEle também será desmarcado na tabela de Situação.')) {
+return;
+}
+
+let prioridades = loadPrioridades();
+prioridades = prioridades.filter(id => id !== uniqueId);
+savePrioridades(prioridades);
+
+const checkbox = document.getElementById(`priority_${uniqueId}`);
+if (checkbox) {
+checkbox.checked = false;
+const label = document.querySelector(`label[for="priority_${uniqueId}"]`);
+if (label) {
+label.textContent = 'Marcar';
+label.style.color = '#6c757d';
+}
+}
+
+populatePriorityList();
+console.log('Item removido das prioridades:', uniqueId);
+}
+
+function populatePriorityList() {
+const priorityList = document.getElementById('priorityList');
+priorityList.innerHTML = '';
+const prioridades = loadPrioridades();
+const allAnnotations = getFilteredAnnotations();
+
+console.log('Prioridades carregadas:', prioridades);
+console.log('Total de anotações:', allAnnotations.length);
+
+const priorityAnnotations = prioridades
+.map(id => allAnnotations.find(a => a.uniqueId === id))
+.filter(a => a !== undefined);
+
+console.log('Anotações prioritárias encontradas:', priorityAnnotations.length);
+
+window.priorityAnnotationsSnapshot = priorityAnnotations;
+
+if (priorityAnnotations.length === 0) {
+priorityList.innerHTML = `
+<div class="priority-empty">
+<i class="fas fa-star"></i>
+<p>Nenhuma prioridade marcada ainda.</p>
+<p style="font-size: 14px;">Marque itens na coluna "Prioridades" da tabela.</p>
+</div>
+`;
+return;
+}
+
+priorityAnnotations.forEach((annotation, index) => {
+const li = document.createElement('li');
+li.className = 'priority-item';
+li.draggable = true;
+li.dataset.id = annotation.uniqueId;
+
+li.innerHTML = `
+<div class="priority-number">${index + 1}º</div>
+<div class="priority-content">
+<div class="priority-viatura">
+<i class="fas fa-car"></i> ${annotation.placa}
+</div>
+<div class="priority-details">
+<span class="priority-item-label">Anotação:</span> <span class="priority-annotation">${annotation.nota}</span>
+</div>
+</div>
+<button class="priority-delete-btn" onclick="deletePriority('${annotation.uniqueId}')" title="Remover das prioridades">
+<i class="fas fa-trash"></i>
+</button>
+`;
+
+li.addEventListener('dragstart', handleDragStart);
+li.addEventListener('dragend', handleDragEnd);
+li.addEventListener('dragover', handleDragOver);
+li.addEventListener('drop', handleDrop);
+li.addEventListener('dragenter', handleDragEnter);
+li.addEventListener('dragleave', handleDragLeave);
+
+priorityList.appendChild(li);
+});
+}
+
+window.deletePriority = deletePriority;
+
+function handleDragStart(e) {
+draggedElement = this;
+this.classList.add('dragging');
+e.dataTransfer.effectAllowed = 'move';
+e.dataTransfer.setData('text/html', this.innerHTML);
+console.log('Iniciou arrasto:', this.dataset.id);
+}
+
+function handleDragEnd(e) {
+this.classList.remove('dragging');
+document.querySelectorAll('.priority-item').forEach(item => {
+item.classList.remove('drag-over');
+});
+console.log('Finalizou arrasto');
+}
+
+function handleDragOver(e) {
+if (e.preventDefault) {
+e.preventDefault();
+}
+e.dataTransfer.dropEffect = 'move';
+return false;
+}
+
+function handleDragEnter(e) {
+if (this !== draggedElement) {
+this.classList.add('drag-over');
+}
+}
+
+function handleDragLeave(e) {
+this.classList.remove('drag-over');
+}
+
+function handleDrop(e) {
+if (e.stopPropagation) {
+e.stopPropagation();
+}
+e.preventDefault();
+
+if (draggedElement !== this) {
+const allItems = Array.from(document.querySelectorAll('.priority-item'));
+const draggedIndex = allItems.indexOf(draggedElement);
+const targetIndex = allItems.indexOf(this);
+
+console.log('Drop - De:', draggedIndex, 'Para:', targetIndex);
+
+const priorityList = document.getElementById('priorityList');
+
+if (draggedIndex < targetIndex) {
+priorityList.insertBefore(draggedElement, this.nextSibling);
+} else {
+priorityList.insertBefore(draggedElement, this);
+}
+
+updatePriorityOrder();
+}
+
+this.classList.remove('drag-over');
+return false;
+}
+
+function updatePriorityOrder() {
+const items = document.querySelectorAll('.priority-item');
+const newOrder = Array.from(items).map(item => item.dataset.id);
+console.log('Nova ordem:', newOrder);
+savePrioridades(newOrder);
+populatePriorityList();
+}
+
+filterDate.addEventListener('change', populateStatusTable);
+filterViatura.addEventListener('change', populateStatusTable);
+filterMotorista.addEventListener('change', populateStatusTable);
+filterSearch.addEventListener('input', populateStatusTable);
+btnPdf.addEventListener('click', generatePdf);
+btnPrioridades.addEventListener('click', openPriorityModal);
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+if (e.target === this) {
+closeEditModal();
+}
+});
+
+document.getElementById('priorityModal').addEventListener('click', function(e) {
+if (e.target === this) {
+closePriorityModal();
+}
+});
+
+document.getElementById('pdfSelectionModal').addEventListener('click', function(e) {
+if (e.target === this) {
+closePdfSelectionModal();
+}
+});
+
+document.getElementById('btnPdfUnificado').addEventListener('click', generatePdfUnificado);
+
+document.getElementById('btnPdfSeparado').addEventListener('click', function() {
+populateViaturasSelection();
+document.getElementById('viaturasSelectionContainer').style.display = 'block';
+});
+
+document.getElementById('btnGerarPdfsSelecionados').addEventListener('click', generatePdfsSeparados);
+document.getElementById('btnPriorityPdf').addEventListener('click', generatePriorityPdf);
+
+(function initializeApp() {
+loadData();
+populateFilters();
+populateStatusTable();
+})();
+});
+
+function generatePriorityPdf() {
+    try {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            alert('Biblioteca jsPDF não carregada. Verifique sua conexão ou bloqueio de scripts.');
+            return;
+        }
+
+        const snapshot = ((window.priorityAnnotationsSnapshot && Array.isArray(window.priorityAnnotationsSnapshot)) ? window.priorityAnnotationsSnapshot : []).filter(Boolean);
+
+        if (snapshot.length === 0) {
+            const prioridades = loadPrioridades();
+            if (!prioridades || prioridades.length === 0) {
+                alert('Nenhum item marcado como prioridade. Selecione prioridades na tabela antes de gerar o PDF.');
+                return;
+            }
+
+            const allAnnotations = getFilteredAnnotations();
+            window.priorityAnnotationsSnapshot = prioridades
+                .map(id => allAnnotations.find(annotation => annotation && annotation.uniqueId === id))
+                .filter(annotation => annotation !== undefined);
+        }
+
+        const priorityAnnotations = window.priorityAnnotationsSnapshot;
+
+        if (priorityAnnotations.length === 0) {
+            alert('Nenhuma prioridade disponível com os filtros atuais. Ajuste os filtros ou marque novos itens.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const tableHead = [['#', 'Data Vistoria', 'Viatura', 'Motorista', 'Item', 'Anotação Pendente']];
+        const tableBody = priorityAnnotations.map((annotation, index) => [
+            `${index + 1}º`,
+            formatDate(annotation.data),
+            annotation.placa,
+            annotation.motorista,
+            annotation.item,
+            annotation.nota
+        ]);
+
+        doc.text('Prioridades de Vistorias', 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Total de prioridades: ${priorityAnnotations.length}`, 14, 22);
+
+        if (typeof doc.autoTable === 'function') {
+            doc.autoTable({
+                head: tableHead,
+                body: tableBody,
+                startY: 30,
+                headStyles: { fillColor: [74, 105, 189] },
+                styles: { fontSize: 9 }
+            });
+        } else {
+            // Fallback simples caso autoTable não esteja disponível
+            let y = 32;
+            doc.setFontSize(9);
+            tableBody.forEach(row => {
+                const line = row.join(' | ');
+                doc.text(line.substring(0, 120), 14, y);
+                y += 6;
+                if (y > 280) { doc.addPage(); y = 20; }
+            });
+        }
+
+        const filename = `prioridades_vistorias_${new Date().toISOString().slice(0, 10)}.pdf`;
+        doc.save(filename);
+        closePriorityModal();
+    } catch (err) {
+        console.error('Erro ao gerar PDF de prioridades:', err);
+        alert('Ocorreu um erro ao gerar o PDF de prioridades. Verifique o console para detalhes.');
+    }
+}
+</script>
+</body>
+</html>

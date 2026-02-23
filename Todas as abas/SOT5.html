@@ -1,0 +1,3760 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOT5 - Sistema de Organização de Transporte</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+--tab-text-color: var(--dark-gray);
+--tab-text-color-active: var(--primary-blue);
+--tab-text-color-hover: var(--tab-text-color);
+--tab-bg-inactive: #e9e9e9;
+--tab-bg-active: var(--white);
+--tab-hover-bg: #dcdcdc;
+--tab-border-color: #ccc;
+--tab-border-color-active: var(--primary-blue);
+--tab-inactive-bg: #e9ecef;
+--tab-active-bg: var(--white);
+--tab-border: 1px solid #dee2e6;
+--delete-red: #dc3545;
+--blink-red: #ff0000;
+--success-green: #28a745;
+--warning-orange: #ffc107;
+--export-excel: #21a221;
+--import-blue: #007bff;
+}
+body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); }
+body {
+overflow: auto;
+}
+html, body {
+scroll-behavior: smooth;
+height: 100%;
+}
+html {
+overflow-y: auto;
+}
+.top-bar {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 16px;
+padding: 10px 24px;
+background: #b0b0b0;
+color: #1f1f1f;
+font-weight: 600;
+letter-spacing: 0.08em;
+text-transform: uppercase;
+box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+position: sticky;
+top: 0;
+z-index: 2000;
+}
+.top-bar__title {
+font-size: 16px;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+text-shadow: 0 2px 4px rgba(0,0,0,0.35), 0 3px 10px rgba(0,0,0,0.2);
+}
+.window-controls {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.window-button {
+width: 36px;
+height: 32px;
+display: flex;
+align-items: center;
+justify-content: center;
+border: none;
+border-radius: 6px;
+background: transparent;
+color: #1f1f1f;
+cursor: pointer;
+transition: background 0.2s ease, transform 0.2s ease;
+}
+.window-button:hover {
+background: rgba(255,255,255,0.18);
+transform: translateY(-1px);
+}
+.window-button.close:hover {
+background: #dc3545;
+color: #fff;
+}
+.window-button:focus {
+outline: 2px solid rgba(255,255,255,0.6);
+outline-offset: 2px;
+}
+.app-closed-message {
+min-height: 100vh;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 12px;
+background: var(--light-gray-bg);
+color: var(--dark-gray);
+font-size: 18px;
+text-align: center;
+padding: 40px 20px;
+}
+.update-overlay {
+position: fixed;
+inset: 0;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 32px;
+background: radial-gradient(circle at top, rgba(74,105,189,0.28), rgba(23,32,42,0.88));
+backdrop-filter: blur(6px);
+opacity: 0;
+pointer-events: none;
+transition: opacity 0.45s ease;
+z-index: 3000;
+}
+.update-overlay.active {
+opacity: 1;
+pointer-events: auto;
+}
+.update-overlay[hidden] {
+display: none;
+}
+.update-card {
+max-width: 420px;
+width: 100%;
+padding: 32px 28px;
+border-radius: 24px;
+background: rgba(255,255,255,0.92);
+box-shadow: 0 24px 50px rgba(16,24,40,0.22);
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 18px;
+text-align: center;
+transform: translateY(32px) scale(0.96);
+opacity: 0;
+animation: cardPop 0.6s cubic-bezier(.16,1,.3,1) forwards 0.2s;
+}
+.update-overlay:not(.active) .update-card {
+animation: none;
+opacity: 0;
+transform: translateY(32px) scale(0.96);
+}
+.update-logo {
+width: 100%;
+max-width: 260px;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 0;
+box-shadow: none;
+border-radius: 18px;
+overflow: hidden;
+background: #ffffff;
+}
+.update-logo img {
+width: 100%;
+height: auto;
+object-fit: contain;
+image-rendering: auto;
+filter: drop-shadow(0 16px 32px rgba(0,0,0,0.18));
+}
+.update-icon {
+width: 72px;
+height: 72px;
+border-radius: 50%;
+display: grid;
+place-items: center;
+background: linear-gradient(135deg, rgba(74,105,189,0.85), rgba(108,136,201,0.85));
+color: #fff;
+font-size: 28px;
+box-shadow: 0 10px 25px rgba(74,105,189,0.35);
+}
+.update-loader {
+width: 70px;
+height: 70px;
+border: 6px solid rgba(74,105,189,0.18);
+border-top-color: var(--primary-blue);
+border-radius: 50%;
+animation: spinLoader 2.4s ease-in-out forwards;
+transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.update-message {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+.update-message strong {
+font-size: 18px;
+color: var(--primary-blue);
+}
+.update-message span {
+font-size: 14px;
+color: #4a5568;
+}
+.update-badge {
+font-size: 13px;
+font-weight: 600;
+letter-spacing: 0.08em;
+color: var(--primary-blue);
+text-transform: uppercase;
+background: rgba(74,105,189,0.12);
+padding: 6px 14px;
+border-radius: 999px;
+}
+.update-card h2 {
+margin: 0;
+font-size: 24px;
+color: var(--dark-gray);
+}
+.update-card p {
+margin: 0;
+color: #4a5568;
+font-size: 15px;
+line-height: 1.5;
+}
+.enter-button {
+padding: 12px 38px;
+background: linear-gradient(135deg, #4a69bd 0%, #314a92 100%);
+color: #fff;
+border: none;
+border-radius: 999px;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+box-shadow: 0 15px 30px rgba(74,105,189,0.35);
+transition: transform 0.25s ease, box-shadow 0.25s ease;
+min-width: 200px;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+gap: 10px;
+}
+.enter-button:hover {
+transform: translateY(-2px) scale(1.02);
+box-shadow: 0 22px 40px rgba(74,105,189,0.4);
+}
+.enter-button:active {
+transform: translateY(0);
+}
+.enter-button.is-disabled,
+.enter-button:disabled {
+cursor: wait;
+opacity: 0.6;
+transform: none;
+box-shadow: none;
+}
+@keyframes cardPop {
+0% { opacity: 0; transform: translateY(32px) scale(0.96); }
+100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes spinLoader {
+0% { transform: rotate(0deg) scale(1); opacity: 1; }
+70% { transform: rotate(540deg) scale(1); opacity: 1; }
+100% { transform: rotate(720deg) scale(0.6); opacity: 0; }
+}
+.update-loader.is-complete {
+opacity: 0;
+transform: scale(0.5);
+}
+header {
+background-color: var(--white);
+padding: 15px 40px;
+display: grid;
+grid-template-columns: 1fr auto 1fr;
+align-items: center;
+border-bottom: 1px solid var(--gray);
+box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.title-container {
+grid-column: 2;
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 15px;
+}
+.main-title {
+font-size: 28px;
+color: var(--primary-blue);
+font-weight: bold;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 15px;
+margin: 0;
+text-shadow: 0 2px 4px rgba(0,0,0,0.35), 0 4px 18px rgba(0,0,0,0.25), 0 4px 20px rgba(74,105,189,0.4), 0 1px 3px rgba(255,255,255,0.5);
+}
+.main-title {
+color: var(--primary-blue) !important;
+}
+#datetime-container {
+grid-column: 1;
+justify-self: start;
+display: flex;
+align-items: center;
+gap: 12px;
+background-color: #f1f3f5;
+padding: 8px 15px;
+border-radius: 8px;
+border: 1px solid var(--gray);
+color: var(--dark-gray);
+box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+}
+#brasao-icon {
+height: 40px;
+width: auto;
+}
+#date {
+font-size: 14px;
+font-weight: 500;
+text-shadow: 0 2px 4px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.15);
+}
+#time {
+font-size: 18px;
+font-weight: 500;
+color: var(--primary-blue);
+border-left: 1px solid var(--gray);
+padding-left: 12px;
+text-shadow: 0 2px 4px rgba(0,0,0,0.28), 0 3px 8px rgba(74,105,189,0.35);
+}
+#header-right-area {
+grid-column: 3;
+justify-self: end;
+display: flex;
+align-items: center;
+gap: 12px;
+}
+#escala-pao-amanha-box {
+display: flex;
+align-items: center;
+gap: 10px;
+background-color: #f1f3f5;
+padding: 8px 14px;
+border-radius: 8px;
+border: 1px solid var(--gray);
+box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+cursor: pointer;
+transition: background 0.2s;
+}
+#escala-pao-amanha-box:hover { background-color: #e9ecef; }
+#escala-pao-amanha-img {
+height: 44px;
+width: auto;
+display: block;
+object-fit: contain;
+}
+#escala-pao-amanha-nome {
+font-size: 14px;
+font-weight: 600;
+color: var(--dark-gray);
+max-width: 180px;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+}
+#lock-container {
+display: flex;
+align-items: center;
+background-color: #f1f3f5;
+padding: 8px 12px;
+border-radius: 8px;
+border: 1px solid var(--gray);
+box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+}
+#lock-icon-container {
+width: 50px;
+height: 50px;
+cursor: pointer;
+filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+display: flex;
+align-items: center;
+justify-content: center;
+}
+#lock-icon-container svg {
+display: block;
+}
+
+/* Modal Escala de Pão - Calendário */
+.modal-escala-pao { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; }
+.modal-escala-pao.active { display: flex; }
+.modal-escala-pao-content { background: var(--white); border-radius: 12px; padding: 24px; max-width: 560px; width: 92%; max-height: 90vh; overflow: auto; position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+.modal-escala-pao-close { position: absolute; right: 16px; top: 16px; background: none; border: none; font-size: 28px; color: #888; cursor: pointer; line-height: 1; padding: 0; }
+.modal-escala-pao-close:hover { color: #333; }
+.modal-escala-pao-titulo { margin: 0 0 16px 0; font-size: 20px; color: var(--primary-blue); }
+.modal-escala-pao-nav { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 16px; }
+.modal-escala-pao-nav button { background: var(--primary-blue); color: white; border: none; width: 36px; height: 36px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.modal-escala-pao-nav button:hover { opacity: 0.9; }
+.modal-escala-pao-nav span { font-weight: bold; font-size: 16px; color: var(--dark-gray); min-width: 180px; text-align: center; }
+.modal-escala-pao-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.modal-escala-pao-grid .ep-dia-cab { text-align: center; font-size: 11px; font-weight: bold; color: var(--primary-blue); padding: 6px 0; }
+.modal-escala-pao-grid .ep-dia { background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px; min-height: 56px; font-size: 12px; }
+.modal-escala-pao-grid .ep-dia.ep-outro-mes { background: #f1f3f5; color: #999; }
+.modal-escala-pao-grid .ep-dia.ep-hoje { border-color: var(--primary-blue); background: #e8f0fe; }
+.modal-escala-pao-grid .ep-dia.ep-feriado { background: #fff3cd; border-color: #ffc107; }
+.modal-escala-pao-grid .ep-dia.ep-fds { background: #e9ecef; color: #6c757d; }
+.modal-escala-pao-grid .ep-dia .ep-num { font-weight: bold; color: var(--dark-gray); margin-bottom: 4px; }
+.modal-escala-pao-grid .ep-dia .ep-nome { font-weight: 600; color: #333; line-height: 1.2; }
+.modal-escala-pao-grid .ep-dia .ep-feriado-desc { font-size: 10px; color: #856404; margin-top: 2px; }
+
+main { margin: 20px 10px; min-height: auto; }
+.tab-button-container { display: flex; justify-content: center; border-bottom: 1px solid var(--tab-border-color, #ccc); margin-bottom: 20px; flex-wrap: wrap; }
+.tab-button { background-color: var(--tab-bg-inactive, #e9e9e9); color: var(--tab-text-color, var(--dark-gray)); border: 1px solid var(--tab-border-color, #ccc); border-bottom: none; padding: 10px 15px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: bold; margin-right: 3px; transition: background-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; text-shadow: 0 2px 4px rgba(0,0,0,0.22); }
+.tab-button:hover { background-color: var(--tab-hover-bg, #dcdcdc); color: var(--tab-text-color-hover, var(--tab-text-color, var(--dark-gray))); text-shadow: 0 2px 6px rgba(0,0,0,0.28); }
+.tab-button.active { background-color: var(--tab-bg-active, var(--white)); border-color: var(--tab-border-color-active, var(--primary-blue)); border-bottom: 1px solid var(--tab-bg-active, var(--white)); position: relative; z-index: 1; color: var(--tab-text-color-active, var(--primary-blue)); box-shadow: 0 6px 12px rgba(0,0,0,0.12); text-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 4px 12px rgba(74,105,189,0.45); }
+.tab-button.locked {
+pointer-events: none;
+opacity: 0.5;
+background-color: #f0f0f0;
+}
+.tab-content { 
+    display: none; 
+    background-color: var(--white); 
+    padding: 0; 
+    border-radius: 8px; 
+    border: 1px solid #dee2e6; 
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    overflow: visible;
+    margin: 0;
+}
+.tab-content.active { 
+    display: block; 
+}
+iframe { 
+    width: 100%; 
+    height: 150vh; 
+    border: none; 
+    min-height: 100vh;
+    display: block;
+}
+/* Overlay global da Escala */
+#globalEscalaOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 2147483647; display: none; }
+#globalEscalaBox { position: absolute; inset: 0; background: #fff; display: flex; flex-direction: column; }
+#globalEscalaClose { position: absolute; top: 12px; right: 18px; font-size: 32px; color: #888; cursor: pointer; }
+#globalEscalaHeader { display: flex; gap: 10px; align-items: center; padding: 16px 56px 8px 16px; }
+#globalEscalaHeader label { font-weight: 600; color: var(--dark-gray); }
+#globalEscalaHeader select { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccd; }
+#globalEscalaTableWrap { flex: 1; margin: 8px 16px 16px 16px; border: 1px solid #e1e5ea; border-radius: 10px; overflow: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+#globalEscalaTable { width: 100%; border-collapse: collapse; min-width: 900px; border-radius: 10px; overflow: hidden; }
+#globalEscalaTable thead th { position: sticky; top: 0; z-index: 2; background: linear-gradient(180deg, #4a69bd 0%, #3f5aa3 100%); color: #fff; font-weight: 700; letter-spacing: .02em; padding: 10px 12px; }
+#globalEscalaTable td { border: 1px solid #e9ecef; padding: 8px 10px; text-align: center; }
+#globalEscalaTable tbody tr:nth-child(even) { background: #f8f9fb; }
+#globalEscalaTable td[contenteditable="true"] { text-transform: uppercase; font-weight: bold; }
+#globalEscalaTable td[contenteditable="true"]:focus { outline: 2px solid #4a69bd; background: #fff; }
+#globalEscalaTable td.marked-x { position: relative; }
+#globalEscalaTable td.marked-x::after {
+content: 'X';
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+color: red;
+font-size: 24px;
+font-weight: bold;
+pointer-events: none;
+z-index: 1;
+}
+/* Modal de Backup */
+#backupModal {
+display: none;
+position: fixed;
+z-index: 9999;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.6);
+animation: fadeIn 0.3s;
+}
+#backupModalContent {
+background-color: #fff;
+margin: 15% auto;
+padding: 30px;
+border-radius: 12px;
+width: 400px;
+box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+text-align: center;
+animation: slideDown 0.3s;
+}
+#backupModalContent h2 {
+color: #dc3545;
+margin: 0 0 20px 0;
+font-size: 28px;
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 10px;
+}
+#backupModalContent p {
+color: #333;
+font-size: 16px;
+margin-bottom: 25px;
+line-height: 1.5;
+}
+#backupModalBtn {
+background: linear-gradient(135deg, #4a69bd 0%, #3a5aa0 100%);
+color: white;
+padding: 12px 30px;
+border: none;
+border-radius: 8px;
+font-size: 16px;
+font-weight: bold;
+cursor: pointer;
+transition: all 0.3s;
+box-shadow: 0 4px 12px rgba(74, 105, 189, 0.3);
+}
+#backupModalBtn:hover {
+transform: translateY(-2px);
+box-shadow: 0 6px 16px rgba(74, 105, 189, 0.4);
+}
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+@keyframes slideDown {
+from { transform: translateY(-50px); opacity: 0; }
+to { transform: translateY(0); opacity: 1; }
+}
+/* Botão RDV ao lado do relógio */
+.rdv-header-btn {
+margin-left: 12px;
+padding: 6px 14px;
+font-size: 13px;
+font-weight: 600;
+background: linear-gradient(135deg, #4a69bd 0%, #3a5aa0 100%);
+color: white;
+border: none;
+border-radius: 6px;
+cursor: pointer;
+transition: all 0.2s;
+box-shadow: 0 2px 6px rgba(74,105,189,0.3);
+}
+.rdv-header-btn:hover {
+transform: translateY(-1px);
+box-shadow: 0 4px 10px rgba(74,105,189,0.4);
+}
+.fainas-header-btn {
+background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+box-shadow: 0 2px 6px rgba(45,106,79,0.35);
+}
+.fainas-header-btn:hover {
+box-shadow: 0 4px 10px rgba(45,106,79,0.45);
+}
+/* Modal Fainas - ultra moderno */
+#fainasModal {
+display: none;
+position: fixed;
+z-index: 10002;
+inset: 0;
+background: rgba(15,23,42,0.75);
+backdrop-filter: blur(12px);
+-webkit-backdrop-filter: blur(12px);
+overflow: auto;
+animation: fainasFadeIn 0.35s ease;
+}
+#fainasModal.active { display: block; }
+@keyframes fainasFadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+#fainasModalContent {
+max-width: 900px;
+margin: 32px auto 48px;
+background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+border-radius: 24px;
+box-shadow: 0 32px 64px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.1) inset;
+overflow: hidden;
+animation: fainasSlideUp 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes fainasSlideUp {
+from { opacity: 0; transform: translateY(24px) scale(0.98); }
+to { opacity: 1; transform: translateY(0) scale(1); }
+}
+#fainasModalHeader {
+padding: 28px 32px;
+background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 50%, #40916c 100%);
+color: #fff;
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 16px;
+flex-wrap: wrap;
+}
+#fainasModalHeader h2 {
+margin: 0;
+font-size: 22px;
+font-weight: 700;
+letter-spacing: 0.02em;
+display: flex;
+align-items: center;
+gap: 12px;
+}
+#fainasModalHeader h2 i { font-size: 26px; opacity: 0.95; }
+#fainasModalClose {
+width: 44px;
+height: 44px;
+border: none;
+border-radius: 12px;
+background: rgba(255,255,255,0.18);
+color: #fff;
+font-size: 26px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: background 0.2s, transform 0.2s;
+}
+#fainasModalClose:hover {
+background: rgba(255,255,255,0.28);
+transform: scale(1.05);
+}
+.fainas-body {
+padding: 28px 32px 32px;
+}
+.fainas-titulo-wrap {
+text-align: center;
+margin-bottom: 24px;
+display: none;
+}
+.fainas-titulo-wrap.visible {
+display: block;
+}
+.fainas-titulo-display {
+font-size: 22px;
+font-weight: 700;
+letter-spacing: 0.02em;
+color: #1b4332;
+text-shadow: 0 2px 4px rgba(27,67,50,0.35), 0 3px 10px rgba(27,67,50,0.2);
+margin: 0;
+padding: 0;
+cursor: pointer;
+min-height: 1.4em;
+border: none;
+background: transparent;
+width: 100%;
+text-align: center;
+font-family: inherit;
+}
+.fainas-titulo-display:hover {
+color: #2d6a4f;
+}
+.fainas-titulo-display::placeholder {
+color: #94a3b8;
+}
+.fainas-titulo-display:focus {
+outline: none;
+text-shadow: 0 2px 4px rgba(27,67,50,0.35), 0 3px 10px rgba(27,67,50,0.2);
+}
+.fainas-titulo-wrap .fainas-titulo-view {
+font-size: 22px;
+font-weight: 700;
+letter-spacing: 0.02em;
+color: #1b4332;
+text-shadow: 0 2px 4px rgba(27,67,50,0.35), 0 3px 10px rgba(27,67,50,0.2);
+margin: 0;
+padding: 4px 8px;
+cursor: pointer;
+display: inline-block;
+min-height: 1.4em;
+border: 2px solid transparent;
+border-radius: 6px;
+transition: border-color 0.15s, background 0.15s;
+}
+.fainas-titulo-wrap .fainas-titulo-view:hover {
+border-color: rgba(45,106,79,0.25);
+background: rgba(45,106,79,0.06);
+}
+.fainas-motorista-row {
+display: flex;
+align-items: flex-end;
+gap: 12px;
+margin-bottom: 24px;
+flex-wrap: wrap;
+}
+.fainas-select-group {
+margin-bottom: 0;
+flex: 1;
+min-width: 200px;
+max-width: 360px;
+}
+.fainas-select-group label {
+display: block;
+font-weight: 600;
+color: #334155;
+margin-bottom: 8px;
+font-size: 14px;
+}
+.fainas-select-group select {
+width: 100%;
+padding: 12px 16px;
+border: 2px solid #e2e8f0;
+border-radius: 12px;
+font-size: 15px;
+background: #fff;
+color: #1e293b;
+transition: border-color 0.2s, box-shadow 0.2s;
+}
+.fainas-select-group select:focus {
+outline: none;
+border-color: #2d6a4f;
+box-shadow: 0 0 0 4px rgba(45,106,79,0.15);
+}
+.fainas-btn-atribuicoes {
+padding: 12px 20px;
+border: none;
+border-radius: 12px;
+font-size: 14px;
+font-weight: 600;
+background: linear-gradient(135deg, #475569 0%, #334155 100%);
+color: #fff;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+gap: 8px;
+white-space: nowrap;
+transition: transform 0.2s, box-shadow 0.2s;
+box-shadow: 0 2px 8px rgba(51,65,85,0.3);
+}
+.fainas-btn-atribuicoes:hover {
+transform: translateY(-1px);
+box-shadow: 0 4px 12px rgba(51,65,85,0.4);
+}
+/* Modal Atribuições - ocupa 80% da tela */
+#atribuicoesModal {
+display: none;
+position: fixed;
+z-index: 10004;
+inset: 0;
+background: rgba(15,23,42,0.78);
+backdrop-filter: blur(10px);
+overflow: hidden;
+animation: fainasFadeIn 0.3s ease;
+padding: 0;
+}
+#atribuicoesModal.active {
+display: flex;
+align-items: center;
+justify-content: center;
+}
+#atribuicoesModalContent {
+width: 80vw;
+height: 64vh;
+max-width: 80vw;
+max-height: 64vh;
+margin: 0;
+background: linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(248,250,252,0.99) 100%);
+border-radius: 12px;
+box-shadow: 0 24px 48px rgba(0,0,0,0.25);
+overflow: auto;
+animation: fainasSlideUp 0.35s cubic-bezier(0.16,1,0.3,1);
+box-sizing: border-box;
+display: flex;
+flex-direction: column;
+}
+#atribuicoesModalHeader {
+padding: 22px 28px;
+background: linear-gradient(135deg, #334155 0%, #475569 100%);
+color: #fff;
+display: flex;
+align-items: center;
+justify-content: space-between;
+}
+#atribuicoesModalHeader h2 {
+margin: 0;
+font-size: 20px;
+font-weight: 700;
+display: flex;
+align-items: center;
+gap: 10px;
+}
+#atribuicoesModalClose {
+width: 40px;
+height: 40px;
+border: none;
+border-radius: 10px;
+background: rgba(255,255,255,0.2);
+color: #fff;
+font-size: 24px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: background 0.2s, transform 0.2s;
+}
+#atribuicoesModalClose:hover {
+background: rgba(255,255,255,0.3);
+transform: scale(1.05);
+}
+.atribuicoes-body {
+padding: 24px 28px 28px;
+flex: 1;
+min-height: 0;
+display: flex;
+flex-direction: column;
+box-sizing: border-box;
+}
+.atribuicoes-select-wrap {
+margin-bottom: 20px;
+}
+.atribuicoes-select-wrap label {
+display: block;
+font-weight: 600;
+color: #334155;
+margin-bottom: 8px;
+font-size: 14px;
+}
+.atribuicoes-select-wrap select {
+width: 100%;
+padding: 12px 14px;
+border: 2px solid #e2e8f0;
+border-radius: 10px;
+font-size: 14px;
+background: #fff;
+color: #1e293b;
+}
+.atribuicoes-select-wrap select:focus {
+outline: none;
+border-color: #475569;
+}
+.atribuicoes-list {
+max-height: 220px;
+overflow-y: auto;
+margin-bottom: 16px;
+border: 1px solid #e2e8f0;
+border-radius: 12px;
+background: #f8fafc;
+}
+.atribuicoes-item {
+display: flex;
+align-items: center;
+gap: 12px;
+padding: 12px 14px;
+border-bottom: 1px solid #e2e8f0;
+background: #fff;
+cursor: pointer;
+transition: background 0.2s;
+}
+.atribuicoes-item:hover { background: #f1f5f9; }
+.atribuicoes-item:last-child { border-bottom: none; }
+.atribuicoes-item .atribuicoes-item-titulo {
+flex: 1;
+font-size: 14px;
+font-weight: 600;
+color: #334155;
+text-align: left;
+}
+.atribuicoes-item .btn-remove-atrib {
+width: 36px;
+height: 36px;
+border: none;
+border-radius: 8px;
+background: #fee2e2;
+color: #dc2626;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+transition: background 0.2s, color 0.2s;
+}
+.atribuicoes-item .btn-remove-atrib:hover {
+background: #fecaca;
+color: #b91c1c;
+}
+.atribuicoes-add-btn-wrap {
+margin-bottom: 16px;
+}
+.atribuicoes-add-btn {
+padding: 10px 18px;
+border: 2px dashed #94a3b8;
+border-radius: 10px;
+font-size: 14px;
+font-weight: 600;
+background: transparent;
+color: #475569;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+gap: 8px;
+transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.atribuicoes-add-btn:hover {
+border-color: #334155;
+color: #334155;
+background: #f1f5f9;
+}
+.atribuicoes-btn-salvar {
+border-style: solid;
+background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+color: #fff;
+border-color: #1b4332;
+}
+.atribuicoes-btn-salvar:hover {
+background: linear-gradient(135deg, #40916c 0%, #2d6a4f 100%);
+color: #fff;
+border-color: #2d6a4f;
+}
+.atribuicoes-add-btn-wrap #atribuicoesBtnGroupSalvarVoltar {
+display: inline-flex;
+gap: 10px;
+align-items: center;
+}
+.atribuicoes-btn-voltar {
+border-style: solid;
+background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+color: #fff;
+border-color: #475569;
+}
+.atribuicoes-btn-voltar:hover {
+background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+color: #fff;
+border-color: #64748b;
+}
+.atribuicoes-form-panel {
+display: none;
+margin-bottom: 20px;
+padding: 20px;
+border: 1px solid #e2e8f0;
+border-radius: 14px;
+background: #f8fafc;
+}
+.atribuicoes-form-panel.visible { display: block; }
+.atribuicoes-form-panel .atr-field {
+margin-bottom: 14px;
+}
+.atribuicoes-form-panel .atr-field label {
+display: block;
+font-weight: 600;
+color: #334155;
+margin-bottom: 6px;
+font-size: 14px;
+}
+.atribuicoes-form-panel .atr-field input[type="text"] {
+width: 100%;
+padding: 10px 14px;
+border: 2px solid #e2e8f0;
+border-radius: 10px;
+font-size: 14px;
+box-sizing: border-box;
+}
+.atribuicoes-form-panel .atr-field input:focus {
+outline: none;
+border-color: #475569;
+}
+.atr-folha-wrap {
+margin-bottom: 14px;
+width: 100%;
+max-width: 100%;
+box-sizing: border-box;
+}
+.atr-folha-wrap label {
+display: block;
+font-weight: 600;
+color: #334155;
+margin-bottom: 6px;
+font-size: 14px;
+}
+.atr-folha-container {
+display: flex;
+width: 100%;
+min-height: 297mm;
+height: 297mm;
+max-height: calc(100vh - 240px);
+border: 1px solid #c9c9c9;
+border-radius: 2px;
+background: #fffef8;
+box-shadow: 0 1px 3px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.5);
+overflow: hidden;
+}
+.atr-folha-nums {
+width: 40px;
+flex-shrink: 0;
+padding: 18px 8px 18px 12px;
+font-size: 13px;
+line-height: 28px;
+color: #64748b;
+font-family: Georgia, 'Times New Roman', serif;
+text-align: right;
+user-select: none;
+background: #f8fafc;
+border-right: 1px solid #e2e8f0;
+overflow: auto;
+white-space: pre;
+}
+.atr-folha-area {
+flex: 1;
+min-width: 0;
+display: flex;
+flex-direction: column;
+overflow: hidden;
+}
+.atr-folha {
+width: 100%;
+min-height: 100%;
+height: 100%;
+padding: 18px 20px 18px 14px;
+border: none;
+border-radius: 0;
+background: transparent;
+background-image: linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px);
+background-size: 100% 28px;
+font-size: 14px;
+line-height: 28px;
+color: #333;
+font-family: Georgia, 'Times New Roman', serif;
+resize: none;
+box-sizing: border-box;
+overflow: auto;
+}
+.atr-folha:focus {
+outline: none;
+}
+.atr-folha::placeholder {
+color: #94a3b8;
+}
+.atribuicoes-form-panel .btn-salvar-atr {
+padding: 12px 24px;
+border: none;
+border-radius: 10px;
+font-size: 14px;
+font-weight: 700;
+background: linear-gradient(135deg, #334155 0%, #475569 100%);
+color: #fff;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+gap: 8px;
+transition: transform 0.2s, box-shadow 0.2s;
+box-shadow: 0 2px 8px rgba(51,65,85,0.3);
+}
+.atribuicoes-form-panel .btn-salvar-atr:hover {
+transform: translateY(-1px);
+box-shadow: 0 4px 12px rgba(51,65,85,0.4);
+}
+.atribuicoes-vazio {
+text-align: center;
+padding: 24px 16px;
+color: #64748b;
+font-size: 14px;
+}
+.fainas-form-panel {
+display: none;
+margin-top: 20px;
+border: 1px solid #e2e8f0;
+border-radius: 16px;
+overflow: hidden;
+background: #f8fafc;
+}
+.fainas-form-panel.visible { display: block; }
+.fainas-dia-section {
+background: #fff;
+border-bottom: 1px solid #e2e8f0;
+padding: 20px 24px;
+}
+.fainas-dia-section:last-child { border-bottom: none; }
+.fainas-dia-title {
+font-size: 16px;
+font-weight: 700;
+color: #1b4332;
+padding: 14px 18px;
+border-bottom: 1px solid #e2e8f0;
+display: flex;
+align-items: center;
+justify-content: space-between;
+flex-wrap: wrap;
+gap: 12px;
+cursor: pointer;
+user-select: none;
+transition: background 0.2s;
+}
+.fainas-dia-title:hover { background: rgba(45,106,79,0.06); }
+.fainas-dia-title .fainas-dia-nome { display: flex; align-items: center; gap: 8px; }
+.fainas-dia-title .fainas-dia-chevron {
+font-size: 14px;
+color: #64748b;
+transition: transform 0.25s ease;
+}
+.fainas-dia-section.expanded .fainas-dia-title .fainas-dia-chevron { transform: rotate(180deg); }
+.fainas-dia-content {
+display: none;
+padding: 16px 24px 20px;
+border-bottom: 2px solid #2d6a4f;
+}
+.fainas-dia-section.expanded .fainas-dia-content { display: block; }
+.fainas-dia-content .fainas-copiar-wrapper { margin-bottom: 16px; }
+.fainas-copiar-wrapper {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.fainas-copiar-wrapper label {
+font-size: 12px;
+font-weight: 600;
+color: #64748b;
+margin: 0;
+}
+.fainas-copiar-select {
+padding: 6px 10px;
+border: 1px solid #e2e8f0;
+border-radius: 8px;
+font-size: 13px;
+background: #fff;
+color: #334155;
+min-width: 140px;
+cursor: pointer;
+transition: border-color 0.2s;
+}
+.fainas-copiar-select:hover,
+.fainas-copiar-select:focus {
+border-color: #2d6a4f;
+outline: none;
+}
+.fainas-periodo {
+margin-bottom: 20px;
+}
+.fainas-periodo:last-child { margin-bottom: 0; }
+.fainas-periodo-label {
+font-size: 13px;
+font-weight: 600;
+color: #475569;
+margin-bottom: 10px;
+display: block;
+}
+.fainas-linhas {
+display: flex;
+flex-direction: column;
+gap: 10px;
+}
+.fainas-linha {
+display: grid;
+grid-template-columns: 100px 1fr auto;
+gap: 12px;
+align-items: center;
+}
+.fainas-linha input[type="time"],
+.fainas-linha input[type="text"] {
+padding: 10px 14px;
+border: 1px solid #e2e8f0;
+border-radius: 8px;
+font-size: 14px;
+}
+.fainas-linha input[type="text"] {
+min-width: 0;
+}
+.fainas-linha .btn-remove-linha {
+width: 40px;
+height: 40px;
+border: none;
+border-radius: 8px;
+background: #fee2e2;
+color: #dc2626;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+transition: background 0.2s, color 0.2s;
+}
+.fainas-linha .btn-remove-linha:hover {
+background: #fecaca;
+color: #b91c1c;
+}
+.fainas-add-linha {
+margin-top: 8px;
+padding: 10px 16px;
+border: 2px dashed #94a3b8;
+border-radius: 8px;
+background: transparent;
+color: #64748b;
+font-size: 13px;
+font-weight: 600;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+gap: 8px;
+transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+.fainas-add-linha:hover {
+border-color: #2d6a4f;
+color: #1b4332;
+background: rgba(45,106,79,0.06);
+}
+#fainasModalFooter {
+padding: 20px 32px 28px;
+background: #f1f5f9;
+border-top: 1px solid #e2e8f0;
+display: flex;
+justify-content: flex-end;
+gap: 12px;
+}
+#fainasModalFooter .btn-fainas-save {
+padding: 14px 28px;
+border: none;
+border-radius: 12px;
+background: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
+color: #fff;
+font-size: 15px;
+font-weight: 700;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+gap: 10px;
+box-shadow: 0 4px 14px rgba(45,106,79,0.4);
+transition: transform 0.2s, box-shadow 0.2s;
+}
+#fainasModalFooter .btn-fainas-save:hover {
+transform: translateY(-2px);
+box-shadow: 0 6px 20px rgba(45,106,79,0.45);
+}
+/* Modal RDV full-screen */
+#rdvModal {
+display: none;
+position: fixed;
+z-index: 10000;
+inset: 0;
+background: rgba(0,0,0,0.85);
+overflow: auto;
+animation: fadeIn 0.3s;
+}
+#rdvModal.active { display: block; }
+#rdvModalContent {
+max-width: 210mm;
+margin: 20px auto;
+padding: 20px;
+background: #fff;
+min-height: calc(100vh - 80px);
+position: relative;
+}
+#rdvModalClose {
+position: fixed;
+top: 20px;
+right: 20px;
+width: 44px;
+height: 44px;
+font-size: 28px;
+background: rgba(255,255,255,0.95);
+color: #333;
+border: none;
+border-radius: 50%;
+cursor: pointer;
+z-index: 10001;
+display: flex;
+align-items: center;
+justify-content: center;
+box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+transition: all 0.2s;
+}
+#rdvModalClose:hover {
+background: #fff;
+transform: scale(1.05);
+}
+#rdvModalBody {
+padding-top: 10px;
+font-size: 9pt;
+}
+#rdvModalBody table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 8pt; }
+#rdvModalBody th, #rdvModalBody td { border: 1px solid #000; padding: 3px 5px; text-align: center; }
+#rdvModalBody th { background: #e2f0d9; font-weight: bold; }
+#rdvModalBody .rdv-titulo { text-align: center; margin-bottom: 8px; font-size: 10pt; }
+#rdvModalBody .rdv-assinatura { text-align: center; margin-top: 40px; font-size: 8pt; }
+#rdvModalFooter {
+padding: 16px 20px;
+background: #f1f5f9;
+border-top: 1px solid #e2e8f0;
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+gap: 16px;
+}
+#rdvModalFooter .rdv-nav-row {
+display: flex;
+align-items: center;
+justify-content: center;
+gap: 24px;
+}
+#rdvModalFooter .rdv-nav-btn {
+width: 48px;
+height: 48px;
+border: none;
+border-radius: 50%;
+background: linear-gradient(135deg, #4a69bd 0%, #3a5aa0 100%);
+color: #fff;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 20px;
+box-shadow: 0 2px 8px rgba(74,105,189,0.35);
+transition: transform 0.2s, box-shadow 0.2s;
+}
+#rdvModalFooter .rdv-nav-btn:hover {
+transform: scale(1.08);
+box-shadow: 0 4px 12px rgba(74,105,189,0.45);
+}
+#rdvModalFooter .rdv-nav-btn:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+transform: none;
+}
+#rdvModalFooter .rdv-editar-wrap {
+width: 100%;
+display: flex;
+justify-content: center;
+}
+#rdvModalFooter .rdv-btn-editar {
+padding: 12px 24px;
+border: none;
+border-radius: 10px;
+font-size: 14px;
+font-weight: 700;
+background: linear-gradient(135deg, #4a69bd 0%, #3a5aa0 100%);
+color: #fff;
+cursor: pointer;
+display: inline-flex;
+align-items: center;
+gap: 8px;
+box-shadow: 0 2px 8px rgba(74,105,189,0.35);
+transition: transform 0.2s, box-shadow 0.2s;
+}
+#rdvModalFooter .rdv-btn-editar:hover {
+transform: translateY(-1px);
+box-shadow: 0 4px 12px rgba(74,105,189,0.45);
+}
+#rdvModalFooter .rdv-nav-data {
+font-size: 14px;
+font-weight: 600;
+color: #334155;
+min-width: 120px;
+text-align: center;
+}
+.rdv-sem-edicao {
+text-align: center;
+padding: 60px 20px;
+font-size: 18px;
+font-weight: 700;
+color: #64748b;
+background: #f8fafc;
+border: 2px dashed #cbd5e1;
+border-radius: 12px;
+margin: 20px 0;
+}
+</style>
+</head>
+<body>
+<div id="updateOverlay" class="update-overlay" aria-hidden="true" hidden>
+<div class="update-card">
+<div class="update-logo">
+<img src="mascotedoblo.png" alt="Mascote SOT">
+</div>
+<div class="update-message">
+<strong>Bem-vindo ao SOT</strong>
+<span>Sistema de Organização de Transporte 10.1</span>
+</div>
+<div class="update-loader" aria-hidden="true"></div>
+</div>
+</div>
+<div class="top-bar" role="banner">
+<span class="top-bar__title">SOT 10.1</span>
+<div class="window-controls">
+<button class="window-button" id="btnMaximize" type="button" aria-label="Maximizar ou restaurar">
+<i class="fas fa-window-maximize" aria-hidden="true"></i>
+</button>
+<button class="window-button close" id="btnClose" type="button" aria-label="Fechar sistema">
+<i class="fas fa-times" aria-hidden="true"></i>
+</button>
+</div>
+</div>
+<header>
+<div id="datetime-container">
+<img id="brasao-icon" src="brasao.png" alt="Brasão">
+<span id="date"></span>
+<span id="time"></span>
+<button type="button" id="btnRdv" class="rdv-header-btn" title="Visualizar RDV mais recente">RDV</button>
+<button type="button" id="btnFainas" class="rdv-header-btn fainas-header-btn" title="Cadastrar e visualizar fainas semanais">Fainas</button>
+</div>
+<div class="title-container">
+<h1 class="main-title">SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE</h1>
+</div>
+<div id="header-right-area">
+<div id="escala-pao-amanha-box" title="Clique para ver calendário do mês">
+<img id="escala-pao-amanha-img" src="pao.jpg" alt="Pão">
+<span id="escala-pao-amanha-nome">—</span>
+</div>
+<div id="lock-container">
+<div id="lock-icon-container" title="Clique para desbloquear com senha; duplo clique para desbloquear sem senha"></div>
+</div>
+</div>
+</header>
+
+<!-- Modal Escala de Pão - Calendário do mês -->
+<div id="escalaPaoModal" class="modal-escala-pao">
+<div class="modal-escala-pao-content">
+<button type="button" id="escalaPaoModalClose" class="modal-escala-pao-close" aria-label="Fechar">&times;</button>
+<h3 id="escalaPaoModalTitulo" class="modal-escala-pao-titulo">Escala de Pão</h3>
+<div class="modal-escala-pao-nav">
+<button type="button" id="escalaPaoModalPrev" aria-label="Mês anterior"><i class="fas fa-chevron-left"></i></button>
+<span id="escalaPaoModalMesAno"></span>
+<button type="button" id="escalaPaoModalNext" aria-label="Próximo mês"><i class="fas fa-chevron-right"></i></button>
+</div>
+<div id="escalaPaoModalGrid" class="modal-escala-pao-grid"></div>
+</div>
+</div>
+<main>
+<div class="tab-button-container">
+<button class="tab-button" data-tab-id="cadastro-saidas" onclick="changeTab(event, 'cadastro-saidas')">Cadastro de Saídas</button>
+<button class="tab-button active" data-tab-id="saidas-administrativas" onclick="changeTab(event, 'saidas-administrativas')">Saídas Administrativas</button>
+<button class="tab-button" data-tab-id="saidas-ambulancias" onclick="changeTab(event, 'saidas-ambulancias')">Saídas de Ambulâncias</button>
+<button class="tab-button" data-tab-id="vistoria" onclick="changeTab(event, 'vistoria')">Vistoria</button>
+<button class="tab-button protected" data-tab-id="frota-pessoal" onclick="changeTab(event, 'frota-pessoal')">Frota e Pessoal</button>
+<button class="tab-button protected" data-tab-id="estatistica" onclick="changeTab(event, 'estatistica')">Estatística</button>
+<button class="tab-button protected" data-tab-id="avisos" onclick="changeTab(event, 'avisos')">Avisos</button>
+<button class="tab-button protected" data-tab-id="equipamentos-suprimentos" onclick="changeTab(event, 'equipamentos-suprimentos')">Equipamentos e Suprimentos</button>
+<button class="tab-button protected" data-tab-id="configuracoes" onclick="changeTab(event, 'configuracoes')">Configurações</button>
+</div>
+<div id="cadastro-saidas" class="tab-content"><iframe id="iframe-cadastro-saidas" src="Cadastrodesaidas8.html"></iframe></div>
+<div id="saidas-administrativas" class="tab-content active"><iframe id="iframe-saidas-administrativas" src="Saidasadministrativas6.html"></iframe></div>
+<div id="saidas-ambulancias" class="tab-content"><iframe id="iframe-saidas-ambulancias" src="Saidasdeambulâncias2.html"></iframe></div>
+<div id="vistoria" class="tab-content"><iframe src="vistoriar.html"></iframe></div>
+<div id="frota-pessoal" class="tab-content"><iframe id="iframe-frota-pessoal" src="Frotaepessoal3.html"></iframe></div>
+<div id="estatistica" class="tab-content"><iframe src="Estatistica4.html"></iframe></div>
+<div id="avisos" class="tab-content"><iframe src="Avisos.html"></iframe></div>
+<div id="equipamentos-suprimentos" class="tab-content"><iframe id="iframe-equipamentos-suprimentos" src="EquipamentoseSuprimentos.html"></iframe></div>
+<div id="configuracoes" class="tab-content"><iframe id="iframe-configuracoes" src="Configuracoes.html"></iframe></div>
+</main>
+<!-- Modal de Backup -->
+<div id="backupModal">
+<div id="backupModalContent">
+<h2><i class="fas fa-exclamation-triangle"></i> Backup Necessário</h2>
+<p>Faça o backup dos seus dados para garantir a segurança das informações.</p>
+<button id="backupModalBtn"><i class="fas fa-download"></i> Fazer Backup Agora</button>
+</div>
+</div>
+<!-- Modal RDV full-screen -->
+<div id="rdvModal">
+<button type="button" id="rdvModalClose" aria-label="Fechar">&times;</button>
+<div id="rdvModalContent">
+<div id="rdvModalBody"></div>
+<footer id="rdvModalFooter">
+<div class="rdv-nav-row">
+<button type="button" id="rdvNavEsquerda" class="rdv-nav-btn" aria-label="RDV mais recente"><i class="fas fa-chevron-left"></i></button>
+<span id="rdvNavData" class="rdv-nav-data">—</span>
+<button type="button" id="rdvNavDireita" class="rdv-nav-btn" aria-label="RDV mais antigo"><i class="fas fa-chevron-right"></i></button>
+</div>
+<div class="rdv-editar-wrap">
+<button type="button" id="rdvBtnEditar" class="rdv-btn-editar"><i class="fas fa-edit"></i> Editar RDV</button>
+</div>
+</footer>
+</div>
+</div>
+
+<!-- Modal Fainas -->
+<div id="fainasModal">
+<div id="fainasModalContent">
+<header id="fainasModalHeader">
+<h2><i class="fas fa-tasks"></i> Fainas Semanais</h2>
+<button type="button" id="fainasModalClose" aria-label="Fechar">&times;</button>
+</header>
+<div class="fainas-body">
+<div class="fainas-titulo-wrap">
+<span id="fainasTituloView" class="fainas-titulo-view" title="Clique para editar o título">Semana atual</span>
+<input type="text" id="fainasTituloEdit" class="fainas-titulo-display" placeholder="Semana atual" maxlength="120" style="display: none;">
+</div>
+<div class="fainas-motorista-row">
+<div class="fainas-select-group">
+<label for="fainasSelectMotorista">Motorista</label>
+<select id="fainasSelectMotorista">
+<option value="">— Selecione o motorista —</option>
+</select>
+</div>
+<button type="button" id="fainasBtnAtribuicoes" class="fainas-btn-atribuicoes" title="Ver e adicionar atribuições dos motoristas"><i class="fas fa-clipboard-list"></i> Atribuições</button>
+</div>
+<div id="fainasFormPanel" class="fainas-form-panel">
+<div class="fainas-dia-section" data-dia="segunda">
+<div class="fainas-dia-title" role="button" tabindex="0" aria-expanded="false">
+<span class="fainas-dia-nome"><i class="fas fa-calendar-day"></i> Segunda-feira</span>
+<span class="fainas-dia-chevron"><i class="fas fa-chevron-down"></i></span>
+</div>
+<div class="fainas-dia-content">
+<div class="fainas-copiar-wrapper">
+<label for="fainas-copiar-segunda">Copiar de:</label>
+<select id="fainas-copiar-segunda" class="fainas-copiar-select" data-dia-alvo="segunda">
+<option value="">— outro dia —</option>
+<option value="terca">Terça-feira</option>
+<option value="quarta">Quarta-feira</option>
+<option value="quinta">Quinta-feira</option>
+<option value="sexta">Sexta-feira</option>
+</select>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Manhã (7h às 11h)</span>
+<div class="fainas-linhas" data-periodo="manha"></div>
+<button type="button" class="fainas-add-linha" data-dia="segunda" data-periodo="manha"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Tarde (13:30 às 14:30)</span>
+<div class="fainas-linhas" data-periodo="tarde"></div>
+<button type="button" class="fainas-add-linha" data-dia="segunda" data-periodo="tarde"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+</div>
+</div>
+<div class="fainas-dia-section" data-dia="terca">
+<div class="fainas-dia-title" role="button" tabindex="0" aria-expanded="false">
+<span class="fainas-dia-nome"><i class="fas fa-calendar-day"></i> Terça-feira</span>
+<span class="fainas-dia-chevron"><i class="fas fa-chevron-down"></i></span>
+</div>
+<div class="fainas-dia-content">
+<div class="fainas-copiar-wrapper">
+<label for="fainas-copiar-terca">Copiar de:</label>
+<select id="fainas-copiar-terca" class="fainas-copiar-select" data-dia-alvo="terca">
+<option value="">— outro dia —</option>
+<option value="segunda">Segunda-feira</option>
+<option value="quarta">Quarta-feira</option>
+<option value="quinta">Quinta-feira</option>
+<option value="sexta">Sexta-feira</option>
+</select>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Manhã (7h às 11h)</span>
+<div class="fainas-linhas" data-periodo="manha"></div>
+<button type="button" class="fainas-add-linha" data-dia="terca" data-periodo="manha"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Tarde (13:30 às 14:30)</span>
+<div class="fainas-linhas" data-periodo="tarde"></div>
+<button type="button" class="fainas-add-linha" data-dia="terca" data-periodo="tarde"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+</div>
+</div>
+<div class="fainas-dia-section" data-dia="quarta">
+<div class="fainas-dia-title" role="button" tabindex="0" aria-expanded="false">
+<span class="fainas-dia-nome"><i class="fas fa-calendar-day"></i> Quarta-feira</span>
+<span class="fainas-dia-chevron"><i class="fas fa-chevron-down"></i></span>
+</div>
+<div class="fainas-dia-content">
+<div class="fainas-copiar-wrapper">
+<label for="fainas-copiar-quarta">Copiar de:</label>
+<select id="fainas-copiar-quarta" class="fainas-copiar-select" data-dia-alvo="quarta">
+<option value="">— outro dia —</option>
+<option value="segunda">Segunda-feira</option>
+<option value="terca">Terça-feira</option>
+<option value="quinta">Quinta-feira</option>
+<option value="sexta">Sexta-feira</option>
+</select>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Manhã (7h às 11h)</span>
+<div class="fainas-linhas" data-periodo="manha"></div>
+<button type="button" class="fainas-add-linha" data-dia="quarta" data-periodo="manha"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Tarde (13:30 às 14:30)</span>
+<div class="fainas-linhas" data-periodo="tarde"></div>
+<button type="button" class="fainas-add-linha" data-dia="quarta" data-periodo="tarde"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+</div>
+</div>
+<div class="fainas-dia-section" data-dia="quinta">
+<div class="fainas-dia-title" role="button" tabindex="0" aria-expanded="false">
+<span class="fainas-dia-nome"><i class="fas fa-calendar-day"></i> Quinta-feira</span>
+<span class="fainas-dia-chevron"><i class="fas fa-chevron-down"></i></span>
+</div>
+<div class="fainas-dia-content">
+<div class="fainas-copiar-wrapper">
+<label for="fainas-copiar-quinta">Copiar de:</label>
+<select id="fainas-copiar-quinta" class="fainas-copiar-select" data-dia-alvo="quinta">
+<option value="">— outro dia —</option>
+<option value="segunda">Segunda-feira</option>
+<option value="terca">Terça-feira</option>
+<option value="quarta">Quarta-feira</option>
+<option value="sexta">Sexta-feira</option>
+</select>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Manhã (7h às 11h)</span>
+<div class="fainas-linhas" data-periodo="manha"></div>
+<button type="button" class="fainas-add-linha" data-dia="quinta" data-periodo="manha"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Tarde (13:30 às 14:30)</span>
+<div class="fainas-linhas" data-periodo="tarde"></div>
+<button type="button" class="fainas-add-linha" data-dia="quinta" data-periodo="tarde"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+</div>
+</div>
+<div class="fainas-dia-section" data-dia="sexta">
+<div class="fainas-dia-title" role="button" tabindex="0" aria-expanded="false">
+<span class="fainas-dia-nome"><i class="fas fa-calendar-day"></i> Sexta-feira</span>
+<span class="fainas-dia-chevron"><i class="fas fa-chevron-down"></i></span>
+</div>
+<div class="fainas-dia-content">
+<div class="fainas-copiar-wrapper">
+<label for="fainas-copiar-sexta">Copiar de:</label>
+<select id="fainas-copiar-sexta" class="fainas-copiar-select" data-dia-alvo="sexta">
+<option value="">— outro dia —</option>
+<option value="segunda">Segunda-feira</option>
+<option value="terca">Terça-feira</option>
+<option value="quarta">Quarta-feira</option>
+<option value="quinta">Quinta-feira</option>
+</select>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Manhã (7h às 11h)</span>
+<div class="fainas-linhas" data-periodo="manha"></div>
+<button type="button" class="fainas-add-linha" data-dia="sexta" data-periodo="manha"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+<div class="fainas-periodo">
+<span class="fainas-periodo-label">Tarde (13:30 às 14:30)</span>
+<div class="fainas-linhas" data-periodo="tarde"></div>
+<button type="button" class="fainas-add-linha" data-dia="sexta" data-periodo="tarde"><i class="fas fa-plus"></i> Adicionar atividade</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<footer id="fainasModalFooter">
+<button type="button" id="fainasBtnSalvar" class="btn-fainas-save"><i class="fas fa-save"></i> Salvar fainas</button>
+</footer>
+</div>
+</div>
+
+<!-- Modal Atribuições -->
+<div id="atribuicoesModal">
+<div id="atribuicoesModalContent">
+<header id="atribuicoesModalHeader">
+<h2><i class="fas fa-clipboard-list"></i> Atribuições por motorista</h2>
+<button type="button" id="atribuicoesModalClose" aria-label="Fechar">&times;</button>
+</header>
+<div class="atribuicoes-body">
+<div class="atribuicoes-select-wrap">
+<label for="atribuicoesSelectMotorista">Motorista</label>
+<select id="atribuicoesSelectMotorista">
+<option value="">— Selecione o motorista —</option>
+</select>
+</div>
+<div id="atribuicoesListContainer" class="atribuicoes-list">
+<div id="atribuicoesVazio" class="atribuicoes-vazio">Nenhuma atribuição cadastrada. Selecione um motorista e adicione abaixo.</div>
+<div id="atribuicoesLista"></div>
+</div>
+<div class="atribuicoes-add-btn-wrap">
+<button type="button" id="atribuicoesBtnNova" class="atribuicoes-add-btn"><i class="fas fa-plus"></i> Adicionar atribuição</button>
+<span id="atribuicoesBtnGroupSalvarVoltar" style="display: none;">
+<button type="button" id="atribuicoesBtnVoltar" class="atribuicoes-add-btn atribuicoes-btn-voltar"><i class="fas fa-arrow-left"></i> Voltar</button>
+<button type="button" id="atribuicoesBtnSalvar" class="atribuicoes-add-btn atribuicoes-btn-salvar"><i class="fas fa-save"></i> Salvar</button>
+</span>
+</div>
+<div id="atribuicoesFormPanel" class="atribuicoes-form-panel">
+<div class="atr-field">
+<label for="atribuicoesTituloInput">Título</label>
+<input type="text" id="atribuicoesTituloInput" placeholder="Ex.: Responsável por vistoria" maxlength="200">
+</div>
+<div class="atr-folha-wrap">
+<label for="atribuicoesConteudoFolha">Conteúdo</label>
+<div class="atr-folha-container">
+<div id="atribuicoesFolhaNums" class="atr-folha-nums">1</div>
+<div class="atr-folha-area">
+<textarea id="atribuicoesConteudoFolha" class="atr-folha" placeholder="Descreva aqui o conteúdo desta atribuição..."></textarea>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Overlay Global da Escala -->
+<div id="globalEscalaOverlay">
+  <div id="globalEscalaBox">
+    <span id="globalEscalaClose">&times;</span>
+    <div id="globalEscalaHeader">
+      <label for="globalEscalaMonth">Mês:</label>
+      <select id="globalEscalaMonth"></select>
+      <label for="globalEscalaYear">Ano:</label>
+      <select id="globalEscalaYear"></select>
+    </div>
+    <div id="globalEscalaTableWrap">
+      <table id="globalEscalaTable">
+        <thead><tr id="globalEscalaHeadRow"></tr></thead>
+        <tbody id="globalEscalaBody"></tbody>
+      </table>
+    </div>
+  </div>
+  
+</div>
+<script>
+let isLocked = true;
+let inactivityTimeout;
+let timerInterval;
+const INACTIVITY_TIME_SECONDS = 60;
+let pendingEditData = null;
+let pendingLocationId = null;
+const lockIconContainer = document.getElementById('lock-icon-container');
+const icons = {
+locked: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="50" height="50"><path d="M12 1.5A5.25 5.25 0 006.75 6.75v3.75H6a2.25 2.25 0 00-2.25 2.25v8.25A2.25 2.25 0 006 23.25h12a2.25 2.25 0 002.25-2.25v-8.25a2.25 2.25 0 00-2.25-2.25h-.75V6.75A5.25 5.25 0 0012 1.5zM8.25 6.75a3.75 3.75 0 017.5 0v3.75H8.25V6.75z"/></svg>`,
+unlocked: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="50" height="50"><path d="M18 8h-1V6a5 5 0 00-10 0v2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2zM8 6a3 3 0 016 0v2H8V6zm10 14H6V10h12v10z"/></svg>`
+};
+
+function updateEscalaPaoAmanha() {
+const el = document.getElementById('escala-pao-amanha-nome');
+if (!el) return;
+function normalizarData(data) {
+const d = new Date(data);
+d.setHours(0, 0, 0, 0);
+return d;
+}
+function obterDataString(data) {
+const d = normalizarData(data);
+return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+const integrantesEscalaPao = JSON.parse(localStorage.getItem('integrantesEscalaPao') || '[]');
+const feriadosEscalaPao = JSON.parse(localStorage.getItem('feriadosEscalaPao') || '[]');
+const puladosEscalaPao = JSON.parse(localStorage.getItem('puladosEscalaPao') || '{}');
+const diasExcluidosEscalaPao = JSON.parse(localStorage.getItem('diasExcluidosEscalaPao') || '[]');
+const escalaPaoInsercoes = JSON.parse(localStorage.getItem('escalaPaoInsercoes') || '[]');
+function isFeriado(data) {
+return feriadosEscalaPao.some(f => f.data === obterDataString(data));
+}
+function isDiaUtil(data) {
+const d = normalizarData(data);
+return d.getDay() >= 1 && d.getDay() <= 5 && !isFeriado(d);
+}
+function proximoDiaUtil(data) {
+let proxima = normalizarData(data);
+proxima.setDate(proxima.getDate() + 1);
+while (!isDiaUtil(proxima)) {
+proxima.setDate(proxima.getDate() + 1);
+proxima = normalizarData(proxima);
+}
+return proxima;
+}
+function adicionarDiasUteis(data, n) {
+let d = normalizarData(data);
+for (let i = 0; i < n; i++) d = proximoDiaUtil(d);
+return d;
+}
+function obterInsercaoNaData(data) {
+return escalaPaoInsercoes.find(i => i.data === obterDataString(data));
+}
+function contarInsercoesAntes(data) {
+return escalaPaoInsercoes.filter(i => i.data < obterDataString(data)).length;
+}
+function obterDataReferencia() {
+const dataRefSalva = localStorage.getItem('escalaPaoDataReferencia');
+if (dataRefSalva) {
+const dataRef = new Date(dataRefSalva);
+if (!isNaN(dataRef.getTime())) {
+const dataRefNormalizada = normalizarData(dataRef);
+const hoje = normalizarData(new Date());
+if ((hoje - dataRefNormalizada) / (1000 * 60 * 60 * 24) > 365) {
+const dataRefNova = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+while (dataRefNova.getDay() !== 1) dataRefNova.setDate(dataRefNova.getDate() + 1);
+return normalizarData(dataRefNova);
+}
+return dataRefNormalizada;
+}
+}
+const hoje = new Date();
+const dataRef = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+while (dataRef.getDay() !== 1) dataRef.setDate(dataRef.getDate() + 1);
+return normalizarData(dataRef);
+}
+function obterResponsavelDiaOriginal(data) {
+const dataStr = obterDataString(data);
+if (puladosEscalaPao[dataStr]) return puladosEscalaPao[dataStr];
+const insercao = obterInsercaoNaData(data);
+if (insercao) {
+const integranteInserido = integrantesEscalaPao.find(i => i.id === insercao.integranteId);
+if (integranteInserido) return integranteInserido;
+}
+if (integrantesEscalaPao.length === 0) return null;
+if (!isDiaUtil(data)) return null;
+const dataReferencia = obterDataReferencia();
+let diasUteis = 0;
+let contador = new Date(dataReferencia);
+while (contador <= data) {
+if (isDiaUtil(contador)) diasUteis++;
+contador.setDate(contador.getDate() + 1);
+contador = normalizarData(contador);
+}
+const insercoesAntes = contarInsercoesAntes(data);
+const indice = (diasUteis - 1 + insercoesAntes) % integrantesEscalaPao.length;
+return integrantesEscalaPao[indice];
+}
+function obterResponsavelDia(data) {
+const dataNormalizada = normalizarData(data);
+const dataStr = obterDataString(dataNormalizada);
+if (puladosEscalaPao[dataStr]) return puladosEscalaPao[dataStr];
+const insercao = obterInsercaoNaData(dataNormalizada);
+if (insercao) {
+const integranteInserido = integrantesEscalaPao.find(i => i.id === insercao.integranteId);
+if (integranteInserido) return integranteInserido;
+}
+if (integrantesEscalaPao.length === 0) return null;
+if (!isDiaUtil(dataNormalizada)) return null;
+const k = diasExcluidosEscalaPao.filter(d => d <= dataStr).length;
+const dataDeslocada = adicionarDiasUteis(dataNormalizada, k);
+return obterResponsavelDiaOriginal(dataDeslocada);
+}
+const amanha = normalizarData(new Date());
+amanha.setDate(amanha.getDate() + 1);
+const dataAlvo = isDiaUtil(amanha) ? amanha : proximoDiaUtil(amanha);
+const responsavel = obterResponsavelDia(dataAlvo);
+el.textContent = responsavel && responsavel.nome ? responsavel.nome.trim() : 'Não será necessário.';
+}
+window.addEventListener('storage', function(e) {
+if (['integrantesEscalaPao','feriadosEscalaPao','puladosEscalaPao','diasExcluidosEscalaPao','escalaPaoInsercoes','escalaPaoDataReferencia'].indexOf(e.key) !== -1) {
+updateEscalaPaoAmanha();
+}
+});
+window.addEventListener('focus', updateEscalaPaoAmanha);
+
+var escalaPaoModalMes = new Date().getMonth();
+var escalaPaoModalAno = new Date().getFullYear();
+var nomesMesesEscalaPao = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+var nomesDiasCurtoEscalaPao = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+function renderEscalaPaoModalCalendario(ano, mes) {
+var grid = document.getElementById('escalaPaoModalGrid');
+var tituloSpan = document.getElementById('escalaPaoModalMesAno');
+if (!grid || !tituloSpan) return;
+tituloSpan.textContent = nomesMesesEscalaPao[mes] + ' de ' + ano;
+var integrantesEscalaPao = JSON.parse(localStorage.getItem('integrantesEscalaPao') || '[]');
+var feriadosEscalaPao = JSON.parse(localStorage.getItem('feriadosEscalaPao') || '[]');
+var puladosEscalaPao = JSON.parse(localStorage.getItem('puladosEscalaPao') || '{}');
+var diasExcluidosEscalaPao = JSON.parse(localStorage.getItem('diasExcluidosEscalaPao') || '[]');
+var escalaPaoInsercoes = JSON.parse(localStorage.getItem('escalaPaoInsercoes') || '[]');
+function normalizarData(data) { var d = new Date(data); d.setHours(0,0,0,0); return d; }
+function obterDataString(data) { var d = normalizarData(data); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function isFeriado(data) { return feriadosEscalaPao.some(function(f){ return f.data === obterDataString(data); }); }
+function isDiaUtil(data) { var d = normalizarData(data); return d.getDay() >= 1 && d.getDay() <= 5 && !isFeriado(d); }
+function proximoDiaUtil(data) { var p = normalizarData(data); p.setDate(p.getDate()+1); while (!isDiaUtil(p)) { p.setDate(p.getDate()+1); p = normalizarData(p); } return p; }
+function adicionarDiasUteis(data, n) { var d = normalizarData(data); for (var i = 0; i < n; i++) d = proximoDiaUtil(d); return d; }
+function obterInsercaoNaData(data) { return escalaPaoInsercoes.find(function(i){ return i.data === obterDataString(data); }); }
+function contarInsercoesAntes(data) { return escalaPaoInsercoes.filter(function(i){ return i.data < obterDataString(data); }).length; }
+function obterDataReferencia() {
+var dataRefSalva = localStorage.getItem('escalaPaoDataReferencia');
+if (dataRefSalva) { var dataRef = new Date(dataRefSalva); if (!isNaN(dataRef.getTime())) { var dataRefNorm = normalizarData(dataRef); var hoje = normalizarData(new Date()); if ((hoje - dataRefNorm)/(1000*60*60*24) > 365) { var dataRefNova = new Date(hoje.getFullYear(), hoje.getMonth(), 1); while (dataRefNova.getDay() !== 1) dataRefNova.setDate(dataRefNova.getDate()+1); return normalizarData(dataRefNova); } return dataRefNorm; } }
+var h = new Date(); var dataRef = new Date(h.getFullYear(), h.getMonth(), 1); while (dataRef.getDay() !== 1) dataRef.setDate(dataRef.getDate()+1); return normalizarData(dataRef);
+}
+function obterResponsavelDiaOriginal(data) {
+var dataStr = obterDataString(data);
+if (puladosEscalaPao[dataStr]) return puladosEscalaPao[dataStr];
+var insercao = obterInsercaoNaData(data); if (insercao) { var intInserido = integrantesEscalaPao.find(function(i){ return i.id === insercao.integranteId; }); if (intInserido) return intInserido; }
+if (integrantesEscalaPao.length === 0) return null;
+if (!isDiaUtil(data)) return null;
+var dataReferencia = obterDataReferencia(); var diasUteis = 0; var contador = new Date(dataReferencia);
+while (contador <= data) { if (isDiaUtil(contador)) diasUteis++; contador.setDate(contador.getDate()+1); contador = normalizarData(contador); }
+var insercoesAntes = contarInsercoesAntes(data); var indice = (diasUteis - 1 + insercoesAntes) % integrantesEscalaPao.length;
+return integrantesEscalaPao[indice];
+}
+function obterResponsavelDia(data) {
+var dataNorm = normalizarData(data); var dataStr = obterDataString(dataNorm);
+if (puladosEscalaPao[dataStr]) return puladosEscalaPao[dataStr];
+var insercao = obterInsercaoNaData(dataNorm); if (insercao) { var intInserido = integrantesEscalaPao.find(function(i){ return i.id === insercao.integranteId; }); if (intInserido) return intInserido; }
+if (integrantesEscalaPao.length === 0) return null;
+if (!isDiaUtil(dataNorm)) return null;
+var k = diasExcluidosEscalaPao.filter(function(d){ return d <= dataStr; }).length;
+var dataDeslocada = adicionarDiasUteis(dataNorm, k); return obterResponsavelDiaOriginal(dataDeslocada);
+}
+var hoje = normalizarData(new Date());
+var primeiroDia = new Date(ano, mes, 1);
+var ultimoDia = new Date(ano, mes + 1, 0);
+var diaSemanaInicio = primeiroDia.getDay();
+var totalDias = ultimoDia.getDate();
+grid.innerHTML = '';
+nomesDiasCurtoEscalaPao.forEach(function(n){ var c = document.createElement('div'); c.className = 'ep-dia-cab'; c.textContent = n; grid.appendChild(c); });
+for (var i = 0; i < diaSemanaInicio; i++) { var cell = document.createElement('div'); cell.className = 'ep-dia ep-outro-mes'; cell.innerHTML = '&nbsp;'; grid.appendChild(cell); }
+for (var dia = 1; dia <= totalDias; dia++) {
+var data = new Date(ano, mes, dia); var dataNorm = normalizarData(data); var dataStr = obterDataString(dataNorm);
+var diaSemana = dataNorm.getDay(); var ehFds = diaSemana === 0 || diaSemana === 6;
+var cell = document.createElement('div'); cell.className = 'ep-dia'; cell.dataset.data = dataStr;
+if (dataNorm.getTime() === hoje.getTime()) cell.classList.add('ep-hoje');
+if (isFeriado(dataNorm)) cell.classList.add('ep-feriado');
+if (ehFds) cell.classList.add('ep-fds');
+var feriado = feriadosEscalaPao.find(function(f){ return f.data === dataStr; });
+var responsavel = isDiaUtil(dataNorm) ? obterResponsavelDia(dataNorm) : null;
+var html = '<div class="ep-num">' + dia + '</div>';
+if (feriado) { html += '<div class="ep-feriado-desc">' + (feriado.descricao || 'Feriado') + '</div>'; if (responsavel) html += '<div class="ep-nome">' + (responsavel.nome || '').trim() + '</div>'; }
+else if (responsavel) { html += '<div class="ep-nome">' + (responsavel.nome || '').trim() + '</div>'; }
+cell.innerHTML = html; grid.appendChild(cell);
+}
+}
+
+function openEscalaPaoModal() {
+escalaPaoModalMes = new Date().getMonth();
+escalaPaoModalAno = new Date().getFullYear();
+renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
+var modal = document.getElementById('escalaPaoModal');
+if (modal) modal.classList.add('active');
+}
+function closeEscalaPaoModal() {
+var modal = document.getElementById('escalaPaoModal');
+if (modal) modal.classList.remove('active');
+}
+document.getElementById('escala-pao-amanha-box').addEventListener('click', function() { openEscalaPaoModal(); });
+document.getElementById('escalaPaoModalClose').addEventListener('click', closeEscalaPaoModal);
+document.getElementById('escalaPaoModal').addEventListener('click', function(e) { if (e.target.id === 'escalaPaoModal') closeEscalaPaoModal(); });
+document.getElementById('escalaPaoModalPrev').addEventListener('click', function() {
+escalaPaoModalMes--; if (escalaPaoModalMes < 0) { escalaPaoModalMes = 11; escalaPaoModalAno--; }
+renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
+});
+document.getElementById('escalaPaoModalNext').addEventListener('click', function() {
+escalaPaoModalMes++; if (escalaPaoModalMes > 11) { escalaPaoModalMes = 0; escalaPaoModalAno++; }
+renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
+});
+
+const SOT5_BUILD_ID = '2025-11-09-anim-v1';
+const updateOverlay = document.getElementById('updateOverlay');
+const updateLoader = document.querySelector('.update-loader');
+const THEME_ID_KEY = 'sot_theme_id';
+const THEME_VARS_KEY = 'sot_theme_variables';
+
+function getStoredThemeVars() {
+try {
+const stored = localStorage.getItem(THEME_VARS_KEY);
+return stored ? JSON.parse(stored) : null;
+} catch (error) {
+console.warn('Tema armazenado inválido:', error);
+return null;
+}
+}
+
+function applyThemeVarsToDoc(doc, vars) {
+if (!doc || !vars) return;
+Object.entries(vars).forEach(([key, value]) => {
+if (typeof key === 'string' && key.startsWith('--')) {
+doc.documentElement.style.setProperty(key, value);
+}
+});
+}
+
+function applyThemeAcrossApp(vars) {
+if (!vars) return;
+applyThemeVarsToDoc(document, vars);
+const currentId = localStorage.getItem(THEME_ID_KEY) || '';
+if (document.body) {
+document.body.dataset.theme = currentId;
+}
+document.querySelectorAll('iframe').forEach(iframe => {
+if (!iframe) return;
+try {
+const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+if (iframeDoc) {
+applyThemeVarsToDoc(iframeDoc, vars);
+}
+iframe.contentWindow?.postMessage?.({ type: 'apply_theme', themeVariables: vars, themeId: currentId }, '*');
+} catch (error) {
+console.warn('Não foi possível aplicar tema ao iframe:', iframe.id || iframe.src, error);
+}
+});
+}
+
+function initializeThemeManager() {
+const storedVars = getStoredThemeVars();
+if (storedVars) {
+applyThemeAcrossApp(storedVars);
+}
+document.querySelectorAll('iframe').forEach(iframe => {
+iframe.addEventListener('load', () => {
+const vars = getStoredThemeVars();
+if (!vars) return;
+try {
+const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+if (iframeDoc) {
+applyThemeVarsToDoc(iframeDoc, vars);
+}
+const themeId = localStorage.getItem(THEME_ID_KEY) || '';
+iframe.contentWindow?.postMessage?.({ type: 'apply_theme', themeVariables: vars, themeId }, '*');
+} catch (error) {
+console.warn('Erro ao aplicar tema após carregar iframe:', iframe.id || iframe.src, error);
+}
+});
+});
+}
+
+initializeThemeManager();
+function requestFullscreenSafe() {
+const docEl = document.documentElement;
+const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+if (!request) {
+return Promise.resolve();
+}
+return request.call(docEl).catch(err => {
+console.warn('Falha ao solicitar tela cheia:', err);
+});
+}
+function showUpdateOverlay() {
+if (!updateOverlay) return;
+updateOverlay.removeAttribute('hidden');
+if (updateLoader) {
+updateLoader.classList.remove('is-complete');
+updateLoader.style.animation = 'none';
+void updateLoader.offsetWidth;
+updateLoader.style.animation = '';
+}
+requestAnimationFrame(() => {
+updateOverlay.classList.add('active');
+updateOverlay.setAttribute('aria-hidden', 'false');
+});
+}
+function hideUpdateOverlay() {
+if (!updateOverlay) return;
+updateOverlay.classList.remove('active');
+updateOverlay.setAttribute('aria-hidden', 'true');
+}
+if (updateOverlay) {
+updateOverlay.addEventListener('transitionend', (event) => {
+if (event.propertyName === 'opacity' && !updateOverlay.classList.contains('active')) {
+updateOverlay.setAttribute('hidden', 'true');
+}
+});
+}
+if (updateOverlay) {
+showUpdateOverlay();
+console.log('Exibindo animação de boas-vindas do SOT5.');
+const openSystemAfterLoad = () => {
+localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
+const fullscreenPromise = requestFullscreenSafe();
+hideUpdateOverlay();
+fullscreenPromise.then(() => {
+console.log('Modo tela cheia solicitado ao entrar no SOT5.');
+});
+};
+if (updateLoader) {
+updateLoader.addEventListener('animationend', () => {
+updateLoader.classList.add('is-complete');
+openSystemAfterLoad();
+}, { once: true });
+} else {
+setTimeout(openSystemAfterLoad, 800);
+}
+}
+function getPassword() {
+if (!localStorage.getItem('adminPassword')) {
+localStorage.setItem('adminPassword', '1234');
+}
+return localStorage.getItem('adminPassword');
+}
+function updatePasswordDisplay() {
+}
+function broadcastLockState(locked) {
+document.querySelectorAll('iframe').forEach(iframe => {
+if (iframe.contentWindow) {
+iframe.contentWindow.postMessage({ type: 'lock_state_change', locked: locked }, '*');
+}
+});
+}
+function updateLockState(notify = true) {
+lockIconContainer.innerHTML = isLocked ? icons.locked : icons.unlocked;
+document.querySelectorAll('.tab-button.protected').forEach(tab => {
+tab.classList.toggle('locked', isLocked);
+});
+if (isLocked) {
+// Se sistema bloqueado, mudar para primeira aba não protegida
+const activeTabButton = document.querySelector('.tab-button.active');
+if (activeTabButton && activeTabButton.classList.contains('protected')) {
+const firstSafeTabButton = document.querySelector('.tab-button:not(.protected)');
+if (firstSafeTabButton) {
+changeTab({ currentTarget: firstSafeTabButton }, firstSafeTabButton.dataset.tabId);
+}
+}
+} else {
+// Se sistema desbloqueado e não há aba ativa, ativar primeira aba (Disponibilidade)
+const activeTabButton = document.querySelector('.tab-button.active');
+if (!activeTabButton || !activeTabButton.classList.contains('active')) {
+const primeiraAba = document.querySelector('.tab-button[data-tab-id="disponibilidade"]');
+if (primeiraAba) {
+changeTab({ currentTarget: primeiraAba }, 'disponibilidade');
+}
+}
+}
+broadcastLockState(isLocked);
+if(notify) alert(isLocked ? 'Sistema bloqueado.' : 'Sistema desbloqueado.');
+}
+function resetInactivityTimer() {
+clearTimeout(inactivityTimeout);
+clearInterval(timerInterval);
+}
+(function() {
+var lockClickTimeout = null;
+var LOCK_DOUBLE_CLICK_MS = 400;
+lockIconContainer.addEventListener('click', function() {
+if (lockClickTimeout) {
+clearTimeout(lockClickTimeout);
+lockClickTimeout = null;
+if (isLocked) {
+isLocked = false;
+updateLockState(false);
+resetInactivityTimer();
+if (typeof requestFullscreenSafe === 'function') {
+setTimeout(function() {
+requestFullscreenSafe();
+if (typeof updateMaximizeState === 'function') updateMaximizeState();
+}, 0);
+}
+}
+return;
+}
+lockClickTimeout = setTimeout(function() {
+lockClickTimeout = null;
+showPasswordPrompt();
+}, LOCK_DOUBLE_CLICK_MS);
+});
+})();
+
+// Função para alternar bloqueio/desbloqueio do sistema (usado pelo F2)
+function toggleSystemLock() {
+    isLocked = !isLocked;
+    updateLockState(false);
+    resetInactivityTimer();
+    if (!isLocked) {
+        setTimeout(() => {
+            requestFullscreenSafe();
+            if (typeof updateMaximizeState === 'function') {
+                updateMaximizeState();
+            }
+        }, 0);
+    }
+}
+
+// Adicionar listener para tecla F2 para alternar bloqueio/desbloqueio
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'F2') {
+        e.preventDefault();
+        toggleSystemLock();
+    }
+});
+
+function showPasswordPrompt() {
+const overlay = document.createElement('div');
+overlay.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;`;
+const modal = document.createElement('div');
+modal.style.cssText = `background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); min-width: 300px; text-align: center;`;
+modal.innerHTML = `<h3 style="margin-top: 0; color: var(--primary-blue);">Digite a senha:</h3><input type="password" id="passwordInput" style="width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box;"><div style="margin: 15px 0; display: flex; align-items: center; justify-content: center; gap: 8px;"><input type="checkbox" id="showPasswordModal"><label for="showPasswordModal" style="cursor: pointer;">Mostrar Senha</label></div><div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;"><button id="confirmBtn" style="background-color: var(--primary-blue); color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">Confirmar</button><button id="cancelBtn" style="background-color: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">Cancelar</button></div>`;
+overlay.appendChild(modal);
+document.body.appendChild(overlay);
+const passwordInput = modal.querySelector('#passwordInput');
+modal.querySelector('#showPasswordModal').addEventListener('change', function() { passwordInput.type = this.checked ? 'text' : 'password'; });
+passwordInput.focus();
+const confirmBtn = modal.querySelector('#confirmBtn');
+confirmBtn.addEventListener('click', () => {
+ if (passwordInput.value === getPassword()) {
+ isLocked = !isLocked;
+ updateLockState(false);
+ resetInactivityTimer();
+ if (!isLocked) {
+ setTimeout(() => {
+ requestFullscreenSafe();
+ if (typeof updateMaximizeState === 'function') {
+ updateMaximizeState();
+ }
+ }, 0);
+ }
+ } else if (passwordInput.value !== "") {
+ alert('Senha incorreta.');
+ }
+ document.body.removeChild(overlay);
+ });
+ modal.querySelector('#cancelBtn').addEventListener('click', () => document.body.removeChild(overlay));
+ passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') confirmBtn.click(); });
+}
+function changeTab(evt, tabId) {
+document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+const activeTabContent = document.getElementById(tabId);
+activeTabContent.classList.add('active');
+evt.currentTarget.classList.add('active');
+const iframe = activeTabContent.querySelector('iframe');
+if(iframe) {
+// Função para enviar mensagem de atualização
+const sendRefreshMessage = () => {
+try {
+if (iframe.contentWindow) {
+iframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+}
+} catch (e) {
+console.warn('Não foi possível enviar mensagem para o iframe:', e);
+}
+};
+// Recarregar o iframe
+const currentSrc = iframe.src;
+iframe.src = '';
+iframe.src = currentSrc;
+// Quando o iframe carregar, enviar mensagem para atualizar dados
+iframe.addEventListener('load', function refreshIframeData() {
+setTimeout(() => {
+sendRefreshMessage();
+}, 200);
+// Remover o listener após o primeiro uso
+iframe.removeEventListener('load', refreshIframeData);
+}, { once: true });
+// Se o iframe já estiver carregado (caso não dispare o evento load), tentar enviar após um pequeno delay
+setTimeout(() => {
+try {
+if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+sendRefreshMessage();
+}
+} catch (e) {
+// Ignorar erro de cross-origin se houver
+}
+}, 300);
+}
+}
+window.addEventListener('message', function(event) {
+if (event.data?.type === 'theme_changed') {
+const { themeId, themeVariables } = event.data;
+if (themeId) {
+localStorage.setItem(THEME_ID_KEY, themeId);
+}
+if (themeVariables) {
+try {
+localStorage.setItem(THEME_VARS_KEY, JSON.stringify(themeVariables));
+} catch (error) {
+console.warn('Não foi possível armazenar as variáveis do tema:', error);
+}
+applyThemeAcrossApp(themeVariables);
+}
+return;
+}
+if (event.data?.type === 'apply_theme') {
+const vars = event.data.themeVariables;
+if (vars) {
+applyThemeAcrossApp(vars);
+}
+return;
+}
+// Atividade do usuário
+if (event.data?.type === 'user_activity') {
+resetInactivityTimer();
+}
+if (event.data?.type === 'escala_pao_updated') {
+updateEscalaPaoAmanha();
+}
+// Localizar saída
+if (event.data?.type === 'locate_saida') {
+const saidaId = event.data.id;
+const cadastroTabButton = document.querySelector('.tab-button[data-tab-id="cadastro-saidas"]');
+const cadastroIframe = document.getElementById('iframe-cadastro-saidas');
+if (cadastroTabButton && !cadastroTabButton.classList.contains('active')) {
+changeTab({ currentTarget: cadastroTabButton }, 'cadastro-saidas');
+}
+if (cadastroIframe && cadastroIframe.contentWindow) {
+setTimeout(() => {
+cadastroIframe.contentWindow.postMessage({
+type: 'locate_saida',
+id: saidaId
+}, '*');
+}, 100);
+}
+}
+// Editar saída - abrir formulário de cadastro com dados preenchidos
+if (event.data?.type === 'edit_saida') {
+const saidaData = event.data.data;
+const cadastroTabButton = document.querySelector('.tab-button[data-tab-id="cadastro-saidas"]');
+const cadastroIframe = document.getElementById('iframe-cadastro-saidas');
+if (cadastroTabButton && !cadastroTabButton.classList.contains('active')) {
+changeTab({ currentTarget: cadastroTabButton }, 'cadastro-saidas');
+}
+if (cadastroIframe && cadastroIframe.contentWindow && saidaData) {
+// Aguardar o iframe carregar e então enviar os dados
+const sendEditData = () => {
+try {
+if (cadastroIframe.contentWindow) {
+cadastroIframe.contentWindow.postMessage({
+type: 'populate_form_for_edit',
+data: saidaData
+}, '*');
+}
+} catch (e) {
+console.warn('Erro ao enviar dados de edição:', e);
+}
+};
+// Se o iframe já está carregado, enviar imediatamente
+if (cadastroIframe.contentDocument && cadastroIframe.contentDocument.readyState === 'complete') {
+setTimeout(sendEditData, 100);
+} else {
+// Se não, aguardar o carregamento
+cadastroIframe.addEventListener('load', function onLoad() {
+setTimeout(sendEditData, 100);
+cadastroIframe.removeEventListener('load', onLoad);
+}, { once: true });
+}
+}
+}
+// Atualização de lembretes - retransmite para todos os iframes
+if (event.data?.type === 'lembretes_update') {
+document.querySelectorAll('iframe').forEach(iframe => {
+if (iframe.contentWindow && iframe.contentWindow !== event.source) {
+iframe.contentWindow.postMessage(event.data, '*');
+}
+});
+}
+// Solicitação de dados de lembretes
+if (event.data?.type === 'request_lembretes_data') {
+const lembretes = JSON.parse(localStorage.getItem('lembretes_ativos')) || [];
+const lembretesAtivos = lembretes.filter(l => !l.completed);
+if (event.source) {
+event.source.postMessage({
+type: 'lembretes_update',
+data: lembretesAtivos
+}, '*');
+}
+}
+// Atualização de avisos - retransmite para todos os iframes
+if (event.data?.type === 'avisos_update') {
+document.querySelectorAll('iframe').forEach(iframe => {
+if (iframe.contentWindow && iframe.contentWindow !== event.source) {
+iframe.contentWindow.postMessage(event.data, '*');
+}
+});
+}
+// Refresh de dados - retransmite para todos os iframes
+if (event.data?.type === 'refresh_all_data') {
+document.querySelectorAll('iframe').forEach(iframe => {
+if (iframe.contentWindow && iframe.contentWindow !== event.source) {
+iframe.contentWindow.postMessage({ type: 'refresh_data' }, '*');
+}
+});
+}
+});
+window.changeTab = changeTab;
+// Event listeners de inatividade removidos - bloqueio automático desativado
+// Bloqueio agora é apenas manual via clique no cadeado
+function init() {
+const timeEl = document.getElementById('time');
+const dateEl = document.getElementById('date');
+function updateClock() {
+const now = new Date();
+timeEl.textContent = now.toLocaleTimeString('pt-BR');
+dateEl.textContent = now.toLocaleDateString('pt-BR');
+}
+updateClock();
+setInterval(updateClock, 1000);
+updatePasswordDisplay();
+
+// Inicializar estado de bloqueio e garantir que a primeira aba (Disponibilidade) esteja ativa se desbloqueado
+updateLockState(false);
+updateEscalaPaoAmanha();
+
+// Se sistema estiver desbloqueado, garantir que a aba Disponibilidade está ativa (primeira aba)
+if (!isLocked) {
+const disponibilidadeTab = document.querySelector('.tab-button[data-tab-id="disponibilidade"]');
+const disponibilidadeContent = document.getElementById('disponibilidade');
+if (disponibilidadeTab && disponibilidadeContent) {
+// Remover active de outras abas
+document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+// Ativar aba Disponibilidade
+disponibilidadeTab.classList.add('active');
+disponibilidadeContent.classList.add('active');
+}
+}
+
+resetInactivityTimer();
+}
+init();
+
+// ==================== ZOOM COM CTRL + E CTRL - ====================
+let zoomLevel = 1.0;
+const minZoom = 0.5;
+const maxZoom = 2.0;
+const zoomStep = 0.1;
+function applyZoom() {
+document.body.style.transform = `scale(${zoomLevel})`;
+document.body.style.transformOrigin = 'top left';
+document.body.style.width = `${100 / zoomLevel}%`;
+document.body.style.height = `${100 / zoomLevel}%`;
+localStorage.setItem('zoomLevel', zoomLevel.toString());
+console.log('Zoom aplicado:', Math.round(zoomLevel * 100) + '%');
+}
+function zoomIn() {
+if (zoomLevel < maxZoom) {
+zoomLevel = Math.min(zoomLevel + zoomStep, maxZoom);
+applyZoom();
+}
+}
+function zoomOut() {
+if (zoomLevel > minZoom) {
+zoomLevel = Math.max(zoomLevel - zoomStep, minZoom);
+applyZoom();
+}
+}
+function resetZoom() {
+zoomLevel = 1.0;
+applyZoom();
+}
+// Carregar zoom salvo
+const savedZoom = localStorage.getItem('zoomLevel');
+if (savedZoom) {
+zoomLevel = parseFloat(savedZoom);
+applyZoom();
+}
+// Atalhos de teclado
+document.addEventListener('keydown', (e) => {
+// Ctrl + Plus (aumentar zoom)
+if (e.ctrlKey && (e.key === '+' || e.key === '=' || e.key === 'Add')) {
+e.preventDefault();
+zoomIn();
+}
+// Ctrl + Minus (diminuir zoom)
+if (e.ctrlKey && (e.key === '-' || e.key === '_' || e.key === 'Subtract')) {
+e.preventDefault();
+zoomOut();
+}
+// Ctrl + 0 (resetar zoom)
+if (e.ctrlKey && (e.key === '0' || e.key === 'NumPad0')) {
+e.preventDefault();
+resetZoom();
+}
+});
+// Zoom com scroll do mouse (Ctrl + Scroll)
+document.addEventListener('wheel', (e) => {
+if (e.ctrlKey) {
+e.preventDefault();
+if (e.deltaY < 0) {
+zoomIn();
+} else {
+zoomOut();
+}
+}
+}, { passive: false });
+console.log('Sistema de zoom ativado! Use Ctrl + ou Ctrl - para ajustar.');
+</script>
+
+<script>
+// ===== Overlay Global da Escala =====
+(() => {
+  const overlay = document.getElementById('globalEscalaOverlay');
+  const closeBtn = document.getElementById('globalEscalaClose');
+  const monthSelect = document.getElementById('globalEscalaMonth');
+  const yearSelect = document.getElementById('globalEscalaYear');
+  const headRow = document.getElementById('globalEscalaHeadRow');
+  const body = document.getElementById('globalEscalaBody');
+
+  function populateFilters(defaultYear, defaultMonth) {
+    const now = new Date();
+    const curY = String(now.getFullYear());
+    const curM = String(now.getMonth() + 1).padStart(2, '0');
+    // month
+    monthSelect.innerHTML = '';
+    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    for (let m = 1; m <= 12; m++) {
+      const val = String(m).padStart(2, '0');
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = `${val} - ${monthNames[m-1]}`;
+      monthSelect.appendChild(opt);
+    }
+    const monthNorm = defaultMonth ? String(parseInt(defaultMonth, 10)).padStart(2, '0') : curM;
+    monthSelect.value = monthNorm;
+    // year
+    const years = new Set([curY]);
+    Object.keys(localStorage).filter(k => /^\d{4}-\d{2}$/.test(k)).forEach(k => years.add(k.split('-')[0]));
+    for (let y = parseInt(curY,10)-3; y <= parseInt(curY,10)+3; y++) years.add(String(y));
+    const sorted = Array.from(years).sort((a,b)=>b.localeCompare(a));
+    yearSelect.innerHTML = sorted.map(y => `<option value="${y}">${y}</option>`).join('');
+    yearSelect.value = defaultYear || curY;
+  }
+  function daysInMonth(y, m) { return new Date(parseInt(y,10), parseInt(m,10), 0).getDate(); }
+  function loadEscalaData(y, m) {
+    try {
+      const mPad = String(parseInt(m, 10)).padStart(2, '0');
+      const raw = localStorage.getItem(`${y}-${mPad}`) || localStorage.getItem(`${y}-${parseInt(m, 10)}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function saveEscalaCell(ev) {
+    const td = ev.target;
+    if (td.dataset.memberIndex === undefined || td.dataset.dayIndex === undefined) return;
+    const memberIndex = parseInt(td.dataset.memberIndex, 10);
+    const dayIndex = parseInt(td.dataset.dayIndex, 10);
+    if (isNaN(memberIndex) || isNaN(dayIndex)) return;
+    const newVal = td.textContent.trim().toUpperCase();
+    td.textContent = newVal;
+    const y = yearSelect.value;
+    const m = monthSelect.value;
+    const dataKey = `${y}-${m}`;
+    const data = loadEscalaData(y, m);
+    if (!data || !data.members || !data.members[memberIndex]) return;
+    data.members[memberIndex][dayIndex] = newVal;
+    try {
+      localStorage.setItem(dataKey, JSON.stringify(data));
+      document.querySelectorAll('iframe').forEach(function(iframe) {
+        try {
+          if (iframe.contentWindow)
+            iframe.contentWindow.postMessage({ type: 'escala_data_updated', year: y, month: m }, '*');
+        } catch (err) {}
+      });
+    } catch (err) { console.warn('Erro ao salvar célula da escala:', err); }
+  }
+  
+  // Funções para tratamento de férias
+  function getVacationText(name) {
+    const vacations = JSON.parse(localStorage.getItem('vacations')) || {};
+    return vacations[`${name}-text`] || '';
+  }
+  
+  function parseVacationPeriod(text) {
+    const periods = [];
+    const regex = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*até\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      const startDate = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
+      const endDate = new Date(parseInt(match[6], 10), parseInt(match[5], 10) - 1, parseInt(match[4], 10));
+      if (endDate < startDate) {
+        console.warn(`Erro de data: A data final é anterior à inicial.`);
+        return [];
+      }
+      periods.push({ start: startDate, end: endDate });
+    }
+    return periods;
+  }
+  
+  function isDateInVacation(dateToCheck, vacationPeriods) {
+    if (!vacationPeriods || vacationPeriods.length === 0) return false;
+    const checkDate = new Date(dateToCheck.getFullYear(), dateToCheck.getMonth(), dateToCheck.getDate());
+    for (const period of vacationPeriods) {
+      if (period && period.start && period.end) {
+        const startDate = new Date(period.start.getFullYear(), period.start.getMonth(), period.start.getDate());
+        const endDate = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate());
+        if (checkDate >= startDate && checkDate <= endDate) return true;
+      }
+    }
+    return false;
+  }
+  
+  function isDateEqual(date1, date2) {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+  }
+  
+  function renderEscala(y, m) {
+    y = String(y || new Date().getFullYear());
+    m = String(parseInt(m, 10) || (new Date().getMonth() + 1)).padStart(2, '0');
+    const data = loadEscalaData(y, m);
+    headRow.innerHTML = '';
+    body.innerHTML = '';
+    if (!data || !Array.isArray(data.members) || data.members.length === 0) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 2; td.textContent = 'Nenhuma escala encontrada.'; td.style.padding = '20px';
+      tr.appendChild(td); body.appendChild(tr); return;
+    }
+    const total = daysInMonth(y, m);
+    const thName = document.createElement('th'); thName.textContent = 'NOME'; thName.style.background = '#ccc'; thName.style.color = '#333'; headRow.appendChild(thName);
+    for (let d = 1; d <= total; d++) {
+      const th = document.createElement('th');
+      th.textContent = String(d).padStart(2, '0');
+      th.style.background = '#ccc';
+      th.style.color = '#333';
+      headRow.appendChild(th);
+    }
+    
+    // Processar dados dos membros com tratamento de férias
+    data.members.forEach((member, memberIndex) => {
+      if (!Array.isArray(member) || !member.length) return;
+      const tr = document.createElement('tr');
+      const name = document.createElement('td');
+      name.textContent = member[0] || '';
+      name.style.fontWeight = 'bold';
+      name.dataset.memberIndex = memberIndex;
+      name.dataset.dayIndex = '0';
+      tr.appendChild(name);
+      
+      // Obter períodos de férias do membro
+      const vacationPeriods = parseVacationPeriod(getVacationText(member[0]));
+      let dayIndex = 1;
+      
+      while (dayIndex <= total) {
+        const currentDate = new Date(parseInt(y,10), parseInt(m,10)-1, dayIndex);
+        const w = new Date(parseInt(y,10), parseInt(m,10)-1, dayIndex).getDay();
+        
+        // Verificar se a data atual está em um período de férias
+        let vacationPeriod = vacationPeriods.find(p => isDateEqual(p.start, currentDate));
+        
+        if (vacationPeriod && isDateEqual(vacationPeriod.start, currentDate)) {
+          // Calcular duração das férias
+          const duration = Math.round((vacationPeriod.end - vacationPeriod.start) / (1000 * 60 * 60 * 24)) + 1;
+          
+          // Criar célula para férias
+          const td = document.createElement('td');
+          td.textContent = "FÉRIAS";
+          td.colSpan = duration;
+          td.style.fontWeight = 'bold';
+          td.style.background = '#ccc';
+          td.style.color = '#333';
+          
+          // Aplicar estilo para fins de semana se necessário
+          if (w === 0 || w === 6) {
+            td.style.background = '#ccc'; // Cinza para férias em finais de semana
+            td.style.color = '#333';
+          }
+          
+          tr.appendChild(td);
+          dayIndex += duration;
+        } else {
+          // Célula normal
+          const td = document.createElement('td');
+          td.style.position = 'relative';
+          td.dataset.memberIndex = memberIndex;
+          td.dataset.dayIndex = dayIndex;
+          const val = (member[dayIndex] || '').toString().toUpperCase();
+          
+          // X vermelho: chave canônica única (ano-mês-índice-dia), só removido com duplo clique
+          const CELL_MARKS_KEY = 'cellMarks';
+          const canonicalKey = `${y}-${m}-${memberIndex}-${dayIndex}`;
+          const marks = JSON.parse(localStorage.getItem(CELL_MARKS_KEY) || '{}');
+          if (marks[canonicalKey]) td.classList.add('marked-x');
+          
+          if (w === 0 || w === 6) { 
+            td.style.background = '#ccc'; 
+            td.style.color = '#333'; 
+          }
+          
+          if (val === 'S' || val === 'RO' || val === 'S1' || val === 'S2') td.style.fontWeight = 'bold';
+          
+          // Duplo clique: alterna X (única forma de adicionar/remover; reflete na subaba Escala)
+          td.addEventListener('dblclick', function(ev) {
+            ev.preventDefault();
+            const currentVal = (td.textContent || '').trim().toUpperCase();
+            if (currentVal !== 'S' && currentVal !== 'RO' && currentVal !== 'S1' && currentVal !== 'S2') return;
+            const store = JSON.parse(localStorage.getItem(CELL_MARKS_KEY) || '{}');
+            const key = `${y}-${m}-${memberIndex}-${dayIndex}`;
+            if (store[key]) {
+              delete store[key];
+              td.classList.remove('marked-x');
+            } else {
+              store[key] = true;
+              td.classList.add('marked-x');
+            }
+            try {
+              localStorage.setItem(CELL_MARKS_KEY, JSON.stringify(store));
+            } catch (e) { console.warn('Erro ao salvar X na escala:', e); }
+            document.querySelectorAll('iframe').forEach(function(iframe) {
+              try {
+                if (iframe.contentWindow)
+                  iframe.contentWindow.postMessage({ type: 'escala_cell_marks_updated' }, '*');
+              } catch (err) {}
+            });
+          });
+          
+          td.textContent = val; 
+          tr.appendChild(td);
+          dayIndex++;
+        }
+      }
+      body.appendChild(tr);
+    });
+  }
+  function openOverlay(y, m) {
+    const monthNorm = m ? String(parseInt(m, 10)).padStart(2, '0') : String(new Date().getMonth() + 1).padStart(2, '0');
+    populateFilters(y, monthNorm);
+    renderEscala(yearSelect.value, monthSelect.value);
+    overlay.style.display = 'block';
+  }
+  function closeOverlay() {
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#globalEscalaBox')) {
+      document.activeElement.blur();
+      setTimeout(function() { overlay.style.display = 'none'; }, 50);
+    } else {
+      overlay.style.display = 'none';
+    }
+  }
+  closeBtn.addEventListener('click', closeOverlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeOverlay(); });
+  monthSelect.addEventListener('change', () => renderEscala(yearSelect.value, monthSelect.value));
+  yearSelect.addEventListener('change', () => renderEscala(yearSelect.value, monthSelect.value));
+
+  window.addEventListener('message', (event) => {
+    if (event.data?.type === 'open_global_escala') {
+      openOverlay(event.data.year, event.data.month);
+    } else if (event.data?.type === 'close_global_escala') {
+      closeOverlay();
+    } else if (event.data?.type === 'escala_cell_marks_updated') {
+      // Refletir na escala do overlay os X alterados na subaba Escala (mesma chave canônica)
+      if (overlay.classList.contains('open')) {
+        const y = yearSelect.value;
+        const m = String(parseInt(monthSelect.value, 10) || 0).padStart(2, '0');
+        const marks = JSON.parse(localStorage.getItem('cellMarks') || '{}');
+        body.querySelectorAll('td[data-member-index][data-day-index]').forEach(function(td) {
+          const key = `${y}-${m}-${td.dataset.memberIndex}-${td.dataset.dayIndex}`;
+          if (marks[key]) td.classList.add('marked-x'); else td.classList.remove('marked-x');
+        });
+      }
+    }
+  });
+})();
+</script>
+
+<!-- SISTEMA DE BACKUP AUTOMÁTICO -->
+<script>
+// Função para verificar se já foi feito backup hoje
+function jaFezBackupHoje() {
+const ultimoBackup = localStorage.getItem('_ultimoBackupData');
+if (!ultimoBackup) return false;
+
+const hoje = new Date().toDateString();
+const dataUltimoBackup = new Date(ultimoBackup).toDateString();
+
+return hoje === dataUltimoBackup;
+}
+
+// Função para fazer backup de todos os dados do localStorage
+function fazerBackupCompleto() {
+const backupData = {};
+const timestamp = new Date();
+const dataFormatada = timestamp.toLocaleDateString('pt-BR').replace(/\//g, '-');
+const horaFormatada = timestamp.toLocaleTimeString('pt-BR').replace(/:/g, '-');
+
+// Usar sempre o mesmo nome de arquivo (apenas com a data, sem hora)
+// Isso faz o navegador perguntar se quer substituir o arquivo anterior
+const nomeArquivo = `SOT_Backup_${dataFormatada}.json`;
+
+// Coletar todos os dados do localStorage (exceto a chave de controle de backup)
+for (let i = 0; i < localStorage.length; i++) {
+const key = localStorage.key(i);
+if (key !== '_ultimoBackupData') {
+backupData[key] = localStorage.getItem(key);
+}
+}
+
+// Adicionar informações do backup
+backupData._backupInfo = JSON.stringify({
+data: dataFormatada,
+hora: horaFormatada,
+totalItens: Object.keys(backupData).length
+});
+
+// Criar arquivo JSON
+const jsonString = JSON.stringify(backupData, null, 2);
+const blob = new Blob([jsonString], { type: 'application/json' });
+const url = URL.createObjectURL(blob);
+
+// Criar link de download
+const link = document.createElement('a');
+link.href = url;
+link.download = nomeArquivo;
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+URL.revokeObjectURL(url);
+
+// Salvar data do último backup
+localStorage.setItem('_ultimoBackupData', timestamp.toISOString());
+
+// Fechar modal
+document.getElementById('backupModal').style.display = 'none';
+}
+
+// Mostrar modal ao carregar a página (apenas se não foi feito backup hoje)
+window.addEventListener('load', function() {
+setTimeout(function() {
+if (!jaFezBackupHoje()) {
+document.getElementById('backupModal').style.display = 'block';
+}
+}, 1000); // Aguarda 1 segundo após o carregamento
+});
+
+// Event listener do botão de backup
+document.getElementById('backupModalBtn').addEventListener('click', fazerBackupCompleto);
+
+// === Botão RDV - Modal com RDV mais recente e navegação por data ===
+const STORAGE_KEY_RDV = 'sot_rdv_data';
+var rdvModalDataAtual = null;
+
+function getRdvKeysOrdenadas() {
+var prefixo = STORAGE_KEY_RDV + '_';
+var keys = [];
+for (var i = 0; i < localStorage.length; i++) {
+var key = localStorage.key(i);
+if (key && key.indexOf(prefixo) === 0 && key.length > prefixo.length) keys.push(key);
+}
+keys.sort();
+return keys;
+}
+
+function getDataRdvMaisRecente() {
+var keys = getRdvKeysOrdenadas();
+if (keys.length === 0) return null;
+var ultimaKey = keys[keys.length - 1];
+return getDataFromRdvKey(ultimaKey);
+}
+
+function getDataFromRdvKey(key) {
+var prefixo = STORAGE_KEY_RDV + '_';
+return key ? key.replace(prefixo, '') : '';
+}
+
+function getMostRecentRdv() {
+var keys = getRdvKeysOrdenadas();
+if (keys.length === 0) return null;
+var maisRecente = keys[keys.length - 1];
+try {
+return JSON.parse(localStorage.getItem(maisRecente));
+} catch (e) { return null; }
+}
+
+function getRdvByDate(dateStr) {
+if (!dateStr) return null;
+var key = STORAGE_KEY_RDV + '_' + dateStr;
+try {
+var raw = localStorage.getItem(key);
+return raw ? JSON.parse(raw) : null;
+} catch (e) { return null; }
+}
+
+function formatarDataRdvNav(ymd) {
+if (!ymd || ymd.length < 10) return '—';
+var parts = ymd.split('-');
+return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function diaAnterior(ymd) {
+var d = new Date(ymd + 'T12:00:00');
+d.setDate(d.getDate() - 1);
+var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+}
+
+function diaSeguinte(ymd) {
+var d = new Date(ymd + 'T12:00:00');
+d.setDate(d.getDate() + 1);
+var y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+return y + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
+}
+
+function showRdvParaData(dateStr) {
+rdvModalDataAtual = dateStr;
+var body = document.getElementById('rdvModalBody');
+var dataLabel = document.getElementById('rdvNavData');
+if (!dataLabel) return;
+dataLabel.textContent = formatarDataRdvNav(dateStr);
+var rdv = getRdvByDate(dateStr);
+if (!rdv) {
+body.innerHTML = '<div class="rdv-sem-edicao">RDV SEM EDIÇÃO</div>';
+return;
+}
+body.innerHTML = renderRdvHtml(rdv);
+}
+
+function renderRdvHtml(d) {
+const r = d.resumo || {};
+const amb = d.ambulancias || [];
+const adm = d.administrativas || [];
+const ass = d.assinatura || {};
+const contar = function(arr, sit) { return arr.filter(function(v) { return (v.situacao||'') === sit; }).length; };
+const opAmb = r.resumoOperanteAmb !== undefined ? r.resumoOperanteAmb : contar(amb, 'Operando');
+const inopAmb = r.resumoInoperanteAmb !== undefined ? r.resumoInoperanteAmb : contar(amb, 'Inoperante');
+const destAmb = r.resumoDestacadaAmb !== undefined ? r.resumoDestacadaAmb : contar(amb, 'Destacada');
+const opAdm = r.resumoOperanteAdm !== undefined ? r.resumoOperanteAdm : contar(adm, 'Operando');
+const inopAdm = r.resumoInoperanteAdm !== undefined ? r.resumoInoperanteAdm : contar(adm, 'Inoperante');
+const destAdm = r.resumoDestacadaAdm !== undefined ? r.resumoDestacadaAdm : contar(adm, 'Destacada');
+const efTotal = (r.efetivoTotal !== undefined && r.efetivoTotal !== '') ? r.efetivoTotal : (parseInt(r.efetivoAmb)||0) + (parseInt(r.efetivoAdm)||0);
+const opTotal = opAmb + opAdm;
+const inopTotal = inopAmb + inopAdm;
+const destTotal = destAmb + destAdm;
+let html = '<div class="rdv-titulo"><strong>MARINHA DO BRASIL</strong><br>HOSPITAL NAVAL MARCÍLIO DIAS<br>DIVISÃO DE TRANSPORTE<br>RELATÓRIO DIÁRIO DE VIATURAS DE ' + (d.dataFormatada || d.data || '') + ' ' + (d.diaSemana || '') + '</div>';
+html += '<table><thead><tr><th rowspan="2">TIPO</th><th rowspan="2">EFETIVO</th><th colspan="3">SITUAÇÃO GERAL DAS VIATURAS DOTADAS NO HNMD</th><th colspan="2">OUTROS</th></tr><tr><th>OPERANDO</th><th>INOPERANTE</th><th>DESTACADA</th><th>UTI MÓVEL</th><th>USB</th></tr></thead><tbody>';
+html += '<tr><td>AMBULÂNCIA(S)</td><td>' + (r.efetivoAmb || '') + '</td><td>' + opAmb + '</td><td>' + inopAmb + '</td><td>' + destAmb + '</td><td>' + (r.resumoUti || '') + '</td><td>' + (r.resumoUsb || '') + '</td></tr>';
+html += '<tr><td>ADMINISTRATIVA</td><td>' + (r.efetivoAdm || '') + '</td><td>' + opAdm + '</td><td>' + inopAdm + '</td><td>' + destAdm + '</td><td colspan="2"></td></tr>';
+html += '<tr style="font-weight:bold;"><td>TOTAL</td><td>' + efTotal + '</td><td>' + opTotal + '</td><td>' + inopTotal + '</td><td>' + destTotal + '</td><td colspan="2"></td></tr></tbody></table>';
+html += '<div class="rdv-titulo">AMBULÂNCIAS:</div>';
+html += '<table><thead><tr><th>TIPO</th><th>PLACA</th><th>ANO</th><th>SITUAÇÃO</th><th>VIDA ÚTIL</th><th>ESPECIFICAÇÃO</th><th>OBSERVAÇÃO</th></tr></thead><tbody>';
+amb.forEach(function(v) { html += '<tr><td>' + (v.tipo||'') + '</td><td>' + (v.placa||'') + '</td><td>' + (v.ano||'') + '</td><td>' + (v.situacao||'') + '</td><td>' + (v.vidaUtil||'') + '</td><td>' + (v.espec||'') + '</td><td>' + (v.obs||'') + '</td></tr>'; });
+html += '</tbody></table>';
+html += '<div class="rdv-titulo">ADMINISTRATIVAS:</div>';
+html += '<table><thead><tr><th>TIPO</th><th>PLACA</th><th>ANO</th><th>SITUAÇÃO</th><th>VIDA ÚTIL</th><th>OBSERVAÇÃO</th></tr></thead><tbody>';
+adm.forEach(function(v) { html += '<tr><td>' + (v.tipo||'') + '</td><td>' + (v.placa||'') + '</td><td>' + (v.ano||'') + '</td><td>' + (v.situacao||'') + '</td><td>' + (v.vidaUtil||'') + '</td><td>' + (v.obs||'') + '</td></tr>'; });
+html += '</tbody></table>';
+html += '<div class="rdv-assinatura"><p style="border-bottom:1px solid #000;width:200px;margin:0 auto 3px;"></p><p>' + (ass.nome || 'Assinatura do Responsável') + '</p>' + (ass.mostrarDivTransporte ? '<p style="text-align:center;width:100%;">Div de Transporte</p>' : '') + '</div>';
+return html;
+}
+
+function openRdvModal() {
+var keys = getRdvKeysOrdenadas();
+var body = document.getElementById('rdvModalBody');
+var modal = document.getElementById('rdvModal');
+if (keys.length === 0) {
+rdvModalDataAtual = null;
+body.innerHTML = '<p style="text-align:center;padding:40px;">Nenhum RDV encontrado. Cadastre um RDV na aba Frota e Pessoal.</p>';
+document.getElementById('rdvNavData').textContent = '—';
+document.getElementById('rdvModalFooter').style.display = 'none';
+} else {
+document.getElementById('rdvModalFooter').style.display = 'flex';
+var dataMaisRecente = getDataRdvMaisRecente();
+showRdvParaData(dataMaisRecente);
+}
+modal.classList.add('active');
+document.body.style.overflow = 'hidden';
+}
+
+function closeRdvModal() {
+document.getElementById('rdvModal').classList.remove('active');
+document.body.style.overflow = '';
+}
+
+document.getElementById('btnRdv').addEventListener('click', openRdvModal);
+document.getElementById('rdvModalClose').addEventListener('click', closeRdvModal);
+document.getElementById('rdvModal').addEventListener('click', function(e) { if (e.target === this) closeRdvModal(); });
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && document.getElementById('rdvModal').classList.contains('active')) closeRdvModal(); });
+
+document.getElementById('rdvNavEsquerda').addEventListener('click', function() {
+if (!rdvModalDataAtual) return;
+var anterior = diaAnterior(rdvModalDataAtual);
+showRdvParaData(anterior);
+});
+document.getElementById('rdvNavDireita').addEventListener('click', function() {
+if (!rdvModalDataAtual) return;
+var proxima = diaSeguinte(rdvModalDataAtual);
+showRdvParaData(proxima);
+});
+
+function abrirDadosRdvNoSistema() {
+closeRdvModal();
+var tabFrota = document.querySelector('.tab-button[data-tab-id="frota-pessoal"]');
+if (tabFrota && typeof changeTab === 'function') changeTab({ currentTarget: tabFrota }, 'frota-pessoal');
+var iframeFrota = document.getElementById('iframe-frota-pessoal');
+function enviarMsgRdv() {
+try {
+if (iframeFrota && iframeFrota.contentWindow) {
+iframeFrota.contentWindow.postMessage({ type: 'abrirRdvEDadosRdv' }, '*');
+}
+} catch (e) {}
+}
+if (iframeFrota) {
+if (iframeFrota.contentDocument && iframeFrota.contentDocument.readyState === 'complete') {
+setTimeout(enviarMsgRdv, 400);
+} else {
+iframeFrota.addEventListener('load', function onLoad() {
+iframeFrota.removeEventListener('load', onLoad);
+setTimeout(enviarMsgRdv, 300);
+});
+}
+} else {
+setTimeout(enviarMsgRdv, 500);
+}
+}
+document.getElementById('rdvBtnEditar').addEventListener('click', abrirDadosRdvNoSistema);
+
+// === Modal Fainas Semanais ===
+const STORAGE_KEY_FAINAS = 'sot_fainas';
+const STORAGE_KEY_ATRIBUICOES = 'sot_atribuicoes';
+const DIAS_FAINAS = ['segunda', 'terca', 'quarta', 'quinta', 'sexta'];
+
+function getMotoristasCadastrados() {
+try {
+return JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+} catch (e) { return []; }
+}
+
+function getFainasSalvas() {
+try {
+return JSON.parse(localStorage.getItem(STORAGE_KEY_FAINAS) || '[]');
+} catch (e) { return []; }
+}
+
+function setFainasSalvas(arr) {
+localStorage.setItem(STORAGE_KEY_FAINAS, JSON.stringify(arr));
+}
+
+function getFainasPorMotorista(motoristaId) {
+return getFainasSalvas().find(function(f) { return f.motoristaId === motoristaId; }) || null;
+}
+
+function openFainasModal() {
+var sel = document.getElementById('fainasSelectMotorista');
+var motoristas = getMotoristasCadastrados();
+sel.innerHTML = '<option value="">— Selecione o motorista —</option>';
+motoristas.forEach(function(m) {
+if (m.nome && String(m.nome).trim()) {
+var opt = document.createElement('option');
+opt.value = m.id;
+opt.textContent = m.nome;
+sel.appendChild(opt);
+}
+});
+sel.value = '';
+currentFainasMotorista = null;
+document.getElementById('fainasFormPanel').classList.remove('visible');
+var tituloWrap = document.querySelector('.fainas-titulo-wrap');
+if (tituloWrap) tituloWrap.classList.remove('visible');
+document.getElementById('fainasModal').classList.add('active');
+document.body.style.overflow = 'hidden';
+}
+
+function closeFainasModal() {
+if (currentFainasMotorista) {
+salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+}
+document.getElementById('fainasModal').classList.remove('active');
+document.body.style.overflow = '';
+}
+
+function criarLinhaFaina(dia, periodo, horario, atividade) {
+horario = horario || '';
+atividade = atividade || '';
+var div = document.createElement('div');
+div.className = 'fainas-linha';
+div.innerHTML = '<input type="time" value="' + (horario || '07:00') + '" data-field="horario" title="Horário">' +
+'<input type="text" value="' + (atividade.replace(/"/g, '&quot;')) + '" placeholder="Descrição da atividade" data-field="atividade">' +
+'<button type="button" class="btn-remove-linha" aria-label="Remover"><i class="fas fa-trash-alt"></i></button>';
+var container = document.querySelector('.fainas-dia-section[data-dia="' + dia + '"] .fainas-linhas[data-periodo="' + periodo + '"]');
+if (container) container.appendChild(div);
+var btn = div.querySelector('.btn-remove-linha');
+if (btn) btn.addEventListener('click', function() {
+div.remove();
+if (currentFainasMotorista) salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+});
+return div;
+}
+
+function renderFainasForm(motoristaId, motoristaNome) {
+currentFainasMotorista = { id: motoristaId, nome: motoristaNome };
+var dados = getFainasPorMotorista(motoristaId);
+var titulo = (dados && dados.titulo && String(dados.titulo).trim()) ? dados.titulo : 'Semana atual';
+var viewEl = document.getElementById('fainasTituloView');
+var editEl = document.getElementById('fainasTituloEdit');
+if (viewEl) { viewEl.textContent = titulo; viewEl.style.display = ''; }
+if (editEl) { editEl.value = titulo; editEl.style.display = 'none'; }
+var dias = (dados && dados.dias) ? dados.dias : {};
+DIAS_FAINAS.forEach(function(dia) {
+var d = dias[dia] || { manha: [], tarde: [] };
+['manha', 'tarde'].forEach(function(periodo) {
+var container = document.querySelector('.fainas-dia-section[data-dia="' + dia + '"] .fainas-linhas[data-periodo="' + periodo + '"]');
+if (!container) return;
+container.innerHTML = '';
+var list = (d[periodo] && Array.isArray(d[periodo])) ? d[periodo] : [];
+if (list.length === 0) {
+criarLinhaFaina(dia, periodo, periodo === 'manha' ? '07:00' : '13:30', '');
+} else {
+list.forEach(function(item) {
+criarLinhaFaina(dia, periodo, item.horario || '', item.atividade || '');
+});
+}
+});
+});
+}
+
+function coletarFainasDoFormulario(motoristaId, motoristaNome) {
+var dias = {};
+DIAS_FAINAS.forEach(function(dia) {
+dias[dia] = { manha: [], tarde: [] };
+var sec = document.querySelector('.fainas-dia-section[data-dia="' + dia + '"]');
+if (!sec) return;
+['manha', 'tarde'].forEach(function(periodo) {
+var container = sec.querySelector('.fainas-linhas[data-periodo="' + periodo + '"]');
+if (!container) return;
+var linhas = container.querySelectorAll('.fainas-linha');
+linhas.forEach(function(linha) {
+var h = (linha.querySelector('input[data-field="horario"]') || {}).value || '';
+var a = (linha.querySelector('input[data-field="atividade"]') || {}).value || '';
+if (h || a) dias[dia][periodo].push({ horario: h, atividade: a });
+});
+});
+});
+var viewEl = document.getElementById('fainasTituloView');
+var editEl = document.getElementById('fainasTituloEdit');
+var titulo = (editEl && editEl.style.display !== 'none') ? editEl.value.trim() : ((viewEl && viewEl.textContent) ? viewEl.textContent.trim() : '');
+return { motoristaId: motoristaId, motoristaNome: motoristaNome, titulo: titulo || 'Semana atual', dias: dias };
+}
+
+var currentFainasMotorista = null;
+
+function salvarFainasAutomatico(motoristaId, motoristaNome) {
+if (!motoristaId) return;
+var payload = coletarFainasDoFormulario(motoristaId, motoristaNome);
+var list = getFainasSalvas();
+var idx = list.findIndex(function(f) { return f.motoristaId === motoristaId; });
+if (idx >= 0) list[idx] = payload;
+else list.push(payload);
+setFainasSalvas(list);
+}
+
+function salvarFainasModal() {
+var sel = document.getElementById('fainasSelectMotorista');
+var motoristaId = sel.value;
+var motoristaNome = (sel.options[sel.selectedIndex] || {}).textContent || '';
+if (!motoristaId) {
+alert('Selecione um motorista.');
+return;
+}
+salvarFainasAutomatico(motoristaId, motoristaNome);
+closeFainasModal();
+}
+
+document.getElementById('btnFainas').addEventListener('click', openFainasModal);
+document.getElementById('fainasModalClose').addEventListener('click', closeFainasModal);
+document.getElementById('fainasModal').addEventListener('click', function(e) {
+if (e.target.id === 'fainasModal') closeFainasModal();
+});
+document.addEventListener('keydown', function(e) {
+if (e.key === 'Escape' && document.getElementById('fainasModal').classList.contains('active')) closeFainasModal();
+});
+
+document.getElementById('fainasFormPanel').addEventListener('click', function(e) {
+var title = e.target.closest('.fainas-dia-title');
+if (!title) return;
+var section = title.closest('.fainas-dia-section');
+if (!section) return;
+var isExpanded = section.classList.toggle('expanded');
+title.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+});
+
+document.getElementById('fainasSelectMotorista').addEventListener('change', function() {
+var sel = this;
+var motoristaId = sel.value;
+var panel = document.getElementById('fainasFormPanel');
+var tituloWrap = document.querySelector('.fainas-titulo-wrap');
+if (currentFainasMotorista) {
+salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+}
+if (!motoristaId) {
+currentFainasMotorista = null;
+panel.classList.remove('visible');
+if (tituloWrap) tituloWrap.classList.remove('visible');
+return;
+}
+var motoristaNome = (sel.options[sel.selectedIndex] || {}).textContent || '';
+renderFainasForm(motoristaId, motoristaNome);
+if (tituloWrap) tituloWrap.classList.add('visible');
+panel.classList.add('visible');
+});
+
+document.querySelectorAll('.fainas-add-linha').forEach(function(btn) {
+btn.addEventListener('click', function() {
+var dia = this.getAttribute('data-dia');
+var periodo = this.getAttribute('data-periodo');
+criarLinhaFaina(dia, periodo, periodo === 'manha' ? '07:00' : '13:30', '');
+var sel = document.getElementById('fainasSelectMotorista');
+if (sel.value && currentFainasMotorista) salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+});
+});
+
+function copiarFainasDeOutroDia(diaOrigem, diaDestino) {
+var secOrigem = document.querySelector('.fainas-dia-section[data-dia="' + diaOrigem + '"]');
+var secDestino = document.querySelector('.fainas-dia-section[data-dia="' + diaDestino + '"]');
+if (!secOrigem || !secDestino) return;
+['manha', 'tarde'].forEach(function(periodo) {
+var containerOrigem = secOrigem.querySelector('.fainas-linhas[data-periodo="' + periodo + '"]');
+var containerDestino = secDestino.querySelector('.fainas-linhas[data-periodo="' + periodo + '"]');
+if (!containerOrigem || !containerDestino) return;
+var linhas = containerOrigem.querySelectorAll('.fainas-linha');
+var dados = [];
+linhas.forEach(function(linha) {
+var h = (linha.querySelector('input[data-field="horario"]') || {}).value || '';
+var a = (linha.querySelector('input[data-field="atividade"]') || {}).value || '';
+dados.push({ horario: h, atividade: a });
+});
+containerDestino.innerHTML = '';
+if (dados.length === 0) {
+criarLinhaFaina(diaDestino, periodo, periodo === 'manha' ? '07:00' : '13:30', '');
+} else {
+dados.forEach(function(d) {
+criarLinhaFaina(diaDestino, periodo, d.horario, d.atividade);
+});
+}
+});
+}
+
+document.querySelectorAll('.fainas-copiar-select').forEach(function(sel) {
+sel.addEventListener('change', function() {
+var diaDestino = this.getAttribute('data-dia-alvo');
+var diaOrigem = this.value;
+if (!diaOrigem) return;
+copiarFainasDeOutroDia(diaOrigem, diaDestino);
+this.value = '';
+if (currentFainasMotorista) salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+});
+});
+
+document.getElementById('fainasBtnSalvar').addEventListener('click', salvarFainasModal);
+
+document.getElementById('fainasFormPanel').addEventListener('blur', function(e) {
+if (e.target && e.target.matches && e.target.matches('input[data-field="horario"], input[data-field="atividade"]')) {
+if (currentFainasMotorista) salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+}
+}, true);
+document.getElementById('fainasFormPanel').addEventListener('change', function(e) {
+if (e.target && e.target.matches && e.target.matches('input[data-field="horario"], input[data-field="atividade"]')) {
+if (currentFainasMotorista) salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+}
+}, true);
+
+document.getElementById('fainasTituloView').addEventListener('click', function() {
+var viewEl = document.getElementById('fainasTituloView');
+var editEl = document.getElementById('fainasTituloEdit');
+editEl.value = viewEl.textContent || '';
+viewEl.style.display = 'none';
+editEl.style.display = 'block';
+editEl.focus();
+});
+document.getElementById('fainasTituloEdit').addEventListener('blur', function() {
+var viewEl = document.getElementById('fainasTituloView');
+var editEl = document.getElementById('fainasTituloEdit');
+viewEl.textContent = editEl.value.trim() || 'Semana atual';
+editEl.style.display = 'none';
+viewEl.style.display = '';
+if (currentFainasMotorista) salvarFainasAutomatico(currentFainasMotorista.id, currentFainasMotorista.nome);
+});
+document.getElementById('fainasTituloEdit').addEventListener('keydown', function(e) {
+if (e.key === 'Enter') this.blur();
+});
+
+// === Modal Atribuições ===
+var currentAtribuicaoEditId = null;
+
+function getAtribuicoesSalvas() {
+try {
+return JSON.parse(localStorage.getItem(STORAGE_KEY_ATRIBUICOES) || '[]');
+} catch (e) { return []; }
+}
+function setAtribuicoesSalvas(arr) {
+localStorage.setItem(STORAGE_KEY_ATRIBUICOES, JSON.stringify(arr));
+}
+function normalizarAtribuicoes(arr) {
+if (!arr || !Array.isArray(arr)) return [];
+return arr.map(function(item, idx) {
+if (typeof item === 'object' && item !== null && item.titulo !== undefined) {
+return { id: item.id || ('atr_' + idx + '_' + Date.now()), titulo: item.titulo || '', conteudo: item.conteudo || '' };
+}
+return { id: 'atr_' + idx + '_' + Date.now(), titulo: String(item || ''), conteudo: '' };
+});
+}
+function getAtribuicoesPorMotorista(motoristaId) {
+var rec = getAtribuicoesSalvas().find(function(a) { return a.motoristaId === motoristaId; }) || null;
+if (rec && rec.atribuicoes) {
+rec = { motoristaId: rec.motoristaId, motoristaNome: rec.motoristaNome, atribuicoes: normalizarAtribuicoes(rec.atribuicoes) };
+}
+return rec;
+}
+function openAtribuicoesModal() {
+var sel = document.getElementById('atribuicoesSelectMotorista');
+var motoristas = getMotoristasCadastrados();
+sel.innerHTML = '<option value="">— Selecione o motorista —</option>';
+motoristas.forEach(function(m) {
+if (m.nome && String(m.nome).trim()) {
+var opt = document.createElement('option');
+opt.value = m.id;
+opt.textContent = m.nome;
+sel.appendChild(opt);
+}
+});
+var fainasSel = document.getElementById('fainasSelectMotorista');
+if (fainasSel && fainasSel.value) sel.value = fainasSel.value;
+currentAtribuicaoEditId = null;
+mostrarBotaoAdicionarAtribuicao();
+document.getElementById('atribuicoesFormPanel').classList.remove('visible');
+document.getElementById('atribuicoesTituloInput').value = '';
+document.getElementById('atribuicoesConteudoFolha').value = '';
+renderAtribuicoesLista(sel.value);
+document.getElementById('atribuicoesModal').classList.add('active');
+}
+function closeAtribuicoesModal() {
+document.getElementById('atribuicoesModal').classList.remove('active');
+}
+function updateAtribuicoesNumeros() {
+var ta = document.getElementById('atribuicoesConteudoFolha');
+var numsEl = document.getElementById('atribuicoesFolhaNums');
+if (!ta || !numsEl) return;
+var linhas = (ta.value || '').split('\n').length;
+if (linhas < 1) linhas = 1;
+var arr = [];
+for (var i = 1; i <= linhas; i++) arr.push(i);
+numsEl.textContent = arr.join('\n');
+}
+function abrirFormNova() {
+currentAtribuicaoEditId = null;
+document.getElementById('atribuicoesTituloInput').value = '';
+document.getElementById('atribuicoesConteudoFolha').value = '';
+document.getElementById('atribuicoesFormPanel').classList.add('visible');
+document.getElementById('atribuicoesBtnNova').style.display = 'none';
+document.getElementById('atribuicoesBtnGroupSalvarVoltar').style.display = 'inline-flex';
+setTimeout(updateAtribuicoesNumeros, 0);
+}
+function abrirFormEditar(motoristaId, item) {
+currentAtribuicaoEditId = item.id;
+document.getElementById('atribuicoesTituloInput').value = item.titulo || '';
+document.getElementById('atribuicoesConteudoFolha').value = item.conteudo || '';
+document.getElementById('atribuicoesFormPanel').classList.add('visible');
+document.getElementById('atribuicoesBtnNova').style.display = 'none';
+document.getElementById('atribuicoesBtnGroupSalvarVoltar').style.display = 'inline-flex';
+setTimeout(updateAtribuicoesNumeros, 0);
+}
+function mostrarBotaoAdicionarAtribuicao() {
+document.getElementById('atribuicoesBtnNova').style.display = '';
+document.getElementById('atribuicoesBtnGroupSalvarVoltar').style.display = 'none';
+}
+function voltarAtribuicoes() {
+document.getElementById('atribuicoesFormPanel').classList.remove('visible');
+currentAtribuicaoEditId = null;
+document.getElementById('atribuicoesTituloInput').value = '';
+document.getElementById('atribuicoesConteudoFolha').value = '';
+mostrarBotaoAdicionarAtribuicao();
+}
+function renderAtribuicoesLista(motoristaId) {
+var lista = document.getElementById('atribuicoesLista');
+var vazio = document.getElementById('atribuicoesVazio');
+lista.innerHTML = '';
+if (!motoristaId) {
+vazio.style.display = 'block';
+vazio.textContent = 'Nenhuma atribuição cadastrada. Selecione um motorista e adicione abaixo.';
+return;
+}
+var rec = getAtribuicoesPorMotorista(motoristaId);
+var arr = (rec && rec.atribuicoes) ? rec.atribuicoes : [];
+if (arr.length === 0) {
+vazio.style.display = 'block';
+vazio.textContent = 'Nenhuma atribuição cadastrada. Selecione um motorista e adicione abaixo.';
+return;
+}
+vazio.style.display = 'none';
+arr.forEach(function(item) {
+var div = document.createElement('div');
+div.className = 'atribuicoes-item';
+var tituloEscapado = (item.titulo || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+div.innerHTML = '<span class="atribuicoes-item-titulo">' + tituloEscapado + '</span><button type="button" class="btn-remove-atrib" data-id="' + (item.id || '').replace(/"/g, '&quot;') + '" aria-label="Remover"><i class="fas fa-trash-alt"></i></button>';
+lista.appendChild(div);
+div.querySelector('.atribuicoes-item-titulo').addEventListener('click', function(ev) {
+ev.stopPropagation();
+abrirFormEditar(motoristaId, item);
+});
+div.querySelector('.btn-remove-atrib').addEventListener('click', function(ev) {
+ev.stopPropagation();
+var list = getAtribuicoesSalvas();
+var r = list.find(function(a) { return a.motoristaId === motoristaId; });
+if (!r || !r.atribuicoes) return;
+r.atribuicoes = normalizarAtribuicoes(r.atribuicoes).filter(function(a) { return a.id !== item.id; });
+if (r.atribuicoes.length === 0) {
+list = list.filter(function(a) { return a.motoristaId !== motoristaId; });
+}
+setAtribuicoesSalvas(list);
+renderAtribuicoesLista(motoristaId);
+if (currentAtribuicaoEditId === item.id) {
+document.getElementById('atribuicoesFormPanel').classList.remove('visible');
+currentAtribuicaoEditId = null;
+mostrarBotaoAdicionarAtribuicao();
+}
+});
+});
+}
+function salvarAtribuicaoModal() {
+var sel = document.getElementById('atribuicoesSelectMotorista');
+var motoristaId = sel.value;
+var motoristaNome = (sel.options[sel.selectedIndex] || {}).textContent || '';
+var titulo = (document.getElementById('atribuicoesTituloInput').value || '').trim();
+var conteudo = document.getElementById('atribuicoesConteudoFolha').value || '';
+if (!motoristaId) {
+alert('Selecione um motorista.');
+return;
+}
+if (!titulo) {
+alert('Digite o título da atribuição.');
+return;
+}
+var list = getAtribuicoesSalvas();
+var rec = list.find(function(a) { return a.motoristaId === motoristaId; });
+if (!rec) {
+rec = { motoristaId: motoristaId, motoristaNome: motoristaNome, atribuicoes: [] };
+list.push(rec);
+}
+rec.atribuicoes = normalizarAtribuicoes(rec.atribuicoes);
+rec.motoristaNome = motoristaNome;
+if (currentAtribuicaoEditId) {
+var idx = rec.atribuicoes.findIndex(function(a) { return a.id === currentAtribuicaoEditId; });
+if (idx >= 0) {
+rec.atribuicoes[idx] = { id: currentAtribuicaoEditId, titulo: titulo, conteudo: conteudo };
+} else {
+rec.atribuicoes.push({ id: 'atr_' + Date.now(), titulo: titulo, conteudo: conteudo });
+}
+} else {
+rec.atribuicoes.push({ id: 'atr_' + Date.now(), titulo: titulo, conteudo: conteudo });
+}
+setAtribuicoesSalvas(list);
+document.getElementById('atribuicoesFormPanel').classList.remove('visible');
+document.getElementById('atribuicoesTituloInput').value = '';
+document.getElementById('atribuicoesConteudoFolha').value = '';
+currentAtribuicaoEditId = null;
+mostrarBotaoAdicionarAtribuicao();
+renderAtribuicoesLista(motoristaId);
+closeAtribuicoesModal();
+}
+document.getElementById('fainasBtnAtribuicoes').addEventListener('click', openAtribuicoesModal);
+document.getElementById('atribuicoesModalClose').addEventListener('click', closeAtribuicoesModal);
+document.getElementById('atribuicoesModal').addEventListener('click', function(e) {
+if (e.target.id === 'atribuicoesModal') closeAtribuicoesModal();
+});
+document.addEventListener('keydown', function(e) {
+if (e.key === 'Escape' && document.getElementById('atribuicoesModal').classList.contains('active')) closeAtribuicoesModal();
+});
+document.getElementById('atribuicoesSelectMotorista').addEventListener('change', function() {
+document.getElementById('atribuicoesFormPanel').classList.remove('visible');
+currentAtribuicaoEditId = null;
+mostrarBotaoAdicionarAtribuicao();
+renderAtribuicoesLista(this.value);
+});
+document.getElementById('atribuicoesBtnNova').addEventListener('click', function() {
+if (!document.getElementById('atribuicoesSelectMotorista').value) {
+alert('Selecione um motorista.');
+return;
+}
+abrirFormNova();
+});
+document.getElementById('atribuicoesBtnSalvar').addEventListener('click', salvarAtribuicaoModal);
+document.getElementById('atribuicoesBtnVoltar').addEventListener('click', voltarAtribuicoes);
+
+var atribuicoesFolhaTa = document.getElementById('atribuicoesConteudoFolha');
+var atribuicoesFolhaNumsEl = document.getElementById('atribuicoesFolhaNums');
+if (atribuicoesFolhaTa && atribuicoesFolhaNumsEl) {
+atribuicoesFolhaTa.addEventListener('input', updateAtribuicoesNumeros);
+atribuicoesFolhaTa.addEventListener('change', updateAtribuicoesNumeros);
+atribuicoesFolhaTa.addEventListener('scroll', function() {
+atribuicoesFolhaNumsEl.scrollTop = atribuicoesFolhaTa.scrollTop;
+});
+}
+</script>
+
+<!-- CONTROLES DA BARRA SUPERIOR -->
+<script>
+(function() {
+const maximizeBtn = document.getElementById('btnMaximize');
+const closeBtn = document.getElementById('btnClose');
+if (!maximizeBtn || !closeBtn) {
+console.warn('Botões da barra superior não encontrados.');
+return;
+}
+
+const maximizeIcon = maximizeBtn.querySelector('i');
+const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+
+function updateMaximizeState() {
+if (fullscreenElement()) {
+document.body.classList.add('fullscreen-active');
+maximizeIcon.classList.remove('fa-window-maximize');
+maximizeIcon.classList.add('fa-window-restore');
+maximizeBtn.setAttribute('aria-label', 'Restaurar janela');
+} else {
+document.body.classList.remove('fullscreen-active');
+maximizeIcon.classList.remove('fa-window-restore');
+maximizeIcon.classList.add('fa-window-maximize');
+maximizeBtn.setAttribute('aria-label', 'Maximizar janela');
+}
+}
+
+async function toggleFullscreen() {
+try {
+if (!fullscreenElement()) {
+const request = document.documentElement.requestFullscreen
+|| document.documentElement.webkitRequestFullscreen
+|| document.documentElement.mozRequestFullScreen
+|| document.documentElement.msRequestFullscreen;
+if (request) {
+await request.call(document.documentElement);
+} else {
+alert('Seu navegador não suporta a função de maximizar.');
+}
+} else {
+const exit = document.exitFullscreen
+|| document.webkitExitFullscreen
+|| document.mozCancelFullScreen
+|| document.msExitFullscreen;
+if (exit) {
+await exit.call(document);
+}
+}
+} catch (error) {
+console.error('Falha ao alternar tela cheia:', error);
+alert('Não foi possível alternar o modo de tela cheia.');
+}
+}
+
+function closeApp() {
+const confirmed = confirm('Deseja realmente fechar o sistema?');
+if (!confirmed) return;
+
+window.close();
+setTimeout(() => {
+document.body.innerHTML = '<div class="app-closed-message"><i class="fas fa-door-closed fa-2x"></i><strong>Sistema encerrado.</strong><span>Você pode fechar esta aba com segurança.</span></div>';
+}, 200);
+}
+
+maximizeBtn.addEventListener('click', toggleFullscreen);
+closeBtn.addEventListener('click', closeApp);
+document.addEventListener('fullscreenchange', updateMaximizeState);
+document.addEventListener('webkitfullscreenchange', updateMaximizeState);
+document.addEventListener('mozfullscreenchange', updateMaximizeState);
+document.addEventListener('MSFullscreenChange', updateMaximizeState);
+
+updateMaximizeState();
+})();
+</script>
+
+<!-- SISTEMA DE CONTROLE POR VOZ -->
+<script src="api-service.js"></script>
+<script src="data-service.js"></script>
+<script src="controle-voz.js"></script>
+<script>
+(function() {
+ window.addEventListener('message', function(e) {
+  if (!e.data || e.data.type !== 'speak' || !e.data.text) return;
+  var iframe = document.getElementById('iframe-cadastro-saidas');
+  if (iframe && e.source !== iframe.contentWindow) return;
+  if (window.voiceController && typeof window.voiceController.speak === 'function') {
+   window.voiceController.speak(e.data.text);
+  }
+ });
+})();
+</script>
+
+<!-- Modal PSO - Próximo Integrante (no contexto principal) -->
+<div id="psoProximoModalMain" class="pso-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100vw; height: 100vh; overflow: auto; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: flex-start; padding-top: 180px;">
+    <div class="pso-modal-content" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: auto; padding: 0; border-radius: 20px; width: 90%; max-width: 700px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
+        <div class="pso-modal-header" style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(10px);">
+            <h2 style="margin: 0; font-size: 28px; color: white; font-weight: bold; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-user-check" style="font-size: 32px;"></i>
+                Protocolo de Sucessão Operacional
+            </h2>
+            <span class="close-pso-modal" id="closePsoProximoModalMain" style="color: white; font-size: 36px; font-weight: bold; cursor: pointer; line-height: 1; transition: transform 0.2s;">&times;</span>
+        </div>
+        <div class="pso-modal-body" style="padding: 50px 40px; text-align: center; background: white; border-radius: 0 0 20px 20px;">
+            <div style="margin-bottom: 30px;">
+                <p style="font-size: 36px; color: #666; margin: 0 0 20px 0; font-weight: 500;">PRÓXIMO A CHORAR 😢:</p>
+                <div id="psoProximoNomeMain" style="font-size: 48px; font-weight: bold; color: #667eea; margin: 20px 0; padding: 30px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 15px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2); text-transform: uppercase; letter-spacing: 2px; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+                </div>
+                <div id="psoProximoVazioMain" style="font-size: 20px; color: #999; padding: 40px; background: #f8f9fa; border-radius: 15px; display: none;">
+                    Nenhum integrante está marcado como "Próximo" no Protocolo de Sucessão Operacional (PSO).
+                </div>
+            </div>
+        </div>
+        <div class="pso-modal-footer" style="padding: 25px 40px; background: #f8f9fa; border-radius: 0 0 20px 20px; text-align: center; border-top: 1px solid #e9ecef;">
+            <button id="fecharPsoProximoBtnMain" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s, box-shadow 0.2s;">
+                <i class="fas fa-check"></i> Fechar
+            </button>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal Escala Rocha (no contexto principal) -->
+    <div id="escalaRochaModalMain" class="pso-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100vw; height: 100vh; overflow: auto; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: flex-start; padding-top: 180px;">
+        <div class="pso-modal-content" style="background: linear-gradient(135deg, #7f00b2 0%, #6a0095 100%); margin: auto; padding: 0; border-radius: 20px; width: 90%; max-width: 700px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
+            <div class="pso-modal-header" style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(10px);">
+                <h2 style="margin: 0; font-size: 28px; color: white; font-weight: bold; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-calendar-alt" style="font-size: 32px;"></i>
+                    Escala Rocha
+                </h2>
+                <span class="close-pso-modal" id="closeEscalaRochaModalMain" style="color: white; font-size: 36px; font-weight: bold; cursor: pointer; line-height: 1; transition: transform 0.2s;">&times;</span>
+            </div>
+            <div class="pso-modal-body" style="padding: 50px 40px; text-align: center; background: white; border-radius: 0 0 20px 20px;">
+                <div style="margin-bottom: 30px;">
+                    <p style="font-size: 36px; color: #666; margin: 0 0 20px 0; font-weight: 500;">PRÓXIMO A CHORAR 😢:</p>
+                    <div id="escalaRochaConteudoMain" style="font-size: 32px; font-weight: bold; color: #7f00b2; margin: 20px 0; padding: 30px; background: linear-gradient(135deg, #f5f7fa 0%, #e8d5f0 100%); border-radius: 15px; box-shadow: 0 10px 30px rgba(127, 0, 178, 0.3); min-height: 100px; display: none; align-items: center; justify-content: center; text-align: center; word-wrap: break-word; line-height: 1.5;">
+                    </div>
+                    <div id="escalaRochaVazioMain" style="font-size: 20px; color: #999; padding: 40px; background: #f8f9fa; border-radius: 15px; display: none;">
+                        Nenhum registro encontrado no Protocolo de Sucessão Operacional (PSO).
+                    </div>
+                </div>
+            </div>
+            <div class="pso-modal-footer" style="padding: 25px 40px; background: #f8f9fa; border-radius: 0 0 20px 20px; text-align: center; border-top: 1px solid #e9ecef;">
+                <button id="fecharEscalaRochaBtnMain" style="background: linear-gradient(135deg, #7f00b2 0%, #6a0095 100%); color: white; border: none; padding: 15px 40px; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 5px 15px rgba(127, 0, 178, 0.4); transition: transform 0.2s, box-shadow 0.2s;">
+                    <i class="fas fa-check"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9) translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+    
+    .pso-modal-content {
+        animation: modalSlideIn 0.3s ease-out;
+    }
+    
+    .close-pso-modal:hover {
+        transform: rotate(90deg);
+    }
+    
+    #fecharPsoProximoBtnMain:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 7px 20px rgba(102, 126, 234, 0.5);
+    }
+    
+    #fecharPsoProximoBtnMain:active {
+        transform: translateY(0);
+    }
+</style>
+
+<script>
+    // Função para fechar o modal PSO principal
+    const closePsoProximoModalMain = () => {
+        const modal = document.getElementById('psoProximoModalMain');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+    
+    // Função para fechar o modal Escala Rocha principal
+    const closeEscalaRochaModalMain = () => {
+        const modal = document.getElementById('escalaRochaModalMain');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    // Event listeners do modal PSO principal
+    const closePsoProximoModalMainBtn = document.getElementById('closePsoProximoModalMain');
+    const fecharPsoProximoBtnMain = document.getElementById('fecharPsoProximoBtnMain');
+    const psoProximoModalMain = document.getElementById('psoProximoModalMain');
+    
+    if (closePsoProximoModalMainBtn) {
+        closePsoProximoModalMainBtn.addEventListener('click', closePsoProximoModalMain);
+    }
+    
+    if (fecharPsoProximoBtnMain) {
+        fecharPsoProximoBtnMain.addEventListener('click', closePsoProximoModalMain);
+    }
+    
+    // Fechar modal ao clicar fora dele
+    if (psoProximoModalMain) {
+        psoProximoModalMain.addEventListener('click', (e) => {
+            if (e.target === psoProximoModalMain) {
+                closePsoProximoModalMain();
+            }
+        });
+    }
+    
+    // Event listeners do modal Escala Rocha principal
+    const closeEscalaRochaModalMainBtn = document.getElementById('closeEscalaRochaModalMain');
+    const fecharEscalaRochaBtnMain = document.getElementById('fecharEscalaRochaBtnMain');
+    const escalaRochaModalMain = document.getElementById('escalaRochaModalMain');
+    
+    if (closeEscalaRochaModalMainBtn) {
+        closeEscalaRochaModalMainBtn.addEventListener('click', closeEscalaRochaModalMain);
+    }
+    
+    if (fecharEscalaRochaBtnMain) {
+        fecharEscalaRochaBtnMain.addEventListener('click', closeEscalaRochaModalMain);
+    }
+    
+    // Fechar modal ao clicar fora dele
+    if (escalaRochaModalMain) {
+        escalaRochaModalMain.addEventListener('click', (e) => {
+            if (e.target === escalaRochaModalMain) {
+                closeEscalaRochaModalMain();
+            }
+        });
+    }
+    
+    // Fechar modal com ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && psoProximoModalMain && psoProximoModalMain.style.display === 'flex') {
+            closePsoProximoModalMain();
+        }
+        if (e.key === 'Escape') {
+            const escalaRochaModalMain = document.getElementById('escalaRochaModalMain');
+            if (escalaRochaModalMain && escalaRochaModalMain.style.display === 'flex') {
+                closeEscalaRochaModalMain();
+            }
+        }
+    });
+
+    // Listener para receber mensagens dos iframes
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'showPsoModal') {
+            const modal = document.getElementById('psoProximoModalMain');
+            const nomeIntegrante = document.getElementById('psoProximoNomeMain');
+            const mensagemVazio = document.getElementById('psoProximoVazioMain');
+            
+            if (event.data.temProximo && event.data.nome) {
+                // Exibir o nome do próximo integrante
+                if (nomeIntegrante) {
+                    nomeIntegrante.textContent = event.data.nome;
+                    nomeIntegrante.style.display = 'flex';
+                }
+                if (mensagemVazio) {
+                    mensagemVazio.style.display = 'none';
+                }
+            } else {
+                // Se não houver integrante marcado como próximo
+                if (nomeIntegrante) {
+                    nomeIntegrante.style.display = 'none';
+                }
+                if (mensagemVazio) {
+                    mensagemVazio.style.display = 'block';
+                }
+            }
+            
+            // Abrir o modal
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        if (event.data && event.data.type === 'showEscalaRochaModal') {
+            const modal = document.getElementById('escalaRochaModalMain');
+            const conteudoEscala = document.getElementById('escalaRochaConteudoMain');
+            const mensagemVazio = document.getElementById('escalaRochaVazioMain');
+            
+            if (event.data.temRegistro && event.data.nome) {
+                // Usar conteúdo formatado se fornecido, senão formatar
+                let conteudoFormatado = event.data.conteudoFormatado;
+                if (!conteudoFormatado) {
+                    conteudoFormatado = event.data.nome;
+                    if (event.data.observacoes) {
+                        conteudoFormatado += ' ' + event.data.observacoes;
+                    }
+                    if (event.data.dataRegresso) {
+                        const data = new Date(event.data.dataRegresso);
+                        const dataFormatada = data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                        const temDataNoConteudo = /\d{2}\/\d{2}\/\d{2}/.test(event.data.observacoes || '');
+                        if (!temDataNoConteudo) {
+                            conteudoFormatado += ' ' + dataFormatada;
+                        }
+                    }
+                }
+                
+                // Exibir o conteúdo formatado
+                if (conteudoEscala) {
+                    conteudoEscala.textContent = conteudoFormatado;
+                    conteudoEscala.style.display = 'flex';
+                }
+                if (mensagemVazio) {
+                    mensagemVazio.style.display = 'none';
+                }
+            } else {
+                // Se não houver registro
+                if (conteudoEscala) {
+                    conteudoEscala.style.display = 'none';
+                }
+                if (mensagemVazio) {
+                    mensagemVazio.textContent = 'Nenhum registro com data encontrado no Protocolo de Sucessão Operacional (PSO).';
+                    mensagemVazio.style.display = 'block';
+                }
+            }
+            
+            // Abrir o modal
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

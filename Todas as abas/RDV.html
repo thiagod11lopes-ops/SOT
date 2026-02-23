@@ -1,0 +1,2770 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - RELATÓRIO DIÁRIO DE VIATURAS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="theme-listener.js"></script>
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --tab-inactive-bg: #e9ecef;
+            --tab-active-bg: var(--white);
+            --tab-border: 1px solid #dee2e6;
+            --delete-red: #dc3545;
+            --blink-red: #ff0000;
+            --success-green: #28a745;
+            --warning-orange: #ffc107;
+            --export-excel: #21a221;
+            --import-blue: #007bff;
+            --tab-text-color: var(--dark-gray);
+            --tab-text-color-active: var(--primary-blue);
+            --tab-text-color-hover: var(--tab-text-color);
+            
+            /* Variáveis específicas do RDV */
+            --cor-cabecalho: var(--primary-blue);
+            --cor-fundo-titulo: #e2f0d9;
+            --cor-borda: black;
+            --cor-operando: var(--success-green);
+            --cor-inoperante: var(--delete-red);
+            --cor-destacada: var(--warning-orange);
+        }
+        
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); }
+        main { margin: 10px 10px; }
+        .tab-content { display: block; background-color: var(--white); padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        #conteudo-pdf {
+            width: 180mm; /* Reduzido ainda mais para evitar cortes */
+            margin: 0 auto;
+            padding: 5mm 10mm;
+            padding-top: 0;
+            background-color: white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        body.pdf-mode {
+            background-color: #ffffff;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .pdf-mode #conteudo-pdf {
+            box-shadow: none !important;
+            border: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            background-color: #ffffff !important;
+        }
+        
+        .cabecalho {
+            text-align: center;
+            font-size: 9pt;
+            margin-bottom: 5px;
+            margin-top: 0;
+            padding-top: 0;
+        }
+        
+        .cabecalho h1, .cabecalho h2 {
+            font-size: 9pt;
+            margin: 1px 0;
+        }
+        
+        .cabecalho h3 {
+            margin: 1px 0 2px !important;
+            font-size: 9pt;
+            font-weight: bold;
+            background-color: var(--cor-fundo-titulo);
+            border: 1px solid var(--cor-borda);
+            padding: 1px 0;
+        }
+        
+        .cabecalho input {
+            width: auto;
+            padding: 1px 2px;
+            text-align: center;
+            font-size: 10pt;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            background-color: transparent;
+            border: none;
+            outline: none;
+        }
+        
+        .cabecalho input.campo-editavel {
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .cabecalho input.campo-editavel:focus {
+            border-bottom: 1px solid var(--cor-cabecalho);
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 4px;
+            font-size: 7.5pt;
+            table-layout: fixed;
+        }
+        
+        /* Larguras específicas para as colunas na visualização normal */
+        #tabela-viaturas-ambulancias th:nth-child(4),
+        #tabela-viaturas-ambulancias td:nth-child(4) {
+            width: 15%;
+        }
+        
+        #tabela-viaturas-ambulancias th:nth-child(5),
+        #tabela-viaturas-ambulancias td:nth-child(5) {
+            width: 10%;
+        }
+        
+        /* Coluna de especificação na tabela de ambulâncias */
+        #tabela-viaturas-ambulancias th:nth-child(6),
+        #tabela-viaturas-ambulancias td:nth-child(6) {
+            min-width: 250px;
+        }
+        
+        /* Coluna de observação na tabela de ambulâncias */
+        #tabela-viaturas-ambulancias th:nth-child(7),
+        #tabela-viaturas-ambulancias td:nth-child(7) {
+            min-width: 350px;
+        }
+        
+        #tabela-viaturas-administrativas th:nth-child(4),
+        #tabela-viaturas-administrativas td:nth-child(4) {
+            width: 18%;
+        }
+        
+        #tabela-viaturas-administrativas th:nth-child(5),
+        #tabela-viaturas-administrativas td:nth-child(5) {
+            width: 12%;
+        }
+        
+        /* Coluna de observação na tabela de administrativas */
+        #tabela-viaturas-administrativas th:nth-child(6),
+        #tabela-viaturas-administrativas td:nth-child(6) {
+            min-width: 300px;
+        }
+        
+        th, td {
+            border: 1px solid var(--cor-borda);
+            padding: 1px 2px;
+            text-align: center;
+            height: auto;
+            min-height: 10px;
+            line-height: 1.1;
+            width: auto;
+        }
+        
+        thead th {
+            background-color: var(--cor-fundo-titulo);
+            font-weight: bold;
+        }
+        
+        .col-min-width {
+            white-space: nowrap;
+            width: auto;
+            padding-left: 1px;
+            padding-right: 1px;
+            min-width: fit-content;
+        }
+        
+        /* Bordas explícitas para a coluna AÇÃO na aba Editar RDV */
+        #tabela-viaturas-ambulancias .col-acao,
+        #tabela-viaturas-ambulancias .col-acao-header,
+        #tabela-viaturas-administrativas .col-acao,
+        #tabela-viaturas-administrativas .col-acao-header {
+            border: 1px solid black !important;
+            border-left: 1px solid black !important;
+            border-right: 1px solid black !important;
+            border-top: 1px solid black !important;
+            border-bottom: 1px solid black !important;
+            box-sizing: border-box;
+            background-clip: padding-box;
+        }
+        
+        .delete-button {
+            background-color: var(--delete-red);
+            border: none;
+            color: white;
+            font-size: 10pt;
+            line-height: 1.2;
+            padding: 1px 4px;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        
+        .tipo-celula {
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .titulo-secao-detalhe {
+            font-weight: bold;
+            font-size: 8pt;
+            margin-top: 2px !important;
+            margin-bottom: 1px !important;
+        }
+        
+        input, select {
+            border: none;
+            padding: 1px 2px;
+            margin: 0;
+            box-sizing: border-box;
+            text-align: center;
+            width: 100%;
+            min-width: 0;
+            font-size: 10pt;
+            line-height: 1.2;
+            height: auto;
+        }
+        
+        .status-operando {
+            color: var(--cor-operando);
+            font-weight: bold;
+        }
+        
+        .status-inoperante {
+            color: var(--cor-inoperante);
+            font-weight: bold;
+        }
+        
+        .status-destacada {
+            color: var(--cor-destacada);
+            font-weight: bold;
+        }
+        
+        .assinatura {
+            text-align: center;
+            margin-top: 60px;
+            font-size: 8pt;
+        }
+        
+        .btn-adicionar {
+            text-align: center;
+            margin-top: 2px;
+            margin-bottom: 2px;
+        }
+        
+        .btn-adicionar button {
+            padding: 5px 10px;
+            font-size: 10pt;
+            cursor: pointer;
+            background-color: var(--success-green);
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        .table-footer-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .table-footer-controls button {
+            color: var(--white);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .export-pdf-btn {
+            background-color: var(--delete-red);
+        }
+        
+        .assinar-btn {
+            background-color: var(--primary-blue);
+        }
+        
+        .save-btn {
+            background-color: var(--warning-orange);
+        }
+        
+        .rdv-controls {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .calendario-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--light-gray-bg);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .calendario-container label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        .calendario-input {
+            padding: 5px;
+            border: 1px solid var(--gray);
+            border-radius: 4px;
+            min-width: 150px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .senha-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--gray);
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .carregar-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .confirmar-btn {
+            background-color: var(--success-green);
+            color: var(--white);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        /* Estilos para o Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        
+        .modal-content {
+            background-color: var(--white);
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        /* Estilos para a aba Configurações */
+        .config-larguras {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-bottom: 25px;
+        }
+        
+        .config-tabela {
+            background: var(--light-gray-bg);
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 280px;
+        }
+        
+        .config-tabela h4 {
+            margin: 0 0 12px 0;
+            font-size: 11pt;
+            color: var(--primary-blue);
+        }
+        
+        .config-linha {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .config-linha label {
+            flex: 1;
+            font-size: 9pt;
+        }
+        
+        .config-linha input {
+            width: 70px;
+            padding: 4px 6px;
+            text-align: right;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        /* Estilos para as sub-abas */
+        .sub-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--gray);
+            margin-bottom: 20px;
+        }
+        
+        .sub-tab-button {
+            background-color: var(--tab-inactive-bg);
+            border: var(--tab-border);
+            border-bottom: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--tab-text-color);
+            margin-right: 5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+            position: relative;
+            top: 1px;
+        }
+        
+        .sub-tab-button.active {
+            background-color: var(--tab-active-bg);
+            color: var(--tab-text-color-active);
+            border-bottom: 1px solid white;
+        }
+        
+        .sub-tab-content {
+            display: none;
+            padding: 15px 0;
+        }
+        
+        .sub-tab-content.active {
+            display: block;
+        }
+        
+        /* Estilos para os filtros */
+        .filtro-container {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: var(--light-gray-bg);
+            border-radius: 5px;
+        }
+        
+        .filtros {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .filtro-grupo {
+            display: flex;
+            flex-direction: column;
+            min-width: 150px;
+        }
+        
+        .filtro-grupo label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .filtro-grupo select,
+        .filtro-grupo input {
+            padding: 8px;
+            border: 1px solid var(--gray);
+            border-radius: 4px;
+        }
+        
+        .mensagem-info {
+            text-align: center;
+            padding: 20px;
+            color: var(--dark-gray);
+            font-style: italic;
+        }
+        
+        /* Lista de RDVs como links na aba Dados do RDV */
+        .lista-rdv-container {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: var(--white);
+            border: 1px solid var(--gray);
+            border-radius: 5px;
+        }
+        .lista-rdv-container h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+        #lista-rdv-links {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        #lista-rdv-links li {
+            margin: 0;
+        }
+        .link-rdv-data {
+            display: inline-block;
+            padding: 8px 14px;
+            background-color: var(--primary-blue);
+            color: var(--white);
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .link-rdv-data:hover {
+            background-color: var(--secondary-blue);
+        }
+        .lista-rdv-vazia {
+            color: var(--dark-gray);
+            font-style: italic;
+        }
+        .lista-rdv-container .filtros {
+            margin-bottom: 15px;
+        }
+        
+        /* Calendário RDV – mesmo estilo da sub-aba Vistoriar Viatura */
+        .rdv-calendar-wrap {
+            background-color: var(--white);
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            overflow: hidden;
+            max-width: 480px;
+            margin-top: 15px;
+        }
+        .rdv-calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+        .rdv-calendar-header button {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px 8px;
+            transition: all 0.3s ease;
+        }
+        .rdv-calendar-header button:hover {
+            opacity: 0.9;
+        }
+        .rdv-calendar-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .rdv-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            padding: 10px;
+        }
+        .rdv-calendar-weekday {
+            text-align: center;
+            padding: 10px 0;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border-radius: 8px;
+            color: var(--primary-blue);
+            font-size: 14px;
+        }
+        .rdv-calendar-day {
+            text-align: center;
+            padding: 12px 0;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--dark-gray);
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .rdv-calendar-day:hover {
+            transform: translateY(-2px);
+        }
+        .rdv-calendar-day.rdv-com-rdv {
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+        .rdv-calendar-day.rdv-com-rdv:hover {
+            background-color: var(--secondary-blue);
+        }
+        .rdv-calendar-day.rdv-sem-rdv {
+            background-color: var(--delete-red);
+            color: var(--white);
+        }
+        .rdv-calendar-day.rdv-sem-rdv:hover {
+            opacity: 0.9;
+        }
+        .rdv-calendar-day.rdv-outro-mes {
+            background-color: var(--light-gray-bg);
+            color: #bbb;
+            cursor: default;
+        }
+        .rdv-calendar-day.rdv-outro-mes:hover {
+            transform: none;
+        }
+        .rdv-calendar-day.today {
+            border: 2px solid var(--primary-blue);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .rdv-calendar-legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 15px;
+            padding: 10px;
+            background-color: var(--light-gray-bg);
+            border-radius: 8px;
+        }
+        .rdv-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .rdv-legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .rdv-legend-color.blue { background-color: var(--primary-blue); }
+        .rdv-legend-color.red { background-color: var(--delete-red); }
+        
+        .table-footer-controls .btn-excluir-rdv {
+            background-color: var(--delete-red);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .table-footer-controls .btn-excluir-rdv:hover { opacity: 0.9; }
+        .btn-excluir-rdv-modal {
+            background-color: var(--delete-red);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-excluir-rdv-modal:hover { opacity: 0.9; }
+        
+        @media print {
+            /* Ocultar sub-abas e controles no PDF (fora do fluxo para não alterar a tabela) */
+            .sub-tabs,
+            #dados-rdv,
+            .rdv-controls {
+                position: absolute !important;
+                left: -99999px !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: hidden !important;
+                visibility: hidden !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+            }
+            .sub-tabs img,
+            #editar-rdv img,
+            #dados-rdv img,
+            #conteudo-pdf img {
+                display: none !important;
+            }
+            
+            .cabecalho {
+                margin-top: 0mm !important;
+                padding-top: 0 !important;
+            }
+            
+            .delete-button {
+                display: none;
+            }
+            
+            .col-acao, .col-acao-header {
+                display: none !important;
+            }
+            
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            #conteudo-pdf {
+                box-shadow: none;
+                border: none;
+                padding: 0 1mm !important;
+                padding-top: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                background-color: #ffffff;
+                transform: scale(0.85) translateY(-10mm) translateX(-15mm);
+                transform-origin: top center;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+            }
+            
+            /* Ajustes para garantir que tudo caiba em uma página */
+            .assinatura {
+                margin-top: 80px !important;
+                padding-top: 0 !important;
+                font-size: 8pt !important;
+            }
+            
+            .assinatura p:first-child {
+                margin-bottom: 3px !important;
+                font-size: 8pt !important;
+                border-bottom: 1px solid black !important;
+                width: 200px !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+                height: 0 !important;
+                padding: 0 !important;
+            }
+            
+            #nome-assinatura {
+                margin-top: 0 !important;
+                margin-bottom: 2px !important;
+                padding-bottom: 0 !important;
+                font-size: 8pt !important;
+            }
+            
+            /* Garante que o nome da assinatura e "Div de Transporte" sejam exibidos na impressão */
+            #div-transporte {
+                display: block !important;
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+                font-size: 8pt !important;
+                text-align: center !important;
+                width: 100% !important;
+            }
+            
+            /* Resetar as larguras personalizadas das colunas na impressão para usar as definidas pela função ajustarLargurasColunas */
+            #tabela-viaturas-ambulancias th:nth-child(4),
+            #tabela-viaturas-ambulancias td:nth-child(4),
+            #tabela-viaturas-ambulancias th:nth-child(5),
+            #tabela-viaturas-ambulancias td:nth-child(5),
+            #tabela-viaturas-ambulancias th:nth-child(6),
+            #tabela-viaturas-ambulancias td:nth-child(6),
+            #tabela-viaturas-ambulancias th:nth-child(7),
+            #tabela-viaturas-ambulancias td:nth-child(7),
+            #tabela-viaturas-administrativas th:nth-child(4),
+            #tabela-viaturas-administrativas td:nth-child(4),
+            #tabela-viaturas-administrativas th:nth-child(5),
+            #tabela-viaturas-administrativas td:nth-child(5),
+            #tabela-viaturas-administrativas th:nth-child(6),
+            #tabela-viaturas-administrativas td:nth-child(6) {
+                width: auto !important;
+                min-width: 0 !important;
+            }
+            
+            table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                page-break-inside: avoid;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                margin-bottom: 3px !important;
+                border-collapse: collapse !important;
+            }
+            
+            th, td {
+                overflow-wrap: break-word;
+                word-wrap: break-word;
+                border: 1px solid black !important;
+                padding: 1px !important;
+                white-space: normal !important;
+            }
+            
+            /* Evitar quebra de palavras nas colunas de Situação e Especificação */
+            th:nth-child(4), td:nth-child(4), th:nth-child(6), td:nth-child(6) {
+                white-space: nowrap !important;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* Garante que todas as bordas sejam visíveis */
+            table, th, td {
+                border-color: black !important;
+                border-style: solid !important;
+                border-width: 1px !important;
+            }
+            
+            .cabecalho input.campo-editavel {
+                border-bottom: none;
+            }
+            
+            input, select {
+                border: none;
+                background: transparent;
+                -webkit-appearance: none;
+                -moz-appearance: textfield;
+                appearance: none;
+            }
+            
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="tab-content active">
+            <!-- Sub-abas do RDV -->
+            <div class="sub-tabs">
+                <button class="sub-tab-button active" onclick="openSubTab('editar-rdv')">Editar RDV</button>
+                <button class="sub-tab-button" onclick="openSubTab('dados-rdv')">Dados do RDV</button>
+                <button class="sub-tab-button" onclick="openSubTab('configuracoes')">Configurações</button>
+            </div>
+            
+            <!-- Conteúdo das sub-abas -->
+            <div id="editar-rdv" class="sub-tab-content active">
+            <div id="conteudo-pdf">
+                <div class="cabecalho">
+                    <h1>MARINHA DO BRASIL</h1>
+                    <h2>HOSPITAL NAVAL MARCÍLIO DIAS</h2>
+                    <h2>DIVISÃO DE TRANSPORTE</h2>
+                    <h3>RELATÓRIO DIÁRIO DE VIATURAS DE 
+                        <input type="date" id="data" onchange="atualizarDiaSemana(this.value)" style="display: none;">
+                        <input type="text" id="data-formatada" class="campo-editavel">
+                        <input type="text" id="dia-semana" class="campo-editavel">
+                    </h3>
+                </div>
+                
+                <table id="tabela-resumo-superior">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">TIPO</th>
+                            <th rowspan="2">EFETIVO</th>
+                            <th colspan="3">SITUAÇÃO GERAL DAS VIATURAS DOTADAS NO HNMD</th>
+                            <th colspan="2">OUTROS</th>
+                        </tr>
+                        <tr>
+                            <th>OPERANDO</th>
+                            <th>INOPERANTE</th>
+                            <th>DESTACADA</th>
+                            <th>UTI MÓVEL</th>
+                            <th>USB</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="linha-resumo-ambulancias">
+                            <td class="tipo-celula">AMBULÂNCIA(S)</td>
+                            <td><input type="number" id="efetivo-amb" value="10" onchange="calcularTotalResumo()"></td>
+                            <td><input type="text" id="resumo-operante-amb" readonly></td>
+                            <td><input type="text" id="resumo-inoperante-amb" readonly></td>
+                            <td><input type="text" id="resumo-destacada-amb" readonly></td>
+                            <td><input type="number" id="resumo-uti" value="5"></td>
+                            <td><input type="number" id="resumo-usb" value="4"></td>
+                        </tr>
+                        <tr id="linha-resumo-adm">
+                            <td class="tipo-celula">ADMINISTRATIVA</td>
+                            <td><input type="number" id="efetivo-adm" value="14" onchange="calcularTotalResumo()"></td>
+                            <td><input type="text" id="resumo-operante-adm" readonly></td>
+                            <td><input type="text" id="resumo-inoperante-adm" readonly></td>
+                            <td><input type="text" id="resumo-destacada-adm" readonly></td>
+                            <td colspan="2"></td>
+                        </tr>
+                        <tr style="font-weight: bold;">
+                            <td class="tipo-celula">TOTAL</td>
+                            <td><input type="text" id="efetivo-total" readonly value="24"></td>
+                            <td><input type="text" id="resumo-operante-total" readonly></td>
+                            <td><input type="text" id="resumo-inoperante-total" readonly></td>
+                            <td><input type="text" id="resumo-destacada-total" readonly></td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="titulo-secao-detalhe">AMBULÂNCIAS:</div>
+                <table id="tabela-viaturas-ambulancias">
+                    <thead>
+                        <tr>
+                            <th>TIPO</th>
+                            <th>PLACA</th>
+                            <th>ANO</th>
+                            <th>SITUAÇÃO</th>
+                            <th>VIDA ÚTIL</th>
+                            <th>ESPECIFICAÇÃO</th>
+                            <th>OBSERVAÇÃO</th>
+                            <th class="col-min-width col-acao-header">AÇÃO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Será populado dinamicamente via JavaScript -->
+                    </tbody>
+                </table>
+                <div class="btn-adicionar">
+                    <button onclick="adicionarViatura('ambulancias')">+ Adicionar Ambulância</button>
+                </div>
+                
+                <div class="titulo-secao-detalhe" style="margin-top: 3px;">ADMINISTRATIVAS:</div>
+                <table id="tabela-viaturas-administrativas">
+                    <thead>
+                        <tr>
+                            <th>TIPO</th>
+                            <th>PLACA</th>
+                            <th>ANO</th>
+                            <th>SITUAÇÃO</th>
+                            <th>VIDA ÚTIL</th>
+                            <th>OBSERVAÇÃO</th>
+                            <th class="col-min-width col-acao-header">AÇÃO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Será populado dinamicamente via JavaScript -->
+                    </tbody>
+                </table>
+                <div class="btn-adicionar">
+                    <button onclick="adicionarViatura('administrativas')">+ Adicionar Administrativa</button>
+                </div>
+                
+                <div class="assinatura">
+                    <p style="margin-bottom: 3px; border-bottom: 1px solid black; width: 200px; margin-left: auto; margin-right: auto;"></p>
+                    <p id="nome-assinatura" style="margin-top: 0; margin-bottom: 2px; padding-bottom: 0;">Assinatura do Responsável</p>
+                    <p id="div-transporte" style="display: none; margin-top: 0; padding-top: 0; text-align: center; width: 100%;">Div de Transporte</p>
+                </div>
+            </div>
+            
+            <div class="rdv-controls">
+                <div class="calendario-container">
+                    <input type="hidden" id="calendario-rdv">
+                    <button class="carregar-btn" id="carregarRdvBtn"><i class="fas fa-calendar-check"></i> Carregar RDV</button>
+                </div>
+                <div class="table-footer-controls">
+                    <button class="assinar-btn" id="assinarBtn"><i class="fas fa-signature"></i> Assinar</button>
+                    <button class="save-btn" id="salvarBtn"><i class="fas fa-save"></i> Salvar</button>
+                    <button class="export-pdf-btn" id="imprimirBtn"><i class="fas fa-file-pdf"></i> Imprimir</button>
+                </div>
+            </div>
+            
+            <!-- Modal de Assinatura -->
+            <div id="modal-assinatura" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>Selecione o Responsável</h3>
+                    <select id="select-motorista" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                        <option value="">Selecione um motorista...</option>
+                    </select>
+                    <div style="text-align: center;">
+                        <button id="confirmar-assinatura" class="confirmar-btn">Confirmar</button>
+                    </div>
+                </div>
+                </div>
+            </div>
+            
+            
+            <!-- Sub-aba Dados do RDV -->
+            <div id="dados-rdv" class="sub-tab-content">
+                <div class="lista-rdv-container">
+                    <h3>Relatórios salvos – clique para abrir e editar</h3>
+                    <div class="filtros">
+                        <div class="filtro-grupo">
+                            <label for="filtro-ano">Ano:</label>
+                            <select id="filtro-ano" onchange="renderCalendarioRDV()">
+                            </select>
+                        </div>
+                        <div class="filtro-grupo">
+                            <label for="filtro-mes">Mês:</label>
+                            <select id="filtro-mes" onchange="renderCalendarioRDV()">
+                                <option value="01">Janeiro</option>
+                                <option value="02">Fevereiro</option>
+                                <option value="03">Março</option>
+                                <option value="04">Abril</option>
+                                <option value="05">Maio</option>
+                                <option value="06">Junho</option>
+                                <option value="07">Julho</option>
+                                <option value="08">Agosto</option>
+                                <option value="09">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="rdv-calendario-container">
+                        <div class="rdv-calendar-wrap">
+                            <div class="rdv-calendar-header">
+                                <button type="button" id="rdv-prev-month" aria-label="Mês anterior"><i class="fas fa-chevron-left"></i></button>
+                                <h3 id="rdv-month-year"></h3>
+                                <button type="button" id="rdv-next-month" aria-label="Próximo mês"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <div class="rdv-calendar-grid" id="rdv-calendar-grid">
+                                <!-- Preenchido por renderCalendarioRDV() -->
+                            </div>
+                        </div>
+                        <div class="rdv-calendar-legend">
+                            <div class="rdv-legend-item"><div class="rdv-legend-color blue"></div><span>Dia com RDV</span></div>
+                            <div class="rdv-legend-item"><div class="rdv-legend-color red"></div><span>Dia sem RDV</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sub-aba Configurações -->
+            <div id="configuracoes" class="sub-tab-content">
+                <div class="lista-rdv-container" style="padding: 20px;">
+                    <h3>Configurações do RDV – Larguras das Colunas</h3>
+                    <p style="margin-top: 8px; margin-bottom: 20px; color: var(--gray); font-size: 9pt;">Altere os valores de largura (%) e visualize as alterações na tabela de preview abaixo.</p>
+                    
+                    <div class="config-larguras">
+                        <div class="config-tabela">
+                            <h4>Ambulâncias</h4>
+                            <div class="config-linha"><label>TIPO</label><input type="text" id="cfg-amb-tipo" placeholder="%"></div>
+                            <div class="config-linha"><label>PLACA</label><input type="text" id="cfg-amb-placa" placeholder="%"></div>
+                            <div class="config-linha"><label>ANO</label><input type="text" id="cfg-amb-ano" placeholder="%"></div>
+                            <div class="config-linha"><label>SITUAÇÃO</label><input type="text" id="cfg-amb-situacao" placeholder="%"></div>
+                            <div class="config-linha"><label>VIDA ÚTIL</label><input type="text" id="cfg-amb-vida-util" placeholder="%"></div>
+                            <div class="config-linha"><label>ESPECIFICAÇÃO</label><input type="text" id="cfg-amb-especificacao" placeholder="%"></div>
+                            <div class="config-linha"><label>OBSERVAÇÃO</label><input type="text" id="cfg-amb-observacao" placeholder="%"></div>
+                            <div class="config-linha"><label>AÇÃO</label><input type="text" id="cfg-amb-acao" placeholder="%"></div>
+                            <button type="button" class="carregar-btn" style="margin-top: 10px; font-size: 9pt;" onclick="restaurarPadraoConfig('ambulancias')">Restaurar padrão</button>
+                        </div>
+                        <div class="config-tabela">
+                            <h4>Administrativas</h4>
+                            <div class="config-linha"><label>TIPO</label><input type="text" id="cfg-adm-tipo" placeholder="%"></div>
+                            <div class="config-linha"><label>PLACA</label><input type="text" id="cfg-adm-placa" placeholder="%"></div>
+                            <div class="config-linha"><label>ANO</label><input type="text" id="cfg-adm-ano" placeholder="%"></div>
+                            <div class="config-linha"><label>SITUAÇÃO</label><input type="text" id="cfg-adm-situacao" placeholder="%"></div>
+                            <div class="config-linha"><label>VIDA ÚTIL</label><input type="text" id="cfg-adm-vida-util" placeholder="%"></div>
+                            <div class="config-linha"><label>OBSERVAÇÃO</label><input type="text" id="cfg-adm-observacao" placeholder="%"></div>
+                            <div class="config-linha"><label>AÇÃO</label><input type="text" id="cfg-adm-acao" placeholder="%"></div>
+                            <button type="button" class="carregar-btn" style="margin-top: 10px; font-size: 9pt;" onclick="restaurarPadraoConfig('administrativas')">Restaurar padrão</button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <button type="button" class="save-btn" onclick="salvarConfigLarguras()"><i class="fas fa-save"></i> Salvar configurações</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal de Assinatura -->
+            <div id="modal-assinatura" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>Selecione o Responsável</h3>
+                    <select id="select-motorista" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+                        <option value="">Selecione um motorista...</option>
+                    </select>
+                    <div style="text-align: center;">
+                        <button id="confirmar-assinatura" class="confirmar-btn">Confirmar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal de Autenticação -->
+            <div id="modal-autenticacao" class="modal">
+                <div class="modal-content">
+                    <span class="close">&times;</span>
+                    <h3>Autenticação Necessária</h3>
+                    <p>Para editar RDVs de datas anteriores, é necessário autenticação.</p>
+                    <div class="form-group">
+                        <label for="senha-sistema">Senha do Sistema SOT:</label>
+                        <input type="password" id="senha-sistema" class="senha-input">
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button id="confirmar-autenticacao" class="confirmar-btn">Autenticar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal: não existe RDV neste dia -->
+            <div id="modal-sem-rdv" class="modal">
+                <div class="modal-content">
+                    <span class="close" id="modal-sem-rdv-close">&times;</span>
+                    <h3>Não existe RDV neste dia</h3>
+                    <p id="modal-sem-rdv-texto">Não há Relatório Diário de Viaturas salvo para a data selecionada.</p>
+                    <p style="margin-top: 10px;">Deseja abrir a aba Editar RDV para preencher e salvar o RDV desta data?</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button type="button" id="modal-sem-rdv-editar" class="confirmar-btn"><i class="fas fa-edit"></i> Editar RDV</button>
+                        <button type="button" id="modal-sem-rdv-cancelar" class="carregar-btn" style="margin-left: 10px; background-color: var(--gray);">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal ao clicar em data azul no calendário (Dados do RDV): Editar ou Excluir -->
+            <div id="modal-opcoes-rdv" class="modal">
+                <div class="modal-content">
+                    <span class="close" id="modal-opcoes-rdv-close">&times;</span>
+                    <h3 id="modal-opcoes-rdv-titulo">RDV</h3>
+                    <p id="modal-opcoes-rdv-texto">Escolha uma ação para esta data.</p>
+                    <div style="text-align: center; margin-top: 20px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+                        <button type="button" id="modal-opcoes-rdv-editar" class="confirmar-btn"><i class="fas fa-edit"></i> Editar RDV</button>
+                        <button type="button" id="modal-opcoes-rdv-excluir" class="btn-excluir-rdv-modal"><i class="fas fa-trash-alt"></i> Excluir RDV</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script>
+        // Variáveis globais para contagem de linhas
+        let contagemLinhasAmb = 0;
+        let contagemLinhasAdm = 0;
+        
+        // Chaves para armazenamento local
+        const STORAGE_KEY_RDV = 'sot_rdv_data';
+        const STORAGE_KEY_RDV_HISTORICO = 'sot_rdv_historico';
+        const STORAGE_KEY_RDV_CONFIG = 'sot_rdv_config_larguras';
+        
+        // Valores padrão das larguras das colunas (%)
+        const CONFIG_PADRAO_AMBULANCIAS = { tipo: 9, placa: 12, ano: 8, situacao: 12, vidaUtil: 6, especificacao: 15, observacao: 45, acao: 5 };
+        const CONFIG_PADRAO_ADMINISTRATIVAS = { tipo: 12, placa: 14, ano: 9, situacao: 15, vidaUtil: 7, observacao: 50, acao: 5 };
+        
+        // Função para alternar entre as sub-abas
+        function openSubTab(tabName) {
+            // Oculta todas as sub-abas
+            const subTabContents = document.getElementsByClassName('sub-tab-content');
+            for (let i = 0; i < subTabContents.length; i++) {
+                subTabContents[i].classList.remove('active');
+            }
+            
+            // Remove a classe active de todos os botões
+            const subTabButtons = document.getElementsByClassName('sub-tab-button');
+            for (let i = 0; i < subTabButtons.length; i++) {
+                subTabButtons[i].classList.remove('active');
+            }
+            
+            // Ativa a sub-aba selecionada
+            document.getElementById(tabName).classList.add('active');
+            
+            // Ativa o botão correspondente
+            const activeButton = document.querySelector(`button[onclick="openSubTab('${tabName}')"]`);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+            
+            // Carrega dados específicos para cada aba
+            if (tabName === 'dados-rdv') {
+                carregarDadosRDV();
+            }
+            if (tabName === 'configuracoes') {
+                carregarConfigLarguras();
+            }
+        }
+        
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'openSubTab' && event.data.subTabId) {
+                openSubTab(event.data.subTabId);
+            }
+        });
+        
+        // === Configurações de larguras das colunas do RDV ===
+        function obterConfigLarguras() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY_RDV_CONFIG);
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+            } catch (e) {}
+            return {
+                ambulancias: Object.assign({}, CONFIG_PADRAO_AMBULANCIAS),
+                administrativas: Object.assign({}, CONFIG_PADRAO_ADMINISTRATIVAS)
+            };
+        }
+        
+        function salvarConfigLarguras() {
+            const cfg = {
+                ambulancias: {
+                    tipo: parseInt(document.getElementById('cfg-amb-tipo').value) || CONFIG_PADRAO_AMBULANCIAS.tipo,
+                    placa: parseInt(document.getElementById('cfg-amb-placa').value) || CONFIG_PADRAO_AMBULANCIAS.placa,
+                    ano: parseInt(document.getElementById('cfg-amb-ano').value) || CONFIG_PADRAO_AMBULANCIAS.ano,
+                    situacao: parseInt(document.getElementById('cfg-amb-situacao').value) || CONFIG_PADRAO_AMBULANCIAS.situacao,
+                    vidaUtil: parseInt(document.getElementById('cfg-amb-vida-util').value) || CONFIG_PADRAO_AMBULANCIAS.vidaUtil,
+                    especificacao: parseInt(document.getElementById('cfg-amb-especificacao').value) || CONFIG_PADRAO_AMBULANCIAS.especificacao,
+                    observacao: parseInt(document.getElementById('cfg-amb-observacao').value) || CONFIG_PADRAO_AMBULANCIAS.observacao,
+                    acao: parseInt(document.getElementById('cfg-amb-acao').value) || CONFIG_PADRAO_AMBULANCIAS.acao
+                },
+                administrativas: {
+                    tipo: parseInt(document.getElementById('cfg-adm-tipo').value) || CONFIG_PADRAO_ADMINISTRATIVAS.tipo,
+                    placa: parseInt(document.getElementById('cfg-adm-placa').value) || CONFIG_PADRAO_ADMINISTRATIVAS.placa,
+                    ano: parseInt(document.getElementById('cfg-adm-ano').value) || CONFIG_PADRAO_ADMINISTRATIVAS.ano,
+                    situacao: parseInt(document.getElementById('cfg-adm-situacao').value) || CONFIG_PADRAO_ADMINISTRATIVAS.situacao,
+                    vidaUtil: parseInt(document.getElementById('cfg-adm-vida-util').value) || CONFIG_PADRAO_ADMINISTRATIVAS.vidaUtil,
+                    observacao: parseInt(document.getElementById('cfg-adm-observacao').value) || CONFIG_PADRAO_ADMINISTRATIVAS.observacao,
+                    acao: parseInt(document.getElementById('cfg-adm-acao').value) || CONFIG_PADRAO_ADMINISTRATIVAS.acao
+                }
+            };
+            localStorage.setItem(STORAGE_KEY_RDV_CONFIG, JSON.stringify(cfg));
+            aplicarLargurasEditarRDV(cfg);
+            alert('Configurações salvas. As larguras serão aplicadas nas tabelas da aba Editar RDV.');
+        }
+        
+        function carregarConfigLarguras() {
+            const cfg = obterConfigLarguras();
+            const amb = cfg.ambulancias;
+            document.getElementById('cfg-amb-tipo').value = amb.tipo;
+            document.getElementById('cfg-amb-placa').value = amb.placa;
+            document.getElementById('cfg-amb-ano').value = amb.ano;
+            document.getElementById('cfg-amb-situacao').value = amb.situacao;
+            document.getElementById('cfg-amb-vida-util').value = amb.vidaUtil;
+            document.getElementById('cfg-amb-especificacao').value = amb.especificacao;
+            document.getElementById('cfg-amb-observacao').value = amb.observacao;
+            document.getElementById('cfg-amb-acao').value = amb.acao;
+            const adm = cfg.administrativas;
+            document.getElementById('cfg-adm-tipo').value = adm.tipo;
+            document.getElementById('cfg-adm-placa').value = adm.placa;
+            document.getElementById('cfg-adm-ano').value = adm.ano;
+            document.getElementById('cfg-adm-situacao').value = adm.situacao;
+            document.getElementById('cfg-adm-vida-util').value = adm.vidaUtil;
+            document.getElementById('cfg-adm-observacao').value = adm.observacao;
+            document.getElementById('cfg-adm-acao').value = adm.acao;
+            aplicarLargurasPreview(cfg);
+        }
+        
+        function aplicarLargurasPreview(cfg) {
+            if (!cfg) cfg = obterConfigLarguras();
+            const amb = cfg.ambulancias;
+            const adm = cfg.administrativas;
+            const colsAmb = ['tipo','placa','ano','situacao','vidaUtil','especificacao','observacao','acao'];
+            const colsAdm = ['tipo','placa','ano','situacao','vidaUtil','observacao','acao'];
+            const tabAmb = document.getElementById('tabela-preview-ambulancias');
+            const tabAdm = document.getElementById('tabela-preview-administrativas');
+            if (tabAmb) {
+                const ths = tabAmb.querySelectorAll('th');
+                const rows = tabAmb.querySelectorAll('tbody tr');
+                colsAmb.forEach((c, i) => {
+                    const w = (amb[c] || 0) + '%';
+                    if (ths[i]) ths[i].style.width = w;
+                    rows.forEach(tr => { const cel = tr.children[i]; if (cel) cel.style.width = w; });
+                });
+            }
+            if (tabAdm) {
+                const ths = tabAdm.querySelectorAll('th');
+                const rows = tabAdm.querySelectorAll('tbody tr');
+                colsAdm.forEach((c, i) => {
+                    const w = (adm[c] || 0) + '%';
+                    if (ths[i]) ths[i].style.width = w;
+                    rows.forEach(tr => { const cel = tr.children[i]; if (cel) cel.style.width = w; });
+                });
+            }
+        }
+        
+        function aplicarLargurasEditarRDV(cfg) {
+            if (!cfg) cfg = obterConfigLarguras();
+            const amb = cfg.ambulancias;
+            const adm = cfg.administrativas;
+            const colsAmb = ['tipo','placa','ano','situacao','vidaUtil','especificacao','observacao','acao'];
+            const colsAdm = ['tipo','placa','ano','situacao','vidaUtil','observacao','acao'];
+            const tabAmb = document.getElementById('tabela-viaturas-ambulancias');
+            const tabAdm = document.getElementById('tabela-viaturas-administrativas');
+            if (tabAmb) {
+                const ths = tabAmb.querySelectorAll('th');
+                ths.forEach((th, i) => {
+                    if (i < colsAmb.length) th.style.width = (amb[colsAmb[i]] || 10) + '%';
+                });
+                tabAmb.querySelectorAll('tbody tr').forEach(tr => {
+                    const tds = tr.querySelectorAll('td');
+                    tds.forEach((td, i) => {
+                        if (i < colsAmb.length) td.style.width = (amb[colsAmb[i]] || 10) + '%';
+                    });
+                });
+            }
+            if (tabAdm) {
+                const ths = tabAdm.querySelectorAll('th');
+                ths.forEach((th, i) => {
+                    if (i < colsAdm.length) th.style.width = (adm[colsAdm[i]] || 10) + '%';
+                });
+                tabAdm.querySelectorAll('tbody tr').forEach(tr => {
+                    const tds = tr.querySelectorAll('td');
+                    tds.forEach((td, i) => {
+                        if (i < colsAdm.length) td.style.width = (adm[colsAdm[i]] || 10) + '%';
+                    });
+                });
+            }
+        }
+        
+        function restaurarPadraoConfig(tipo) {
+            const padrao = tipo === 'ambulancias' ? CONFIG_PADRAO_AMBULANCIAS : CONFIG_PADRAO_ADMINISTRATIVAS;
+            const prefix = tipo === 'ambulancias' ? 'cfg-amb-' : 'cfg-adm-';
+            Object.keys(padrao).forEach(k => {
+                const inp = document.getElementById(prefix + (k === 'vidaUtil' ? 'vida-util' : k));
+                if (inp) inp.value = padrao[k];
+            });
+            const cfg = obterConfigLarguras();
+            cfg[tipo] = Object.assign({}, padrao);
+            aplicarLargurasPreview(cfg);
+        }
+        
+        function configurarEventosConfigLarguras() {
+            const idsAmb = ['cfg-amb-tipo','cfg-amb-placa','cfg-amb-ano','cfg-amb-situacao','cfg-amb-vida-util','cfg-amb-especificacao','cfg-amb-observacao','cfg-amb-acao'];
+            const idsAdm = ['cfg-adm-tipo','cfg-adm-placa','cfg-adm-ano','cfg-adm-situacao','cfg-adm-vida-util','cfg-adm-observacao','cfg-adm-acao'];
+            const attPreview = () => {
+                const cfg = { ambulancias: {}, administrativas: {} };
+                const padraoAmb = CONFIG_PADRAO_AMBULANCIAS;
+                const padraoAdm = CONFIG_PADRAO_ADMINISTRATIVAS;
+                cfg.ambulancias = {
+                    tipo: parseInt(document.getElementById('cfg-amb-tipo').value) || padraoAmb.tipo,
+                    placa: parseInt(document.getElementById('cfg-amb-placa').value) || padraoAmb.placa,
+                    ano: parseInt(document.getElementById('cfg-amb-ano').value) || padraoAmb.ano,
+                    situacao: parseInt(document.getElementById('cfg-amb-situacao').value) || padraoAmb.situacao,
+                    vidaUtil: parseInt(document.getElementById('cfg-amb-vida-util').value) || padraoAmb.vidaUtil,
+                    especificacao: parseInt(document.getElementById('cfg-amb-especificacao').value) || padraoAmb.especificacao,
+                    observacao: parseInt(document.getElementById('cfg-amb-observacao').value) || padraoAmb.observacao,
+                    acao: parseInt(document.getElementById('cfg-amb-acao').value) || padraoAmb.acao
+                };
+                cfg.administrativas = {
+                    tipo: parseInt(document.getElementById('cfg-adm-tipo').value) || padraoAdm.tipo,
+                    placa: parseInt(document.getElementById('cfg-adm-placa').value) || padraoAdm.placa,
+                    ano: parseInt(document.getElementById('cfg-adm-ano').value) || padraoAdm.ano,
+                    situacao: parseInt(document.getElementById('cfg-adm-situacao').value) || padraoAdm.situacao,
+                    vidaUtil: parseInt(document.getElementById('cfg-adm-vida-util').value) || padraoAdm.vidaUtil,
+                    observacao: parseInt(document.getElementById('cfg-adm-observacao').value) || padraoAdm.observacao,
+                    acao: parseInt(document.getElementById('cfg-adm-acao').value) || padraoAdm.acao
+                };
+                aplicarLargurasPreview(cfg);
+            };
+            idsAmb.concat(idsAdm).forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', attPreview);
+            });
+        }
+        
+        // Senha do sistema SOT (em uma aplicação real, isso seria validado no servidor)
+        const SENHA_SISTEMA = 'sot123';
+        let dataRDVSelecionada = '';
+        let dadosSalvosRDV = null;
+        
+        // Função para verificar se uma data é anterior à data atual
+        function isDataAnterior(data) {
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0); // Remove a hora para comparar apenas as datas
+            
+            const dataComparar = new Date(data);
+            dataComparar.setHours(0, 0, 0, 0);
+            
+            return dataComparar < hoje;
+        }
+        
+        // Função para carregar RDV por data
+        function carregarRDVPorData() {
+            const dataRDV = document.getElementById('calendario-rdv').value;
+            if (!dataRDV) {
+                alert('Por favor, selecione uma data.');
+                return;
+            }
+            
+            // Tenta obter os dados salvos do localStorage
+            const dadosSalvos = localStorage.getItem(`${STORAGE_KEY_RDV}_${dataRDV}`);
+            
+            // Verifica se é uma data anterior e se já existe um RDV salvo
+            if (isDataAnterior(dataRDV) && dadosSalvos) {
+                // Armazena os dados para uso após a autenticação
+                dataRDVSelecionada = dataRDV;
+                dadosSalvosRDV = dadosSalvos;
+                
+                // Abre o modal de autenticação
+                abrirModalAutenticacao();
+                return;
+            }
+            
+            // Para datas futuras ou data atual, carrega normalmente
+            carregarRDVDados(dataRDV, dadosSalvos);
+        }
+        
+        // Função para carregar os dados do RDV após verificação (silencioso = true suprime alertas, usado na abertura da página)
+        function carregarRDVDados(dataRDV, dadosSalvos, silencioso) {
+            if (dadosSalvos) {
+                try {
+                    // Salva os dados atuais antes de carregar os novos (só persiste por data se já existia chave)
+                    if (dadosRelatorio.data && localStorage.getItem(STORAGE_KEY_RDV + '_' + dadosRelatorio.data)) {
+                        salvarDados(true);
+                    } else {
+                        salvarDados(false);
+                    }
+                    
+                    // Carrega os dados da data selecionada
+                    dadosRelatorio = JSON.parse(dadosSalvos);
+                    
+                    // Cabeçalho sempre com a data solicitada (dataRDV), sem fuso nem data errada do JSON
+                    var cab = dataISOParaCabecalho(dataRDV);
+                    dadosRelatorio.data = dataRDV;
+                    dadosRelatorio.dataFormatada = cab.dataFormatada;
+                    dadosRelatorio.diaSemana = cab.diaSemana;
+                    document.getElementById('data').value = dataRDV;
+                    document.getElementById('data-formatada').value = cab.dataFormatada;
+                    document.getElementById('dia-semana').value = cab.diaSemana;
+                    
+                    // Atualiza os campos de resumo
+                    if (dadosRelatorio.resumo) {
+                        document.getElementById('efetivo-amb').value = dadosRelatorio.resumo.efetivoAmb || 10;
+                        document.getElementById('efetivo-adm').value = dadosRelatorio.resumo.efetivoAdm || 14;
+                        document.getElementById('resumo-uti').value = dadosRelatorio.resumo.resumoUti || 5;
+                        document.getElementById('resumo-usb').value = dadosRelatorio.resumo.resumoUsb || 4;
+                    }
+                    
+                    // Carrega a assinatura
+                    if (dadosRelatorio.assinatura && dadosRelatorio.assinatura.nome) {
+                        document.getElementById('nome-assinatura').textContent = dadosRelatorio.assinatura.nome;
+                        const divTransporte = document.getElementById('div-transporte');
+                        if (dadosRelatorio.assinatura.mostrarDivTransporte) {
+                            divTransporte.style.display = 'block';
+                            divTransporte.style.marginTop = '0';
+                            divTransporte.style.paddingTop = '0';
+                            divTransporte.style.textAlign = 'center';
+                            divTransporte.style.width = '100%';
+                        } else {
+                            divTransporte.style.display = 'none';
+                        }
+                    } else {
+                        document.getElementById('nome-assinatura').textContent = 'Assinatura do Responsável';
+                        document.getElementById('div-transporte').style.display = 'none';
+                    }
+                    
+                    // Popula dados das viaturas
+                    popularDadosViaturas();
+                    
+                    // Aplica larguras das colunas conforme configuração salva
+                    aplicarLargurasEditarRDV();
+                    
+                    // Calcula totais do resumo
+                    calcularTotalResumo();
+                    
+                    if (!silencioso) {
+                        alert(`RDV da data ${formatarDataParaExibicao(dataRDV)} carregado com sucesso!`);
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar RDV:', error);
+                    if (!silencioso) alert('Erro ao carregar RDV: ' + error.message);
+                }
+            } else {
+                // Se não há dados salvos, cria um novo RDV para a data selecionada
+                criarNovoRDVParaData(dataRDV, silencioso);
+            }
+        }
+        
+        // Função para criar um novo RDV para uma data específica (silencioso = true suprime alerta)
+        function criarNovoRDVParaData(dataRDV, silencioso) {
+            // Salva os dados atuais antes de criar um novo (só persiste por data se a data já tinha RDV salvo)
+            if (dadosRelatorio.data && localStorage.getItem(STORAGE_KEY_RDV + '_' + dadosRelatorio.data)) {
+                salvarDados(true);
+            } else {
+                salvarDados(false);
+            }
+            
+            // Usa apenas as partes da string (YYYY-MM-DD) para evitar qualquer erro de fuso: 05/02/2026 não vira 04/02/2025
+            var cab = dataISOParaCabecalho(dataRDV);
+            var dataFormatada = cab.dataFormatada;
+            var diaSemana = cab.diaSemana;
+            
+            // Atualiza os dados do relatório com a nova data
+            dadosRelatorio.data = dataRDV;
+            
+            // Atualiza os campos
+            dadosRelatorio.dataFormatada = dataFormatada;
+            dadosRelatorio.diaSemana = diaSemana;
+            
+            document.getElementById('data').value = dataRDV;
+            document.getElementById('data-formatada').value = dataFormatada;
+            document.getElementById('dia-semana').value = diaSemana;
+            
+            // Limpa a assinatura
+            dadosRelatorio.assinatura = {
+                nome: '',
+                mostrarDivTransporte: false
+            };
+            
+            document.getElementById('nome-assinatura').textContent = 'Assinatura do Responsável';
+            document.getElementById('div-transporte').style.display = 'none';
+            
+            // Popula dados das viaturas com os dados padrão
+            popularDadosViaturas();
+            
+            // Aplica larguras das colunas conforme configuração salva
+            aplicarLargurasEditarRDV();
+            
+            // Calcula totais do resumo
+            calcularTotalResumo();
+            
+            // Não grava chave por data aqui: o dia só fica azul quando o usuário clicar em Salvar ou Imprimir
+            salvarDados(false);
+            
+            if (!silencioso) {
+                alert(`Novo RDV para a data ${formatarDataParaExibicao(dataRDV)} criado com sucesso!`);
+            }
+        }
+        
+        
+        // Retorna a data de hoje no fuso local (YYYY-MM-DD) - evita erro de timezone com toISOString()
+        function getDataHojeLocal() {
+            const d = new Date();
+            const ano = d.getFullYear();
+            const mes = String(d.getMonth() + 1).padStart(2, '0');
+            const dia = String(d.getDate()).padStart(2, '0');
+            return `${ano}-${mes}-${dia}`;
+        }
+        
+        // Função para formatar data para exibição (yyyy-mm-dd para dd/mm/yyyy)
+        function formatarDataParaExibicao(dataString) {
+            if (!dataString) return '';
+            const partes = dataString.split('-');
+            if (partes.length !== 3) return dataString;
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        
+        // A partir de YYYY-MM-DD, retorna { dataFormatada: 'dd/mm/yyyy', diaSemana: '...' } sem erro de fuso
+        function dataISOParaCabecalho(dataISO) {
+            if (!dataISO || dataISO.length < 10) return { dataFormatada: '', diaSemana: '' };
+            var partes = dataISO.split('-');
+            var ano = partes[0], mes = partes[1], dia = partes[2];
+            var dataFormatada = dia + '/' + mes + '/' + ano;
+            var d = new Date(dataISO + 'T12:00:00');
+            var diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            var diaSemana = diasSemana[d.getDay()];
+            return { dataFormatada: dataFormatada, diaSemana: diaSemana };
+        }
+        
+        // Função para carregar dados da aba Dados do RDV (calendário de relatórios salvos)
+        function carregarDadosRDV() {
+            preencherAnosFiltroRDV();
+            const mesAtual = String(new Date().getMonth() + 1).padStart(2, '0');
+            const selMes = document.getElementById('filtro-mes');
+            if (selMes) selMes.value = mesAtual;
+            renderCalendarioRDV();
+        }
+        
+        // Preenche o select de anos (ano atual selecionado)
+        function preencherAnosFiltroRDV() {
+            const selectAno = document.getElementById('filtro-ano');
+            if (!selectAno) return;
+            const anos = new Set();
+            const datas = obterDatasRDVSalvos();
+            datas.forEach(function(dataStr) {
+                if (dataStr.length >= 4) anos.add(dataStr.slice(0, 4));
+            });
+            const anoAtual = new Date().getFullYear().toString();
+            anos.add(anoAtual);
+            selectAno.innerHTML = '';
+            Array.from(anos).sort().reverse().forEach(function(ano) {
+                const opt = document.createElement('option');
+                opt.value = ano;
+                opt.textContent = ano;
+                selectAno.appendChild(opt);
+            });
+            selectAno.value = anoAtual;
+        }
+        
+        // Obtém todas as datas que possuem RDV salvo (chave sot_rdv_data_YYYY-MM-DD)
+        function obterDatasRDVSalvos() {
+            const prefixo = STORAGE_KEY_RDV + '_';
+            const datas = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.indexOf(prefixo) === 0) {
+                    const dataStr = key.slice(prefixo.length);
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) datas.push(dataStr);
+                }
+            }
+            return datas.sort().reverse();
+        }
+        
+        // Retorna um Set de datas (YYYY-MM-DD) que possuem RDV salvo no mês/ano exibido
+        function obterSetDatasComRDV(ano, mes) {
+            const set = new Set();
+            const todas = obterDatasRDVSalvos();
+            const mesStr = String(mes).padStart(2, '0');
+            todas.forEach(function(d) {
+                if (d.slice(0, 4) === ano && d.slice(5, 7) === mesStr) set.add(d);
+            });
+            return set;
+        }
+        
+        // Monta e exibe o calendário do mês (estilo Vistoriar): grid com cabeçalho azul, dias com RDV azul, sem RDV vermelho
+        function renderCalendarioRDV() {
+            const grid = document.getElementById('rdv-calendar-grid');
+            const headerTitle = document.getElementById('rdv-month-year');
+            if (!grid || !headerTitle) return;
+            const ano = (document.getElementById('filtro-ano') && document.getElementById('filtro-ano').value) || new Date().getFullYear().toString();
+            const mesStr = (document.getElementById('filtro-mes') && document.getElementById('filtro-mes').value) || String(new Date().getMonth() + 1).padStart(2, '0');
+            const mes = parseInt(mesStr, 10);
+            const datasComRDV = obterSetDatasComRDV(ano, mesStr);
+            const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            headerTitle.textContent = nomesMeses[mes - 1] + ' de ' + ano;
+            grid.innerHTML = '';
+            ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(function(d) {
+                const w = document.createElement('div');
+                w.className = 'rdv-calendar-weekday';
+                w.textContent = d;
+                grid.appendChild(w);
+            });
+            const primeiroDia = new Date(parseInt(ano, 10), mes - 1, 1).getDay();
+            const diasNoMes = new Date(parseInt(ano, 10), mes, 0).getDate();
+            var i;
+            for (i = 0; i < primeiroDia; i++) {
+                const vazio = document.createElement('div');
+                vazio.className = 'rdv-calendar-day rdv-outro-mes';
+                grid.appendChild(vazio);
+            }
+            const hojeStr = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(new Date().getDate()).padStart(2, '0');
+            for (var dia = 1; dia <= diasNoMes; dia++) {
+                const dataISO = ano + '-' + mesStr + '-' + String(dia).padStart(2, '0');
+                const temRDV = datasComRDV.has(dataISO);
+                const cel = document.createElement('div');
+                cel.className = 'rdv-calendar-day ' + (temRDV ? 'rdv-com-rdv' : 'rdv-sem-rdv');
+                if (dataISO === hojeStr) cel.classList.add('today');
+                cel.textContent = dia;
+                cel.setAttribute('data-date', dataISO);
+                cel.title = temRDV ? (formatarDataParaExibicao(dataISO) + ' – RDV salvo (clique para abrir)') : (formatarDataParaExibicao(dataISO) + ' – Sem RDV (clique para ver opções)');
+                cel.addEventListener('click', function() {
+                    const data = this.getAttribute('data-date');
+                    if (!data || this.classList.contains('rdv-outro-mes')) return;
+                    if (this.classList.contains('rdv-com-rdv')) {
+                        abrirModalOpcoesRdv(data);
+                    } else {
+                        abrirModalSemRDV(data);
+                    }
+                });
+                grid.appendChild(cel);
+            }
+        }
+        
+        let dataClicadaSemRDV = '';
+        // Evita que o listener de focus sobrescreva a data quando o usuário abriu pelo calendário
+        let dataAbertaPeloCalendario = '';
+        let limpaDataAbertaPeloCalendarioTimeout = null;
+        
+        function abrirRDVComDataDoCalendario(dataISO) {
+            dataAbertaPeloCalendario = dataISO;
+            if (limpaDataAbertaPeloCalendarioTimeout) clearTimeout(limpaDataAbertaPeloCalendarioTimeout);
+            limpaDataAbertaPeloCalendarioTimeout = setTimeout(function() { dataAbertaPeloCalendario = ''; }, 8000);
+            openSubTab('editar-rdv');
+            document.getElementById('calendario-rdv').value = dataISO;
+            var dadosSalvos = localStorage.getItem(STORAGE_KEY_RDV + '_' + dataISO);
+            carregarRDVDados(dataISO, dadosSalvos, true);
+        }
+        
+        function abrirModalSemRDV(dataISO) {
+            dataClicadaSemRDV = dataISO;
+            var modal = document.getElementById('modal-sem-rdv');
+            var texto = document.getElementById('modal-sem-rdv-texto');
+            if (texto) texto.textContent = 'Não há Relatório Diário de Viaturas salvo para ' + formatarDataParaExibicao(dataISO) + '.';
+            if (modal) modal.style.display = 'block';
+        }
+        
+        function configurarModalSemRDV() {
+            var modal = document.getElementById('modal-sem-rdv');
+            if (!modal) return;
+            var closeBtn = document.getElementById('modal-sem-rdv-close');
+            var btnEditar = document.getElementById('modal-sem-rdv-editar');
+            var btnCancelar = document.getElementById('modal-sem-rdv-cancelar');
+            function fechar() {
+                modal.style.display = 'none';
+                dataClicadaSemRDV = '';
+            }
+            if (closeBtn) closeBtn.onclick = fechar;
+            if (btnCancelar) btnCancelar.onclick = fechar;
+            if (btnEditar) btnEditar.onclick = function() {
+                var data = dataClicadaSemRDV;
+                fechar();
+                if (!data) return;
+                abrirRDVComDataDoCalendario(data);
+            };
+            window.addEventListener('click', function(e) {
+                if (e.target === modal) fechar();
+            });
+        }
+        
+        function abrirModalOpcoesRdv(dataISO) {
+            var modal = document.getElementById('modal-opcoes-rdv');
+            var titulo = document.getElementById('modal-opcoes-rdv-titulo');
+            var texto = document.getElementById('modal-opcoes-rdv-texto');
+            if (!modal) return;
+            modal.setAttribute('data-opcoes-rdv-data', dataISO);
+            if (titulo) titulo.textContent = 'RDV de ' + formatarDataParaExibicao(dataISO);
+            if (texto) texto.textContent = 'Escolha uma ação para esta data.';
+            modal.style.display = 'block';
+        }
+        
+        function configurarModalOpcoesRdv() {
+            var modal = document.getElementById('modal-opcoes-rdv');
+            if (!modal) return;
+            var closeBtn = document.getElementById('modal-opcoes-rdv-close');
+            var btnEditar = document.getElementById('modal-opcoes-rdv-editar');
+            var btnExcluir = document.getElementById('modal-opcoes-rdv-excluir');
+            function fechar() {
+                modal.style.display = 'none';
+                modal.removeAttribute('data-opcoes-rdv-data');
+            }
+            if (closeBtn) closeBtn.onclick = fechar;
+            if (btnEditar) btnEditar.onclick = function() {
+                var data = modal.getAttribute('data-opcoes-rdv-data');
+                fechar();
+                if (data) abrirRDVComDataDoCalendario(data);
+            };
+            if (btnExcluir) btnExcluir.onclick = function() {
+                var data = modal.getAttribute('data-opcoes-rdv-data');
+                if (!data) return;
+                if (!confirm('Os dados do RDV de ' + formatarDataParaExibicao(data) + ' serão perdidos permanentemente. Deseja realmente excluir?')) return;
+                fechar();
+                localStorage.removeItem(STORAGE_KEY_RDV + '_' + data);
+                renderCalendarioRDV();
+            };
+            window.addEventListener('click', function(e) {
+                if (e.target === modal) fechar();
+            });
+        }
+        
+        function rdvCalendarioPrevNext(delta) {
+            var selAno = document.getElementById('filtro-ano');
+            var selMes = document.getElementById('filtro-mes');
+            if (!selAno || !selMes) return;
+            var ano = parseInt(selAno.value, 10);
+            var mes = parseInt(selMes.value, 10) + delta;
+            if (mes > 12) { mes = 1; ano++; }
+            if (mes < 1) { mes = 12; ano--; }
+            selMes.value = String(mes).padStart(2, '0');
+            var optAno = selAno.querySelector('option[value="' + ano + '"]');
+            if (optAno) selAno.value = ano; else { var o = document.createElement('option'); o.value = ano; o.textContent = ano; selAno.insertBefore(o, selAno.firstChild); selAno.value = ano; }
+            renderCalendarioRDV();
+        }
+        
+        // Função para registrar mudança de status de uma viatura
+        function registrarMudancaStatus(tipo, placa, statusAnterior, novoStatus) {
+            // Obtém o histórico atual
+            let historico = JSON.parse(localStorage.getItem(STORAGE_KEY_RDV_HISTORICO) || '[]');
+            
+            // Encontra o último registro para esta viatura
+            const registrosViatura = historico.filter(r => r.placa === placa);
+            let ultimoRegistro = null;
+            let tempoNoStatusAnterior = '';
+            
+            if (registrosViatura.length > 0) {
+                // Ordena por data (mais recentes primeiro)
+                registrosViatura.sort((a, b) => new Date(b.data) - new Date(a.data));
+                ultimoRegistro = registrosViatura[0];
+                
+                // Calcula o tempo no status anterior
+                if (ultimoRegistro.data) {
+                    const dataAnterior = new Date(ultimoRegistro.data);
+                    const dataAtual = new Date();
+                    const diferencaDias = Math.floor((dataAtual - dataAnterior) / (1000 * 60 * 60 * 24));
+                    
+                    if (diferencaDias === 0) {
+                        tempoNoStatusAnterior = 'Menos de 1 dia';
+                    } else if (diferencaDias === 1) {
+                        tempoNoStatusAnterior = '1 dia';
+                    } else {
+                        tempoNoStatusAnterior = `${diferencaDias} dias`;
+                    }
+                }
+            }
+            
+            // Cria o novo registro (data no fuso local)
+            const novoRegistro = {
+                data: getDataHojeLocal(),
+                viatura: tipo,
+                placa: placa,
+                statusAnterior: statusAnterior,
+                novoStatus: novoStatus,
+                tempoNoStatusAnterior: tempoNoStatusAnterior
+            };
+            
+            // Adiciona ao histórico
+            historico.push(novoRegistro);
+            
+            // Salva o histórico atualizado
+            localStorage.setItem(STORAGE_KEY_RDV_HISTORICO, JSON.stringify(historico));
+        }
+        
+        // Dados do relatório
+        let dadosRelatorio = {
+            data: '',
+            diaSemana: '',
+            ambulancias: [],
+            administrativas: [],
+            resumo: {
+                efetivoAmb: 10,
+                efetivoAdm: 14,
+                resumoUti: 5,
+                resumoUsb: 4
+            },
+            assinatura: {
+                nome: '',
+                mostrarDivTransporte: false
+            }
+        };
+        
+        // Inicialização quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializa as sub-abas
+            openSubTab('editar-rdv');
+            
+            // Ao abrir a aba RDV, carregar a planilha com a data e o dia da semana atuais (fuso local)
+            const dataHoje = getDataHojeLocal();
+            document.getElementById('calendario-rdv').value = dataHoje;
+            const dadosSalvosHoje = localStorage.getItem(`${STORAGE_KEY_RDV}_${dataHoje}`);
+            carregarRDVDados(dataHoje, dadosSalvosHoje, true);
+            
+            // Configura os eventos para os campos editáveis
+            configurarCamposEditaveis();
+            
+            // Configura o botão de impressão
+            document.getElementById('imprimirBtn').addEventListener('click', imprimirDocumento);
+            
+            // Configura o botão de assinatura
+            document.getElementById('assinarBtn').addEventListener('click', abrirModalAssinatura);
+            
+            // Configura o botão de salvar
+            document.getElementById('salvarBtn').addEventListener('click', salvarDadosNasOutrasAbas);
+            
+            // Configura o botão de carregar RDV (calendário já definido com data atual acima)
+            document.getElementById('carregarRdvBtn').addEventListener('click', carregarRDVPorData);
+            
+            // Botões mês anterior / próximo no calendário da aba Dados do RDV
+            var rdvPrevBtn = document.getElementById('rdv-prev-month');
+            var rdvNextBtn = document.getElementById('rdv-next-month');
+            if (rdvPrevBtn) rdvPrevBtn.addEventListener('click', function() { rdvCalendarioPrevNext(-1); });
+            if (rdvNextBtn) rdvNextBtn.addEventListener('click', function() { rdvCalendarioPrevNext(1); });
+            
+            // Configura o modal de assinatura
+            configurarModalAssinatura();
+            
+            // Configura o modal de autenticação
+            configurarModalAutenticacao();
+            
+            // Modal "Não existe RDV neste dia"
+            configurarModalSemRDV();
+            
+            // Modal ao clicar em data azul no calendário (Editar RDV / Excluir RDV)
+            configurarModalOpcoesRdv();
+            
+            // Configura eventos para inputs de largura das colunas (aba Configurações)
+            configurarEventosConfigLarguras();
+            
+            // Aplica larguras salvas nas tabelas do Editar RDV
+            aplicarLargurasEditarRDV();
+            
+            // Carrega a assinatura salva, se existir
+            if (dadosRelatorio.assinatura && dadosRelatorio.assinatura.nome) {
+                document.getElementById('nome-assinatura').textContent = dadosRelatorio.assinatura.nome;
+                if (dadosRelatorio.assinatura.mostrarDivTransporte) {
+                    const divTransporte = document.getElementById('div-transporte');
+                    divTransporte.style.display = 'block';
+                    divTransporte.style.marginTop = '0';
+                    divTransporte.style.paddingTop = '0';
+                    divTransporte.style.textAlign = 'center';
+                    divTransporte.style.width = '100%';
+                }
+            }
+            
+            // Atualiza os campos de resumo com os valores salvos
+            if (dadosRelatorio.resumo) {
+                document.getElementById('efetivo-amb').value = dadosRelatorio.resumo.efetivoAmb || 10;
+                document.getElementById('efetivo-adm').value = dadosRelatorio.resumo.efetivoAdm || 14;
+                document.getElementById('resumo-uti').value = dadosRelatorio.resumo.resumoUti || 5;
+                document.getElementById('resumo-usb').value = dadosRelatorio.resumo.resumoUsb || 4;
+            }
+            
+            // Popula dados das viaturas
+            popularDadosViaturas();
+            
+            // Calcula totais do resumo
+            calcularTotalResumo();
+            
+            // Configura eventos para salvar dados quando houver mudanças
+            configurarEventosSalvamento();
+            
+            // Força a data de hoje na tela ao final da inicialização (evita cache ou storage sobrescrever)
+            aplicarDataHojeSeNecessario();
+            
+            // Quando a aba RDV ganha foco, mostrar data de hoje apenas se o usuário NÃO acabou de abrir uma data pelo calendário
+            window.addEventListener('focus', function() {
+                if (dataAbertaPeloCalendario && dadosRelatorio.data === dataAbertaPeloCalendario) return;
+                if (dadosRelatorio.data !== getDataHojeLocal()) {
+                    const dataHoje = getDataHojeLocal();
+                    document.getElementById('calendario-rdv').value = dataHoje;
+                    const dadosSalvosHoje = localStorage.getItem(`${STORAGE_KEY_RDV}_${dataHoje}`);
+                    carregarRDVDados(dataHoje, dadosSalvosHoje, true);
+                }
+            });
+        });
+        
+        // Garante que a tela exibe a data de hoje (chamado após init para evitar cache/storage com data antiga)
+        function aplicarDataHojeSeNecessario() {
+            const dataHoje = getDataHojeLocal();
+            if (!dataHoje) return;
+            const dataObj = new Date(dataHoje + 'T12:00:00'); // meio-dia local para evitar UTC
+            const dia = String(dataObj.getDate()).padStart(2, '0');
+            const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+            const ano = dataObj.getFullYear();
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+            const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            const diaSemana = diasSemana[dataObj.getDay()];
+            document.getElementById('data').value = dataHoje;
+            document.getElementById('data-formatada').value = dataFormatada;
+            document.getElementById('dia-semana').value = diaSemana;
+            document.getElementById('calendario-rdv').value = dataHoje;
+            dadosRelatorio.data = dataHoje;
+            dadosRelatorio.dataFormatada = dataFormatada;
+            dadosRelatorio.diaSemana = diaSemana;
+        }
+        
+        // Função para formatar a data no formato dd/mm/aaaa
+        function formatarData(dataString) {
+            const data = new Date(dataString);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+            document.getElementById('data-formatada').value = dataFormatada;
+            dadosRelatorio.dataFormatada = dataFormatada;
+            salvarDados();
+        }
+        
+        // Função para atualizar o dia da semana
+        function atualizarDiaSemana(dataString) {
+            const data = new Date(dataString);
+            const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            const diaSemana = diasSemana[data.getDay()];
+            document.getElementById('dia-semana').value = diaSemana;
+            dadosRelatorio.diaSemana = diaSemana;
+            
+            // Atualiza também o formato da data
+            formatarData(dataString);
+        }
+        
+        // Função para configurar os campos editáveis
+        function configurarCamposEditaveis() {
+            // Campo de data formatada
+            const campoDataFormatada = document.getElementById('data-formatada');
+            campoDataFormatada.addEventListener('change', function() {
+                // Tenta converter a data formatada para o formato do input date
+                try {
+                    const partes = this.value.split('/');
+                    if (partes.length === 3) {
+                        const dia = partes[0];
+                        const mes = partes[1];
+                        const ano = partes[2];
+                        const dataISO = `${ano}-${mes}-${dia}`;
+                        
+                        // Atualiza o campo de data oculto
+                        document.getElementById('data').value = dataISO;
+                        dadosRelatorio.data = dataISO;
+                        
+                        // Atualiza o dia da semana
+                        atualizarDiaSemana(dataISO);
+                    }
+                } catch (e) {
+                    console.error('Erro ao processar a data:', e);
+                }
+            });
+            
+            // Campo de dia da semana
+            const campoDiaSemana = document.getElementById('dia-semana');
+            campoDiaSemana.addEventListener('change', function() {
+                dadosRelatorio.diaSemana = this.value;
+                salvarDados();
+            });
+            
+            // Campos de resumo
+            document.getElementById('efetivo-amb').addEventListener('change', function() {
+                dadosRelatorio.resumo.efetivoAmb = parseInt(this.value) || 0;
+                salvarDados();
+            });
+            
+            document.getElementById('efetivo-adm').addEventListener('change', function() {
+                dadosRelatorio.resumo.efetivoAdm = parseInt(this.value) || 0;
+                salvarDados();
+            });
+            
+            document.getElementById('resumo-uti').addEventListener('change', function() {
+                dadosRelatorio.resumo.resumoUti = parseInt(this.value) || 0;
+                salvarDados();
+            });
+            
+            document.getElementById('resumo-usb').addEventListener('change', function() {
+                dadosRelatorio.resumo.resumoUsb = parseInt(this.value) || 0;
+                salvarDados();
+            });
+        }
+        
+        // Função para configurar eventos de salvamento
+        function configurarEventosSalvamento() {
+            window.addEventListener('storage', function(e) {
+                if (e.key === STORAGE_KEY_RDV) {
+                    carregarDados();
+                    // Se os dados recebidos são de outro dia, manter sempre a data de hoje na tela
+                    if (dadosRelatorio.data && dadosRelatorio.data !== getDataHojeLocal()) {
+                        const dataHoje = getDataHojeLocal();
+                        document.getElementById('calendario-rdv').value = dataHoje;
+                        const dadosSalvosHoje = localStorage.getItem(`${STORAGE_KEY_RDV}_${dataHoje}`);
+                        carregarRDVDados(dataHoje, dadosSalvosHoje, true);
+                        return;
+                    }
+                    popularDadosViaturas();
+                    calcularTotalResumo();
+                }
+            });
+        }
+        
+        // Função para salvar dados
+        // persistirPorData: quando true, grava também a chave por data (sot_rdv_data_YYYY-MM-DD),
+        // fazendo o dia aparecer azul no calendário. Deve ser true apenas ao clicar em Salvar ou Imprimir.
+        function salvarDados(persistirPorData) {
+            // Salva os dados com a chave principal para uso atual
+            localStorage.setItem(STORAGE_KEY_RDV, JSON.stringify(dadosRelatorio));
+            
+            // Chave por data só é gravada ao Salvar/Imprimir, para o dia não ficar azul sem ação do usuário
+            if (persistirPorData && dadosRelatorio.data) {
+                localStorage.setItem(`${STORAGE_KEY_RDV}_${dadosRelatorio.data}`, JSON.stringify(dadosRelatorio));
+            }
+            
+            // Notificar o sistema principal sobre mudanças
+            window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        }
+        
+        // Função para salvar os dados nas outras abas
+        function salvarDadosNasOutrasAbas() {
+            try {
+                // Primeiro, salva os dados localmente (com chave por data para o dia ficar azul no calendário)
+                salvarDados(true);
+                
+                // Prepara os dados para compartilhar com outras abas
+                const dadosParaCompartilhar = {
+                    data: dadosRelatorio.data,
+                    dataFormatada: dadosRelatorio.dataFormatada,
+                    diaSemana: dadosRelatorio.diaSemana,
+                    ambulancias: dadosRelatorio.ambulancias.map(amb => ({
+                        tipo: amb.tipo || '',
+                        placa: amb.placa || '',
+                        ano: amb.ano || '',
+                        situacao: amb.situacao || 'Operando',
+                        vidaUtil: amb.vidaUtil || '',
+                        espec: amb.espec || '',
+                        obs: amb.obs || ''
+                    })),
+                    administrativas: dadosRelatorio.administrativas.map(adm => ({
+                        tipo: adm.tipo || '',
+                        placa: adm.placa || '',
+                        ano: adm.ano || '',
+                        situacao: adm.situacao || 'Operando',
+                        vidaUtil: adm.vidaUtil || '',
+                        obs: adm.obs || ''
+                    })),
+                    resumo: {
+                        efetivoAmb: dadosRelatorio.resumo?.efetivoAmb || 0,
+                        efetivoAdm: dadosRelatorio.resumo?.efetivoAdm || 0,
+                        resumoUti: dadosRelatorio.resumo?.resumoUti || 0,
+                        resumoUsb: dadosRelatorio.resumo?.resumoUsb || 0
+                    },
+                    assinatura: {
+                        nome: dadosRelatorio.assinatura?.nome || '',
+                        mostrarDivTransporte: dadosRelatorio.assinatura?.mostrarDivTransporte || false
+                    }
+                };
+                
+                // Salva os dados para compartilhamento entre abas
+                localStorage.setItem('sot_compartilhado_rdv', JSON.stringify(dadosParaCompartilhar));
+                
+                // Notifica outras abas sobre os dados compartilhados
+                window.parent.postMessage({
+                    type: 'sot_dados_compartilhados',
+                    source: 'rdv',
+                    data: dadosParaCompartilhar
+                }, '*');
+                
+                // Exibe mensagem de sucesso
+                alert('Dados do relatório salvos com sucesso e disponíveis para outras abas!');
+                
+            } catch (error) {
+                console.error('Erro ao salvar dados nas outras abas:', error);
+                alert('Erro ao salvar dados nas outras abas: ' + error.message);
+            }
+        }
+        
+        // Função para carregar dados
+        function carregarDados() {
+            const dadosSalvos = localStorage.getItem(STORAGE_KEY_RDV);
+            if (dadosSalvos) {
+                try {
+                    dadosRelatorio = JSON.parse(dadosSalvos);
+                } catch (e) {
+                    console.error('Erro ao carregar dados salvos:', e);
+                }
+            }
+        }
+        
+        // Função para popular dados das viaturas
+        function popularDadosViaturas() {
+            // Limpa as tabelas
+            const tabelaAmbulancias = document.getElementById('tabela-viaturas-ambulancias').getElementsByTagName('tbody')[0];
+            const tabelaAdministrativas = document.getElementById('tabela-viaturas-administrativas').getElementsByTagName('tbody')[0];
+            tabelaAmbulancias.innerHTML = '';
+            tabelaAdministrativas.innerHTML = '';
+            
+            // Reseta contadores
+            contagemLinhasAmb = 0;
+            contagemLinhasAdm = 0;
+            
+            // Popula ambulancias
+            if (dadosRelatorio.ambulancias && dadosRelatorio.ambulancias.length > 0) {
+                dadosRelatorio.ambulancias.forEach(amb => {
+                    adicionarViatura('ambulancias', amb);
+                });
+            } else {
+                // Dados iniciais para ambulâncias se não houver dados salvos
+                const dadosAmbulancias = [
+                    { tipo: 'DUCATO', placa: 'KPH-9E52', ano: 2012, situacao: 'Operando', vidaUtil: 2020, espec: 'UTI MÓVEL' },
+                    { tipo: 'DUCATO', placa: 'KPH-9E53', ano: 2012, situacao: 'Operando', vidaUtil: 2020, espec: 'UTI NEO' },
+                    { tipo: 'DUCATO', placa: 'KPH-9E54', ano: 2012, situacao: 'Destacada', vidaUtil: 2020, espec: 'USB' },
+                    { tipo: 'SPRINTER', placa: 'KVZ-8O89', ano: 2012, situacao: 'Inoperante', vidaUtil: 2020, espec: 'USB' },
+                    { tipo: 'SPRINTER', placa: 'KVZ-8O91', ano: 2012, situacao: 'Inoperante', vidaUtil: 2020, espec: 'USB' },
+                    { tipo: 'SPRINTER', placa: 'KPK-4H03', ano: 2012, situacao: 'Destacada', vidaUtil: 2020, espec: 'UTI MÓVEL' },
+                    { tipo: 'SPRINTER', placa: 'RIV-9I01', ano: 2021, situacao: 'Operando', vidaUtil: 2029, espec: 'UTI MÓVEL' },
+                    { tipo: 'SPRINTER', placa: 'RKK-9I27', ano: 2021, situacao: 'Operando', vidaUtil: 2029, espec: 'UTI MÓVEL' },
+                    { tipo: 'MASTER', placa: 'TTD-1A38', ano: 2024, situacao: 'Operando', vidaUtil: 2032, espec: 'UTI MÓVEL' },
+                    { tipo: 'MASTER', placa: 'TTP-2G26', ano: 2025, situacao: 'Operando', vidaUtil: 2033, espec: 'USB' }
+                ];
+                
+                dadosAmbulancias.forEach(dados => {
+                    adicionarViatura('ambulancias', dados);
+                });
+                
+                // Salva os dados iniciais
+                dadosRelatorio.ambulancias = dadosAmbulancias;
+                salvarDados();
+            }
+            
+            // Popula administrativas
+            if (dadosRelatorio.administrativas && dadosRelatorio.administrativas.length > 0) {
+                dadosRelatorio.administrativas.forEach(adm => {
+                    adicionarViatura('administrativas', adm);
+                });
+            } else {
+                // Dados iniciais para administrativas se não houver dados salvos
+                const dadosAdministrativas = [
+                    { tipo: 'CLIO', placa: 'KRQ-0G70', ano: 2007, situacao: 'Operando', vidaUtil: 2014 },
+                    { tipo: 'DUCATO', placa: 'LPE-2A05', ano: 2008, situacao: 'Operando', vidaUtil: 2015 },
+                    { tipo: 'DUCATO', placa: 'LPE-4G44', ano: 2008, situacao: 'Destacada', vidaUtil: 2015 },
+                    { tipo: 'DUCATO', placa: 'KZV-6G41', ano: 2006, situacao: 'Operando', vidaUtil: 2013 },
+                    { tipo: 'CAMINHÃO', placa: 'LKL-8D08', ano: 2007, situacao: 'Operando', vidaUtil: 2019 },
+                    { tipo: 'CAMINHÃO', placa: 'KVZ-7A70', ano: 2012, situacao: 'Operando', vidaUtil: 2024 },
+                    { tipo: 'HONDA CIVIC', placa: 'KZT-1560', ano: 2005, situacao: 'Operando', vidaUtil: 2013 },
+                    { tipo: 'SANTANA', placa: 'LNC-1A94', ano: 2000, situacao: 'Inoperante', vidaUtil: 2008 },
+                    { tipo: 'DOBLÓ', placa: 'NVT-8G55', ano: 2011, situacao: 'Operando', vidaUtil: 2018 },
+                    { tipo: 'DOBLÓ', placa: 'KPG-9A79', ano: 2012, situacao: 'Operando', vidaUtil: 2019 },
+                    { tipo: 'DOBLÓ', placa: 'LQS-1F32', ano: 2012, situacao: 'Inoperante', vidaUtil: 2019 },
+                    { tipo: 'COROLLA', placa: 'LTI-2281', ano: 2017, situacao: 'Operando', vidaUtil: 2024 },
+                    { tipo: 'FORD KA', placa: 'RJN-4I27', ano: 2020, situacao: 'Operando', vidaUtil: 2027 },
+                    { tipo: 'PEUGEOT 408', placa: 'LSE-3253', ano: 2016, situacao: 'Operando', vidaUtil: 2023 }
+                ];
+                
+                dadosAdministrativas.forEach(dados => {
+                    adicionarViatura('administrativas', dados);
+                });
+                
+                // Salva os dados iniciais
+                dadosRelatorio.administrativas = dadosAdministrativas;
+                salvarDados();
+            }
+        }
+        
+        // Função para adicionar viatura
+        function adicionarViatura(tipoViatura, dadosIniciais = {}) {
+            let contador;
+            let tabela;
+            let colunas;
+            
+            if (tipoViatura === 'ambulancias') {
+                contador = ++contagemLinhasAmb;
+                tabela = document.getElementById('tabela-viaturas-ambulancias').getElementsByTagName('tbody')[0];
+                colunas = 8; // Inclui coluna de especificação
+            } else {
+                contador = ++contagemLinhasAdm;
+                tabela = document.getElementById('tabela-viaturas-administrativas').getElementsByTagName('tbody')[0];
+                colunas = 7; // Não inclui coluna de especificação
+            }
+            
+            const novaLinha = tabela.insertRow();
+            novaLinha.id = `linha-${tipoViatura}-${contador}`;
+            novaLinha.setAttribute('data-tipo', tipoViatura);
+            novaLinha.setAttribute('data-index', contador - 1);
+            
+            // Coluna TIPO
+            let celula = novaLinha.insertCell();
+            let input = document.createElement('input');
+            input.type = 'text';
+            input.value = dadosIniciais.tipo || '';
+            input.addEventListener('change', function() {
+                atualizarDadosViatura(tipoViatura, contador - 1, 'tipo', this.value);
+            });
+            celula.appendChild(input);
+            
+            // Coluna PLACA
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = dadosIniciais.placa || '';
+            input.addEventListener('change', function() {
+                atualizarDadosViatura(tipoViatura, contador - 1, 'placa', this.value);
+            });
+            celula.appendChild(input);
+            
+            // Coluna ANO
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1990';
+            input.value = dadosIniciais.ano || '';
+            input.addEventListener('change', function() {
+                atualizarDadosViatura(tipoViatura, contador - 1, 'ano', parseInt(this.value) || '');
+            });
+            celula.appendChild(input);
+            
+            // Coluna SITUAÇÃO
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            const select = document.createElement('select');
+            const opcoes = ['Operando', 'Inoperante', 'Destacada', 'Reserva', 'Manutencao'];
+            opcoes.forEach(opcao => {
+                const option = document.createElement('option');
+                option.value = opcao;
+                option.text = opcao;
+                select.appendChild(option);
+            });
+            select.value = dadosIniciais.situacao || 'Operando';
+            select.onchange = function() {
+                const statusAnterior = dadosIniciais.situacao || 'Operando';
+                const novoStatus = this.value;
+                
+                // Atualiza o display e os dados
+                atualizarStatusDisplay(this);
+                atualizarDadosViatura(tipoViatura, contador - 1, 'situacao', novoStatus);
+                calcularTotalResumo();
+                
+                // Registra a mudança de status no histórico
+                if (statusAnterior !== novoStatus) {
+                    const tipo = dadosIniciais.tipo || '';
+                    const placa = dadosIniciais.placa || '';
+                    registrarMudancaStatus(tipo, placa, statusAnterior, novoStatus);
+                }
+            };
+            celula.appendChild(select);
+            
+            // Coluna VIDA ÚTIL
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            input = document.createElement('input');
+            input.type = 'number';
+            input.min = '2000';
+            input.value = dadosIniciais.vidaUtil || '';
+            input.addEventListener('change', function() {
+                atualizarDadosViatura(tipoViatura, contador - 1, 'vidaUtil', parseInt(this.value) || '');
+            });
+            celula.appendChild(input);
+            
+            // Coluna ESPECIFICAÇÃO (apenas para ambulâncias)
+            if (tipoViatura === 'ambulancias') {
+                celula = novaLinha.insertCell();
+                celula.className = 'col-min-width';
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = dadosIniciais.espec || '';
+                input.addEventListener('change', function() {
+                    atualizarDadosViatura(tipoViatura, contador - 1, 'espec', this.value);
+                });
+                celula.appendChild(input);
+            }
+            
+            // Coluna OBSERVAÇÃO
+            celula = novaLinha.insertCell();
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = dadosIniciais.obs || '';
+            input.addEventListener('change', function() {
+                atualizarDadosViatura(tipoViatura, contador - 1, 'obs', this.value);
+            });
+            celula.appendChild(input);
+            
+            // Coluna AÇÃO
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width col-acao';
+            const botaoDeletar = document.createElement('button');
+            botaoDeletar.className = 'delete-button';
+            botaoDeletar.innerHTML = '🗑️';
+            botaoDeletar.onclick = function() {
+                removerViatura(contador, tipoViatura);
+            };
+            celula.appendChild(botaoDeletar);
+            
+            // Atualiza o status display
+            atualizarStatusDisplay(select);
+            
+            // Adiciona os dados à estrutura de dados
+            if (tipoViatura === 'ambulancias') {
+                if (!dadosRelatorio.ambulancias[contador - 1]) {
+                    dadosRelatorio.ambulancias[contador - 1] = dadosIniciais;
+                }
+            } else {
+                if (!dadosRelatorio.administrativas[contador - 1]) {
+                    dadosRelatorio.administrativas[contador - 1] = dadosIniciais;
+                }
+            }
+            
+            // Calcula totais do resumo
+            calcularTotalResumo();
+        }
+        
+        // Função para atualizar dados da viatura
+        function atualizarDadosViatura(tipoViatura, index, campo, valor) {
+            if (tipoViatura === 'ambulancias') {
+                if (dadosRelatorio.ambulancias[index]) {
+                    dadosRelatorio.ambulancias[index][campo] = valor;
+                }
+            } else {
+                if (dadosRelatorio.administrativas[index]) {
+                    dadosRelatorio.administrativas[index][campo] = valor;
+                }
+            }
+            salvarDados();
+        }
+        
+        // Função para atualizar o display de status
+        function atualizarStatusDisplay(selectElement) {
+            const status = selectElement.value;
+            const celula = selectElement.parentElement;
+            
+            // Remove classes de status anteriores
+            celula.classList.remove('status-operando', 'status-inoperante', 'status-destacada');
+            
+            // Adiciona classe baseada no status
+            if (status === 'Operando') {
+                celula.classList.add('status-operando');
+            } else if (status === 'Inoperante') {
+                celula.classList.add('status-inoperante');
+            } else if (status === 'Destacada') {
+                celula.classList.add('status-destacada');
+            }
+            
+            // Mantém a classe col-min-width se existir
+            if (!celula.classList.contains('col-min-width')) {
+                celula.classList.add('col-min-width');
+            }
+        }
+        
+        // Função para remover viatura
+        function removerViatura(contador, tipoViatura) {
+            const linha = document.getElementById(`linha-${tipoViatura}-${contador}`);
+            if (linha) {
+                const index = parseInt(linha.getAttribute('data-index'));
+                
+                // Remove a linha da tabela
+                linha.parentNode.removeChild(linha);
+                
+                // Remove os dados da estrutura de dados
+                if (tipoViatura === 'ambulancias') {
+                    dadosRelatorio.ambulancias.splice(index, 1);
+                } else {
+                    dadosRelatorio.administrativas.splice(index, 1);
+                }
+                
+                // Salva os dados atualizados
+                salvarDados();
+                
+                // Recarrega os dados para reorganizar os índices
+                popularDadosViaturas();
+                
+                // Recalcula totais
+                calcularTotalResumo();
+            }
+        }
+        
+        // Função para calcular o total do resumo
+        function calcularTotalResumo() {
+            // Conta as situações nas tabelas
+            const contarSituacao = (tipoViatura, situacao) => {
+                const tabela = document.getElementById(`tabela-viaturas-${tipoViatura}`);
+                const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                let contador = 0;
+                
+                for (let i = 0; i < linhas.length; i++) {
+                    const select = linhas[i].getElementsByTagName('select')[0];
+                    if (select && select.value === situacao) {
+                        contador++;
+                    }
+                }
+                
+                return contador;
+            };
+            
+            // Conta situações para ambulâncias
+            const operanteAmb = contarSituacao('ambulancias', 'Operando');
+            const inoperanteAmb = contarSituacao('ambulancias', 'Inoperante');
+            const destacadaAmb = contarSituacao('ambulancias', 'Destacada');
+            
+            // Conta situações para administrativas
+            const operanteAdm = contarSituacao('administrativas', 'Operando');
+            const inoperanteAdm = contarSituacao('administrativas', 'Inoperante');
+            const destacadaAdm = contarSituacao('administrativas', 'Destacada');
+            
+            // Atualiza os campos de resumo
+            document.getElementById('resumo-operante-amb').value = operanteAmb;
+            document.getElementById('resumo-inoperante-amb').value = inoperanteAmb;
+            document.getElementById('resumo-destacada-amb').value = destacadaAmb;
+            
+            document.getElementById('resumo-operante-adm').value = operanteAdm;
+            document.getElementById('resumo-inoperante-adm').value = inoperanteAdm;
+            document.getElementById('resumo-destacada-adm').value = destacadaAdm;
+            
+            // Calcula totais
+            const efetivoAmb = parseInt(document.getElementById('efetivo-amb').value) || 0;
+            const efetivoAdm = parseInt(document.getElementById('efetivo-adm').value) || 0;
+            const efetivoTotal = efetivoAmb + efetivoAdm;
+            
+            const operanteTotal = operanteAmb + operanteAdm;
+            const inoperanteTotal = inoperanteAmb + inoperanteAdm;
+            const destacadaTotal = destacadaAmb + destacadaAdm;
+            
+            // Atualiza os campos de total
+            document.getElementById('efetivo-total').value = efetivoTotal;
+            document.getElementById('resumo-operante-total').value = operanteTotal;
+            document.getElementById('resumo-inoperante-total').value = inoperanteTotal;
+            document.getElementById('resumo-destacada-total').value = destacadaTotal;
+        }
+        
+        // Função para ajustar as larguras das colunas para impressão (usa configuração salva)
+        function ajustarLargurasColunas() {
+            aplicarLargurasEditarRDV();
+        }
+        
+        // Função para imprimir o documento usando o diálogo de impressão do navegador
+        function imprimirDocumento() {
+            try {
+                // Salva o RDV ao imprimir para que a data fique azul no calendário
+                salvarDados(true);
+                console.log('Preparando para impressão...');
+                
+                // Ajusta larguras das colunas para melhor visualização na impressão
+                ajustarLargurasColunas();
+                
+                // Força a aplicação de bordas em todas as células
+                const todasCelulas = document.querySelectorAll('th, td');
+                todasCelulas.forEach(celula => {
+                    celula.style.border = '1px solid black';
+                    celula.style.borderCollapse = 'collapse';
+                });
+                
+                // Preparação: oculta elementos que não devem aparecer na impressão
+                const botoesAdicionar = document.querySelectorAll('.btn-adicionar');
+                const botoesAcao = document.querySelector('.table-footer-controls');
+                const botoesDeletar = document.querySelectorAll('.delete-button');
+                const colunasAcao = document.querySelectorAll('.col-acao');
+                const colunasAcaoHeader = document.querySelectorAll('.col-acao-header');
+                
+                // Garante que o nome da assinatura e "Div de Transporte" sejam exibidos na impressão
+                const nomeAssinatura = document.getElementById('nome-assinatura');
+                const divTransporte = document.getElementById('div-transporte');
+                const estadoNomeAssinatura = nomeAssinatura.textContent;
+                const estadoDivTransporte = divTransporte.style.display;
+                
+                // Guarda o estado original dos elementos para restaurar depois
+                const estadoOriginal = {
+                    botoesAdicionar: Array.from(botoesAdicionar).map(el => ({ el, display: el.style.display })),
+                    botoesAcao: { el: botoesAcao, display: botoesAcao ? botoesAcao.style.display : '' },
+                    botoesDeletar: Array.from(botoesDeletar).map(el => ({ el, display: el.style.display })),
+                    colunasAcao: Array.from(colunasAcao).map(el => ({ 
+                        el, 
+                        display: el.style.display,
+                        width: el.style.width,
+                        padding: el.style.padding,
+                        border: el.style.border
+                    })),
+                    colunasAcaoHeader: Array.from(colunasAcaoHeader).map(el => ({ 
+                        el, 
+                        display: el.style.display,
+                        width: el.style.width,
+                        padding: el.style.padding,
+                        border: el.style.border
+                    })),
+                    bodyClass: document.body.className
+                };
+                
+                // Oculta elementos
+                botoesAdicionar.forEach(el => el.style.display = 'none');
+                if (botoesAcao) botoesAcao.style.display = 'none';
+                botoesDeletar.forEach(el => el.style.display = 'none');
+                
+                // Remove completamente as colunas de ação
+                colunasAcao.forEach(el => {
+                    el.style.display = 'none';
+                    el.style.width = '0';
+                    el.style.padding = '0';
+                    el.style.border = 'none';
+                });
+                
+                colunasAcaoHeader.forEach(el => {
+                    el.style.display = 'none';
+                    el.style.width = '0';
+                    el.style.padding = '0';
+                    el.style.border = 'none';
+                });
+                
+                // Adiciona classe para modo impressão
+                document.body.classList.add('pdf-mode');
+                
+                // Aguarda um momento para as alterações de estilo serem aplicadas
+                setTimeout(() => {
+                    // Chama a função de impressão do navegador
+                    window.print();
+                    
+                    // Restaura os elementos após a impressão
+                    setTimeout(() => {
+                        // Restaura todos os elementos ao estado original
+                        estadoOriginal.botoesAdicionar.forEach(item => item.el.style.display = item.display);
+                        if (estadoOriginal.botoesAcao.el) estadoOriginal.botoesAcao.el.style.display = estadoOriginal.botoesAcao.display;
+                        estadoOriginal.botoesDeletar.forEach(item => item.el.style.display = item.display);
+                        
+                        estadoOriginal.colunasAcao.forEach(item => {
+                            item.el.style.display = item.display;
+                            item.el.style.width = item.width;
+                            item.el.style.padding = item.padding;
+                            item.el.style.border = item.border;
+                        });
+                        
+                        estadoOriginal.colunasAcaoHeader.forEach(item => {
+                            item.el.style.display = item.display;
+                            item.el.style.width = item.width;
+                            item.el.style.padding = item.padding;
+                            item.el.style.border = item.border;
+                        });
+                        
+                        // Restaura as classes do body
+                        document.body.className = estadoOriginal.bodyClass;
+                        
+                        console.log('Elementos restaurados após impressão');
+                    }, 1000); // Aguarda 1 segundo após a impressão para restaurar
+                }, 500);
+                
+            } catch (error) {
+                console.error('Erro ao preparar para impressão:', error);
+                alert('Erro ao preparar para impressão: ' + error.message);
+                
+                // Restaura o estado original do body em caso de erro
+                document.body.classList.remove('pdf-mode');
+            }
+        }
+        
+        // Função para abrir o modal de assinatura
+        function abrirModalAssinatura() {
+            const modal = document.getElementById('modal-assinatura');
+            modal.style.display = 'block';
+            
+            // Carrega os motoristas cadastrados
+            carregarMotoristas();
+        }
+        
+        // Função para configurar o modal de assinatura
+        function configurarModalAssinatura() {
+            const modal = document.getElementById('modal-assinatura');
+            const span = modal.getElementsByClassName('close')[0];
+            const btnConfirmar = document.getElementById('confirmar-assinatura');
+            const selectMotorista = document.getElementById('select-motorista');
+            
+            // Carrega os motoristas cadastrados
+            carregarMotoristas();
+            
+            // Quando o usuário clica no botão de fechar (X)
+            span.onclick = function() {
+                modal.style.display = 'none';
+            };
+            
+            // Quando o usuário clica em qualquer lugar fora do modal
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            };
+            
+            // Quando o usuário clica em confirmar
+            btnConfirmar.onclick = function() {
+                const motoristaSelecionado = selectMotorista.value;
+                if (!motoristaSelecionado) {
+                    alert('Por favor, selecione um motorista.');
+                    return;
+                }
+                
+                // Atualiza a assinatura
+                document.getElementById('nome-assinatura').textContent = motoristaSelecionado;
+                document.getElementById('div-transporte').style.display = 'block';
+                
+                // Atualiza os dados do relatório
+                dadosRelatorio.assinatura = {
+                    nome: motoristaSelecionado,
+                    mostrarDivTransporte: true
+                };
+                
+                // Salva os dados
+                salvarDados();
+                
+                // Fecha o modal
+                modal.style.display = 'none';
+            };
+        }
+        
+        // Função para configurar o modal de autenticação
+        function configurarModalAutenticacao() {
+            const modal = document.getElementById('modal-autenticacao');
+            const span = modal.getElementsByClassName('close')[0];
+            const btnConfirmar = document.getElementById('confirmar-autenticacao');
+            const senhaInput = document.getElementById('senha-sistema');
+            
+            // Quando o usuário clica no botão de fechar (X)
+            span.onclick = function() {
+                modal.style.display = 'none';
+                // Limpa o campo de senha
+                senhaInput.value = '';
+            };
+            
+            // Quando o usuário clica em qualquer lugar fora do modal
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                    // Limpa o campo de senha
+                    senhaInput.value = '';
+                }
+            };
+            
+            // Quando o usuário clica em confirmar
+            btnConfirmar.onclick = function() {
+                const senha = senhaInput.value;
+                if (!senha) {
+                    alert('Por favor, digite a senha.');
+                    return;
+                }
+                
+                // Verifica a senha
+                if (senha === SENHA_SISTEMA) {
+                    // Fecha o modal
+                    modal.style.display = 'none';
+                    
+                    // Limpa o campo de senha
+                    senhaInput.value = '';
+                    
+                    // Carrega os dados do RDV
+                    if (dataRDVSelecionada && dadosSalvosRDV) {
+                        carregarRDVDados(dataRDVSelecionada, dadosSalvosRDV);
+                        
+                        // Limpa as variáveis temporárias
+                        dataRDVSelecionada = '';
+                        dadosSalvosRDV = null;
+                    }
+                } else {
+                    alert('Senha incorreta. Tente novamente.');
+                }
+            };
+            
+            // Adiciona evento de tecla Enter para confirmar
+            senhaInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    btnConfirmar.click();
+                }
+            });
+        }
+        
+        // Função para abrir o modal de autenticação
+        function abrirModalAutenticacao() {
+            const modal = document.getElementById('modal-autenticacao');
+            modal.style.display = 'block';
+            document.getElementById('senha-sistema').focus();
+        }
+        
+        // Função para carregar os motoristas cadastrados
+        function carregarMotoristas() {
+            // Busca os motoristas do localStorage
+            const motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+            const select = document.getElementById('select-motorista');
+            
+            // Limpa as opções atuais, exceto a primeira
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            // Adiciona os motoristas ao select
+            motoristasCadastrados.forEach(motorista => {
+                if (motorista.nome) {
+                    const option = document.createElement('option');
+                    option.value = motorista.nome;
+                    option.textContent = motorista.nome;
+                    select.appendChild(option);
+                }
+            });
+        }</script>
+</body>
+</html>

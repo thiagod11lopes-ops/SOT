@@ -1,0 +1,2531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vistoria de Viaturas - Sistema Integrado</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+    <script src="theme-listener.js"></script>
+    <script src="api-service.js"></script>
+    <script src="data-service.js"></script>
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --tab-inactive-bg: #e9ecef;
+            --tab-active-bg: var(--white);
+            --tab-border: 1px solid #dee2e6;
+            --delete-red: #dc3545;
+            --success-green: #28a745;
+            --warning-red: #dc3545;
+            --warning-orange: #ffa500;
+            --light-blue-bg: #eaf0ff;
+            --yellow-bg: #fff3cd;
+            --calendar-today: #007bff;
+            --calendar-selected: #28a745;
+            --calendar-vistoria: #ffc107;
+            --scheduled-yellow: #ffc107;
+            --completed-green: #d4edda;
+            --tab-text-color: var(--dark-gray);
+            --tab-text-color-active: var(--primary-blue);
+            --tab-text-color-hover: var(--tab-text-color);
+            --tab-hover-bg: #dcdcdc;
+            --tab-border-color: #ccc;
+            --tab-border-color-active: var(--primary-blue);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-gray-bg);
+            color: var(--dark-gray);
+            font-weight: 500;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--primary-blue);
+            margin-bottom: 20px;
+            background-color: var(--white);
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+        }
+
+        .tab-button {
+            background-color: var(--tab-inactive-bg);
+            color: var(--tab-text-color);
+            border: none;
+            padding: 15px 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-button:hover:not(.active) {
+            background-color: var(--tab-hover-bg);
+            color: var(--tab-text-color-hover);
+        }
+
+        .tab-button.active {
+            background-color: var(--primary-blue) !important;
+            color: #ffffff !important;
+        }
+        
+        .tab-button.active,
+        button.tab-button.active,
+        .tabs .tab-button.active {
+            color: #ffffff !important;
+            background-color: var(--primary-blue) !important;
+        }
+        
+        .tab-button.active *,
+        .tab-button.active i,
+        button.tab-button.active *,
+        button.tab-button.active i,
+        .tabs .tab-button.active *,
+        .tabs .tab-button.active i {
+            color: #ffffff !important;
+        }
+
+        .tab-content {
+            display: none;
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .page-title {
+            font-size: 28px;
+            color: var(--primary-blue);
+            text-align: center;
+            font-weight: bold;
+            margin: 0 0 30px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .info-panel {
+            background: linear-gradient(135deg, var(--light-blue-bg), #f0f8ff);
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(74, 105, 189, 0.1);
+        }
+
+        .info-panel h3 {
+            color: var(--primary-blue);
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-panel ul {
+            margin: 0;
+            padding-left: 20px;
+            color: var(--dark-gray);
+            line-height: 1.6;
+        }
+
+        .info-panel li {
+            margin-bottom: 8px;
+        }
+
+        .calendar-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            background-color: var(--light-blue-bg);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid var(--primary-blue);
+            flex-wrap: wrap;
+        }
+
+        .calendar-controls select {
+            padding: 12px 16px;
+            border: 2px solid var(--primary-blue);
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            background-color: var(--white);
+            color: var(--dark-gray);
+            min-width: 140px;
+            cursor: pointer;
+        }
+
+        .calendar-controls label {
+            font-weight: bold;
+            color: var(--primary-blue);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background-color: var(--white);
+            margin-top: 20px;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .data-table th,
+        .data-table td {
+            border: 1px solid var(--tab-border);
+            padding: 15px;
+            white-space: nowrap;
+        }
+
+        .data-table th {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .data-table tbody tr:hover {
+            background-color: var(--light-blue-bg);
+        }
+
+        .data-table-v2 {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .data-table-v2 th,
+        .data-table-v2 td {
+            border: 1px solid var(--tab-border);
+            padding: 15px;
+        }
+
+        .data-table-v2 th {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        .data-table-v2 tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .data-table-v2 tbody tr:hover {
+            background-color: var(--light-blue-bg);
+        }
+
+        .annotations-cell ul {
+            padding-left: 20px;
+            margin: 0;
+            white-space: normal;
+        }
+
+        .annotations-cell.workshop {
+            color: var(--delete-red);
+            font-weight: bold;
+        }
+
+        .no-annotations {
+            color: var(--success-green);
+            font-style: italic;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-buttons button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn {
+            color: var(--primary-blue);
+        }
+
+        .edit-btn:hover {
+            background-color: var(--light-blue-bg);
+        }
+
+        .delete-btn {
+            color: var(--delete-red);
+        }
+
+        .delete-btn:hover {
+            background-color: #ffebee;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: flex-start;
+            overflow-y: auto;
+            padding-top: 0;
+            padding-bottom: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal.show::-webkit-scrollbar {
+            width: 0;
+            background: transparent;
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            margin: 10px auto 20px auto !important;
+            align-self: flex-start !important;
+            position: relative;
+            flex-shrink: 0;
+            top: 0 !important;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-content h3 {
+            color: var(--primary-blue);
+            margin-bottom: 25px;
+            font-size: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 25px;
+        }
+
+        .pending-issues {
+            margin-top: 30px;
+            border-top: 3px solid var(--warning-red);
+            padding-top: 20px;
+        }
+
+        .pending-issues h4 {
+            color: var(--warning-red);
+            text-align: center;
+            font-size: 20px;
+            margin: 0 0 20px 0;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pending-item {
+            background-color: #fff5f5;
+            border: 2px solid var(--warning-red);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .pending-item span {
+            flex-grow: 1;
+            text-align: left;
+        }
+
+        .pending-item button {
+            color: var(--white);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .persist-btn.green {
+            background-color: var(--success-green);
+        }
+
+        .persist-btn.red {
+            background-color: var(--warning-red);
+        }
+
+        .resolve-btn {
+            background-color: var(--primary-blue);
+        }
+
+        .scheduling-table-container {
+            overflow-x: auto;
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background-color: var(--white);
+            margin-top: 20px;
+        }
+
+        .scheduling-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+        
+        .scheduling-table th,
+        .scheduling-table td {
+            border: 1px solid var(--tab-border);
+            padding: 8px; /* Compactar a tabela */
+            white-space: nowrap;
+        }
+        
+        .scheduling-table th {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+        }
+        
+        .scheduling-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+.scheduling-table tbody tr:hover {
+            background-color: var(--light-blue-bg);
+        }
+
+        .scheduling-table td.vehicle-cell {
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color: 0.2s;
+        }
+
+        .scheduling-table td.vehicle-cell.completed {
+            background-color: var(--completed-green);
+            cursor: default;
+        }
+        
+        .scheduling-table td.vehicle-cell.completed:hover {
+            background-color: var(--completed-green);
+        }
+
+        .completed-icon {
+            color: var(--success-green);
+            margin-left: 8px;
+        }
+        
+        .checklist-form-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-blue);
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+
+        .main-scheduling-form {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            background-color: var(--light-blue-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .main-scheduling-form input,
+        .main-scheduling-form select {
+            padding: 10px;
+            border: 1px solid var(--gray);
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .btn {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color: 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--secondary-blue);
+        }
+
+        .btn-success {
+            background-color: var(--success-green);
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-danger {
+            background-color: var(--delete-red);
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-warning {
+            background-color: var(--warning-orange);
+            color: var(--dark-gray);
+        }
+
+        .btn-warning:hover {
+            background-color: #e69500;
+        }
+
+        /* Regras para o formulário de Vistoria */
+        .checklist-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .check-item {
+            background-color: var(--white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--tab-border);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .check-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .check-item-header label {
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+
+        .check-options {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .annotation-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--gray);
+            border-radius: 4px;
+            resize: vertical;
+            margin-top: 10px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Novas regras para o calendário */
+        .calendar-wrapper {
+            max-width: 350px;
+            margin: 20px auto;
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            background-color: var(--white);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--tab-border);
+            background-color: var(--primary-blue);
+            color: var(--white);
+            border-radius: 10px 10px 0 0;
+        }
+
+        .calendar-header button {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .calendar-header button:hover {
+            transform: scale(1.1);
+        }
+
+        .calendar-header h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            padding: 10px;
+        }
+        
+        .calendar-day, .calendar-weekday {
+            text-align: center;
+            padding: 12px 0;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: background-color: 0.2s, transform 0.2s;
+        }
+        
+        .calendar-weekday {
+            color: var(--primary-blue);
+            font-size: 14px;
+            cursor: default;
+        }
+
+        .calendar-day {
+            background-color: var(--light-gray-bg);
+            cursor: pointer;
+            color: var(--dark-gray);
+        }
+
+        .calendar-day:hover {
+            background-color: var(--gray);
+            transform: translateY(-2px);
+        }
+        
+        .calendar-day.today {
+            border: 2px solid var(--primary-blue);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-weight: bold;
+        }
+
+        .calendar-day.selected {
+            opacity: 0.7;
+            background-color: var(--light-blue-bg); /* Cor padrão do fundo da data selecionada */
+            border: 2px solid var(--dark-gray);
+        }
+        
+        /* Regras para a cor interior da data de hoje, priorizando o status */
+        .calendar-day.today.daily-goal-met {
+            background-color: var(--success-green);
+            color: var(--white);
+        }
+
+        .calendar-day.today.daily-goal-missed {
+            background-color: var(--warning-orange);
+            color: var(--dark-gray);
+        }
+        
+        .calendar-day.today.daily-goal-not-met {
+            background-color: var(--delete-red);
+            color: var(--white);
+        }
+
+        .calendar-day.daily-goal-met { background-color: var(--success-green); }
+        .calendar-day.daily-goal-missed { background-color: var(--warning-orange); }
+        .calendar-day.daily-goal-not-met { background-color: var(--delete-red); }
+
+        .calendar-day.disabled {
+            background-color: #f0f0f0;
+            color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .cadastro-form {
+            background-color: var(--light-blue-bg);
+            border: 2px solid var(--primary-blue);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .cadastro-form .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cadastro-form label {
+            font-weight: bold;
+            color: var(--dark-gray);
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab-button {
+                font-size: 14px;
+                padding: 12px 20px;
+            }
+
+            .calendar-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .scheduling-form {
+                grid-template-columns: 1fr;
+            }
+
+            .page-title {
+                font-size: 24px;
+            }
+
+            .checklist-form {
+                grid-template-columns: 1fr;
+            }
+
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filters input,
+            .filters select {
+                width: 100%;
+            }
+
+            .modal-content {
+                padding: 25px;
+                margin: 10px auto;
+                margin-top: 10px;
+                align-self: flex-start;
+            }
+            
+            .modal {
+                padding-top: 0;
+                padding-bottom: 20px;
+                align-items: flex-start;
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .pending-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .pending-item button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Novo estilo para o campo de busca */
+        .search-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+        }
+        .search-container input {
+            padding-right: 35px; /* Espaço para o ícone */
+        }
+        .search-container .search-icon {
+            position: absolute;
+            right: 10px;
+            color: var(--dark-gray);
+        }
+
+        .inspection-vehicle-option.completed {
+            color: var(--delete-red);
+        }
+
+        .calendar-legend {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: var(--light-gray-bg);
+            border-radius: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .legend-color.green { background-color: var(--success-green); }
+        .legend-color.orange { background-color: var(--warning-orange); }
+        .legend-color.red { background-color: var(--delete-red); }
+
+        /* Estilo para o modal de status diário */
+        #dailyStatusModal .modal-content {
+            margin: 10px auto 20px auto !important;
+            align-self: flex-start !important;
+            flex-shrink: 0;
+            top: 0 !important;
+        }
+
+        /* Estilo para o modal de seleção de tipo de vistoria */
+        #typeSelectionModal .modal-content {
+            margin: 10px auto 20px auto !important;
+            align-self: flex-start !important;
+            flex-shrink: 0;
+            top: 0 !important;
+        }
+
+        /* Estilo para o modal de vistoria administrativa */
+        #adminVistoriaModal .modal-content {
+            margin: 10px auto 20px auto !important;
+            align-self: flex-start !important;
+            flex-shrink: 0;
+            top: 0 !important;
+        }
+
+        #dailyStatusModal .modal-content h4 {
+            color: var(--primary-blue);
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        #dailyStatusModal .modal-content ul {
+            list-style-type: none;
+            padding: 0;
+            text-align: left;
+        }
+
+        #dailyStatusModal .modal-content li {
+            background-color: var(--light-gray-bg);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .driver-completed {
+            color: var(--delete-red);
+        }
+
+        /* Estilos modernos para inputs e selects */
+        input[type="text"],
+        input[type="date"],
+        select {
+            padding: 12px;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            font-size: 16px;
+            background-color: var(--white);
+            color: var(--dark-gray);
+            transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+        
+        select {
+            padding-right: 40px; /* Espaço para o ícone da seta */
+            background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234a69bd"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 24px;
+        }
+
+        input[type="text"]:focus,
+        input[type="date"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 5px rgba(74, 105, 189, 0.5);
+        }
+
+        .filters.hidden {
+            display: none;
+        }
+        
+        /* Modo Escuro */
+        body[data-theme="dark"],
+        body[data-theme="dark"] * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        body[data-theme="dark"] {
+            background-color: #1a1a1a !important;
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .container {
+            background-color: #1a1a1a !important;
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .tabs {
+            background-color: #2d2d2d !important;
+            border-color: #444 !important;
+        }
+        body[data-theme="dark"] .tab-button {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border-color: #444 !important;
+        }
+        body[data-theme="dark"] .tab-button:hover {
+            background-color: #3d3d3d !important;
+            color: #6c88c9 !important;
+        }
+        body[data-theme="dark"] .tab-button.active {
+            background-color: #2d2d2d !important;
+            color: #6c88c9 !important;
+            border-color: #6c88c9 !important;
+        }
+        body[data-theme="dark"] .tab-content {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .form-group label {
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] input,
+        body[data-theme="dark"] select,
+        body[data-theme="dark"] textarea {
+            background-color: #1a1a1a !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] table {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] table th {
+            background-color: #3d3d3d !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] table td {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] .card,
+        body[data-theme="dark"] .vistoria-card {
+            background-color: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border-color: #555 !important;
+        }
+        body[data-theme="dark"] h1,
+        body[data-theme="dark"] h2,
+        body[data-theme="dark"] h3 {
+            color: #e0e0e0 !important;
+        }
+        body[data-theme="dark"] .btn-primary,
+        body[data-theme="dark"] button {
+            background-color: #4a69bd !important;
+            color: #ffffff !important;
+        }
+        body[data-theme="dark"] .btn-primary:hover,
+        body[data-theme="dark"] button:hover {
+            background-color: #6c88c9 !important;
+        }
+        body[data-theme="dark"] .filters {
+            background-color: #2d2d2d !important;
+            border-color: #555 !important;
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-button active" data-tab="scheduling">
+                <i class="fas fa-car"></i>
+                Vistoriar Viatura
+            </button>
+            <button class="tab-button" data-tab="history">
+                <i class="fas fa-history"></i>
+                Histórico de Vistorias
+            </button>
+            <button class="tab-button" data-tab="status">
+                <i class="fas fa-info-circle"></i>
+                Situação das Viaturas
+            </button>
+            <button class="tab-button" data-tab="drivers">
+                <i class="fas fa-users"></i>
+                Motoristas
+            </button>
+        </div>
+
+        <div id="scheduling" class="tab-content active">
+            <h1 class="page-title">
+                <i class="fas fa-car"></i>
+                Vistoriar Viatura
+            </h1>
+            
+            <div id="initialFormContainer" class="cadastro-form">
+                <div id="calendarContainer" class="cadastro-form" style="border:none;">
+                    <div class="calendar-header">
+                        <button id="prevMonthBtn"><i class="fas fa-chevron-left"></i></button>
+                        <h3 id="monthYear"></h3>
+                        <button id="nextMonthBtn"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid">
+                        <span class="calendar-weekday">Dom</span>
+                        <span class="calendar-weekday">Seg</span>
+                        <span class="calendar-weekday">Ter</span>
+                        <span class="calendar-weekday">Qua</span>
+                        <span class="calendar-weekday">Qui</span>
+                        <span class="calendar-weekday">Sex</span>
+                        <span class="calendar-weekday">Sáb</span>
+                    </div>
+                </div>
+                
+                <div class="calendar-legend">
+                    <div class="legend-item"><div class="legend-color green"></div><span>Vistorias do dia concluídas</span></div>
+                    <div class="legend-item"><div class="legend-color orange"></div><span>Vistorias parciais</span></div>
+                    <div class="legend-item"><div class="legend-color red"></div><span>Nenhuma vistoria</span></div>
+                </div>
+
+                <div id="driverVehicleSelectContainer" style="flex-direction:column; gap: 15px;">
+                    <div class="form-group" style="width: 100%;">
+                        <label for="inspectionDriverSelect">Motorista (Dados da Escala de Serviço):</label>
+                        <select id="inspectionDriverSelect" required>
+                            <option value="">Selecione o Motorista</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="inspectionVehicleContainer" style="width: 100%;">
+                        <label for="inspectionVehicleSelect">Viatura:</label>
+                        <select id="inspectionVehicleSelect" required>
+                            <option value="">Selecione a Viatura</option>
+                        </select>
+                    </div>
+                    <div id="actionButtonsContainer" style="display: flex; gap: 10px; margin-top: 10px; justify-content:center;">
+                        <button id="downloadVistoriaPdfBtn" class="btn">
+                            <i class="fas fa-download"></i> Baixar PDF
+                        </button>
+                        <button id="startChecklistBtn" class="btn">
+                            <i class="fas fa-play"></i> Iniciar Vistoria
+                        </button>
+                        <button id="adminChecklistBtn" class="btn btn-warning">
+                            <i class="fas fa-user-shield"></i> Vistoria Admin
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="checklistContainer" class="checklist-container hidden cadastro-form">
+                <div class="checklist-form-header">
+                    <span id="checklistTitle"></span>
+                </div>
+                
+                <div id="checklistForm" class="checklist-form">
+                </div>
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="saveInspectionBtn" class="btn btn-success"><i class="fas fa-save"></i> Salvar Vistoria</button>
+                    <button id="cancelInspectionBtn" class="btn btn-danger"><i class="fas fa-times"></i> Cancelar</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="history" class="tab-content">
+            <h1 class="page-title">
+                <i class="fas fa-archive"></i>
+                Histórico de Vistorias
+            </h1>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button id="toggleFiltersBtn" class="btn">
+                    <i class="fas fa-filter"></i> Mostrar/Ocultar Filtros
+                </button>
+            </div>
+
+            <div class="filters hidden">
+                <div class="search-container">
+                    <input type="text" id="filterSearch" placeholder="Pesquisar...">
+                    <i class="fas fa-search search-icon"></i>
+                </div>
+                <label for="filterDate">Data:</label>
+                <input type="date" id="filterDate">
+
+                <label for="filterVehicle">Viatura:</label>
+                <select id="filterVehicle">
+                    <option value="all">Todas</option>
+                </select>
+
+                <label for="filterMonth">Mês:</label>
+                <select id="filterMonth">
+                    <option value="all">Todos</option>
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+
+                <label for="filterYear">Ano:</label>
+                <select id="filterYear">
+                    <option value="all">Todos</option>
+                </select>
+
+                <button id="exportCsvBtn" class="btn">
+                    <i class="fas fa-file-csv"></i>
+                    Exportar CSV
+                </button>
+
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+                <button id="importCsvBtn" class="btn">
+                    <i class="fas fa-file-upload"></i>
+                    Importar CSV
+                </button>
+
+                <button id="deleteAllBtn" class="btn btn-danger">
+                    <i class="fas fa-trash-alt"></i>
+                    Excluir Tudo
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Viatura</th>
+                            <th>Motorista</th>
+                            <th>Anotações Pendentes</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="status" class="tab-content">
+            <h1 class="page-title">
+                <i class="fas fa-info-circle"></i>
+                Situação das Viaturas
+            </h1>
+
+            <div class="filters" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                <label for="filterVehicleStatus" style="margin: 0;">Viatura:</label>
+                <select id="filterVehicleStatus" style="flex-grow: 1;">
+                    <option value="all">Todas as Viaturas</option>
+                </select>
+                <button id="generateStatusPdfBtn" class="btn">
+                    <i class="fas fa-file-pdf"></i> Gerar PDF
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="statusTable">
+                    <thead>
+                        <tr>
+                            <th>Data da Vistoria</th>
+                            <th>Viatura</th>
+                            <th>Motorista</th>
+                            <th>Item com Anotação</th>
+                            <th>Anotação</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="drivers" class="tab-content">
+            <h1 class="page-title">
+                <i class="fas fa-users"></i>
+                Cadastro de Motoristas e Viaturas
+            </h1>
+            <p style="text-align: center; margin-top: -20px; margin-bottom: 20px;">Esta seção é usada para associar viaturas a cada motorista. A escala de serviço é gerenciada no sistema de Escala.</p>
+            <button id="showAddDriverFormBtn" class="btn" style="margin-bottom: 20px;">
+                <i class="fas fa-user-plus"></i> Cadastrar Associação Motorista-Viatura
+            </button>
+            
+            <div class="cadastro-form hidden" id="addDriverForm">
+                <div class="form-group">
+                    <label for="driverSelectInput">Motorista:</label>
+                    <select id="driverSelectInput">
+                        <option value="">Selecione o Motorista</option>
+                    </select>
+                    <input type="text" id="driverNameInput" placeholder="Digite o nome do novo motorista">
+                </div>
+                <div class="form-group">
+                    <label for="driverVehicle1Select">Viatura Responsável 1:</label>
+                    <select id="driverVehicle1Select">
+                        <option value="">Selecione uma viatura</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="driverVehicle2Select">Viatura Responsável 2 (Opcional):</label>
+                    <select id="driverVehicle2Select">
+                        <option value="">Nenhuma</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="addDriverBtn" class="btn">
+                        <i class="fas fa-save"></i> Salvar Associação
+                    </button>
+                    <button id="hideAddDriverFormBtn" class="btn btn-danger">
+                        <i class="fas fa-times"></i> Ocultar
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="driversTable">
+                    <thead>
+                        <tr>
+                            <th>Nome do Motorista</th>
+                            <th>Viatura 1</th>
+                            <th>Viatura 2</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div id="typeSelectionModal" class="modal">
+        <div class="modal-content">
+            <h3>Tipo de Vistoria</h3>
+            <p>Selecione o tipo de vistoria a ser realizada:</p>
+            <div class="modal-buttons">
+                <button id="abordoBtn" class="btn btn-success">
+                    <i class="fas fa-car"></i> A Bordo
+                </button>
+                <button id="workshopBtn" class="btn btn-warning">
+                    <i class="fas fa-tools"></i> Oficina
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="dailyStatusModal" class="modal">
+        <div class="modal-content">
+            <h3 id="dailyStatusModalTitle"></h3>
+            <div id="dailyStatusContent">
+                <h4>Motoristas com Vistoria Concluída:</h4>
+                <ul id="completedInspectionsList"></ul>
+                <h4>Motoristas com Vistoria Pendente:</h4>
+                <ul id="pendingInspectionsList"></ul>
+            </div>
+            <div class="modal-buttons" style="justify-content: center;">
+                <button id="closeDailyStatusModal" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="adminVistoriaModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-user-shield"></i> Vistoria Administrativa</h3>
+            <p>Selecione um motorista e uma viatura para iniciar uma vistoria fora da escala prevista.</p>
+            
+            <div class="cadastro-form" style="background-color: var(--white); border: none; padding: 0;">
+                <div class="form-group">
+                    <label for="adminDriverSelect">Motorista:</label>
+                    <select id="adminDriverSelect" required>
+                        <option value="">Selecione o Motorista</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="adminVehicleSelect">Viatura:</label>
+                    <select id="adminVehicleSelect" required>
+                        <option value="">Selecione a Viatura</option>
+                    </select>
+                </div>
+            </div>
+    
+            <div class="modal-buttons">
+                <button id="startAdminInspectionBtn" class="btn btn-success">
+                    <i class="fas fa-play"></i> Iniciar Vistoria
+                </button>
+                <button id="closeAdminModalBtn" class="btn btn-danger">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let registeredVehicles = [];
+            let registeredDrivers = [];
+            
+            // Função para forçar estilo branco nas abas ativas (definida no início para estar disponível)
+            function forceWhiteTextOnActiveTabs() {
+                const allTabButtons = document.querySelectorAll('.tab-button');
+                allTabButtons.forEach(btn => {
+                    if (btn.classList.contains('active')) {
+                        // Forçar estilo inline branco (prioridade máxima)
+                        btn.style.setProperty('color', '#ffffff', 'important');
+                        btn.style.setProperty('background-color', '', 'important');
+                        
+                        // Forçar branco em todos os elementos filhos, incluindo texto
+                        const icons = btn.querySelectorAll('i');
+                        icons.forEach(icon => {
+                            icon.style.setProperty('color', '#ffffff', 'important');
+                        });
+                    } else {
+                        // Remover estilos inline quando não está ativo
+                        btn.style.removeProperty('color');
+                        const icons = btn.querySelectorAll('i');
+                        icons.forEach(icon => {
+                            icon.style.removeProperty('color');
+                        });
+                    }
+                });
+            }
+            let inspectionDrivers = []; // Armazena a associação Motorista-Viatura
+            let inspections = [];
+            let currentInspection = {};
+            const VISTORIAS_POR_DIA = 4;
+
+            // Variáveis e seletores do DOM...
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const historyTableBody = document.querySelector('#historyTable tbody');
+            const statusTableBody = document.querySelector('#statusTable tbody');
+            const driversTableBody = document.querySelector('#driversTable tbody');
+            const toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
+            const filtersContainer = document.querySelector('#history .filters');
+            const filterSearch = document.getElementById('filterSearch');
+            const filterDate = document.getElementById('filterDate');
+            const filterVehicle = document.getElementById('filterVehicle');
+            const filterMonth = document.getElementById('filterMonth');
+            const filterYear = document.getElementById('filterYear');
+            const filterVehicleStatus = document.getElementById('filterVehicleStatus');
+            const generateStatusPdfBtn = document.getElementById('generateStatusPdfBtn');
+            const exportCsvBtn = document.getElementById('exportCsvBtn');
+            const importCsvBtn = document.getElementById('importCsvBtn');
+            const csvFileInput = document.getElementById('csvFileInput');
+            const deleteAllBtn = document.getElementById('deleteAllBtn');
+            const initialFormContainer = document.getElementById('initialFormContainer');
+            const calendarContainer = document.getElementById('calendarContainer');
+            const monthYearHeader = document.getElementById('monthYear');
+            const calendarGrid = calendarContainer.querySelector('.calendar-grid');
+            const prevMonthBtn = document.getElementById('prevMonthBtn');
+            const nextMonthBtn = document.getElementById('nextMonthBtn');
+            const driverVehicleSelectContainer = document.getElementById('driverVehicleSelectContainer');
+            const inspectionDriverSelect = document.getElementById('inspectionDriverSelect');
+            const inspectionVehicleContainer = document.getElementById('inspectionVehicleContainer');
+            const inspectionVehicleSelect = document.getElementById('inspectionVehicleSelect');
+            const downloadVistoriaPdfBtn = document.getElementById('downloadVistoriaPdfBtn');
+            const startChecklistBtn = document.getElementById('startChecklistBtn');
+            const actionButtonsContainer = document.getElementById('actionButtonsContainer');
+            const checklistContainer = document.getElementById('checklistContainer');
+            const checklistTitle = document.getElementById('checklistTitle');
+            const checklistForm = document.getElementById('checklistForm');
+            const saveInspectionBtn = document.getElementById('saveInspectionBtn');
+            const cancelInspectionBtn = document.getElementById('cancelInspectionBtn');
+            const showAddDriverFormBtn = document.getElementById('showAddDriverFormBtn');
+            const addDriverForm = document.getElementById('addDriverForm');
+            const hideAddDriverFormBtn = document.getElementById('hideAddDriverFormBtn');
+            const driverSelectInput = document.getElementById('driverSelectInput');
+            const driverNameInput = document.getElementById('driverNameInput');
+            const driverVehicle1Select = document.getElementById('driverVehicle1Select');
+            const driverVehicle2Select = document.getElementById('driverVehicle2Select');
+            const addDriverBtn = document.getElementById('addDriverBtn');
+            const typeSelectionModal = document.getElementById('typeSelectionModal');
+            const abordoBtn = document.getElementById('abordoBtn');
+            const workshopBtn = document.getElementById('workshopBtn');
+            const dailyStatusModal = document.getElementById('dailyStatusModal');
+            const dailyStatusModalTitle = document.getElementById('dailyStatusModalTitle');
+            const completedInspectionsList = document.getElementById('completedInspectionsList');
+            const pendingInspectionsList = document.getElementById('pendingInspectionsList');
+            const closeDailyStatusModal = document.getElementById('closeDailyStatusModal');
+            const adminChecklistBtn = document.getElementById('adminChecklistBtn');
+            const adminVistoriaModal = document.getElementById('adminVistoriaModal');
+            const adminDriverSelect = document.getElementById('adminDriverSelect');
+            const adminVehicleSelect = document.getElementById('adminVehicleSelect');
+            const startAdminInspectionBtn = document.getElementById('startAdminInspectionBtn');
+            const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
+
+            const PDF_CHECKLIST_ITEMS = [
+                { label: "Nível do Óleo do Motor e Água", options: ["( )OK", "( ) Alteração"] },
+                { label: "Calibragem e estado dos Pneus", options: ["( )OK", "( ) Alteração"] },
+                { label: "Elétrica e Luzes", options: ["( )OK", "( ) Alteração"] },
+                { label: "Sirene (Luzes e Som)", options: ["( )OK", "( ) Alteração", "( ) Não se Aplica"] },
+                { label: "Freios (Funcionamento)", options: ["( )OK", "( ) Alteração"] },
+                { label: "Documentação", options: ["( )OK", "( ) Alteração"] },
+                { label: "Triângulo de Segurança, Macaco e Chave de Roda", options: ["( )OK", "( ) Alteração"] },
+                { label: "Limpeza Interna e Externa", options: ["( )OK", "( ) Alteração"] },
+                { label: "Lanternagem Geral", options: ["( )OK", "( ) Alteração"] },
+                { label: "Outros", options: ["( )OK", "( ) Alteração"] }
+            ];
+
+            let currentDate = new Date();
+            let selectedDateForVistoria = null;
+
+            function renderCalendar() {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+                monthYearHeader.textContent = `${monthNames[month]} de ${year}`;
+                calendarGrid.innerHTML = `<span class="calendar-weekday">Dom</span><span class="calendar-weekday">Seg</span><span class="calendar-weekday">Ter</span><span class="calendar-weekday">Qua</span><span class="calendar-weekday">Qui</span><span class="calendar-weekday">Sex</span><span class="calendar-weekday">Sáb</span>`;
+                const firstDayOfMonth = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (let i = 0; i < firstDayOfMonth; i++) calendarGrid.appendChild(document.createElement('div'));
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayCell = document.createElement('div');
+                    dayCell.classList.add('calendar-day');
+                    dayCell.textContent = day;
+                    const cellDate = new Date(year, month, day);
+                    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    dayCell.setAttribute('data-date', dateString);
+                    const todayForComparison = new Date();
+                    todayForComparison.setHours(0, 0, 0, 0);
+                    if (cellDate < todayForComparison) dayCell.classList.add('disabled');
+                    if (cellDate.toDateString() === new Date().toDateString()) dayCell.classList.add('today');
+                    const inspectionsOnDay = inspections.filter(i => i.data === dateString).length;
+                    const driversOnDuty = getDriversOnDutyForDate(dateString).length;
+                    if (driversOnDuty > 0) {
+                        if (inspectionsOnDay >= driversOnDuty) dayCell.classList.add('daily-goal-met');
+                        else if (inspectionsOnDay > 0) dayCell.classList.add('daily-goal-missed');
+                        else dayCell.classList.add('daily-goal-not-met');
+                    }
+                    calendarGrid.appendChild(dayCell);
+                }
+            }
+
+            function formatDate(dateString) {
+                if (!dateString) return '';
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            }
+
+            async function loadData() {
+                try {
+                    // Usar dataService que escolhe automaticamente entre API e localStorage
+                    const storedVehicles = await dataService.getViaturas();
+                    const storedDrivers = await dataService.getMotoristas();
+                    const storedInspectionDrivers = dataService.getFromLocalStorage('motoristasVistoria', []);
+                    
+                    registeredVehicles = Array.isArray(storedVehicles) 
+                        ? storedVehicles.filter(v => v.placa && v.placa.trim() !== '')
+                        : [];
+                    registeredDrivers = Array.isArray(storedDrivers)
+                        ? storedDrivers.filter(d => d.nome && d.nome.trim() !== '')
+                        : [];
+                    inspectionDrivers = Array.isArray(storedInspectionDrivers) 
+                        ? storedInspectionDrivers.filter(m => m.nome && m.nome.trim() !== '')
+                        : [];
+                    
+                    const vistorias = await dataService.getVistorias();
+                    inspections = Array.isArray(vistorias) ? vistorias : [];
+                } catch (error) {
+                    console.error('Erro ao carregar dados:', error);
+                    // Fallback para localStorage se API falhar
+                    const storedVehicles = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+                    const storedDrivers = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+                    registeredVehicles = storedVehicles.filter(v => v.placa && v.placa.trim() !== '');
+                    registeredDrivers = storedDrivers.filter(d => d.nome && d.nome.trim() !== '');
+                    inspections = JSON.parse(localStorage.getItem('vistoriasRealizadas') || '[]');
+                }
+            }
+
+            let pendingInspection = null; // Para salvar apenas a vistoria específica
+
+            async function saveData(inspectionToSave = null) {
+                try {
+                    if (inspectionToSave) {
+                        // Salvar apenas a vistoria específica
+                        await dataService.saveVistoria(inspectionToSave);
+                    } else {
+                        // Salvar todas as vistorias (para casos de sincronização completa)
+                        for (const inspection of inspections) {
+                            await dataService.saveVistoria(inspection);
+                        }
+                    }
+                    // Sempre manter localStorage como backup
+                    localStorage.setItem('vistoriasRealizadas', JSON.stringify(inspections));
+                    // A associação motorista-viatura ainda usa localStorage (não tem endpoint específico)
+                    localStorage.setItem('motoristasVistoria', JSON.stringify(inspectionDrivers));
+                } catch (error) {
+                    console.error('Erro ao salvar dados:', error);
+                    // Fallback para localStorage
+                    localStorage.setItem('vistoriasRealizadas', JSON.stringify(inspections));
+                    localStorage.setItem('motoristasVistoria', JSON.stringify(inspectionDrivers));
+                }
+            }
+
+            // *** FUNÇÃO PRINCIPAL DA INTEGRAÇÃO ***
+            // Lê os dados do sistema de Escala e retorna os motoristas com 'S' no dia.
+            function getDriversOnDutyForDate(date) { // date no formato 'YYYY-MM-DD'
+                const [year, month, day] = date.split('-');
+                const escalaKey = `${year}-${month}`; // Chave usada pelo sistema Escala13.html
+                const dayOfMonth = parseInt(day, 10);
+
+                try {
+                    const escalaData = JSON.parse(localStorage.getItem(escalaKey) || '{}');
+                    if (!escalaData || !Array.isArray(escalaData.members)) {
+                        return []; // Nenhuma escala encontrada para o mês
+                    }
+                    
+                    const driversOnDutyNames = [];
+                    escalaData.members.forEach(memberRow => {
+                        // memberRow[0] é o nome, memberRow[dayOfMonth] é o status do dia
+                        if (memberRow[dayOfMonth] && memberRow[dayOfMonth].toUpperCase() === 'S') {
+                            driversOnDutyNames.push(memberRow[0]);
+                        }
+                    });
+
+                    // Retorna os objetos completos dos motoristas (com viaturas) que estão na lista de serviço
+                    return inspectionDrivers.filter(driver => driversOnDutyNames.includes(driver.nome));
+
+                } catch (e) {
+                    console.error("Erro ao ler dados da escala:", e);
+                    return [];
+                }
+            }
+
+            function populateInspectionDriverSelect(selectedDate) {
+                const driverSelect = document.getElementById('inspectionDriverSelect');
+                driverSelect.innerHTML = '<option value="">Selecione um Motorista</option>';
+                const availableDrivers = getDriversOnDutyForDate(selectedDate);
+                availableDrivers.forEach(driver => {
+                    const option = document.createElement('option');
+                    option.value = driver.nome;
+                    option.textContent = driver.nome;
+                    driverSelect.appendChild(option);
+                });
+                document.getElementById('inspectionVehicleSelect').innerHTML = '<option value="">Selecione a Viatura</option>';
+            }
+
+            function onInspectionDriverSelectChange() {
+                const selectedDriverName = inspectionDriverSelect.value;
+                const driver = inspectionDrivers.find(d => d.nome === selectedDriverName);
+                inspectionVehicleSelect.innerHTML = '<option value="">Selecione a Viatura</option>';
+                if (driver && Array.isArray(driver.viaturas)) {
+                    const completedInspections = inspections
+                        .filter(i => i.data === selectedDateForVistoria && i.motorista === selectedDriverName)
+                        .map(i => i.placa);
+                    driver.viaturas.forEach(placa => {
+                        if (!placa) return;
+                        const option = document.createElement('option');
+                        option.value = placa;
+                        option.textContent = placa;
+                        if (completedInspections.includes(placa)) {
+                            option.className = 'inspection-vehicle-option completed';
+                            option.disabled = true;
+                            option.textContent += ' (Vistoriada)';
+                        }
+                        inspectionVehicleSelect.appendChild(option);
+                    });
+                }
+            }
+
+            function onCalendarDayClick(selectedDate) {
+                selectedDateForVistoria = selectedDate;
+                document.querySelectorAll('.calendar-day.selected').forEach(day => day.classList.remove('selected'));
+                const dayEl = document.querySelector(`.calendar-day[data-date='${selectedDate}']`);
+                if (dayEl) dayEl.classList.add('selected');
+                
+                // Ponto central da lógica: popula o select com base na data clicada
+                populateInspectionDriverSelect(selectedDate);
+                
+                document.getElementById('driverVehicleSelectContainer').style.display = 'flex';
+            }
+
+            // O restante das funções (CRUD de vistorias, PDF, etc.) permanecem as mesmas
+            // ... (código anterior omitido para brevidade, mas está presente no bloco final) ...
+            
+            // --- Funções de manipulação de dados e UI ---
+            // (Colar aqui todas as outras funções que não foram mostradas, como populateHistoryTable, saveData, loadData, etc.)
+            function exportTableToCSV(tableId, filename) {
+                const table = document.getElementById(tableId);
+                let csv = [];
+                const header = Array.from(table.tHead.rows[0].cells).map(th => `"${th.textContent.replace(/"/g, '""')}"`);
+                csv.push(header.join(';'));
+                
+                table.querySelectorAll('tbody tr').forEach(row => {
+                    if (row.style.display !== 'none') {
+                        const rowData = Array.from(row.cells).map(td => {
+                            let text = td.textContent.trim().replace(/\s+/g, ' ');
+                            return `"${text.replace(/"/g, '""')}"`;
+                        });
+                        csv.push(rowData.join(';'));
+                    }
+                });
+                
+                const csvFile = new Blob(["\uFEFF" + csv.join('\n')], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(csvFile);
+                link.download = filename;
+                link.click();
+            }
+
+            function parseCSV(csvText) {
+                const parsedInspections = [];
+                const lines = csvText.trim().split('\n').slice(1);
+
+                lines.forEach((line, index) => {
+                    const values = line.match(/(".*?"|[^;]+)(;|$)/g).map(v => v.replace(/;$/, '').replace(/"/g, '').trim());
+
+                    if (values.length >= 4) {
+                        try {
+                            const [dateStr, plate, driver, annotations] = values;
+                            const dateParts = dateStr.split('/');
+                            if(dateParts.length !== 3) return;
+                            const dateISO = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}-${dateParts[0].padStart(2, '0')}`;
+
+                            const newInspection = {
+                                id: Date.now() + index,
+                                data: dateISO,
+                                placa: plate,
+                                motorista: driver,
+                                status: 'CONCLUIDA',
+                                resultados: []
+                            };
+
+                            if (annotations.toUpperCase() === 'OFICINA') {
+                                newInspection.status = 'OFICINA';
+                            } else if (annotations && !['SEM ALTERAÇÕES', 'VISTORIA PENDENTE'].includes(annotations.toUpperCase())) {
+                                const annotationItems = annotations.split(/(?<=\S\.)\s*(?=[A-Z])/);
+                                annotationItems.forEach((annotation, i) => {
+                                    const parts = annotation.split(':');
+                                    const itemName = parts[0]?.trim();
+                                    const itemNote = parts.slice(1).join(':').trim();
+                                    if (PDF_CHECKLIST_ITEMS.find(item => item.label === itemName) && itemNote) {
+                                        newInspection.resultados.push({
+                                            id: `anot-import-${Date.now()}-${index}-${i}`,
+                                            item: itemName,
+                                            status: 'Anotação',
+                                            nota: itemNote,
+                                            resolvido: false
+                                        });
+                                    }
+                                });
+                            }
+                            
+                            if(newInspection.placa && newInspection.placa !== 'NÃO REALIZADA'){
+                                parsedInspections.push(newInspection);
+                            }
+
+                        } catch (e) {
+                            console.error(`Erro ao processar a linha ${index + 1}: ${line}`, e);
+                        }
+                    }
+                });
+                return parsedInspections;
+            }
+
+            function populateHistoryTable() {
+                const searchTerm = filterSearch.value.toLowerCase();
+                const dateFilter = filterDate.value;
+                const plateFilter = filterVehicle.value;
+                const monthFilter = filterMonth.value;
+                const yearFilter = filterYear.value;
+                historyTableBody.innerHTML = '';
+                let filteredInspections = inspections.filter(inspection => {
+                    if (inspection.status !== 'CONCLUIDA' && inspection.status !== 'OFICINA') return false;
+                    if (dateFilter && inspection.data !== dateFilter) return false;
+                    if (plateFilter && plateFilter !== 'all' && inspection.placa !== plateFilter) return false;
+                    const inspectionDate = new Date(inspection.data + 'T00:00:00');
+                    if (monthFilter && monthFilter !== 'all' && (inspectionDate.getMonth() + 1) != monthFilter) return false;
+                    if (yearFilter && yearFilter !== 'all' && inspectionDate.getFullYear() != yearFilter) return false;
+                    const inspectionData = `${formatDate(inspection.data)} ${inspection.placa} ${inspection.motorista} ${inspection.resultados.map(res => res.nota).join(' ')}`.toLowerCase();
+                    return inspectionData.includes(searchTerm);
+                });
+                filteredInspections.sort((a, b) => new Date(b.data) - new Date(a.data));
+                if (filteredInspections.length === 0) {
+                    historyTableBody.innerHTML = '<tr><td colspan="5" class="no-data-message">Nenhuma vistoria encontrada.</td></tr>';
+                    return;
+                }
+                filteredInspections.forEach(inspection => {
+                    const row = document.createElement('tr');
+                    const pendingAnnotations = inspection.resultados.filter(res => res.nota && !res.resolvido);
+                    let annotationsHtml = pendingAnnotations.length > 0 ? '<ul>' + pendingAnnotations.map(res => `<li><strong>${res.item}:</strong> ${res.nota}</li>`).join('') + '</ul>' : 'Nenhuma';
+                    const rowClass = inspection.status === 'OFICINA' ? 'status-workshop' : '';
+                    row.innerHTML = `
+                        <td>${formatDate(inspection.data)}</td>
+                        <td>${inspection.placa}</td>
+                        <td>${inspection.motorista}</td>
+                        <td class="annotations-cell ${rowClass}">${annotationsHtml}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-outline edit-btn" onclick="editInspection('${inspection.id}')" title="Editar Vistoria"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-sm btn-danger delete-btn" onclick="deleteInspection('${inspection.id}')" title="Excluir Vistoria"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    historyTableBody.appendChild(row);
+                });
+            }
+
+            function populateStatusTable() {
+                const plateFilter = filterVehicleStatus.value;
+                statusTableBody.innerHTML = '';
+                const allAnnotations = inspections.flatMap(inspection => {
+                    if (inspection.status === 'AGENDADA' || inspection.status === 'OFICINA') return [];
+                    return inspection.resultados
+                        .filter(res => res.nota && !res.resolvido)
+                        .map(res => ({
+                            data: inspection.data,
+                            placa: inspection.placa,
+                            motorista: inspection.motorista,
+                            item: res.item,
+                            nota: res.nota
+                        }));
+                }).filter(annotation => {
+                    if (plateFilter === 'all') return true;
+                    return annotation.placa === plateFilter;
+                }).sort((a, b) => new Date(b.data) - new Date(a.data));
+                if (allAnnotations.length === 0) {
+                    statusTableBody.innerHTML = '<tr><td colspan="5" class="no-data-message">Nenhuma anotação pendente.</td></tr>';
+                    return;
+                }
+                allAnnotations.forEach(annotation => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${formatDate(annotation.data)}</td>
+                        <td>${annotation.placa}</td>
+                        <td>${annotation.motorista}</td>
+                        <td>${annotation.item}</td>
+                        <td class="annotations-cell workshop">${annotation.nota}</td>
+                    `;
+                    statusTableBody.appendChild(row);
+                });
+            }
+
+            function generateStatusPdf() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                doc.setFontSize(18);
+                doc.text("Situação das Viaturas", 14, 22);
+                doc.setFontSize(12);
+                doc.text("Relatório de Anotações Pendentes", 14, 30);
+                const table = document.getElementById('statusTable');
+                const head = table.tHead;
+                const body = table.tBodies[0];
+                const headers = Array.from(head.rows[0].cells).map(th => th.textContent.trim());
+                const data = Array.from(body.rows).map(row => Array.from(row.cells).map(cell => cell.textContent.trim()));
+                doc.autoTable({
+                    startY: 40,
+                    head: [headers],
+                    body: data,
+                    theme: 'striped',
+                    headStyles: { fillColor: [74, 105, 189] },
+                    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+                    columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 25 }, 2: { cellWidth: 35 }, 3: { cellWidth: 35 }, 4: { cellWidth: 'auto' } }
+                });
+                doc.save('situacao_viaturas.pdf');
+            }
+            
+            function populateDriversTable() {
+                loadData();
+                driversTableBody.innerHTML = '';
+                if (inspectionDrivers.length === 0) {
+                    driversTableBody.innerHTML = '<tr><td colspan="4" class="no-data-message">Nenhum motorista cadastrado para vistoria.</td></tr>';
+                    return;
+                }
+                inspectionDrivers.forEach(driver => {
+                    const row = document.createElement('tr');
+                    const vehicle1 = driver.viaturas && driver.viaturas[0] ? driver.viaturas[0] : 'Nenhuma';
+                    const vehicle2 = driver.viaturas && driver.viaturas[1] ? driver.viaturas[1] : 'Nenhuma';
+                    row.innerHTML = `
+                        <td>${driver.nome}</td>
+                        <td>${vehicle1}</td>
+                        <td>${vehicle2}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-sm btn-danger delete-btn" onclick="deleteInspectionDriver('${driver.id}')" title="Excluir Associação"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    driversTableBody.appendChild(row);
+                });
+            }
+
+            window.deleteInspectionDriver = function(id) {
+                if (confirm('Tem certeza que deseja excluir esta associação motorista-viatura?')) {
+                    inspectionDrivers = inspectionDrivers.filter(driver => driver.id !== id);
+                    saveData();
+                    populateDriversTable();
+                    updateSelectOptions();
+                }
+            }
+            
+            window.deleteInspection = async function(id) {
+                 if (confirm('Tem certeza que deseja excluir esta vistoria?')) {
+                    try {
+                        // Deletar da API se disponível
+                        if (typeof api !== 'undefined' && dataService.apiAvailable) {
+                            try {
+                                await api.deleteVistoria(id);
+                            } catch (error) {
+                                console.warn('Erro ao deletar da API, continuando com localStorage:', error);
+                            }
+                        }
+                        inspections = inspections.filter(i => i.id !== id);
+                        await saveData();
+                        populateHistoryTable();
+                        populateStatusTable();
+                        renderCalendar();
+                    } catch (error) {
+                        console.error('Erro ao deletar vistoria:', error);
+                        inspections = inspections.filter(i => i.id !== id);
+                        localStorage.setItem('vistoriasRealizadas', JSON.stringify(inspections));
+                        populateHistoryTable();
+                    }
+                }
+            }
+
+
+            function editInspection(id) {
+                const inspectionToEdit = inspections.find(i => i.id === id);
+                if (!inspectionToEdit) return alert('Vistoria não encontrada.');
+                
+                inspections = inspections.filter(i => i.id !== id);
+                saveData();
+                populateHistoryTable();
+                renderCalendar();
+
+                tabButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                    btn.style.removeProperty('color');
+                    const icons = btn.querySelectorAll('i');
+                    icons.forEach(icon => {
+                        icon.style.removeProperty('color');
+                    });
+                });
+                tabContents.forEach(content => content.classList.remove('active'));
+                const schedulingTab = document.querySelector('[data-tab="scheduling"]');
+                schedulingTab.classList.add('active');
+                schedulingTab.style.setProperty('color', '#ffffff', 'important');
+                const schedulingIcons = schedulingTab.querySelectorAll('i');
+                schedulingIcons.forEach(icon => {
+                    icon.style.setProperty('color', '#ffffff', 'important');
+                });
+                document.getElementById('scheduling').classList.add('active');
+                setTimeout(forceWhiteTextOnActiveTabs, 10);
+
+                initialFormContainer.classList.add('hidden');
+                checklistContainer.classList.remove('hidden');
+                currentInspection = { ...inspectionToEdit };
+                checklistTitle.innerHTML = `Vistoria da Viatura: <strong>${inspectionToEdit.placa}</strong> em <strong>${formatDate(inspectionToEdit.data)}</strong>`;
+
+                checklistForm.innerHTML = '';
+                PDF_CHECKLIST_ITEMS.forEach((item, index) => {
+                    const checkItem = document.createElement('div');
+                    checkItem.className = 'check-item';
+                    let optionsHtml = item.options.map(option => {
+                        const radioValue = option.includes('OK') ? 'ok' : (option.includes('Alteração') ? 'anotacao' : 'nao_aplica');
+                        return `<input type="radio" id="item-${index}-${radioValue}" name="item-${index}" value="${radioValue}" required><label for="item-${index}-${radioValue}">${option.replace(/[()]/g, '')}</label>`;
+                    }).join('');
+                    checkItem.innerHTML = `
+                        <div class="check-item-header"><label><i class="fas fa-check-circle"></i> ${item.label}</label></div>
+                        <div class="check-options">${optionsHtml}</div>
+                        <textarea id="anotacao-text-${index}" class="annotation-textarea hidden" placeholder="Detalhes da anotação"></textarea>
+                    `;
+                    checklistForm.appendChild(checkItem);
+                });
+
+                inspectionToEdit.resultados.forEach(res => {
+                    const itemIndex = PDF_CHECKLIST_ITEMS.findIndex(item => item.label === res.item);
+                    if (itemIndex !== -1) {
+                        const radioValue = res.status === 'OK' ? 'ok' : 'anotacao';
+                        const radio = document.getElementById(`item-${itemIndex}-${radioValue}`);
+                        if (radio) {
+                            radio.checked = true;
+                            if (res.nota) {
+                                const textarea = document.getElementById(`anotacao-text-${itemIndex}`);
+                                textarea.value = res.nota;
+                                textarea.classList.remove('hidden');
+                                textarea.classList.add('annotations-cell', 'workshop');
+                            }
+                        }
+                    }
+                });
+                
+                checklistForm.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        const textarea = e.target.closest('.check-item').querySelector('.annotation-textarea');
+                        textarea.classList.toggle('hidden', e.target.value !== 'anotacao');
+                        if(e.target.value === 'anotacao') textarea.focus();
+                        else textarea.value = '';
+                    });
+                });
+            }
+
+            function updateSelectOptions() {
+                const vehicleSelects = [filterVehicle, driverVehicle1Select, driverVehicle2Select, adminVehicleSelect];
+                vehicleSelects.forEach(select => {
+                    const currentVal = select.value;
+                    select.innerHTML = '<option value="">Selecione uma viatura</option>';
+                    registeredVehicles.forEach(vehicle => {
+                        select.innerHTML += `<option value="${vehicle.placa}">${vehicle.placa}</option>`;
+                    });
+                    select.value = currentVal;
+                });
+                
+                const driverSelects = [driverSelectInput, adminDriverSelect];
+                driverSelects.forEach(select => {
+                    const currentVal = select.value;
+                    select.innerHTML = '<option value="">Selecione o Motorista</option>';
+                    registeredDrivers.forEach(driver => {
+                        select.innerHTML += `<option value="${driver.nome}">${driver.nome}</option>`;
+                    });
+                     select.value = currentVal;
+                });
+
+                const currentYear = new Date().getFullYear();
+                filterYear.innerHTML = '<option value="all">Todos</option>';
+                for(let y = currentYear + 1; y >= 2020; y--) filterYear.innerHTML += `<option value="${y}">${y}</option>`;
+            }
+            
+            function onDownloadVistoriaPdfBtnClick() {
+                const selectedDriverName = inspectionDriverSelect.value;
+                const driver = inspectionDrivers.find(d => d.nome === selectedDriverName);
+                const selectedVehicle = inspectionVehicleSelect.value;
+                if (!driver || !selectedVehicle) return alert('Motorista e/ou viatura não selecionados.');
+                const selectedDateEl = document.querySelector('.calendar-day.selected');
+                if (!selectedDateEl) return alert('Nenhuma data selecionada no calendário.');
+                const selectedDate = selectedDateEl.getAttribute('data-date');
+                const formattedDate = formatDate(selectedDate);
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const margin = 15;
+
+                // Usar vistoria salva que corresponde à data + viatura (fonte confiável); senão formulário (DOM)
+                const savedInspection = inspections.find(insp => insp.data === selectedDate && insp.placa === selectedVehicle);
+                const resultados = (savedInspection && savedInspection.resultados && savedInspection.resultados.length)
+                    ? savedInspection.resultados
+                    : (currentInspection && currentInspection.resultados && currentInspection.resultados.length ? currentInspection.resultados : null);
+
+                const annotations = [];
+                const getItemState = (index) => {
+                    const item = PDF_CHECKLIST_ITEMS[index];
+                    if (!item) return null;
+                    if (resultados) {
+                        const res = resultados.find(r => r.item === item.label);
+                        if (res) {
+                            if (res.status === 'Anotação') return { status: 'Anotação', nota: res.nota || 'Anotação sem detalhes' };
+                            if (res.status === 'OK') return { status: 'OK' };
+                            return null;
+                        }
+                    }
+                    const radioAnotacao = document.getElementById(`item-${index}-anotacao`);
+                    const radioOk = document.getElementById(`item-${index}-ok`);
+                    const radioNaoAplica = document.getElementById(`item-${index}-nao_aplica`);
+                    const textarea = document.getElementById(`anotacao-text-${index}`);
+                    if (radioAnotacao && radioOk) {
+                        if (radioAnotacao.checked)
+                            return { status: 'Anotação', nota: (textarea && textarea.value.trim()) || 'Anotação sem detalhes' };
+                        if (radioOk.checked) return { status: 'OK' };
+                        if (radioNaoAplica && radioNaoAplica.checked) return { status: 'Não se Aplica' };
+                    }
+                    return null;
+                };
+
+                const generatePage = (viatura) => {
+                    let y = margin;
+                    const pageMiddle = pageWidth / 2;
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(14);
+                    doc.text("Vistoria de Viaturas", pageMiddle, y, { align: 'center' });
+                    y += 10;
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`Data: ${formattedDate}`, margin, y);
+                    doc.text(`Motorista: ${driver.nome}`, margin + 70, y);
+                    doc.text(`Viatura: ${viatura}`, margin + 140, y);
+                    y += 14;
+
+                    PDF_CHECKLIST_ITEMS.forEach((item, index) => {
+                        const state = getItemState(index);
+                        if (state && state.status === 'Anotação') {
+                            annotations.push({ item: item.label, nota: state.nota });
+                            return;
+                        }
+                        doc.setFontSize(10);
+                        doc.text(item.label, margin, y);
+                        y += 7;
+                        doc.setFontSize(8);
+                        let optionsX = margin + 5;
+                        item.options.forEach((option, optIdx) => {
+                            const isOK = option.includes('OK');
+                            const isAlteracao = option.includes('Alteração');
+                            const isNaoAplica = option.includes('Não se Aplica');
+                            const checked = state && (
+                                (state.status === 'OK' && isOK) ||
+                                (state.status === 'Anotação' && isAlteracao) ||
+                                (state.status === 'Não se Aplica' && isNaoAplica)
+                            );
+                            const optionText = option.replace('( )', checked ? '(X)' : '( )');
+                            doc.text(optionText, optionsX, y);
+                            optionsX += 30;
+                        });
+                        y += 4;
+                        doc.line(margin, y, pageWidth - margin, y);
+                        y += 10;
+                    });
+
+                    if (annotations.length > 0) {
+                        y += 6;
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(10);
+                        doc.text('Anotações', margin, y);
+                        y += 7;
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(9);
+                        annotations.forEach(({ item: label, nota }) => {
+                            const lines = doc.splitTextToSize(`${label}: ${nota}`, pageWidth - margin * 2);
+                            if (y + lines.length * 5 > doc.internal.pageSize.getHeight() - 30) {
+                                doc.addPage();
+                                y = margin;
+                            }
+                            lines.forEach(line => { doc.text(line, margin, y); y += 5; });
+                            y += 2;
+                        });
+                    }
+
+                    const signatureY = doc.internal.pageSize.getHeight() - 25;
+                    doc.line(margin, signatureY, margin + 80, signatureY);
+                    doc.setFontSize(10);
+                    doc.text(driver.nome, margin + 40, signatureY + 5, { align: 'center' });
+                };
+                generatePage(selectedVehicle);
+                doc.save(`vistoria_${selectedVehicle}_${selectedDate}.pdf`);
+            }
+            
+            function openTypeSelectionModal(source = 'normal') {
+                const selectedVehicle = (source === 'admin') ? adminVehicleSelect.value : inspectionVehicleSelect.value;
+                if (!selectedVehicle) return alert("Por favor, selecione uma viatura.");
+                if (!selectedDateForVistoria) return alert('Nenhuma data selecionada no calendário.');
+                typeSelectionModal.dataset.source = source;
+                // Garantir que o modal esteja no topo ANTES de mostrar
+                typeSelectionModal.scrollTop = 0;
+                typeSelectionModal.classList.add('show');
+                // Garantir que o modal esteja no topo DEPOIS de mostrar
+                setTimeout(() => {
+                    typeSelectionModal.scrollTop = 0;
+                    const modalContent = typeSelectionModal.querySelector('.modal-content');
+                    if (modalContent) {
+                        modalContent.style.marginTop = '10px';
+                        modalContent.style.top = '0';
+                        modalContent.style.alignSelf = 'flex-start';
+                    }
+                }, 10);
+            }
+
+            function closeTypeSelectionModal() {
+                typeSelectionModal.classList.remove('show');
+            }
+
+            function initiateInspection(selectedDriverName, selectedVehicle, selectedDate) {
+                if (!selectedDriverName || !selectedVehicle || !selectedDate) return alert('Motorista, viatura e/ou data não selecionados.');
+                
+                const formattedDate = formatDate(selectedDate);
+                currentInspection = {};
+                const lastInspectionWithNotes = inspections
+                    .filter(insp => insp.placa === selectedVehicle && insp.resultados.some(res => res.nota && !res.resolvido))
+                    .sort((a, b) => new Date(b.data) - new Date(a.data))[0];
+                
+                initialFormContainer.classList.add('hidden');
+                checklistContainer.classList.remove('hidden');
+
+                checklistForm.innerHTML = '';
+                PDF_CHECKLIST_ITEMS.forEach((item, index) => {
+                    const checkItem = document.createElement('div');
+                    checkItem.className = 'check-item';
+                    let optionsHtml = item.options.map(option => {
+                        const radioValue = option.includes('OK') ? 'ok' : (option.includes('Alteração') ? 'anotacao' : 'nao_aplica');
+                        const checkedAttr = (radioValue === 'ok') ? 'checked' : '';
+                        return `<input type="radio" id="item-${index}-${radioValue}" name="item-${index}" value="${radioValue}" required ${checkedAttr}><label for="item-${index}-${radioValue}">${option.replace(/[()]/g, '')}</label>`;
+                    }).join('');
+                    checkItem.innerHTML = `
+                        <div class="check-item-header"><label><i class="fas fa-check-circle"></i> ${item.label}</label></div>
+                        <div class="check-options">${optionsHtml}</div>
+                        <textarea id="anotacao-text-${index}" class="annotation-textarea hidden" placeholder="Detalhes da anotação"></textarea>
+                    `;
+                    checklistForm.appendChild(checkItem);
+                });
+
+                if (lastInspectionWithNotes) {
+                    currentInspection = { ...lastInspectionWithNotes };
+                    checklistTitle.innerHTML = `Vistoria da Viatura: <strong>${lastInspectionWithNotes.placa}</strong> em <strong>${formattedDate}</strong> (Revisão)`;
+
+                    lastInspectionWithNotes.resultados.forEach(res => {
+                        const itemIndex = PDF_CHECKLIST_ITEMS.findIndex(item => item.label === res.item);
+                        if (itemIndex !== -1 && res.status === 'Anotação') {
+                            const radioAnotacao = document.getElementById(`item-${itemIndex}-anotacao`);
+                            if (radioAnotacao) {
+                                radioAnotacao.checked = true;
+                                const textarea = document.getElementById(`anotacao-text-${itemIndex}`);
+                                textarea.value = res.nota;
+                                textarea.classList.remove('hidden');
+                                textarea.classList.add('annotations-cell', 'workshop');
+                            }
+                        }
+                    });
+                    inspections = inspections.filter(i => i.id !== lastInspectionWithNotes.id);
+                    saveData();
+                    populateHistoryTable();
+                    alert("A vistoria anterior possuía anotações pendentes. Por favor, revise-as.");
+                } else {
+                    checklistTitle.innerHTML = `Vistoria da Viatura: <strong>${selectedVehicle}</strong> em <strong>${formattedDate}</strong>`;
+                    currentInspection = { date: selectedDate, placa: selectedVehicle, motorista: selectedDriverName };
+                }
+                
+                checklistForm.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        const textarea = e.target.closest('.check-item').querySelector('.annotation-textarea');
+                        const show = e.target.value === 'anotacao';
+                        textarea.classList.toggle('hidden', !show);
+                        textarea.classList.remove('annotations-cell', 'workshop');
+                        if (show) textarea.focus(); else textarea.value = '';
+                    });
+                });
+            }
+
+            async function saveWorkshopInspection() {
+                const source = typeSelectionModal.dataset.source || 'normal';
+                const selectedDriverName = (source === 'admin') ? adminDriverSelect.value : inspectionDriverSelect.value;
+                const selectedVehicle = (source === 'admin') ? adminVehicleSelect.value : inspectionVehicleSelect.value;
+                if (!selectedDateForVistoria) return alert('Nenhuma data selecionada.');
+                if (!selectedVehicle) return alert('Viatura não selecionada');
+
+                const newInspection = {
+                    id: `insp_${Date.now()}`, 
+                    data: selectedDateForVistoria, 
+                    placa: selectedVehicle,
+                    motorista: selectedDriverName || 'Não especificado', 
+                    status: 'OFICINA',
+                    tipo: 'OFICINA',
+                    resultados: [{ item: 'Entrada na Oficina', status: 'Anotação', nota: 'Veículo em manutenção', resolvido: false }]
+                };
+                inspections.push(newInspection);
+                await saveData(newInspection);
+                await loadData();
+                populateHistoryTable();
+                populateStatusTable();
+                renderCalendar();
+                onCalendarDayClick(selectedDateForVistoria);
+                inspectionDriverSelect.value = '';
+                onInspectionDriverSelectChange();
+                alert(`Viatura ${selectedVehicle} registrada como "Em Oficina".`);
+            }
+
+            saveInspectionBtn.addEventListener('click', async () => {
+                const { motorista, placa, data, id } = currentInspection;
+                const newInspection = {
+                    id: id || `insp_${Date.now()}`, 
+                    data, 
+                    placa, 
+                    motorista: motorista || inspectionDriverSelect.value || 'Não especificado',
+                    status: 'CONCLUIDA', 
+                    resultados: [],
+                    tipo: 'NORMAL'
+                };
+
+                let hasAnnotation = false;
+                PDF_CHECKLIST_ITEMS.forEach((item, index) => {
+                    const radioAnotacao = document.getElementById(`item-${index}-anotacao`);
+                    const textarea = document.getElementById(`anotacao-text-${index}`);
+                    const radioOk = document.getElementById(`item-${index}-ok`);
+
+                    if (radioAnotacao && radioAnotacao.checked) {
+                        hasAnnotation = true;
+                        newInspection.resultados.push({ item: item.label, status: 'Anotação', nota: textarea.value.trim() || 'Anotação sem detalhes', resolvido: false });
+                    } else if (radioOk && radioOk.checked) {
+                        newInspection.resultados.push({ item: item.label, status: 'OK', nota: null, resolvido: true });
+                    }
+                });
+
+                const existingIndex = inspections.findIndex(insp => insp.id === newInspection.id);
+                if (existingIndex !== -1) {
+                    inspections[existingIndex] = newInspection;
+                } else {
+                    inspections.push(newInspection);
+                }
+                
+                await saveData(newInspection);
+                await loadData();
+                checklistContainer.classList.add('hidden');
+                initialFormContainer.classList.remove('hidden');
+                populateHistoryTable();
+                populateStatusTable();
+                renderCalendar();
+                if (selectedDateForVistoria) onCalendarDayClick(selectedDateForVistoria);
+                inspectionDriverSelect.value = '';
+                onInspectionDriverSelectChange();
+                alert('Vistoria salva com sucesso!');
+            });
+            
+            cancelInspectionBtn.addEventListener('click', () => {
+                if (confirm('Cancelar esta vistoria? O progresso será perdido.')) {
+                    checklistContainer.classList.add('hidden');
+                    initialFormContainer.classList.remove('hidden');
+                    inspectionDriverSelect.value = '';
+                    inspectionVehicleSelect.value = '';
+                }
+            });
+
+            function openDailyStatusModal(date) {
+                const formattedDate = formatDate(date);
+                dailyStatusModalTitle.textContent = `Status das Vistorias em ${formattedDate}`;
+                completedInspectionsList.innerHTML = '';
+                pendingInspectionsList.innerHTML = '';
+                const driversOnDuty = getDriversOnDutyForDate(date);
+                if (driversOnDuty.length === 0) {
+                    completedInspectionsList.innerHTML = `<li>Nenhuma escala encontrada para este dia.</li>`;
+                    pendingInspectionsList.innerHTML = `<li>Nenhuma escala encontrada para este dia.</li>`;
+                    dailyStatusModal.scrollTop = 0;
+                    dailyStatusModal.classList.add('show');
+                    // Garantir que o modal esteja no topo
+                    setTimeout(() => {
+                        dailyStatusModal.scrollTop = 0;
+                        const modalContent = dailyStatusModal.querySelector('.modal-content');
+                        if (modalContent) {
+                            modalContent.style.marginTop = '10px';
+                            modalContent.style.top = '0';
+                            modalContent.style.alignSelf = 'flex-start';
+                        }
+                    }, 10);
+                    return;
+                }
+                const completed = inspections.filter(i => i.data === date);
+                const completedDriversNames = [...new Set(completed.map(i => i.motorista))];
+                const completedDrivers = driversOnDuty.filter(driver => completedDriversNames.includes(driver.nome));
+                const pendingDrivers = driversOnDuty.filter(driver => !completedDriversNames.includes(driver.nome));
+                if (completedDrivers.length > 0) {
+                    completedDrivers.forEach(driver => {
+                        const li = document.createElement('li');
+                        const inspectedVehicles = completed.filter(i => i.motorista === driver.nome).map(i => i.placa).join(', ');
+                        li.innerHTML = `<strong>${driver.nome}</strong> - Viaturas: ${inspectedVehicles}`;
+                        completedInspectionsList.appendChild(li);
+                    });
+                } else {
+                    completedInspectionsList.innerHTML = `<li>Nenhuma vistoria concluída.</li>`;
+                }
+                if (pendingDrivers.length > 0) {
+                    pendingDrivers.forEach(driver => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<strong>${driver.nome}</strong> - Viaturas: ${driver.viaturas.join(', ')}`;
+                        pendingInspectionsList.appendChild(li);
+                    });
+                } else {
+                    pendingInspectionsList.innerHTML = `<li>Nenhum motorista com vistoria pendente.</li>`;
+                }
+                dailyStatusModal.scrollTop = 0;
+                dailyStatusModal.classList.add('show');
+                // Garantir que o modal esteja no topo
+                setTimeout(() => {
+                    dailyStatusModal.scrollTop = 0;
+                    const modalContent = dailyStatusModal.querySelector('.modal-content');
+                    if (modalContent) {
+                        modalContent.style.marginTop = '10px';
+                        modalContent.style.top = '0';
+                        modalContent.style.alignSelf = 'flex-start';
+                    }
+                }, 10);
+            }
+            
+            calendarGrid.addEventListener('contextmenu', (event) => {
+                const selectedDay = event.target.closest('.calendar-day:not(.disabled)');
+                if (selectedDay) {
+                    event.preventDefault();
+                    openDailyStatusModal(selectedDay.getAttribute('data-date'));
+                }
+            });
+            
+            addDriverBtn.addEventListener('click', function() {
+                const name = driverNameInput.value.trim();
+                const vehicle1 = driverVehicle1Select.value;
+                const vehicle2 = driverVehicle2Select.value;
+                if (!name) return alert('Digite ou selecione o nome do motorista.');
+                if (!vehicle1) return alert('Selecione pelo menos a primeira viatura.');
+                if (vehicle1 && vehicle1 === vehicle2) return alert('As viaturas não podem ser a mesma.');
+                
+                const existingDriverIndex = inspectionDrivers.findIndex(d => d.nome.toLowerCase() === name.toLowerCase());
+
+                if (existingDriverIndex > -1) {
+                    // Atualiza motorista existente
+                    inspectionDrivers[existingDriverIndex].viaturas = [vehicle1, vehicle2].filter(Boolean);
+                } else {
+                    // Adiciona novo motorista
+                    const newDriver = { id: `iv_${Date.now()}`, nome: name, viaturas: [vehicle1, vehicle2].filter(Boolean) };
+                    inspectionDrivers.push(newDriver);
+                }
+
+                saveData();
+                populateDriversTable();
+                updateSelectOptions();
+                addDriverForm.classList.add('hidden');
+                showAddDriverFormBtn.classList.remove('hidden');
+                alert('Associação salva com sucesso!');
+            });
+            
+            // --- Inicialização e Event Listeners ---
+            prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+            nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+            calendarGrid.addEventListener('click', (event) => { const day = event.target.closest('.calendar-day:not(.disabled)'); if(day) onCalendarDayClick(day.getAttribute('data-date')); });
+            closeDailyStatusModal.addEventListener('click', () => dailyStatusModal.classList.remove('show'));
+            filterSearch.addEventListener('input', populateHistoryTable);
+            filterDate.addEventListener('change', populateHistoryTable);
+            filterVehicle.addEventListener('change', populateHistoryTable);
+            filterMonth.addEventListener('change', populateHistoryTable);
+            filterYear.addEventListener('change', populateHistoryTable);
+            filterVehicleStatus.addEventListener('change', populateStatusTable);
+            generateStatusPdfBtn.addEventListener('click', generateStatusPdf);
+            toggleFiltersBtn.addEventListener('click', () => filtersContainer.classList.toggle('hidden'));
+            exportCsvBtn.addEventListener('click', () => exportTableToCSV('historyTable', 'historico_vistorias.csv'));
+            importCsvBtn.addEventListener('click', () => csvFileInput.click());
+            csvFileInput.addEventListener('change', (e) => {/* Implementar se necessário */});
+            deleteAllBtn.addEventListener('click', () => {
+                if (confirm('ATENÇÃO: Excluir TODO o histórico de vistorias? Esta ação é irreversível.')) {
+                    inspections = [];
+                    saveData();
+                    populateHistoryTable();
+                    populateStatusTable();
+                    renderCalendar();
+                    alert('Todo o histórico de vistorias foi excluído.');
+                }
+            });
+            inspectionDriverSelect.addEventListener('change', onInspectionDriverSelectChange);
+            startChecklistBtn.addEventListener('click', () => openTypeSelectionModal('normal'));
+            abordoBtn.addEventListener('click', () => { const source = typeSelectionModal.dataset.source || 'normal'; closeTypeSelectionModal(); if (source === 'admin') initiateInspection(adminDriverSelect.value, adminVehicleSelect.value, selectedDateForVistoria); else initiateInspection(inspectionDriverSelect.value, inspectionVehicleSelect.value, selectedDateForVistoria); });
+            workshopBtn.addEventListener('click', () => { closeTypeSelectionModal(); saveWorkshopInspection(); });
+            showAddDriverFormBtn.addEventListener('click', () => { addDriverForm.classList.remove('hidden'); showAddDriverFormBtn.classList.add('hidden'); driverSelectInput.value = ''; driverNameInput.value = ''; driverVehicle1Select.value = ''; driverVehicle2Select.value = ''; });
+            hideAddDriverFormBtn.addEventListener('click', () => { addDriverForm.classList.add('hidden'); showAddDriverFormBtn.classList.remove('hidden'); });
+            driverSelectInput.addEventListener('change', () => {
+                const selectedName = driverSelectInput.value;
+                driverNameInput.style.display = selectedName ? 'none' : 'block';
+                driverNameInput.value = selectedName;
+                const driver = inspectionDrivers.find(d => d.nome === selectedName); // Busca na lista de associações
+                driverVehicle1Select.value = driver?.viaturas[0] || '';
+                driverVehicle2Select.value = driver?.viaturas[1] || '';
+            });
+            adminChecklistBtn.addEventListener('click', () => {
+                adminVistoriaModal.scrollTop = 0;
+                adminVistoriaModal.classList.add('show');
+                // Garantir que o modal esteja no topo
+                setTimeout(() => {
+                    adminVistoriaModal.scrollTop = 0;
+                    const modalContent = adminVistoriaModal.querySelector('.modal-content');
+                    if (modalContent) {
+                        modalContent.style.marginTop = '10px';
+                        modalContent.style.top = '0';
+                        modalContent.style.alignSelf = 'flex-start';
+                    }
+                }, 10);
+            });
+            closeAdminModalBtn.addEventListener('click', () => adminVistoriaModal.classList.remove('show'));
+            startAdminInspectionBtn.addEventListener('click', () => { adminVistoriaModal.classList.remove('show'); openTypeSelectionModal('admin'); });
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('active');
+                        btn.style.removeProperty('color');
+                        const icons = btn.querySelectorAll('i');
+                        icons.forEach(icon => {
+                            icon.style.removeProperty('color');
+                        });
+                    });
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    button.classList.add('active');
+                    // Forçar branco imediatamente ao clicar
+                    button.style.setProperty('color', '#ffffff', 'important');
+                    const buttonIcons = button.querySelectorAll('i');
+                    buttonIcons.forEach(icon => {
+                        icon.style.setProperty('color', '#ffffff', 'important');
+                    });
+                    const tabId = button.dataset.tab;
+                    document.getElementById(tabId).classList.add('active');
+                    if (tabId === 'history') populateHistoryTable();
+                    else if (tabId === 'status') populateStatusTable();
+                    else if (tabId === 'drivers') { loadData(); updateSelectOptions(); populateDriversTable(); }
+                    else if (tabId === 'scheduling') { loadData(); updateSelectOptions(); renderCalendar(); }
+                    // Forçar novamente após um pequeno delay
+                    setTimeout(forceWhiteTextOnActiveTabs, 10);
+                });
+            });
+            
+            // MutationObserver para detectar mudanças de classe ou estilo
+            const tabObserver = new MutationObserver((mutations) => {
+                forceWhiteTextOnActiveTabs();
+            });
+            
+            // Observar mudanças nas abas
+            tabButtons.forEach(btn => {
+                tabObserver.observe(btn, {
+                    attributes: true,
+                    attributeFilter: ['class', 'style'],
+                    subtree: true
+                });
+            });
+            
+            // Garantir que abas ativas mantenham texto branco
+            forceWhiteTextOnActiveTabs();
+            setInterval(forceWhiteTextOnActiveTabs, 50); // Aumentado a frequência
+            
+            // Observar mudanças no tema e forçar estilo branco
+            window.addEventListener('message', (event) => {
+                if (event.data?.type === 'apply_theme') {
+                    setTimeout(forceWhiteTextOnActiveTabs, 10);
+                    setTimeout(forceWhiteTextOnActiveTabs, 50);
+                    setTimeout(forceWhiteTextOnActiveTabs, 100);
+                }
+            });
+            
+            // Observer para mudanças no documento
+            const documentObserver = new MutationObserver(() => {
+                forceWhiteTextOnActiveTabs();
+            });
+            
+            documentObserver.observe(document.body || document.documentElement, {
+                attributes: true,
+                attributeFilter: ['data-theme', 'class'],
+                subtree: false
+            });
+
+            async function initializeApp() {
+                await loadData();
+                updateSelectOptions();
+                populateHistoryTable();
+                populateStatusTable();
+                populateDriversTable();
+                renderCalendar();
+                forceWhiteTextOnActiveTabs();
+                
+                // Verificar se precisa sincronizar localStorage para API
+                if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+                    console.log('🔄 API disponível - verificando sincronização...');
+                }
+            }
+
+            initializeApp();
+            
+            // Também garantir após o tema ser aplicado
+            setTimeout(forceWhiteTextOnActiveTabs, 200);
+        });
+    </script>
+</body>
+</html>

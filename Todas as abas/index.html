@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --success-green: #28a745;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--light-gray-bg);
+            color: var(--dark-gray);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        header {
+            background-color: var(--white);
+            padding: 15px 20px;
+            border-bottom: 2px solid var(--gray);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo-title img {
+            height: 50px;
+            width: auto;
+        }
+        
+        .logo-title h1 {
+            font-size: 24px;
+            color: var(--primary-blue);
+            font-weight: bold;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 5px;
+            background-color: var(--white);
+            padding: 10px 20px;
+            border-bottom: 2px solid var(--gray);
+            overflow-x: auto;
+            flex-wrap: wrap;
+        }
+        
+        .nav-tabs button {
+            padding: 10px 20px;
+            border: none;
+            background-color: var(--light-gray-bg);
+            color: var(--dark-gray);
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        
+        .nav-tabs button:hover {
+            background-color: var(--gray);
+        }
+        
+        .nav-tabs button.active {
+            background-color: var(--primary-blue);
+            color: var(--white);
+        }
+        
+        .content-frame {
+            flex: 1;
+            border: none;
+            width: 100%;
+            height: 100%;
+            background-color: var(--white);
+        }
+        
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .welcome-screen img {
+            max-width: 300px;
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .welcome-screen h2 {
+            font-size: 32px;
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+        }
+        
+        .welcome-screen p {
+            font-size: 18px;
+            color: var(--dark-gray);
+        }
+        
+        .status-bar {
+            background-color: var(--dark-gray);
+            color: var(--white);
+            padding: 5px 20px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-title">
+            <img src="brasao.png" alt="Brasão">
+            <h1>Sistema de Gestão</h1>
+        </div>
+    </header>
+    
+    <nav class="nav-tabs" id="navTabs">
+        <button onclick="loadPage('Senha.html')"><i class="fas fa-lock"></i> Senha</button>
+        <button onclick="loadPage('Abastecimento12.html')"><i class="fas fa-gas-pump"></i> Abastecimento</button>
+        <button onclick="loadPage('Avisos.html')"><i class="fas fa-bell"></i> Avisos</button>
+        <button onclick="loadPage('CG.html')"><i class="fas fa-users"></i> Conselho Gestão</button>
+        <button onclick="loadPage('Cadastrodesaidas8.html')"><i class="fas fa-clipboard-list"></i> Cadastro Saídas</button>
+        <button onclick="loadPage('Configuracoes.html')"><i class="fas fa-cog"></i> Configurações</button>
+        <button onclick="loadPage('Escala13.html')"><i class="fas fa-calendar-alt"></i> Escala</button>
+        <button onclick="loadPage('Estatistica4.html')"><i class="fas fa-chart-bar"></i> Estatísticas</button>
+        <button onclick="loadPage('Frotaepessoal3.html')"><i class="fas fa-car"></i> Frota e Pessoal</button>
+        <button onclick="loadPage('Lembretes.html')"><i class="fas fa-sticky-note"></i> Lembretes</button>
+        <button onclick="loadPage('SOT5.html')"><i class="fas fa-file-alt"></i> SOT</button>
+        <button onclick="loadPage('Saidasadministrativas6.html')"><i class="fas fa-briefcase"></i> Saídas Admin</button>
+        <button onclick="loadPage('Saidasdeambulâncias2.html')"><i class="fas fa-ambulance"></i> Saídas Ambulâncias</button>
+        <button onclick="loadPage('Vistoria13.html')"><i class="fas fa-clipboard-check"></i> Vistoria</button>
+        <button onclick="loadPage('historico.html')"><i class="fas fa-history"></i> Histórico</button>
+        <button onclick="loadPage('responsabilidades.html')"><i class="fas fa-tasks"></i> Responsabilidades</button>
+        <button onclick="loadPage('situacao.html')"><i class="fas fa-info-circle"></i> Situação</button>
+        <button onclick="loadPage('vistoriar.html')"><i class="fas fa-search"></i> Vistoriar</button>
+    </nav>
+    
+    <div id="contentArea" style="flex: 1; overflow: auto;">
+        <div class="welcome-screen">
+            <img src="brasao.png" alt="Brasão">
+            <h2>Bem-vindo ao Sistema de Gestão</h2>
+            <p>Selecione uma aba acima para começar</p>
+        </div>
+    </div>
+    
+    <div class="status-bar">
+        <span id="statusText">Pronto</span>
+        <span id="dateTime"></span>
+    </div>
+    
+    <script>
+        let currentPage = null;
+        let lastActivityTime = Date.now();
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+        
+        // Atualizar data/hora
+        function updateDateTime() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('pt-BR');
+            const timeStr = now.toLocaleTimeString('pt-BR');
+            document.getElementById('dateTime').textContent = `${dateStr} ${timeStr}`;
+        }
+        
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+        
+        // Carregar página
+        function loadPage(page) {
+            const contentArea = document.getElementById('contentArea');
+            const statusText = document.getElementById('statusText');
+            
+            // Remover active de todos os botões
+            document.querySelectorAll('.nav-tabs button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Adicionar active ao botão clicado
+            event.target.classList.add('active');
+            
+            // Carregar iframe
+            contentArea.innerHTML = `<iframe class="content-frame" src="${page}"></iframe>`;
+            currentPage = page;
+            statusText.textContent = `Carregado: ${page}`;
+            
+            // Resetar timer de inatividade
+            lastActivityTime = Date.now();
+        }
+        
+        // Monitorar atividade do usuário
+        const userActivityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+        
+        function resetInactivityTimer() {
+            lastActivityTime = Date.now();
+        }
+        
+        userActivityEvents.forEach(eventName => {
+            document.addEventListener(eventName, resetInactivityTimer, { passive: true });
+        });
+        
+        // Receber mensagens de atividade dos iframes
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'user_activity') {
+                resetInactivityTimer();
+            }
+        });
+        
+        // Verificar inatividade periodicamente
+        setInterval(function() {
+            const inactiveTime = Date.now() - lastActivityTime;
+            if (inactiveTime > INACTIVITY_TIMEOUT) {
+                // Opcional: implementar ação de timeout
+                console.log('Usuário inativo por mais de 30 minutos');
+            }
+        }, 60000); // Verificar a cada minuto
+        
+        // Carregar página inicial (Senha)
+        window.addEventListener('DOMContentLoaded', function() {
+            // Aguardar um pouco antes de carregar a página de senha
+            setTimeout(function() {
+                const senhaBtn = document.querySelector('.nav-tabs button');
+                if (senhaBtn) {
+                    senhaBtn.click();
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

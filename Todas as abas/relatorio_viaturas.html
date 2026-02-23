@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Diário de Viaturas</title>
+    <style>
+        :root {
+            --cor-cabecalho: #007bff;
+            --cor-fundo-titulo: #e2f0d9;
+            --cor-borda: black;
+            --cor-operando: green;
+            --cor-inoperante: red;
+            --cor-destacada: orange;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        
+        body.pdf-mode {
+            background-color: #ffffff;
+            padding: 0;
+            margin: 0;
+        }
+        
+        #conteudo-pdf {
+            width: 180mm; /* Reduzido ainda mais para evitar cortes */
+            margin: 0 auto;
+            padding: 10mm;
+            background-color: white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .pdf-mode #conteudo-pdf {
+            box-shadow: none !important;
+            border: none !important;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 10mm !important;
+            background-color: #ffffff !important;
+        }
+        
+        .cabecalho {
+            text-align: center;
+            font-size: 10pt;
+            margin-bottom: 10px;
+        }
+        
+        .cabecalho h1, .cabecalho h2 {
+            font-size: 10pt;
+            margin: 2px 0;
+        }
+        
+        .cabecalho h3 {
+            margin: 2px 0 4px;
+            font-size: 10pt;
+            font-weight: bold;
+            background-color: var(--cor-fundo-titulo);
+            border: 1px solid var(--cor-borda);
+            padding: 1px 0;
+        }
+        
+        .cabecalho input {
+            width: auto;
+            padding: 1px 2px;
+            text-align: center;
+            font-size: 10pt;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            background-color: transparent;
+            border: none;
+            outline: none;
+        }
+        
+        .cabecalho input.campo-editavel {
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .cabecalho input.campo-editavel:focus {
+            border-bottom: 1px solid var(--cor-cabecalho);
+            background-color: rgba(255, 255, 255, 0.9);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px; /* Reduzido de 15px para 10px */
+            font-size: 9pt; /* Reduzido de 10pt para 9pt */
+            table-layout: fixed;
+        }
+        
+        th, td {
+            border: 1px solid var(--cor-borda);
+            padding: 1px 2px;
+            text-align: center;
+            height: auto;
+            min-height: 10px; /* Reduzido de 12px para 10px */
+            line-height: 1.1; /* Reduzido de 1.2 para 1.1 */
+            width: auto;
+        }
+        
+        thead th {
+            background-color: var(--cor-fundo-titulo);
+            font-weight: bold;
+        }
+        
+        .col-min-width {
+            white-space: nowrap;
+            width: auto;
+            padding-left: 1px;
+            padding-right: 1px;
+            min-width: fit-content;
+        }
+        
+        .delete-button {
+            background-color: #dc3545;
+            border: none;
+            color: white;
+            font-size: 10pt;
+            line-height: 1.2;
+            padding: 1px 4px;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        
+        .tipo-celula {
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .titulo-secao-detalhe {
+            font-weight: bold;
+            font-size: 9pt; /* Reduzido de 10pt para 9pt */
+            margin-top: 8px; /* Reduzido de 10px para 8px */
+            margin-bottom: 3px; /* Reduzido de 5px para 3px */
+        }
+        
+        input, select {
+            border: none;
+            padding: 1px 2px;
+            margin: 0;
+            box-sizing: border-box;
+            text-align: center;
+            width: 100%;
+            min-width: 0;
+            font-size: 10pt;
+            line-height: 1.2;
+            height: auto;
+        }
+        
+        .status-operando {
+            color: var(--cor-operando);
+            font-weight: bold;
+        }
+        
+        .status-inoperante {
+            color: var(--cor-inoperante);
+            font-weight: bold;
+        }
+        
+        .status-destacada {
+            color: var(--cor-destacada);
+            font-weight: bold;
+        }
+        
+        .assinatura {
+            text-align: center;
+            margin-top: 70px; /* Reduzido de 90px para 70px */
+            font-size: 10pt;
+        }
+        
+        #botoes-acao {
+            text-align: center;
+            margin-top: 20px;
+            padding-bottom: 20px;
+        }
+        
+        #botoes-acao button {
+            padding: 8px 15px;
+            font-size: 10pt;
+            cursor: pointer;
+            margin: 0 10px;
+            background-color: var(--cor-cabecalho);
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        .btn-adicionar {
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .btn-adicionar button {
+            padding: 5px 10px;
+            font-size: 10pt;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        
+        @media print {
+            .delete-button {
+                display: none;
+            }
+            
+            .col-acao, .col-acao-header {
+                display: none !important;
+            }
+            
+            body {
+                background-color: #ffffff;
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            #conteudo-pdf {
+                box-shadow: none;
+                border: none;
+                padding: 3mm !important; /* Reduzido de 5mm para 3mm */
+                margin: 0;
+                width: 100% !important;
+                max-width: 100% !important;
+                background-color: #ffffff;
+                transform: scale(0.92); /* Reduzido de 0.95 para 0.92 */
+                transform-origin: top left;
+            }
+            
+            /* Ajustes para garantir que tudo caiba em uma página */
+            .assinatura {
+                margin-top: 50px !important; /* Reduzido de 70px para 50px */
+                padding-top: 0 !important;
+            }
+            
+            .assinatura p {
+                margin-top: 5px !important;
+                margin-bottom: 5px !important;
+            }
+            
+            table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                page-break-inside: avoid;
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                border-collapse: collapse !important;
+            }
+            
+            th, td {
+                overflow-wrap: break-word;
+                word-wrap: break-word;
+                border: 1px solid black !important;
+                padding: 1px !important;
+                white-space: normal !important;
+            }
+            
+            /* Evitar quebra de palavras nas colunas de Situação e Especificação */
+            th:nth-child(4), td:nth-child(4), th:nth-child(6), td:nth-child(6) {
+                white-space: nowrap !important;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* Garante que todas as bordas sejam visíveis */
+            table, th, td {
+                border-color: black !important;
+                border-style: solid !important;
+                border-width: 1px !important;
+            }
+            
+            .cabecalho input.campo-editavel {
+                border-bottom: none;
+            }
+            
+            input, select {
+                border: none;
+                background: transparent;
+                -webkit-appearance: none;
+                -moz-appearance: textfield;
+                appearance: none;
+            }
+            
+            input::-webkit-outer-spin-button,
+            input::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        }
+    </style>
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div id="conteudo-pdf">
+        <div class="cabecalho">
+            <h1>MARINHA DO BRASIL</h1>
+            <h2>HOSPITAL NAVAL MARCÍLIO DIAS</h2>
+            <h2>DIVISÃO DE TRANSPORTE</h2>
+            <h3>RELATÓRIO DIÁRIO DE VIATURAS DE 
+                <input type="date" id="data" onchange="atualizarDiaSemana(this.value)" style="display: none;">
+                <input type="text" id="data-formatada" class="campo-editavel">
+                <input type="text" id="dia-semana" class="campo-editavel">
+            </h3>
+        </div>
+        
+        <table id="tabela-resumo-superior">
+            <thead>
+                <tr>
+                    <th rowspan="2">TIPO</th>
+                    <th rowspan="2">EFETIVO</th>
+                    <th colspan="3">SITUAÇÃO GERAL DAS VIATURAS DOTADAS NO HNMD</th>
+                    <th colspan="2">OUTROS</th>
+                </tr>
+                <tr>
+                    <th>OPERANDO</th>
+                    <th>INOPERANTE</th>
+                    <th>DESTACADA</th>
+                    <th>UTI MÓVEL</th>
+                    <th>USB</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="linha-resumo-ambulancias">
+                    <td class="tipo-celula">AMBULÂNCIA(S)</td>
+                    <td><input type="number" id="efetivo-amb" value="10" onchange="calcularTotalResumo()"></td>
+                    <td><input type="text" id="resumo-operante-amb" readonly></td>
+                    <td><input type="text" id="resumo-inoperante-amb" readonly></td>
+                    <td><input type="text" id="resumo-destacada-amb" readonly></td>
+                    <td><input type="number" id="resumo-uti" value="5"></td>
+                    <td><input type="number" id="resumo-usb" value="4"></td>
+                </tr>
+                <tr id="linha-resumo-adm">
+                    <td class="tipo-celula">ADMINISTRATIVA</td>
+                    <td><input type="number" id="efetivo-adm" value="14" onchange="calcularTotalResumo()"></td>
+                    <td><input type="text" id="resumo-operante-adm" readonly></td>
+                    <td><input type="text" id="resumo-inoperante-adm" readonly></td>
+                    <td><input type="text" id="resumo-destacada-adm" readonly></td>
+                    <td colspan="2"></td>
+                </tr>
+                <tr style="font-weight: bold;">
+                    <td class="tipo-celula">TOTAL</td>
+                    <td><input type="text" id="efetivo-total" readonly value="24"></td>
+                    <td><input type="text" id="resumo-operante-total" readonly></td>
+                    <td><input type="text" id="resumo-inoperante-total" readonly></td>
+                    <td><input type="text" id="resumo-destacada-total" readonly></td>
+                    <td colspan="2"></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="titulo-secao-detalhe">AMBULÂNCIAS:</div>
+        <table id="tabela-viaturas-ambulancias">
+            <thead>
+                <tr>
+                    <th>TIPO</th>
+                    <th>PLACA</th>
+                    <th>ANO</th>
+                    <th>SITUAÇÃO</th>
+                    <th>VIDA ÚTIL</th>
+                    <th>ESPECIFICAÇÃO</th>
+                    <th>OBSERVAÇÃO</th>
+                    <th class="col-min-width col-acao-header">AÇÃO</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Será populado dinamicamente via JavaScript -->
+            </tbody>
+        </table>
+        <div class="btn-adicionar">
+            <button onclick="adicionarViatura('ambulancias')">+ Adicionar Ambulância</button>
+        </div>
+        
+        <div class="titulo-secao-detalhe" style="margin-top: 15px;">ADMINISTRATIVAS:</div>
+        <table id="tabela-viaturas-administrativas">
+            <thead>
+                <tr>
+                    <th>TIPO</th>
+                    <th>PLACA</th>
+                    <th>ANO</th>
+                    <th>SITUAÇÃO</th>
+                    <th>VIDA ÚTIL</th>
+                    <th>OBSERVAÇÃO</th>
+                    <th class="col-min-width col-acao-header">AÇÃO</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Será populado dinamicamente via JavaScript -->
+            </tbody>
+        </table>
+        <div class="btn-adicionar">
+            <button onclick="adicionarViatura('administrativas')">+ Adicionar Administrativa</button>
+        </div>
+        
+        <div class="assinatura">
+            <p>_______________________________</p>
+            <p>Assinatura do Responsável</p>
+        </div>
+    </div>
+    
+    <div id="botoes-acao">
+        <button onclick="imprimirDocumento()">Imprimir</button>
+    </div>
+    <script>
+        // Variáveis globais para contagem de linhas
+        let contagemLinhasAmb = 0;
+        let contagemLinhasAdm = 0;
+        
+        // Inicialização quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', function() {
+            // Define a data atual no campo de data
+            const hoje = new Date();
+            const dataFormatada = hoje.toISOString().split('T')[0];
+            document.getElementById('data').value = dataFormatada;
+            
+            // Formata a data no formato dd/mm/aaaa
+            formatarData(dataFormatada);
+            
+            // Atualiza o dia da semana
+            atualizarDiaSemana(dataFormatada);
+            
+            // Configura os eventos para os campos editáveis
+            configurarCamposEditaveis();
+            
+            // Popula dados iniciais
+            popularDadosIniciais();
+            
+            // Calcula totais do resumo
+            calcularTotalResumo();
+        });
+        
+        // Função para formatar a data no formato dd/mm/aaaa
+        function formatarData(dataString) {
+            const data = new Date(dataString);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            const dataFormatada = `${dia}/${mes}/${ano}`;
+            document.getElementById('data-formatada').value = dataFormatada;
+        }
+        
+        // Função para atualizar o dia da semana
+        function atualizarDiaSemana(dataString) {
+            const data = new Date(dataString);
+            const diasSemana = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+            const diaSemana = diasSemana[data.getDay()];
+            document.getElementById('dia-semana').value = diaSemana;
+            
+            // Atualiza também o formato da data
+            formatarData(dataString);
+        }
+        
+        // Função para ajustar as larguras das colunas para impressão
+        function ajustarLargurasColunas() {
+            // Define larguras específicas para as colunas das tabelas de viaturas
+            const tabelaAmbulancias = document.getElementById('tabela-viaturas-ambulancias');
+            const tabelaAdministrativas = document.getElementById('tabela-viaturas-administrativas');
+            
+            if (tabelaAmbulancias) {
+                const colunasAmb = tabelaAmbulancias.querySelectorAll('th');
+                if (colunasAmb.length > 0) {
+                    // Tipo
+                    if (colunasAmb[0]) colunasAmb[0].style.width = '9%';
+                    // Placa
+                    if (colunasAmb[1]) colunasAmb[1].style.width = '8%';
+                    // Ano
+                    if (colunasAmb[2]) colunasAmb[2].style.width = '5%';
+                    // Situação
+                    if (colunasAmb[3]) colunasAmb[3].style.width = '12%';
+                    // Vida Útil
+                    if (colunasAmb[4]) colunasAmb[4].style.width = '6%';
+                    // Especificação
+                    if (colunasAmb[5]) colunasAmb[5].style.width = '15%';
+                    // Observação - maior largura para evitar cortes
+                    if (colunasAmb[6]) colunasAmb[6].style.width = '45%';
+                }
+                
+                // Força a aplicação das larguras também nas células do corpo da tabela
+                const linhasAmb = tabelaAmbulancias.querySelectorAll('tbody tr');
+                linhasAmb.forEach(linha => {
+                    const celulas = linha.querySelectorAll('td');
+                    if (celulas.length >= 7) {
+                        celulas[0].style.width = '9%';
+                        celulas[1].style.width = '8%';
+                        celulas[2].style.width = '5%';
+                        celulas[3].style.width = '12%';
+                        celulas[4].style.width = '6%';
+                        celulas[5].style.width = '15%';
+                        celulas[6].style.width = '45%';
+                    }
+                });
+            }
+            
+            if (tabelaAdministrativas) {
+                const colunasAdm = tabelaAdministrativas.querySelectorAll('th');
+                if (colunasAdm.length > 0) {
+                    // Tipo
+                    if (colunasAdm[0]) colunasAdm[0].style.width = '12%';
+                    // Placa
+                    if (colunasAdm[1]) colunasAdm[1].style.width = '10%';
+                    // Ano
+                    if (colunasAdm[2]) colunasAdm[2].style.width = '6%';
+                    // Situação
+                    if (colunasAdm[3]) colunasAdm[3].style.width = '15%';
+                    // Vida Útil
+                    if (colunasAdm[4]) colunasAdm[4].style.width = '7%';
+                    // Observação - maior largura para evitar cortes
+                    if (colunasAdm[5]) colunasAdm[5].style.width = '50%';
+                }
+                
+                // Força a aplicação das larguras também nas células do corpo da tabela
+                const linhasAdm = tabelaAdministrativas.querySelectorAll('tbody tr');
+                linhasAdm.forEach(linha => {
+                    const celulas = linha.querySelectorAll('td');
+                    if (celulas.length >= 6) {
+                        celulas[0].style.width = '12%';
+                        celulas[1].style.width = '10%';
+                        celulas[2].style.width = '6%';
+                        celulas[3].style.width = '15%';
+                        celulas[4].style.width = '7%';
+                        celulas[5].style.width = '50%';
+                    }
+                });
+            }
+        }
+        
+        // Função para configurar os campos editáveis
+        function configurarCamposEditaveis() {
+            // Campo de data formatada
+            const campoDataFormatada = document.getElementById('data-formatada');
+            campoDataFormatada.addEventListener('change', function() {
+                // Tenta converter a data formatada para o formato do input date
+                try {
+                    const partes = this.value.split('/');
+                    if (partes.length === 3) {
+                        const dia = partes[0];
+                        const mes = partes[1];
+                        const ano = partes[2];
+                        const dataISO = `${ano}-${mes}-${dia}`;
+                        
+                        // Atualiza o campo de data oculto
+                        document.getElementById('data').value = dataISO;
+                        
+                        // Atualiza o dia da semana
+                        atualizarDiaSemana(dataISO);
+                    }
+                } catch (e) {
+                    console.error('Erro ao processar a data:', e);
+                }
+            });
+            
+            // Campo de dia da semana
+            const campoDiaSemana = document.getElementById('dia-semana');
+            // Já é editável por padrão, não precisa de configuração adicional
+        }
+        
+        // Função para popular dados iniciais
+        function popularDadosIniciais() {
+            // Dados iniciais para ambulâncias
+            const dadosAmbulancias = [
+                { tipo: 'DUCATO', placa: 'KPH-9E52', ano: 2012, situacao: 'Operando', vidaUtil: 2020, espec: 'UTI MÓVEL' },
+                { tipo: 'DUCATO', placa: 'KPH-9E53', ano: 2012, situacao: 'Operando', vidaUtil: 2020, espec: 'UTI NEO' },
+                { tipo: 'DUCATO', placa: 'KPH-9E54', ano: 2012, situacao: 'Destacada', vidaUtil: 2020, espec: 'USB' },
+                { tipo: 'SPRINTER', placa: 'KVZ-8O89', ano: 2012, situacao: 'Inoperante', vidaUtil: 2020, espec: 'USB' },
+                { tipo: 'SPRINTER', placa: 'KVZ-8O91', ano: 2012, situacao: 'Inoperante', vidaUtil: 2020, espec: 'USB' },
+                { tipo: 'SPRINTER', placa: 'KPK-4H03', ano: 2012, situacao: 'Destacada', vidaUtil: 2020, espec: 'UTI MÓVEL' },
+                { tipo: 'SPRINTER', placa: 'RIV-9I01', ano: 2021, situacao: 'Operando', vidaUtil: 2029, espec: 'UTI MÓVEL' },
+                { tipo: 'SPRINTER', placa: 'RKK-9I27', ano: 2021, situacao: 'Operando', vidaUtil: 2029, espec: 'UTI MÓVEL' },
+                { tipo: 'MASTER', placa: 'TTD-1A38', ano: 2024, situacao: 'Operando', vidaUtil: 2032, espec: 'UTI MÓVEL' },
+                { tipo: 'MASTER', placa: 'TTP-2G26', ano: 2025, situacao: 'Operando', vidaUtil: 2033, espec: 'USB' }
+            ];
+            
+            // Dados iniciais para administrativas
+            const dadosAdministrativas = [
+                { tipo: 'CLIO', placa: 'KRQ-0G70', ano: 2007, situacao: 'Operando', vidaUtil: 2014 },
+                { tipo: 'DUCATO', placa: 'LPE-2A05', ano: 2008, situacao: 'Operando', vidaUtil: 2015 },
+                { tipo: 'DUCATO', placa: 'LPE-4G44', ano: 2008, situacao: 'Destacada', vidaUtil: 2015 },
+                { tipo: 'DUCATO', placa: 'KZV-6G41', ano: 2006, situacao: 'Operando', vidaUtil: 2013 },
+                { tipo: 'CAMINHÃO', placa: 'LKL-8D08', ano: 2007, situacao: 'Operando', vidaUtil: 2019 },
+                { tipo: 'CAMINHÃO', placa: 'KVZ-7A70', ano: 2012, situacao: 'Operando', vidaUtil: 2024 },
+                { tipo: 'HONDA CIVIC', placa: 'KZT-1560', ano: 2005, situacao: 'Operando', vidaUtil: 2013 },
+                { tipo: 'SANTANA', placa: 'LNC-1A94', ano: 2000, situacao: 'Inoperante', vidaUtil: 2008 },
+                { tipo: 'DOBLÓ', placa: 'NVT-8G55', ano: 2011, situacao: 'Operando', vidaUtil: 2018 },
+                { tipo: 'DOBLÓ', placa: 'KPG-9A79', ano: 2012, situacao: 'Operando', vidaUtil: 2019 },
+                { tipo: 'DOBLÓ', placa: 'LQS-1F32', ano: 2012, situacao: 'Inoperante', vidaUtil: 2019 },
+                { tipo: 'COROLLA', placa: 'LTI-2281', ano: 2017, situacao: 'Operando', vidaUtil: 2024 },
+                { tipo: 'FORD KA', placa: 'RJN-4I27', ano: 2020, situacao: 'Operando', vidaUtil: 2027 },
+                { tipo: 'PEUGEOT 408', placa: 'LSE-3253', ano: 2016, situacao: 'Operando', vidaUtil: 2023 }
+            ];
+            
+            // Adiciona ambulâncias
+            dadosAmbulancias.forEach(dados => {
+                adicionarViatura('ambulancias', dados);
+            });
+            
+            // Adiciona administrativas
+            dadosAdministrativas.forEach(dados => {
+                adicionarViatura('administrativas', dados);
+            });
+        }
+        
+        // Função para adicionar viatura
+        function adicionarViatura(tipoViatura, dadosIniciais = {}) {
+            let contador;
+            let tabela;
+            let colunas;
+            
+            if (tipoViatura === 'ambulancias') {
+                contador = ++contagemLinhasAmb;
+                tabela = document.getElementById('tabela-viaturas-ambulancias').getElementsByTagName('tbody')[0];
+                colunas = 8; // Inclui coluna de especificação
+            } else {
+                contador = ++contagemLinhasAdm;
+                tabela = document.getElementById('tabela-viaturas-administrativas').getElementsByTagName('tbody')[0];
+                colunas = 7; // Não inclui coluna de especificação
+            }
+            
+            const novaLinha = tabela.insertRow();
+            novaLinha.id = `linha-${tipoViatura}-${contador}`;
+            novaLinha.setAttribute('data-tipo', tipoViatura);
+            
+            // Coluna TIPO
+            let celula = novaLinha.insertCell();
+            let input = document.createElement('input');
+            input.type = 'text';
+            input.value = dadosIniciais.tipo || '';
+            celula.appendChild(input);
+            
+            // Coluna PLACA
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = dadosIniciais.placa || '';
+            celula.appendChild(input);
+            
+            // Coluna ANO
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            input = document.createElement('input');
+            input.type = 'number';
+            input.min = '1990';
+            input.value = dadosIniciais.ano || '';
+            celula.appendChild(input);
+            
+            // Coluna SITUAÇÃO
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            const select = document.createElement('select');
+            const opcoes = ['Operando', 'Inoperante', 'Destacada', 'Reserva', 'Manutencao'];
+            opcoes.forEach(opcao => {
+                const option = document.createElement('option');
+                option.value = opcao;
+                option.text = opcao;
+                select.appendChild(option);
+            });
+            select.value = dadosIniciais.situacao || 'Operando';
+            select.onchange = function() {
+                atualizarStatusDisplay(this);
+                calcularTotalResumo();
+            };
+            celula.appendChild(select);
+            
+            // Coluna VIDA ÚTIL
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width';
+            input = document.createElement('input');
+            input.type = 'number';
+            input.min = '2000';
+            input.value = dadosIniciais.vidaUtil || '';
+            celula.appendChild(input);
+            
+            // Coluna ESPECIFICAÇÃO (apenas para ambulâncias)
+            if (tipoViatura === 'ambulancias') {
+                celula = novaLinha.insertCell();
+                celula.className = 'col-min-width';
+                input = document.createElement('input');
+                input.type = 'text';
+                input.value = dadosIniciais.espec || '';
+                celula.appendChild(input);
+            }
+            
+            // Coluna OBSERVAÇÃO
+            celula = novaLinha.insertCell();
+            input = document.createElement('input');
+            input.type = 'text';
+            input.value = dadosIniciais.obs || '';
+            celula.appendChild(input);
+            
+            // Coluna AÇÃO
+            celula = novaLinha.insertCell();
+            celula.className = 'col-min-width col-acao';
+            const botaoDeletar = document.createElement('button');
+            botaoDeletar.className = 'delete-button';
+            botaoDeletar.innerHTML = '🗑️';
+            botaoDeletar.onclick = function() {
+                removerViatura(contador, tipoViatura);
+            };
+            celula.appendChild(botaoDeletar);
+            
+            // Atualiza o status display
+            atualizarStatusDisplay(select);
+            
+            // Calcula totais do resumo
+            calcularTotalResumo();
+        }
+        
+        // Função para atualizar o display de status
+        function atualizarStatusDisplay(selectElement) {
+            const status = selectElement.value;
+            const celula = selectElement.parentElement;
+            
+            // Remove classes de status anteriores
+            celula.classList.remove('status-operando', 'status-inoperante', 'status-destacada');
+            
+            // Adiciona classe baseada no status
+            if (status === 'Operando') {
+                celula.classList.add('status-operando');
+            } else if (status === 'Inoperante') {
+                celula.classList.add('status-inoperante');
+            } else if (status === 'Destacada') {
+                celula.classList.add('status-destacada');
+            }
+            
+            // Mantém a classe col-min-width se existir
+            if (!celula.classList.contains('col-min-width')) {
+                celula.classList.add('col-min-width');
+            }
+        }
+        
+        // Função para remover viatura
+        function removerViatura(contador, tipoViatura) {
+            const linha = document.getElementById(`linha-${tipoViatura}-${contador}`);
+            if (linha) {
+                linha.parentNode.removeChild(linha);
+                reorganizarTabela(tipoViatura);
+                calcularTotalResumo();
+            }
+        }
+        
+        // Função para reorganizar a tabela após remoção
+        function reorganizarTabela(tipoViatura) {
+            const tabela = document.getElementById(`tabela-viaturas-${tipoViatura}`).getElementsByTagName('tbody')[0];
+            const linhas = tabela.getElementsByTagName('tr');
+            let novoContador = 0;
+            
+            for (let i = 0; i < linhas.length; i++) {
+                novoContador++;
+                const linha = linhas[i];
+                const idAntigo = linha.id;
+                const novoId = `linha-${tipoViatura}-${novoContador}`;
+                linha.id = novoId;
+                
+                // Atualiza o botão de deletar
+                const botaoDeletar = linha.querySelector('.delete-button');
+                if (botaoDeletar) {
+                    botaoDeletar.onclick = function() {
+                        removerViatura(novoContador, tipoViatura);
+                    };
+                }
+            }
+            
+            // Atualiza o contador global
+            if (tipoViatura === 'ambulancias') {
+                contagemLinhasAmb = novoContador;
+            } else {
+                contagemLinhasAdm = novoContador;
+            }
+        }
+        
+        // Função para calcular o total do resumo
+        function calcularTotalResumo() {
+            // Conta as situações nas tabelas
+            const contarSituacao = (tipoViatura, situacao) => {
+                const tabela = document.getElementById(`tabela-viaturas-${tipoViatura}`);
+                const linhas = tabela.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+                let contador = 0;
+                
+                for (let i = 0; i < linhas.length; i++) {
+                    const select = linhas[i].getElementsByTagName('select')[0];
+                    if (select && select.value === situacao) {
+                        contador++;
+                    }
+                }
+                
+                return contador;
+            };
+            
+            // Conta situações para ambulâncias
+            const operanteAmb = contarSituacao('ambulancias', 'Operando');
+            const inoperanteAmb = contarSituacao('ambulancias', 'Inoperante');
+            const destacadaAmb = contarSituacao('ambulancias', 'Destacada');
+            
+            // Conta situações para administrativas
+            const operanteAdm = contarSituacao('administrativas', 'Operando');
+            const inoperanteAdm = contarSituacao('administrativas', 'Inoperante');
+            const destacadaAdm = contarSituacao('administrativas', 'Destacada');
+            
+            // Atualiza os campos de resumo
+            document.getElementById('resumo-operante-amb').value = operanteAmb;
+            document.getElementById('resumo-inoperante-amb').value = inoperanteAmb;
+            document.getElementById('resumo-destacada-amb').value = destacadaAmb;
+            
+            document.getElementById('resumo-operante-adm').value = operanteAdm;
+            document.getElementById('resumo-inoperante-adm').value = inoperanteAdm;
+            document.getElementById('resumo-destacada-adm').value = destacadaAdm;
+            
+            // Calcula totais
+            const efetivoAmb = parseInt(document.getElementById('efetivo-amb').value) || 0;
+            const efetivoAdm = parseInt(document.getElementById('efetivo-adm').value) || 0;
+            const efetivoTotal = efetivoAmb + efetivoAdm;
+            
+            const operanteTotal = operanteAmb + operanteAdm;
+            const inoperanteTotal = inoperanteAmb + inoperanteAdm;
+            const destacadaTotal = destacadaAmb + destacadaAdm;
+            
+            // Atualiza os campos de total
+            document.getElementById('efetivo-total').value = efetivoTotal;
+            document.getElementById('resumo-operante-total').value = operanteTotal;
+            document.getElementById('resumo-inoperante-total').value = inoperanteTotal;
+            document.getElementById('resumo-destacada-total').value = destacadaTotal;
+        }
+        
+        // Função para imprimir o documento usando o diálogo de impressão do navegador
+        function imprimirDocumento() {
+            try {
+                console.log('Preparando para impressão...');
+                
+                // Ajusta larguras das colunas para melhor visualização na impressão
+                ajustarLargurasColunas();
+                
+                // Força a aplicação de bordas em todas as células
+                const todasCelulas = document.querySelectorAll('th, td');
+                todasCelulas.forEach(celula => {
+                    celula.style.border = '1px solid black';
+                    celula.style.borderCollapse = 'collapse';
+                });
+                
+                // Preparação: oculta elementos que não devem aparecer na impressão
+                const botoesAdicionar = document.querySelectorAll('.btn-adicionar');
+                const botoesAcao = document.getElementById('botoes-acao');
+                const botoesDeletar = document.querySelectorAll('.delete-button');
+                const colunasAcao = document.querySelectorAll('.col-acao');
+                const colunasAcaoHeader = document.querySelectorAll('.col-acao-header');
+                
+                // Guarda o estado original dos elementos para restaurar depois
+                const estadoOriginal = {
+                    botoesAdicionar: Array.from(botoesAdicionar).map(el => ({ el, display: el.style.display })),
+                    botoesAcao: { el: botoesAcao, display: botoesAcao ? botoesAcao.style.display : '' },
+                    botoesDeletar: Array.from(botoesDeletar).map(el => ({ el, display: el.style.display })),
+                    colunasAcao: Array.from(colunasAcao).map(el => ({ 
+                        el, 
+                        display: el.style.display,
+                        width: el.style.width,
+                        padding: el.style.padding,
+                        border: el.style.border
+                    })),
+                    colunasAcaoHeader: Array.from(colunasAcaoHeader).map(el => ({ 
+                        el, 
+                        display: el.style.display,
+                        width: el.style.width,
+                        padding: el.style.padding,
+                        border: el.style.border
+                    })),
+                    bodyClass: document.body.className
+                };
+                
+                // Oculta elementos
+                botoesAdicionar.forEach(el => el.style.display = 'none');
+                if (botoesAcao) botoesAcao.style.display = 'none';
+                botoesDeletar.forEach(el => el.style.display = 'none');
+                
+                // Remove completamente as colunas de ação
+                colunasAcao.forEach(el => {
+                    el.style.display = 'none';
+                    el.style.width = '0';
+                    el.style.padding = '0';
+                    el.style.border = 'none';
+                });
+                
+                colunasAcaoHeader.forEach(el => {
+                    el.style.display = 'none';
+                    el.style.width = '0';
+                    el.style.padding = '0';
+                    el.style.border = 'none';
+                });
+                
+                // Adiciona classe para modo impressão
+                document.body.classList.add('pdf-mode');
+                
+                // Aguarda um momento para as alterações de estilo serem aplicadas
+                setTimeout(() => {
+                    // Chama a função de impressão do navegador
+                    window.print();
+                    
+                    // Restaura os elementos após a impressão
+                    setTimeout(() => {
+                        // Restaura todos os elementos ao estado original
+                        estadoOriginal.botoesAdicionar.forEach(item => item.el.style.display = item.display);
+                        if (estadoOriginal.botoesAcao.el) estadoOriginal.botoesAcao.el.style.display = estadoOriginal.botoesAcao.display;
+                        estadoOriginal.botoesDeletar.forEach(item => item.el.style.display = item.display);
+                        
+                        estadoOriginal.colunasAcao.forEach(item => {
+                            item.el.style.display = item.display;
+                            item.el.style.width = item.width;
+                            item.el.style.padding = item.padding;
+                            item.el.style.border = item.border;
+                        });
+                        
+                        estadoOriginal.colunasAcaoHeader.forEach(item => {
+                            item.el.style.display = item.display;
+                            item.el.style.width = item.width;
+                            item.el.style.padding = item.padding;
+                            item.el.style.border = item.border;
+                        });
+                        
+                        // Restaura as classes do body
+                        document.body.className = estadoOriginal.bodyClass;
+                        
+                        console.log('Elementos restaurados após impressão');
+                    }, 1000); // Aguarda 1 segundo após a impressão para restaurar
+                }, 500);
+                
+            } catch (error) {
+                console.error('Erro ao preparar para impressão:', error);
+                alert('Erro ao preparar para impressão: ' + error.message);
+                
+                // Restaura o estado original do body em caso de erro
+                document.body.classList.remove('pdf-mode');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Situação das Viaturas - Sistema Integrado</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+--tab-inactive-bg: #e9ecef;
+--tab-active-bg: var(--white);
+--tab-border: 1px solid #dee2e6;
+--danger-red: #dc3545;
+--warning-orange: #fd7e14;
+--success-green: #28a745;
+--priority-purple: #6f42c1;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); color: var(--dark-gray); font-weight: 500; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+.tabs { display: flex; border-bottom: 2px solid var(--primary-blue); margin-bottom: 20px; background-color: var(--white); border-radius: 8px 8px 0 0; overflow: hidden; }
+.tabs a { text-decoration: none; color: inherit; flex: 1; display: flex; }
+.tab-button { background-color: var(--tab-inactive-bg); color: var(--dark-gray); border: none; padding: 15px 25px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.tab-button:hover:not(.active) { background-color: #e2e6ea; }
+.tab-button.active { background-color: var(--primary-blue); color: var(--white); }
+.tab-content { display: none; background-color: var(--white); padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.tab-content.active { display: block; }
+.page-title { font-size: 28px; color: var(--primary-blue); text-align: center; font-weight: bold; margin: 0 0 30px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.table-container { overflow-x: auto; border: 2px solid var(--primary-blue); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); background-color: var(--white); margin-top: 20px; }
+.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.data-table th, .data-table td { border: 1px solid var(--tab-border); padding: 15px; }
+.data-table th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; text-transform: uppercase; font-size: 12px; position: sticky; top: 0; }
+.data-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
+.data-table td.annotation-cell { color: var(--danger-red); font-weight: bold; }
+.filter-container { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 20px; background-color: var(--light-gray-bg); border-radius: 8px; }
+.filter-container .form-group { flex: 1; min-width: 200px; }
+.filter-container label { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+.filter-container select, .filter-container input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--gray); background-color: var(--white); }
+.btn { background-color: var(--primary-blue); color: var(--white); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; }
+.btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.btn-priority { background-color: var(--priority-purple); }
+.btn-priority:hover { background-color: #5a32a3; }
+.global-actions { margin-bottom: 15px; display: flex; gap: 10px; }
+.checklist-cell { text-align: center; vertical-align: middle; min-width: 100px; }
+.checklist-item { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 5px; }
+.checklist-item input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary-blue); }
+.checklist-item.priority input[type="checkbox"] { accent-color: var(--priority-purple); }
+.checklist-item label { cursor: pointer; font-size: 14px; font-weight: bold; user-select: none; }
+.actions-cell { text-align: center; vertical-align: middle; min-width: 120px; }
+.action-buttons { display: flex; gap: 8px; justify-content: center; align-items: center; }
+.btn-action { border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; transition: all 0.3s ease; }
+.btn-action:hover { transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+.btn-edit { background-color: var(--warning-orange); color: var(--white); }
+.btn-edit:hover { background-color: #e56b0f; }
+.btn-delete { background-color: var(--danger-red); color: var(--white); }
+.btn-delete:hover { background-color: #c82333; }
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); animation: fadeIn 0.3s ease; }
+.modal.active { display: flex; justify-content: center; align-items: center; }
+.modal-content { background-color: var(--white); padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto; animation: slideDown 0.3s ease; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid var(--primary-blue); }
+.modal-header h2 { margin: 0; color: var(--primary-blue); font-size: 22px; }
+.close-modal { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--dark-gray); line-height: 1; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+.close-modal:hover { color: var(--danger-red); }
+.modal-body { margin-bottom: 20px; }
+.form-group-modal { margin-bottom: 20px; }
+.form-group-modal label { display: block; margin-bottom: 8px; font-weight: bold; color: var(--dark-gray); }
+.form-group-modal input, .form-group-modal textarea { width: 100%; padding: 10px; border: 1px solid var(--gray); border-radius: 6px; font-size: 14px; font-family: inherit; }
+.form-group-modal textarea { min-height: 100px; resize: vertical; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel { background-color: var(--gray); color: var(--dark-gray); }
+.btn-cancel:hover { background-color: #c5c5c5; }
+.btn-save { background-color: var(--success-green); color: var(--white); }
+.btn-save:hover { background-color: #218838; }
+.priority-list { list-style: none; padding: 0; margin: 0; }
+.priority-item { background-color: var(--light-gray-bg); border: 2px solid var(--priority-purple); border-radius: 8px; padding: 15px; margin-bottom: 10px; cursor: grab; transition: all 0.2s ease; display: flex; align-items: center; gap: 15px; user-select: none; }
+.priority-item:active { cursor: grabbing; }
+.priority-item:hover { background-color: #f0e6ff; box-shadow: 0 4px 12px rgba(111, 66, 193, 0.2); transform: translateY(-2px); }
+.priority-item.dragging { opacity: 0.4; cursor: grabbing; }
+.priority-item.drag-over { border-color: var(--success-green); background-color: #e8f5e9; border-style: dashed; }
+.priority-number { background-color: var(--priority-purple); color: var(--white); font-weight: bold; font-size: 18px; min-width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.priority-content { flex: 1; }
+.priority-viatura { font-weight: bold; font-size: 16px; color: var(--primary-blue); margin-bottom: 5px; }
+.priority-details { font-size: 14px; color: var(--dark-gray); }
+.priority-item-label { font-weight: bold; }
+.priority-annotation { color: var(--danger-red); font-weight: bold; }
+.priority-delete-btn { background-color: var(--danger-red); color: var(--white); border: none; border-radius: 50%; width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.3s ease; font-size: 16px; }
+.priority-delete-btn:hover { background-color: #c82333; transform: scale(1.1); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4); }
+.priority-empty { text-align: center; padding: 40px 20px; color: var(--gray); font-size: 16px; }
+.priority-empty i { font-size: 48px; margin-bottom: 15px; display: block; }
+.priority-instructions { background-color: #f0e6ff; border-left: 4px solid var(--priority-purple); padding: 12px 15px; margin-bottom: 20px; border-radius: 4px; font-size: 14px; }
+.priority-instructions i { color: var(--priority-purple); margin-right: 8px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideDown { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="tabs">
+<a href="vistoriar.html"><button class="tab-button"><i class="fas fa-car"></i> Vistoriar Viatura</button></a>
+<a href="historico.html"><button class="tab-button"><i class="fas fa-history"></i> Histórico</button></a>
+<a href="situacao.html"><button class="tab-button active"><i class="fas fa-info-circle"></i> Situação</button></a>
+<a href="responsabilidades.html"><button class="tab-button"><i class="fas fa-users"></i> Responsabilidades</button></a>
+</div>
+<div id="status" class="tab-content active">
+<h1 class="page-title"><i class="fas fa-info-circle"></i> Situação das Viaturas</h1>
+<p style="text-align: center; margin-top: -20px; margin-bottom: 20px;">Esta tabela exibe apenas as anotações <strong>da última vistoria de cada viatura</strong> que estão pendentes. Itens já resolvidos aparecem apenas no Histórico.</p>
+<div class="global-actions">
+<button id="btnPdf" class="btn"><i class="fas fa-file-pdf"></i> Gerar PDF da Situação</button>
+<button id="btnPrioridades" class="btn btn-priority"><i class="fas fa-star"></i> Prioridades</button>
+</div>
+<div class="filter-container">
+<div class="form-group"><label for="filterDate">Data</label><input type="date" id="filterDate"></div>
+<div class="form-group"><label for="filterViatura">Viatura</label><select id="filterViatura"></select></div>
+<div class="form-group"><label for="filterMotorista">Motorista</label><select id="filterMotorista"></select></div>
+<div class="form-group"><label for="filterSearch"><i class="fas fa-search"></i> Pesquisar</label><input type="search" id="filterSearch" placeholder="Busque em qualquer campo..."></div>
+</div>
+<div class="table-container">
+<table class="data-table" id="statusTable">
+<thead><tr><th>Data da Vistoria</th><th>Viatura</th><th>Motorista</th><th>Item com Anotação</th><th>Anotação</th><th>Marcar Problema</th><th>Prioridades</th><th>Ações</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+</div>
+<div id="editModal" class="modal">
+<div class="modal-content">
+<div class="modal-header"><h2><i class="fas fa-edit"></i> Editar Anotação</h2><button class="close-modal" onclick="closeEditModal()">&times;</button></div>
+<div class="modal-body">
+<div class="form-group-modal"><label>Data da Vistoria</label><input type="text" id="editData" readonly style="background-color: #f0f0f0;"></div>
+<div class="form-group-modal"><label>Viatura</label><input type="text" id="editViatura" readonly style="background-color: #f0f0f0;"></div>
+<div class="form-group-modal"><label>Motorista</label><input type="text" id="editMotorista" readonly style="background-color: #f0f0f0;"></div>
+<div class="form-group-modal"><label>Item</label><input type="text" id="editItem" readonly style="background-color: #f0f0f0;"></div>
+<div class="form-group-modal"><label for="editNota">Anotação</label><textarea id="editNota" placeholder="Digite a anotação..."></textarea></div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-cancel" onclick="closeEditModal()"><i class="fas fa-times"></i> Cancelar</button>
+<button class="btn btn-save" onclick="saveEdit()"><i class="fas fa-save"></i> Salvar</button>
+</div>
+</div>
+</div>
+<div id="priorityModal" class="modal">
+<div class="modal-content">
+<div class="modal-header"><h2><i class="fas fa-star"></i> Gerenciar Prioridades</h2><button class="close-modal" onclick="closePriorityModal()">&times;</button></div>
+<div class="modal-body">
+<div class="priority-instructions"><i class="fas fa-hand-pointer"></i><strong>Instruções:</strong> Arraste os itens com o mouse (segurando o botão esquerdo) para reorganizar as prioridades. Clique no botão vermelho para excluir.</div>
+<ul id="priorityList" class="priority-list"></ul>
+</div>
+<div class="modal-footer"><button class="btn btn-cancel" onclick="closePriorityModal()"><i class="fas fa-times"></i> Fechar</button></div>
+</div>
+</div>
+<script src="situacao.js"></script>
+</body>
+</html>

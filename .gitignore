@@ -1,0 +1,26 @@
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs / Editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+*.bak
+
+# Opcional: descomente a linha abaixo se NÃO quiser enviar a pasta Backup 2
+# Todas as abas/Backup 2/

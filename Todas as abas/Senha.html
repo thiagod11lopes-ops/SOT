@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - SENHA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --tab-border: 1px solid #dee2e6;
+            --success-green: #28a745;
+            --error-red: #dc3545;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-gray-bg);
+            color: var(--dark-gray);
+            font-weight: 500;
+            min-height: 100vh;
+        }
+        main {
+            margin: 20px auto;
+            padding: 0;
+            box-sizing: border-box;
+            max-width: 600px;
+        }
+        .tab-content {
+            display: block;
+            background-color: var(--white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--tab-border);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .table-title {
+            font-size: 22px;
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+        .password-settings {
+            padding: 20px;
+            background-color: var(--light-gray-bg);
+            border-radius: 8px;
+        }
+        .password-settings label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--dark-gray);
+        }
+        .password-settings input[type="password"], .password-settings input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        /* Added styles for show password checkbox */
+        .show-password-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 8px;
+        }
+        .show-password-container input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+        }
+        .show-password-container label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .password-settings button {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .password-settings button:hover {
+            background-color: var(--secondary-blue);
+        }
+        .password-settings .message {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .password-settings .success {
+            color: #155724;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .password-settings .error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        @media (max-width: 768px) {
+            .main-title { font-size: 24px; }
+            main { margin: 20px 10px; }
+            .password-settings input[type="password"], .password-settings input[type="text"] { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div id="passwordSection" class="tab-content active">
+            <div class="password-settings">
+                <h2 class="table-title">Alterar Senha</h2>
+                <label for="oldPassword">Senha Atual:</label>
+                <input type="password" id="oldPassword">
+                <label for="newPassword">Nova Senha:</label>
+                <input type="password" id="newPassword">
+                
+                <!-- Added show password checkbox -->
+                <div class="show-password-container">
+                    <input type="checkbox" id="showPassword">
+                    <label for="showPassword">Mostrar Senha</label>
+                </div>
+                
+                <button id="savePasswordBtn">Salvar Senha</button>
+                <div id="passwordMessage" class="message"></div>
+            </div>
+        </div>
+    </main>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // ################### INÍCIO DA ALTERAÇÃO ###################
+        // Notifica a página principal sobre a atividade do usuário para
+        // reiniciar o cronômetro de inatividade.
+        function notifyParentActivity() {
+            window.parent.postMessage({ type: 'user_activity' }, '*');
+        }
+
+        ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+            document.addEventListener(event, notifyParentActivity);
+        });
+        // #################### FIM DA ALTERAÇÃO #####################
+
+        const DEFAULT_PASSWORD = '1234';
+        
+        const oldPasswordInput = document.getElementById('oldPassword');
+        const newPasswordInput = document.getElementById('newPassword');
+        const savePasswordBtn = document.getElementById('savePasswordBtn');
+        const passwordMessage = document.getElementById('passwordMessage');
+        const showPasswordCheckbox = document.getElementById('showPassword');
+
+        showPasswordCheckbox.addEventListener('change', function() {
+            const inputType = this.checked ? 'text' : 'password';
+            oldPasswordInput.type = inputType;
+            newPasswordInput.type = inputType;
+        });
+
+        function getCurrentPassword() {
+            return localStorage.getItem('adminPassword') || DEFAULT_PASSWORD;
+        }
+
+        savePasswordBtn.addEventListener('click', () => {
+            const currentPassword = getCurrentPassword();
+            const oldPass = oldPasswordInput.value;
+            const newPass = newPasswordInput.value;
+
+            passwordMessage.textContent = '';
+            passwordMessage.classList.remove('success', 'error');
+
+            if (oldPass === currentPassword) {
+                if (newPass.trim() === '') {
+                    passwordMessage.textContent = 'A nova senha não pode ser vazia.';
+                    passwordMessage.classList.add('error');
+                    return;
+                }
+                localStorage.setItem('adminPassword', newPass);
+                passwordMessage.textContent = 'Senha alterada com sucesso!';
+                passwordMessage.classList.add('success');
+                oldPasswordInput.value = '';
+                newPasswordInput.value = '';
+
+                // Notifica a página principal sobre a mudança da senha
+                window.parent.postMessage({ type: 'password_changed' }, '*');
+
+                setTimeout(() => {
+                    passwordMessage.textContent = '';
+                    passwordMessage.classList.remove('success');
+                }, 5000);
+            } else {
+                passwordMessage.textContent = 'Senha atual incorreta.';
+                passwordMessage.classList.add('error');
+                oldPasswordInput.value = '';
+                setTimeout(() => {
+                    passwordMessage.textContent = '';
+                    passwordMessage.classList.remove('error');
+                }, 5000);
+            }
+        });
+    });
+</script>
+</body>
+</html>

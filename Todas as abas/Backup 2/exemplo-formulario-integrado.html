@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exemplo - Formulário de Saída com Junção Inteligente</title>
+    <script src="api-service.js"></script>
+    <script src="data-service.js"></script>
+    <script src="junta-saidas-service.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #28a745;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .info-box i {
+            color: #2196F3;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1><i class="fas fa-car"></i> Cadastro de Saída Administrativa</h1>
+        
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i>
+            <strong>Junção Inteligente Ativa:</strong> O sistema detectará automaticamente se esta saída pode ser juntada com outras saídas para destinos próximos (até 10 km), mesmo caminho (até 20 km) ou dias próximos, independente de motorista ou viatura.
+        </div>
+
+        <form id="formSaida">
+            <div class="form-group">
+                <label for="motorista">Motorista:</label>
+                <select id="motorista" required>
+                    <option value="">Selecione o motorista</option>
+                    <!-- Preenchido via JavaScript -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="viatura">Viatura:</label>
+                <select id="viatura" required>
+                    <option value="">Selecione a viatura</option>
+                    <!-- Preenchido via JavaScript -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="cidade">Cidade:</label>
+                <input type="text" id="cidade" placeholder="Ex: Rio de Janeiro" required>
+            </div>
+
+            <div class="form-group">
+                <label for="bairro">Bairro:</label>
+                <input type="text" id="bairro" placeholder="Ex: Saúde, Centro, Tijuca" required>
+            </div>
+
+            <div class="form-group">
+                <label for="horario">Horário:</label>
+                <input type="time" id="horario" required>
+            </div>
+
+            <div class="form-group">
+                <label for="motivo">Motivo da Saída:</label>
+                <input type="text" id="motivo" placeholder="Ex: Atendimento médico" required>
+            </div>
+
+            <div class="form-group">
+                <label for="observacao">Observações:</label>
+                <input type="text" id="observacao" placeholder="Informações adicionais (opcional)">
+            </div>
+
+            <button type="submit">
+                <i class="fas fa-save"></i> Salvar Saída
+            </button>
+        </form>
+    </div>
+
+    <script>
+        // Aguardar carregamento
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Carregar motoristas e viaturas
+            await carregarMotoristas();
+            await carregarViaturas();
+
+            // Event listener do formulário
+            document.getElementById('formSaida').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await salvarSaida();
+            });
+        });
+
+        async function carregarMotoristas() {
+            try {
+                const motoristas = await dataService.getMotoristas();
+                const select = document.getElementById('motorista');
+                
+                motoristas.forEach(motorista => {
+                    const option = document.createElement('option');
+                    option.value = motorista.id || motorista.temp_id;
+                    option.textContent = motorista.nome || motorista.nomeCompleto || 'Motorista sem nome';
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar motoristas:', error);
+            }
+        }
+
+        async function carregarViaturas() {
+            try {
+                const viaturas = await dataService.getViaturas();
+                const select = document.getElementById('viatura');
+                
+                viaturas.forEach(viatura => {
+                    const option = document.createElement('option');
+                    option.value = viatura.id || viatura.temp_id;
+                    option.textContent = viatura.placa || viatura.identificacao || 'Viatura sem identificação';
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar viaturas:', error);
+            }
+        }
+
+        async function salvarSaida() {
+            // Coletar dados do formulário
+            const novaSaida = {
+                motorista_id: parseInt(document.getElementById('motorista').value),
+                viatura_id: parseInt(document.getElementById('viatura').value),
+                cidade: document.getElementById('cidade').value.trim(),
+                bairro: document.getElementById('bairro').value.trim(),
+                horario: document.getElementById('horario').value,
+                motivo: document.getElementById('motivo').value.trim(),
+                observacao: document.getElementById('observacao').value.trim() || null,
+                data: new Date().toISOString().split('T')[0], // Data atual
+                temp_id: Date.now() // ID temporário
+            };
+
+            try {
+                // Buscar todas as saídas existentes
+                const todasSaidas = await dataService.getSaidasAdministrativas();
+
+                // Verificar se há possibilidade de junção
+                // Agora verifica todas as saídas independente de motorista/viatura
+                console.log('🔍 Verificando possibilidade de junção...');
+                const resultado = await juntaSaidasService.verificarAposCadastro(
+                    novaSaida,
+                    todasSaidas
+                    // Não precisa mais passar motorista_id e viatura_id
+                );
+
+                if (resultado.aceitar && resultado.sugestao) {
+                    // Usuário aceitou juntar as saídas
+                    console.log('✅ Usuário aceitou juntar as saídas');
+                    
+                    const saidaJunta = juntaSaidasService.juntarSaidas(
+                        resultado.sugestao.saida1,
+                        resultado.sugestao.saida2
+                    );
+
+                    // Salvar a saída juntada
+                    await dataService.saveSaidaAdministrativa(saidaJunta);
+                    
+                    alert('✅ Saídas juntadas com sucesso!\n\n' +
+                          `Destino 1: ${resultado.sugestao.bairros[0]}, ${resultado.sugestao.cidade}\n` +
+                          `Destino 2: ${resultado.sugestao.bairros[1]}, ${resultado.sugestao.cidade}\n` +
+                          (resultado.sugestao.distancia ? `Distância: ${resultado.sugestao.distancia} km` : ''));
+
+                    // Limpar formulário
+                    document.getElementById('formSaida').reset();
+                } else {
+                    // Salvar normalmente a nova saída
+                    console.log('💾 Salvando saída normalmente...');
+                    await dataService.saveSaidaAdministrativa(novaSaida);
+                    
+                    alert('✅ Saída cadastrada com sucesso!');
+                    
+                    // Limpar formulário
+                    document.getElementById('formSaida').reset();
+                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar saída:', error);
+                
+                // Tentar salvar normalmente mesmo se houver erro na verificação
+                try {
+                    await dataService.saveSaidaAdministrativa(novaSaida);
+                    alert('✅ Saída cadastrada com sucesso!');
+                    document.getElementById('formSaida').reset();
+                } catch (saveError) {
+                    alert('❌ Erro ao salvar a saída. Verifique o console para mais detalhes.');
+                    console.error('Erro detalhado:', saveError);
+                }
+            }
+        }
+
+        // Função opcional para verificar todas as saídas existentes
+        async function verificarTodasSaidas() {
+            try {
+                const todasSaidas = await dataService.getSaidasAdministrativas();
+                
+                if (todasSaidas.length < 2) {
+                    alert('Não há saídas suficientes para verificar junções.');
+                    return;
+                }
+
+                // Verificar todas as saídas (sem filtro de motorista/viatura)
+                // Agora o serviço verifica apenas por proximidade geográfica
+                let sugestoesEncontradas = 0;
+
+                const sugestoes = await juntaSaidasService.verificarJuntasPossiveis(
+                    todasSaidas,
+                    null, // Sem filtro de motorista
+                    null  // Sem filtro de viatura
+                );
+
+                if (sugestoes.length > 0) {
+                    sugestoesEncontradas += sugestoes.length;
+                    
+                    // Mostrar modal para cada sugestão
+                    for (const sugestao of sugestoes) {
+                            const aceitar = await juntaSaidasService.exibirModalJuntar(sugestao);
+                            if (aceitar) {
+                                const saidaJunta = juntaSaidasService.juntarSaidas(
+                                    sugestao.saida1,
+                                    sugestao.saida2
+                                );
+                                await dataService.saveSaidaAdministrativa(saidaJunta);
+                                
+                                // Opcional: remover saídas originais
+                                // await dataService.deleteSaidaAdministrativa(sugestao.saida1.id);
+                                // await dataService.deleteSaidaAdministrativa(sugestao.saida2.id);
+                        }
+                    }
+                }
+
+                if (sugestoesEncontradas === 0) {
+                    alert('Nenhuma sugestão de junção encontrada no momento.');
+                } else {
+                    alert(`Verificação concluída! ${sugestoesEncontradas} sugestão(ões) apresentada(s).`);
+                }
+            } catch (error) {
+                console.error('Erro ao verificar saídas:', error);
+                alert('Erro ao verificar saídas. Verifique o console.');
+            }
+        }
+
+        // Expor função globalmente (opcional - para adicionar botão de verificação manual)
+        window.verificarTodasSaidas = verificarTodasSaidas;
+    </script>
+</body>
+</html>
+

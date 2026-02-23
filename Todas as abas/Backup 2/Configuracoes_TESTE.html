@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>TESTE - Configurações</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        button {
+            padding: 15px 30px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #message {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #d4edda;
+            border: 2px solid #28a745;
+            border-radius: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>TESTE - Configurações</h1>
+    <p>Se você está vendo esta página, o arquivo está sendo carregado.</p>
+    
+    <button id="testBtn">CLIQUE AQUI PARA TESTAR</button>
+    
+    <div id="message"></div>
+
+    <script>
+        console.log('=== SCRIPT CARREGADO ===');
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== DOM CARREGADO ===');
+            
+            const testBtn = document.getElementById('testBtn');
+            const message = document.getElementById('message');
+            
+            console.log('Botão encontrado:', testBtn);
+            
+            if (testBtn) {
+                testBtn.addEventListener('click', () => {
+                    console.log('=== BOTÃO CLICADO! ===');
+                    alert('BOTÃO FUNCIONANDO!');
+                    message.textContent = 'SUCESSO! O botão está funcionando!';
+                    message.style.display = 'block';
+                });
+                console.log('Event listener adicionado com sucesso!');
+            } else {
+                console.error('ERRO: Botão não encontrado!');
+            }
+        });
+    </script>
+</body>
+</html>

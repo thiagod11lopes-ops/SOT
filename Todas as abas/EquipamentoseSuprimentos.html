@@ -1,0 +1,3920 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipamentos e Suprimentos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --delete-red: #dc3545;
+            --green: #28a745;
+            --warning-orange: #ffc107;
+            --export-green: #21a221;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-gray-bg);
+        }
+        
+        main {
+            margin: 20px 10px;
+        }
+        
+        .main-container {
+            background-color: var(--white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .internal-tabs-container {
+            margin-bottom: 20px;
+        }
+        
+        .internal-tabs {
+            display: flex;
+            justify-content: flex-start;
+            border-bottom: 2px solid var(--gray);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .internal-tab-button {
+            background-color: #e9e9e9;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            padding: 10px 15px;
+            border-radius: 6px 6px 0 0;
+            cursor: move;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 3px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+        
+        .internal-tab-button.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        .internal-tab-button.drag-over {
+            border-top: 3px solid var(--primary-blue);
+        }
+        
+        .internal-tab-button:hover {
+            background-color: #dcdcdc;
+        }
+        
+        .internal-tab-button.active {
+            background-color: var(--white);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            border-bottom: 1px solid var(--white);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .internal-tab-button.locked {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .tab-edit-btn, .tab-delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 5px;
+            font-size: 12px;
+            color: var(--dark-gray);
+            margin-left: 5px;
+        }
+        
+        .tab-edit-btn:hover {
+            color: var(--primary-blue);
+        }
+        
+        .tab-delete-btn:hover {
+            color: var(--delete-red);
+        }
+        
+        .add-table-btn {
+            background-color: var(--green);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .add-table-btn:hover {
+            background-color: #218838;
+        }
+        
+        .add-table-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .table-content {
+            display: none;
+        }
+        
+        .table-content.active {
+            display: block;
+        }
+        
+        .table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .table-title {
+            font-size: 22px;
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .counter {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--primary-blue);
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border: 1px solid var(--gray);
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: var(--white);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        th, td {
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            text-align: left;
+            font-size: 14px;
+        }
+        
+        thead th {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        
+        td input[type="text"], td textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        td select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .quantity-value {
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .quantity-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .quantity-btn:hover {
+            background-color: #3a5a9d;
+        }
+        
+        .quantity-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .btn-edit {
+            background-color: var(--warning-orange);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-edit:hover {
+            background-color: #e0a800;
+        }
+        
+        .btn-edit:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .btn-delete {
+            background-color: var(--delete-red);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+        
+        .btn-delete:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .btn-view {
+            background-color: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .btn-view:hover {
+            background-color: #138496;
+        }
+        
+        .btn-view:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .movement-history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .movement-history-table th,
+        .movement-history-table td {
+            border: 1px solid #e9ecef;
+            padding: 8px;
+            text-align: left;
+            font-size: 13px;
+        }
+        
+        .movement-history-table th {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            font-weight: bold;
+        }
+        
+        .movement-history-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .movement-type {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .movement-type.retirada {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .movement-type.emprestimo {
+            background-color: #17a2b8;
+            color: #fff;
+        }
+        
+        .movement-type.devolucao {
+            background-color: #28a745;
+            color: #fff;
+        }
+        
+        .movement-type.entrada {
+            background-color: #28a745;
+            color: #fff;
+        }
+        
+        .movement-type.saida {
+            background-color: #dc3545;
+            color: #fff;
+        }
+        
+        .checkbox-cell {
+            text-align: center;
+        }
+        
+        .checkbox-cell input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .camera-modal-content {
+            max-width: 600px;
+        }
+        
+        .camera-container {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .camera-preview {
+            width: 100%;
+            max-width: 500px;
+            height: auto;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .btn-capture {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-capture:hover {
+            background-color: #3a5a9d;
+        }
+        
+        .btn-retake {
+            background-color: var(--warning-orange);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .btn-retake:hover {
+            background-color: #e0a800;
+        }
+        
+        .photo-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        
+        .photo-preview:hover {
+            border-color: var(--primary-blue);
+        }
+        
+        .photo-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .photo-modal.active {
+            display: flex;
+        }
+        
+        .photo-modal-content {
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .photo-modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            border-radius: 8px;
+        }
+        
+        .close-photo-modal {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close-photo-modal:hover {
+            color: #ccc;
+        }
+        
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin: 10px 0;
+        }
+        
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .radio-option input[type="radio"] {
+            margin: 0;
+        }
+        
+        .loan-info {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .loan-info.active {
+            display: block;
+        }
+        
+        .table-footer-controls {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-add {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-add:hover {
+            background-color: #3a5a9d;
+        }
+        
+        .btn-add:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: flex-start;
+            justify-content: center;
+            overflow-y: auto;
+            padding-top: 20px;
+            padding-bottom: 20px;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            min-width: 400px;
+            max-width: 600px;
+            width: 90%;
+            margin-top: 20px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: var(--primary-blue);
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--dark-gray);
+        }
+        
+        .close-modal:hover {
+            color: var(--delete-red);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--dark-gray);
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn-save {
+            background-color: var(--green);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .btn-save:hover {
+            background-color: #218838;
+        }
+        
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .btn-cancel:hover {
+            background-color: #5a6268;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--dark-gray);
+        }
+        
+        .empty-state i {
+            font-size: 48px;
+            color: var(--gray);
+            margin-bottom: 15px;
+        }
+        
+        .search-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+        
+        .search-btn {
+            background-color: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .search-btn:hover {
+            background-color: #3a5a9d;
+        }
+        
+        .search-btn i {
+            font-size: 16px;
+        }
+        
+        .similar-items-section {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border: 2px solid var(--warning-orange);
+            border-radius: 8px;
+        }
+        
+        .similar-items-section h4 {
+            margin-top: 0;
+            color: var(--warning-orange);
+            font-size: 16px;
+        }
+        
+        .similar-items-list {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+        
+        .similar-items-list li {
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .similar-items-list li:hover {
+            background-color: #ffe69c;
+        }
+        
+        tr.hidden {
+            display: none;
+        }
+        
+        tr.highlight {
+            background-color: #d4edda !important;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="main-container">
+            <!-- Barra de ações principais -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 10px; padding: 10px; background-color: #f8f9fa; border-radius: 8px;">
+                <button id="importBackupBtn" class="btn-view" style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 14px; font-weight: bold;">
+                    <i class="fas fa-upload"></i> Importar Backup
+                </button>
+            </div>
+            
+            <div class="internal-tabs-container">
+                <div class="internal-tabs" id="internalTabs">
+                    <!-- Abas internas serão criadas dinamicamente -->
+                </div>
+            </div>
+            
+            <div id="tablesContainer">
+                <!-- Conteúdo das tabelas será criado dinamicamente -->
+            </div>
+        </div>
+    </main>
+    
+    <!-- Input oculto para importar backup -->
+    <input type="file" id="backupImportInput" accept=".json" style="display: none;">
+    
+    <!-- Modal para adicionar/editar material -->
+    <div id="materialModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Adicionar Material</h3>
+                <button class="close-modal" onclick="closeMaterialModal()">&times;</button>
+            </div>
+            <form id="materialForm">
+                <div class="form-group">
+                    <label for="materialName">Nome do Material:</label>
+                    <input type="text" id="materialName" required>
+                </div>
+                <div class="form-group">
+                    <label for="materialQuantity">Quantidade Inicial:</label>
+                    <input type="number" id="materialQuantity" min="0" step="0.01" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="materialUnit">Unidade:</label>
+                    <select id="materialUnit" required>
+                        <option value="Unidade">Unidade</option>
+                        <option value="Kg">Kg</option>
+                        <option value="Litro">Litro</option>
+                        <option value="Metro">Metro</option>
+                        <option value="Caixa">Caixa</option>
+                        <option value="Pacote">Pacote</option>
+                        <option value="Rolo">Rolo</option>
+                        <option value="Par">Par</option>
+                        <option value="Dúzia">Dúzia</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="materialObservations">Observações:</label>
+                    <textarea id="materialObservations" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeMaterialModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para criar nova tabela -->
+    <div id="newTableModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nova Tabela</h3>
+                <button class="close-modal" onclick="closeNewTableModal()">&times;</button>
+            </div>
+            <form id="newTableForm">
+                <div class="form-group">
+                    <label for="tableName">Nome da Tabela:</label>
+                    <input type="text" id="tableName" required placeholder="Ex: Equipamentos Médicos">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeNewTableModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Criar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para renomear tabela -->
+    <div id="renameTableModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Renomear Tabela</h3>
+                <button class="close-modal" onclick="closeRenameTableModal()">&times;</button>
+            </div>
+            <form id="renameTableForm">
+                <div class="form-group">
+                    <label for="renameTableName">Novo Nome:</label>
+                    <input type="text" id="renameTableName" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeRenameTableModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Renomear</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para "Nenhum Item Encontrado" -->
+    <div id="noResultsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nenhum Item Encontrado</h3>
+                <button class="close-modal" onclick="closeNoResultsModal()">&times;</button>
+            </div>
+            <div id="noResultsContent">
+                <p>Nenhum material foi encontrado com o termo de busca informado.</p>
+                <div id="similarItemsContainer" style="display: none;">
+                    <div class="similar-items-section">
+                        <h4>Itens que se aproximam da busca realizada:</h4>
+                        <ul class="similar-items-list" id="similarItemsList"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeNoResultsModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para registro de retirada/empréstimo -->
+    <div id="withdrawalModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="withdrawalModalTitle">Registrar Retirada/Empréstimo</h3>
+                <button class="close-modal" onclick="closeWithdrawalModal()">&times;</button>
+            </div>
+            <form id="withdrawalForm">
+                <div class="form-group">
+                    <label>Tipo de Movimentação:</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="typeRetirada" name="movementType" value="retirada" checked onchange="toggleLoanInfo()">
+                            <label for="typeRetirada">Retirada</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="typeEmprestimo" name="movementType" value="emprestimo" onchange="toggleLoanInfo()">
+                            <label for="typeEmprestimo">Empréstimo</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="withdrawalQuantity">Quantidade Retirada:</label>
+                    <input type="number" id="withdrawalQuantity" min="1" step="0.01" required readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label for="withdrawalReason">Explicação do motivo da retirada:</label>
+                    <textarea id="withdrawalReason" rows="3" required placeholder="Descreva o motivo da retirada do material..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="withdrawalResponsible">Nome do Responsável:</label>
+                    <input type="text" id="withdrawalResponsible" required placeholder="Digite o nome do responsável...">
+                </div>
+                
+                <div class="loan-info" id="loanInfo">
+                    <h4 style="margin-top: 0;">Informações do Empréstimo</h4>
+                    <div class="form-group">
+                        <label for="loanReturnDate">Data Prevista para Devolução:</label>
+                        <input type="date" id="loanReturnDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="loanDestination">Destino/Setor:</label>
+                        <input type="text" id="loanDestination" placeholder="Ex: Setor de Manutenção, Unidade X...">
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeWithdrawalModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal para visualizar histórico de movimentações -->
+    <div id="historyModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 id="historyModalTitle">Histórico de Movimentações</h3>
+                <button class="close-modal" onclick="closeHistoryModal()">&times;</button>
+            </div>
+            <div id="historyContent">
+                <p id="historyMaterialName" style="font-weight: bold; font-size: 16px; margin-bottom: 15px;"></p>
+                <div id="historyTableContainer" style="max-height: 500px; overflow-y: auto;">
+                    <table class="movement-history-table">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Tipo</th>
+                                <th>Quantidade</th>
+                                <th>Responsável</th>
+                                <th>Motivo</th>
+                                <th>Detalhes</th>
+                                <th>Foto</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeHistoryModal()">Fechar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para empréstimo -->
+    <div id="loanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="loanModalTitle">Registrar Empréstimo</h3>
+                <button class="close-modal" onclick="closeLoanModal()">&times;</button>
+            </div>
+            <form id="loanForm">
+                <div class="form-group">
+                    <label for="loanLender">Nome de quem empresta:</label>
+                    <input type="text" id="loanLender" required placeholder="Digite o nome de quem empresta...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="loanBorrower">Nome de quem pegou emprestado:</label>
+                    <input type="text" id="loanBorrower" required placeholder="Digite o nome de quem pegou emprestado...">
+                </div>
+                
+                <div class="form-group">
+                    <label for="loanObservation">Observação:</label>
+                    <textarea id="loanObservation" rows="3" placeholder="Digite observações sobre o empréstimo..."></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeLoanModal()">Cancelar</button>
+                    <button type="button" class="btn-save" onclick="confirmLoanWithoutPhoto()">Registrar sem Foto</button>
+                    <button type="button" class="btn-save" onclick="openCameraModal()">Registrar com Foto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal de câmera -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content camera-modal-content">
+            <div class="modal-header">
+                <h3>Capturar Foto</h3>
+                <button class="close-modal" onclick="closeCameraModal()">&times;</button>
+            </div>
+            <div class="camera-container">
+                <video id="cameraVideo" class="camera-preview" autoplay playsinline style="display: none;"></video>
+                <canvas id="cameraCanvas" style="display: none;"></canvas>
+                <img id="capturedPhoto" class="camera-preview" style="display: none;">
+                <div id="cameraPlaceholder" style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-camera" style="font-size: 48px; margin-bottom: 15px;"></i>
+                    <p>Iniciando câmera...</p>
+                </div>
+            </div>
+            <div class="camera-controls" id="cameraControls" style="display: none;">
+                <button type="button" class="btn-capture" onclick="capturePhoto()">
+                    <i class="fas fa-camera"></i> Capturar Foto
+                </button>
+            </div>
+            <div class="camera-controls" id="photoControls" style="display: none;">
+                <button type="button" class="btn-retake" onclick="retakePhoto()">Tirar Novamente</button>
+                <button type="button" class="btn-save" onclick="confirmPhoto()">Confirmar Foto</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeCameraModal()">Cancelar</button>
+                <button type="button" class="btn-save" onclick="confirmPhotoWithoutCapture()" style="background-color: var(--warning-orange);">Continuar sem Foto</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para visualizar foto -->
+    <div id="photoModal" class="photo-modal">
+        <span class="close-photo-modal" onclick="closePhotoModal()">&times;</span>
+        <div class="photo-modal-content">
+            <img id="photoModalImage" src="" alt="Foto">
+        </div>
+    </div>
+    
+    <!-- Modal para confirmar exclusão com senha -->
+    <div id="deleteMovementModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirmar Exclusão</h3>
+                <button class="close-modal" onclick="closeDeleteMovementModal()">&times;</button>
+            </div>
+            <div>
+                <p style="margin-bottom: 15px;">Para excluir este registro, digite a senha do sistema:</p>
+                <div class="form-group">
+                    <label for="deletePassword">Senha:</label>
+                    <input type="password" id="deletePassword" required placeholder="Digite a senha...">
+                </div>
+                <p style="color: #dc3545; font-size: 12px; margin-top: 10px;">
+                    <i class="fas fa-exclamation-triangle"></i> Esta ação não pode ser desfeita.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeDeleteMovementModal()">Cancelar</button>
+                <button type="button" class="btn-delete" onclick="confirmDeleteMovement()">Excluir</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para confirmar devolução -->
+    <div id="returnLoanModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="returnLoanModalTitle">Confirmar Devolução</h3>
+                <button class="close-modal" onclick="closeReturnLoanModal()">&times;</button>
+            </div>
+            <div>
+                <p style="margin-bottom: 15px;" id="returnLoanMessage">Deseja confirmar a devolução deste empréstimo?</p>
+                <div class="form-group">
+                    <label>Data e Hora da Devolução:</label>
+                    <input type="text" id="returnLoanDateTime" readonly style="font-weight: bold; font-size: 16px;">
+                </div>
+                <div class="form-group">
+                    <label for="returnLoanObservation">Observação (opcional):</label>
+                    <textarea id="returnLoanObservation" rows="3" placeholder="Digite observações sobre a devolução..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeReturnLoanModal()">Cancelar</button>
+                <button type="button" class="btn-save" onclick="confirmReturnLoan()">Confirmar Devolução</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para registro de entrada/saída de quantidade -->
+    <div id="quantityChangeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="quantityChangeModalTitle">Registrar Movimentação de Quantidade</h3>
+                <button class="close-modal" onclick="cancelQuantityChange()">&times;</button>
+            </div>
+            <form id="quantityChangeForm">
+                <div class="form-group">
+                    <label id="quantityChangeLabel">Quantidade:</label>
+                    <input type="number" id="quantityChangeAmount" readonly style="font-weight: bold; font-size: 18px;">
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantityChangeReason">Motivo da <span id="movementTypeLabel">movimentação</span>:</label>
+                    <textarea id="quantityChangeReason" rows="3" required placeholder="Descreva o motivo da movimentação..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="quantityChangeResponsible">Nome do Responsável:</label>
+                    <input type="text" id="quantityChangeResponsible" required placeholder="Digite o nome do responsável...">
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="cancelQuantityChange()">Cancelar</button>
+                    <button type="submit" class="btn-save">Confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script src="theme-listener.js"></script>
+    <script>
+        let isLocked = true;
+        let equipamentosData = {};
+        let currentTableId = null;
+        let editingMaterialId = null;
+        let renamingTableId = null;
+        let allMaterialsCache = []; // Cache de todos os materiais para busca
+        let pendingWithdrawal = null; // Armazena dados da retirada pendente
+        let movementsHistory = {}; // Histórico de movimentações
+        let quantityChangeTimers = {}; // Timers para mudanças de quantidade
+        let pendingQuantityChange = null; // Mudança de quantidade pendente
+        let pendingLoan = null; // Empréstimo pendente
+        let capturedPhoto = null; // Foto capturada
+        let cameraStream = null; // Stream da câmera
+        let tabOrder = []; // Ordem das abas para drag and drop
+        let pendingMovementDelete = null; // Movimentação pendente para exclusão
+        let pendingReturnLoan = null; // Devolução de empréstimo pendente
+        
+        const STORAGE_KEY = 'equipamentosSuprimentos';
+        const MOVEMENTS_STORAGE_KEY = 'equipamentosMovements';
+        const UNIDADES = ['Unidade', 'Kg', 'Litro', 'Metro', 'Caixa', 'Pacote', 'Rolo', 'Par', 'Dúzia'];
+        
+        // Função de inicialização
+        function initializeApp() {
+            try {
+                if (typeof loadTabOrder === 'function') {
+                    loadTabOrder();
+                } else {
+                    console.error('loadTabOrder não está definida');
+                }
+                
+                if (typeof loadData === 'function') {
+                    loadData();
+                } else {
+                    console.error('loadData não está definida');
+                }
+                
+                if (typeof loadMovementsHistory === 'function') {
+                    loadMovementsHistory();
+                } else {
+                    console.error('loadMovementsHistory não está definida');
+                }
+                
+                if (typeof renderTabs === 'function') {
+                    renderTabs();
+                } else {
+                    console.error('renderTabs não está definida');
+                }
+                
+                if (typeof setupEventListeners === 'function') {
+                    setupEventListeners();
+                } else {
+                    console.error('setupEventListeners não está definida');
+                }
+                
+                // Configurar listener de importação
+                setupImportListener();
+                
+                // Configurar botão de importar backup
+                const importBackupBtn = document.getElementById('importBackupBtn');
+                if (importBackupBtn) {
+                    importBackupBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const importInput = document.getElementById('backupImportInput');
+                        if (importInput) {
+                            importInput.click();
+                        } else {
+                            console.error('Input de importação não encontrado');
+                        }
+                    });
+                }
+                
+                if (typeof checkLockState === 'function') {
+                    checkLockState();
+                } else {
+                    console.error('checkLockState não está definida');
+                }
+                
+                // Escutar mensagens de bloqueio
+                window.addEventListener('message', function(event) {
+                    if (event.data?.type === 'lock_state_change') {
+                        isLocked = event.data.locked;
+                        if (typeof updateLockState === 'function') {
+                            updateLockState();
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+                console.error('Stack trace:', error.stack);
+            }
+        }
+        
+        // Inicialização - verificar se DOM já está carregado
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            // DOM já está carregado, executar imediatamente
+            initializeApp();
+        }
+        
+        // Carregar histórico de movimentações
+        function loadMovementsHistory() {
+            try {
+                const stored = localStorage.getItem(MOVEMENTS_STORAGE_KEY);
+                if (stored) {
+                    movementsHistory = JSON.parse(stored);
+                } else {
+                    movementsHistory = {};
+                }
+            } catch (e) {
+                console.error('Erro ao carregar histórico de movimentações:', e);
+                movementsHistory = {};
+            }
+        }
+        
+        // Salvar histórico de movimentações
+        function saveMovementsHistory() {
+            try {
+                localStorage.setItem(MOVEMENTS_STORAGE_KEY, JSON.stringify(movementsHistory));
+            } catch (e) {
+                console.error('Erro ao salvar histórico de movimentações:', e);
+            }
+        }
+        
+        // Obter chave única para o material
+        function getMaterialKey(tableId, materialIndex) {
+            const material = equipamentosData[tableId]?.materials[materialIndex];
+            if (!material) return null;
+            // Usar nome do material e ID da tabela para criar chave única
+            // Isso permite rastrear mesmo se o índice mudar
+            return `${tableId}_${material.name}_${material.id || materialIndex}`;
+        }
+        
+        // Carregar dados do localStorage
+        function loadData() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    equipamentosData = JSON.parse(stored);
+                } else {
+                    // Criar tabela padrão
+                    const defaultTableId = 'table_' + Date.now();
+                    equipamentosData = {
+                        [defaultTableId]: {
+                            name: 'Tabela Principal',
+                            materials: []
+                        }
+                    };
+                    saveData();
+                }
+            } catch (e) {
+                console.error('Erro ao carregar dados:', e);
+                equipamentosData = {};
+            }
+        }
+        
+        // Salvar dados no localStorage
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(equipamentosData));
+                window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+            } catch (e) {
+                console.error('Erro ao salvar dados:', e);
+                alert('Erro ao salvar os dados. Verifique o espaço disponível.');
+            }
+        }
+        
+        // Renderizar abas internas
+        function renderTabs() {
+            const tabsContainer = document.getElementById('internalTabs');
+            tabsContainer.innerHTML = '';
+            
+            const tableIds = Object.keys(equipamentosData);
+            
+            if (tableIds.length === 0) {
+                // Quando não há tabelas, mostrar apenas o botão para criar
+                const addButton = document.createElement('button');
+                addButton.className = 'add-table-btn';
+                addButton.innerHTML = '<i class="fas fa-plus"></i> Criar Primeira Tabela';
+                addButton.disabled = false;
+                addButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof openNewTableModal === 'function') {
+                        openNewTableModal();
+                    } else {
+                        console.error('openNewTableModal não está definida');
+                    }
+                });
+                tabsContainer.appendChild(addButton);
+                
+                // Limpar container de tabelas
+                const container = document.getElementById('tablesContainer');
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-table" style="font-size: 64px; color: var(--gray); margin-bottom: 20px;"></i>
+                        <h3 style="color: var(--dark-gray); margin-bottom: 10px;">Nenhuma tabela criada</h3>
+                        <p style="color: var(--dark-gray); font-size: 16px;">Clique no botão "+" acima para criar sua primeira tabela de equipamentos e suprimentos.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Usar ordem salva ou ordem atual
+            if (tabOrder.length === 0 || tabOrder.length !== tableIds.length) {
+                tabOrder = [...tableIds];
+            }
+            
+            // Reordenar baseado na ordem salva
+            const orderedIds = tabOrder.filter(id => tableIds.includes(id));
+            const newIds = tableIds.filter(id => !tabOrder.includes(id));
+            const finalOrder = [...orderedIds, ...newIds];
+            
+            // Adicionar aba "Empréstimo" após a Tabela Principal
+            const mainTableId = findMainTableId();
+            const emprestimoTabId = 'emprestimo-tab';
+            
+            finalOrder.forEach(tableId => {
+                const table = equipamentosData[tableId];
+                const tabButton = document.createElement('button');
+                tabButton.className = 'internal-tab-button';
+                tabButton.dataset.tableId = tableId;
+                tabButton.draggable = true;
+                tabButton.innerHTML = `
+                    <span>${table.name}</span>
+                    ${!isLocked ? `
+                        <button class="tab-edit-btn" onclick="openRenameTableModal('${tableId}')" title="Renomear">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="tab-delete-btn" onclick="deleteTable('${tableId}')" title="Excluir">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    ` : ''}
+                `;
+                
+                // Event listeners para drag and drop
+                tabButton.addEventListener('dragstart', handleTabDragStart);
+                tabButton.addEventListener('dragover', handleTabDragOver);
+                tabButton.addEventListener('drop', handleTabDrop);
+                tabButton.addEventListener('dragend', handleTabDragEnd);
+                
+                tabButton.addEventListener('click', function(e) {
+                    if (e.target.closest('.tab-edit-btn') || e.target.closest('.tab-delete-btn')) {
+                        return;
+                    }
+                    switchTable(tableId);
+                });
+                
+                tabsContainer.appendChild(tabButton);
+            });
+            
+            // Adicionar aba "Empréstimo" após a Tabela Principal
+            if (mainTableId) {
+                const emprestimoTabButton = document.createElement('button');
+                emprestimoTabButton.className = 'internal-tab-button';
+                emprestimoTabButton.dataset.tableId = 'emprestimo-tab';
+                emprestimoTabButton.innerHTML = '<span>Empréstimo</span>';
+                emprestimoTabButton.addEventListener('click', function(e) {
+                    switchTable('emprestimo-tab');
+                });
+                
+                // Inserir após a Tabela Principal
+                const mainTableButton = tabsContainer.querySelector(`[data-table-id="${mainTableId}"]`);
+                if (mainTableButton && mainTableButton.nextSibling) {
+                    tabsContainer.insertBefore(emprestimoTabButton, mainTableButton.nextSibling);
+                } else if (mainTableButton) {
+                    tabsContainer.appendChild(emprestimoTabButton);
+                } else {
+                    // Se não encontrar a Tabela Principal, adicionar no início
+                    tabsContainer.insertBefore(emprestimoTabButton, tabsContainer.firstChild);
+                }
+            }
+            
+            // Botão para adicionar nova tabela (sempre habilitado)
+            const addButton = document.createElement('button');
+            addButton.className = 'add-table-btn';
+            addButton.innerHTML = '<i class="fas fa-plus"></i> Nova Tabela';
+            addButton.disabled = false;
+            addButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof openNewTableModal === 'function') {
+                    openNewTableModal();
+                } else {
+                    console.error('openNewTableModal não está definida');
+                }
+            });
+            tabsContainer.appendChild(addButton);
+            
+            // Ativar primeira tabela se não houver nenhuma ativa
+            if (!currentTableId && finalOrder.length > 0) {
+                switchTable(finalOrder[0]);
+            } else if (currentTableId && finalOrder.includes(currentTableId)) {
+                switchTable(currentTableId);
+            }
+        }
+        
+        // Funções de drag and drop para abas
+        let draggedTab = null;
+        
+        function handleTabDragStart(e) {
+            draggedTab = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+        
+        function handleTabDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            
+            if (this !== draggedTab && this.classList.contains('internal-tab-button')) {
+                this.classList.add('drag-over');
+            }
+            return false;
+        }
+        
+        function handleTabDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (draggedTab !== this && this.classList.contains('internal-tab-button')) {
+                const tabsContainer = document.getElementById('internalTabs');
+                const tabs = Array.from(tabsContainer.querySelectorAll('.internal-tab-button'));
+                const draggedIndex = tabs.indexOf(draggedTab);
+                const targetIndex = tabs.indexOf(this);
+                
+                if (draggedIndex < targetIndex) {
+                    tabsContainer.insertBefore(draggedTab, this.nextSibling);
+                } else {
+                    tabsContainer.insertBefore(draggedTab, this);
+                }
+                
+                // Atualizar ordem
+                const newOrder = Array.from(tabsContainer.querySelectorAll('.internal-tab-button'))
+                    .map(btn => btn.dataset.tableId)
+                    .filter(id => id);
+                tabOrder = newOrder;
+                saveTabOrder();
+            }
+            
+            this.classList.remove('drag-over');
+            return false;
+        }
+        
+        function handleTabDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.internal-tab-button').forEach(tab => {
+                tab.classList.remove('drag-over');
+            });
+            draggedTab = null;
+        }
+        
+        // Salvar ordem das abas
+        function saveTabOrder() {
+            try {
+                localStorage.setItem('equipamentosTabOrder', JSON.stringify(tabOrder));
+            } catch (e) {
+                console.error('Erro ao salvar ordem das abas:', e);
+            }
+        }
+        
+        // Carregar ordem das abas
+        function loadTabOrder() {
+            try {
+                const stored = localStorage.getItem('equipamentosTabOrder');
+                if (stored) {
+                    tabOrder = JSON.parse(stored);
+                }
+            } catch (e) {
+                console.error('Erro ao carregar ordem das abas:', e);
+                tabOrder = [];
+            }
+        }
+        
+        // Alternar entre tabelas
+        function switchTable(tableId) {
+            currentTableId = tableId;
+            
+            // Atualizar botões das abas
+            document.querySelectorAll('.internal-tab-button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tableId === tableId) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Renderizar conteúdo da tabela
+            if (tableId === 'emprestimo-tab') {
+                renderLoanTable();
+            } else {
+                renderTable(tableId);
+            }
+        }
+        
+        // Coletar todos os materiais de todas as abas
+        function getAllMaterials() {
+            allMaterialsCache = [];
+            const tableIds = Object.keys(equipamentosData);
+            
+            tableIds.forEach(tableId => {
+                const table = equipamentosData[tableId];
+                if (table && table.materials) {
+                    table.materials.forEach((material, index) => {
+                        allMaterialsCache.push({
+                            ...material,
+                            tableId: tableId,
+                            tableName: table.name,
+                            originalIndex: index
+                        });
+                    });
+                }
+            });
+            
+            return allMaterialsCache;
+        }
+        
+        // Renderizar tabela de materiais
+        function renderTable(tableId) {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+            
+            const table = equipamentosData[tableId];
+            if (!table) return;
+            
+            const tableDiv = document.createElement('div');
+            tableDiv.className = 'table-content active';
+            tableDiv.id = `table-${tableId}`;
+            
+            const controls = document.createElement('div');
+            controls.className = 'table-controls';
+            
+            // Verificar se é a Tabela Principal
+            const isMainTable = table.name === 'Tabela Principal';
+            let materialsToShow = [];
+            let totalCount = 0;
+            
+            if (isMainTable) {
+                // Coletar todos os materiais de todas as abas
+                materialsToShow = getAllMaterials();
+                totalCount = materialsToShow.length;
+            } else {
+                materialsToShow = table.materials.map((m, idx) => ({
+                    ...m,
+                    tableId: tableId,
+                    tableName: table.name,
+                    originalIndex: idx
+                }));
+                totalCount = materialsToShow.length;
+            }
+            
+            // Criar container para título e controles
+            const titleContainer = document.createElement('div');
+            titleContainer.style.display = 'flex';
+            titleContainer.style.alignItems = 'center';
+            titleContainer.style.gap = '15px';
+            titleContainer.style.flexWrap = 'wrap';
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.style.display = 'flex';
+            titleDiv.style.alignItems = 'center';
+            titleDiv.style.gap = '15px';
+            titleDiv.style.flex = '1';
+            
+            const title = document.createElement('h2');
+            title.className = 'table-title';
+            title.textContent = table.name;
+            titleDiv.appendChild(title);
+            
+            const counter = document.createElement('div');
+            counter.className = 'counter';
+            counter.textContent = `Materiais: ${totalCount}`;
+            titleDiv.appendChild(counter);
+            
+            // Botão de importar backup
+            const importBtn = document.createElement('button');
+            importBtn.className = 'btn-view';
+            importBtn.innerHTML = '<i class="fas fa-upload"></i> Importar Backup';
+            importBtn.style.marginLeft = 'auto';
+            importBtn.onclick = function() {
+                document.getElementById('backupImportInput').click();
+            };
+            titleContainer.appendChild(titleDiv);
+            titleContainer.appendChild(importBtn);
+            
+            controls.appendChild(titleContainer);
+            
+            // Adicionar campo de busca apenas na Tabela Principal
+            let searchContainer = null;
+            if (isMainTable) {
+                searchContainer = document.createElement('div');
+                searchContainer.className = 'search-container';
+                searchContainer.innerHTML = `
+                    <input type="text" 
+                           id="searchInput" 
+                           class="search-input" 
+                           placeholder="Buscar por nome do material..."
+                           onkeyup="handleSearch(event)">
+                    <button class="search-btn" onclick="performSearch()">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                `;
+            }
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'table-container';
+            
+            if (materialsToShow.length === 0) {
+                tableContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-box-open"></i>
+                        <p>Nenhum material cadastrado${isMainTable ? ' em nenhuma tabela' : ' nesta tabela'}.</p>
+                        <p>Clique em "Adicionar Material" para começar.</p>
+                    </div>
+                `;
+            } else {
+                const tableEl = document.createElement('table');
+                const thead = tableEl.createTHead();
+                const headerRow = thead.insertRow();
+                
+                // Cabeçalhos da tabela
+                const headers = ['Nome do Material', 'Quantidade', 'Unidade', 'Observações'];
+                if (!isMainTable) {
+                    headers.push('Empréstimo');
+                }
+                if (isMainTable) {
+                    headers.push('Aba de Origem');
+                }
+                headers.push('Ações');
+                
+                headers.forEach(headerText => {
+                    const th = document.createElement('th');
+                    th.textContent = headerText;
+                    headerRow.appendChild(th);
+                });
+                
+                const tbody = document.createElement('tbody');
+                tbody.id = `materials-${tableId}`;
+                
+                materialsToShow.forEach((material) => {
+                    const row = document.createElement('tr');
+                    row.dataset.materialName = material.name.toLowerCase();
+                    row.dataset.tableId = material.tableId;
+                    row.dataset.originalIndex = material.originalIndex;
+                    
+                    // Nome do Material
+                    const nameCell = row.insertCell();
+                    nameCell.textContent = material.name;
+                    
+                    // Quantidade
+                    const qtyCell = row.insertCell();
+                    if (isMainTable) {
+                        qtyCell.innerHTML = `
+                            <div class="quantity-controls">
+                                <span class="quantity-value">${material.quantity}</span>
+                            </div>
+                        `;
+                    } else {
+                        qtyCell.innerHTML = `
+                            <div class="quantity-controls">
+                                <button class="quantity-btn" onclick="adjustQuantity('${material.tableId}', ${material.originalIndex}, -1)">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <span class="quantity-value">${material.quantity}</span>
+                                <button class="quantity-btn" onclick="adjustQuantity('${material.tableId}', ${material.originalIndex}, 1)">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
+                    // Unidade
+                    const unitCell = row.insertCell();
+                    unitCell.textContent = material.unit;
+                    
+                    // Observações
+                    const obsCell = row.insertCell();
+                    obsCell.textContent = material.observations || '-';
+                    
+                    // Checkbox de Empréstimo (apenas nas outras abas, não na Tabela Principal)
+                    if (!isMainTable) {
+                        const loanCell = row.insertCell();
+                        loanCell.className = 'checkbox-cell';
+                        // Usar data attribute para facilitar busca posterior
+                        loanCell.innerHTML = `
+                            <input type="checkbox" 
+                                   data-table-id="${material.tableId}"
+                                   data-material-index="${material.originalIndex}"
+                                   onchange="handleLoanCheckbox('${material.tableId}', ${material.originalIndex}, this.checked)"
+                                   ${material.onLoan ? 'checked' : ''}>
+                        `;
+                    }
+                    
+                    // Aba de Origem (apenas na Tabela Principal)
+                    if (isMainTable) {
+                        const originCell = row.insertCell();
+                        originCell.textContent = material.tableName;
+                    }
+                    
+                    // Ações
+                    const actionsCell = row.insertCell();
+                    const materialKey = getMaterialKey(material.tableId, material.originalIndex);
+                    const hasHistory = materialKey && movementsHistory[materialKey] && movementsHistory[materialKey].length > 0;
+                    
+                    if (isMainTable) {
+                        actionsCell.innerHTML = `
+                            <div class="action-buttons">
+                                <button class="btn-view" onclick="viewMaterialHistory('${material.tableId}', ${material.originalIndex})" title="Ver histórico de movimentações">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-edit" onclick="editMaterial('${material.tableId}', ${material.originalIndex})">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-delete" onclick="deleteMaterial('${material.tableId}', ${material.originalIndex})">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        actionsCell.innerHTML = `
+                            <div class="action-buttons">
+                                <button class="btn-view" onclick="viewMaterialHistory('${material.tableId}', ${material.originalIndex})" title="Ver histórico de movimentações">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-edit" onclick="editMaterial('${material.tableId}', ${material.originalIndex})">
+                                    <i class="fas fa-edit"></i> Editar
+                                </button>
+                                <button class="btn-delete" onclick="deleteMaterial('${material.tableId}', ${material.originalIndex})">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </div>
+                        `;
+                    }
+                    
+                    tbody.appendChild(row);
+                });
+                
+                tableEl.appendChild(tbody);
+                tableContainer.appendChild(tableEl);
+            }
+            
+            const footer = document.createElement('div');
+            footer.className = 'table-footer-controls';
+            if (!isMainTable) {
+                footer.innerHTML = `
+                    <button class="btn-add" onclick="openMaterialModal('${tableId}')">
+                        <i class="fas fa-plus"></i> Adicionar Material
+                    </button>
+                `;
+            }
+            
+            tableDiv.appendChild(controls);
+            if (searchContainer) {
+                tableDiv.appendChild(searchContainer);
+            }
+            tableDiv.appendChild(tableContainer);
+            if (!isMainTable) {
+                tableDiv.appendChild(footer);
+            }
+            container.appendChild(tableDiv);
+        }
+        
+        // Encontrar ID da Tabela Principal
+        function findMainTableId() {
+            const tableIds = Object.keys(equipamentosData);
+            for (let tableId of tableIds) {
+                if (equipamentosData[tableId].name === 'Tabela Principal') {
+                    return tableId;
+                }
+            }
+            return null;
+        }
+        
+        // Renderizar tabela de empréstimos
+        function renderLoanTable() {
+            const container = document.getElementById('tablesContainer');
+            container.innerHTML = '';
+            
+            // Coletar todos os materiais emprestados de todas as tabelas
+            const emprestados = [];
+            const tableIds = Object.keys(equipamentosData);
+            
+            tableIds.forEach(tableId => {
+                const table = equipamentosData[tableId];
+                if (table && table.materials) {
+                    table.materials.forEach((material, index) => {
+                        if (material.onLoan) {
+                            emprestados.push({
+                                ...material,
+                                tableId: tableId,
+                                tableName: table.name,
+                                originalIndex: index
+                            });
+                        }
+                    });
+                }
+            });
+            
+            const tableDiv = document.createElement('div');
+            tableDiv.className = 'table-content active';
+            tableDiv.id = 'table-emprestimo-tab';
+            
+            const controls = document.createElement('div');
+            controls.className = 'table-controls';
+            
+            const titleContainer = document.createElement('div');
+            titleContainer.style.display = 'flex';
+            titleContainer.style.alignItems = 'center';
+            titleContainer.style.gap = '15px';
+            titleContainer.style.flexWrap = 'wrap';
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.style.display = 'flex';
+            titleDiv.style.alignItems = 'center';
+            titleDiv.style.gap = '15px';
+            titleDiv.style.flex = '1';
+            
+            const title = document.createElement('h2');
+            title.className = 'table-title';
+            title.textContent = 'Empréstimos';
+            titleDiv.appendChild(title);
+            
+            const counter = document.createElement('div');
+            counter.className = 'counter';
+            counter.textContent = `Materiais Emprestados: ${emprestados.length}`;
+            titleDiv.appendChild(counter);
+            
+            titleContainer.appendChild(titleDiv);
+            controls.appendChild(titleContainer);
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'table-container';
+            
+            if (emprestados.length === 0) {
+                tableContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-hand-holding"></i>
+                        <p>Nenhum material emprestado no momento.</p>
+                    </div>
+                `;
+            } else {
+                const tableEl = document.createElement('table');
+                const thead = tableEl.createTHead();
+                const headerRow = thead.insertRow();
+                
+                // Cabeçalhos da tabela
+                const headers = ['Nome do Material', 'Quantidade', 'Unidade', 'Aba de Origem', 'Observações', 'Devolver'];
+                
+                headers.forEach(headerText => {
+                    const th = document.createElement('th');
+                    th.textContent = headerText;
+                    headerRow.appendChild(th);
+                });
+                
+                const tbody = document.createElement('tbody');
+                tbody.id = 'materials-emprestimo-tab';
+                
+                emprestados.forEach((material) => {
+                    const row = document.createElement('tr');
+                    row.dataset.tableId = material.tableId;
+                    row.dataset.originalIndex = material.originalIndex;
+                    
+                    // Nome do Material
+                    const nameCell = row.insertCell();
+                    nameCell.textContent = material.name;
+                    
+                    // Quantidade
+                    const qtyCell = row.insertCell();
+                    qtyCell.innerHTML = `
+                        <div class="quantity-controls">
+                            <span class="quantity-value">${material.quantity}</span>
+                        </div>
+                    `;
+                    
+                    // Unidade
+                    const unitCell = row.insertCell();
+                    unitCell.textContent = material.unit;
+                    
+                    // Aba de Origem
+                    const originCell = row.insertCell();
+                    originCell.textContent = material.tableName;
+                    
+                    // Observações
+                    const obsCell = row.insertCell();
+                    obsCell.textContent = material.observations || '-';
+                    
+                    // Checkbox de Devolução
+                    const returnCell = row.insertCell();
+                    returnCell.className = 'checkbox-cell';
+                    returnCell.innerHTML = `
+                        <input type="checkbox" 
+                               data-table-id="${material.tableId}"
+                               data-material-index="${material.originalIndex}"
+                               checked
+                               onchange="handleLoanReturnCheckbox('${material.tableId}', ${material.originalIndex}, this.checked)">
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                tableEl.appendChild(tbody);
+                tableContainer.appendChild(tableEl);
+            }
+            
+            tableDiv.appendChild(controls);
+            tableDiv.appendChild(tableContainer);
+            container.appendChild(tableDiv);
+        }
+        
+        // Lidar com checkbox de devolução na aba Empréstimo
+        function handleLoanReturnCheckbox(tableId, materialIndex, checked) {
+            if (!checked) {
+                // Desmarcar = fazer devolução
+                const table = equipamentosData[tableId];
+                if (!table || !table.materials[materialIndex]) return;
+                
+                const material = table.materials[materialIndex];
+                const materialKey = getMaterialKey(tableId, materialIndex);
+                
+                // Verificar se há empréstimo pendente no histórico
+                if (materialKey && movementsHistory[materialKey]) {
+                    const pendingLoans = movementsHistory[materialKey].filter(m => 
+                        m.type === 'emprestimo' && m.status === 'pendente'
+                    );
+                    
+                    if (pendingLoans.length > 0) {
+                        // Abrir modal de confirmação de devolução
+                        pendingReturnLoan = {
+                            tableId: tableId,
+                            materialIndex: materialIndex,
+                            materialKey: materialKey,
+                            loan: pendingLoans[0]
+                        };
+                        openReturnLoanModal();
+                    } else {
+                        // Se não há empréstimo pendente, apenas desmarcar
+                        material.onLoan = false;
+                        saveData();
+                        
+                        // Atualizar aba de Empréstimo se estiver ativa
+                        if (currentTableId === 'emprestimo-tab') {
+                            renderLoanTable();
+                        }
+                        
+                        // Atualizar outras abas se necessário
+                        if (currentTableId && currentTableId !== 'emprestimo-tab') {
+                            renderTable(currentTableId);
+                        }
+                    }
+                } else {
+                    // Se não há histórico, apenas desmarcar
+                    material.onLoan = false;
+                    saveData();
+                    
+                    // Atualizar aba de Empréstimo se estiver ativa
+                    if (currentTableId === 'emprestimo-tab') {
+                        renderLoanTable();
+                    }
+                    
+                    // Atualizar outras abas se necessário
+                    if (currentTableId && currentTableId !== 'emprestimo-tab') {
+                        renderTable(currentTableId);
+                    }
+                }
+            } else {
+                // Se marcou novamente, manter marcado (não fazer nada)
+                // Mas isso não deveria acontecer normalmente
+            }
+        }
+        
+        // Ajustar quantidade com timer de 3 segundos
+        function adjustQuantity(tableId, materialIndex, change) {
+            const table = equipamentosData[tableId];
+            if (!table || !table.materials[materialIndex]) return;
+            
+            const material = table.materials[materialIndex];
+            const oldQuantity = material.quantity;
+            const newQuantity = Math.max(0, material.quantity + change);
+            const quantityChange = Math.abs(newQuantity - oldQuantity);
+            
+            // Se não houve mudança real, não fazer nada
+            if (quantityChange === 0) return;
+            
+            // Criar chave única para este material
+            const timerKey = `${tableId}_${materialIndex}`;
+            
+            // Se houver uma mudança pendente de outro material, cancelá-la
+            if (pendingQuantityChange && 
+                (pendingQuantityChange.tableId !== tableId || pendingQuantityChange.materialIndex !== materialIndex)) {
+                // Reverter mudança anterior
+                const prevTable = equipamentosData[pendingQuantityChange.tableId];
+                if (prevTable && prevTable.materials[pendingQuantityChange.materialIndex]) {
+                    prevTable.materials[pendingQuantityChange.materialIndex].quantity = pendingQuantityChange.oldQuantity;
+                    saveData();
+                    renderTable(pendingQuantityChange.tableId);
+                }
+                // Cancelar timer anterior
+                const prevTimerKey = `${pendingQuantityChange.tableId}_${pendingQuantityChange.materialIndex}`;
+                if (quantityChangeTimers[prevTimerKey]) {
+                    clearTimeout(quantityChangeTimers[prevTimerKey]);
+                    delete quantityChangeTimers[prevTimerKey];
+                }
+            }
+            
+            // Cancelar timer anterior deste material se existir
+            if (quantityChangeTimers[timerKey]) {
+                clearTimeout(quantityChangeTimers[timerKey]);
+                delete quantityChangeTimers[timerKey];
+            }
+            
+            // Aplicar mudança imediatamente na interface
+            material.quantity = newQuantity;
+            saveData();
+            renderTable(tableId);
+            
+            // Se estiver na Tabela Principal, recarregar para atualizar dados
+            const mainTableId = findMainTableId();
+            if (mainTableId && currentTableId === mainTableId) {
+                renderTable(mainTableId);
+            }
+            
+            // Armazenar dados da mudança pendente
+            pendingQuantityChange = {
+                tableId: tableId,
+                materialIndex: materialIndex,
+                oldQuantity: oldQuantity,
+                newQuantity: newQuantity,
+                change: change,
+                quantityChange: quantityChange,
+                materialName: material.name
+            };
+            
+            // Iniciar timer de 3 segundos
+            quantityChangeTimers[timerKey] = setTimeout(function() {
+                // Verificar se ainda é a mudança pendente atual
+                if (pendingQuantityChange && 
+                    pendingQuantityChange.tableId === tableId && 
+                    pendingQuantityChange.materialIndex === materialIndex) {
+                    // Abrir modal após 3 segundos
+                    openQuantityChangeModal(pendingQuantityChange);
+                }
+                delete quantityChangeTimers[timerKey];
+            }, 3000);
+        }
+        
+        // Abrir modal de mudança de quantidade
+        function openQuantityChangeModal(data) {
+            const modal = document.getElementById('quantityChangeModal');
+            const title = document.getElementById('quantityChangeModalTitle');
+            const amountInput = document.getElementById('quantityChangeAmount');
+            const typeLabel = document.getElementById('movementTypeLabel');
+            const reasonLabel = document.querySelector('#quantityChangeForm label[for="quantityChangeReason"]');
+            
+            if (!modal || !data) return;
+            
+            const isIncrease = data.change > 0;
+            const movementType = isIncrease ? 'entrada' : 'saída';
+            
+            if (title) {
+                title.textContent = `Registrar ${movementType.charAt(0).toUpperCase() + movementType.slice(1)} - ${data.materialName}`;
+            }
+            
+            if (amountInput) {
+                amountInput.value = data.quantityChange;
+            }
+            
+            if (typeLabel) {
+                typeLabel.textContent = movementType;
+            }
+            
+            if (reasonLabel) {
+                reasonLabel.textContent = `Motivo da ${movementType}:`;
+            }
+            
+            // Limpar formulário
+            document.getElementById('quantityChangeForm').reset();
+            document.getElementById('quantityChangeAmount').value = data.quantityChange;
+            
+            modal.classList.add('active');
+        }
+        
+        // Cancelar mudança de quantidade e reverter
+        function cancelQuantityChange() {
+            const modal = document.getElementById('quantityChangeModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            
+            if (pendingQuantityChange) {
+                // Cancelar timer se existir
+                const timerKey = `${pendingQuantityChange.tableId}_${pendingQuantityChange.materialIndex}`;
+                if (quantityChangeTimers[timerKey]) {
+                    clearTimeout(quantityChangeTimers[timerKey]);
+                    delete quantityChangeTimers[timerKey];
+                }
+                
+                // Reverter quantidade para o valor anterior
+                const table = equipamentosData[pendingQuantityChange.tableId];
+                if (table && table.materials[pendingQuantityChange.materialIndex]) {
+                    table.materials[pendingQuantityChange.materialIndex].quantity = pendingQuantityChange.oldQuantity;
+                    saveData();
+                    renderTable(pendingQuantityChange.tableId);
+                    
+                    // Se estiver na Tabela Principal, recarregar
+                    const mainTableId = findMainTableId();
+                    if (mainTableId && currentTableId === mainTableId) {
+                        renderTable(mainTableId);
+                    }
+                }
+                
+                pendingQuantityChange = null;
+            }
+            
+            // Limpar formulário
+            document.getElementById('quantityChangeForm').reset();
+        }
+        
+        // Abrir modal de material
+        function openMaterialModal(tableId, materialIndex = null) {
+            editingMaterialId = materialIndex;
+            currentTableId = tableId;
+            
+            const modal = document.getElementById('materialModal');
+            const form = document.getElementById('materialForm');
+            const title = document.getElementById('modalTitle');
+            
+            if (materialIndex !== null) {
+                const material = equipamentosData[tableId].materials[materialIndex];
+                title.textContent = 'Editar Material';
+                document.getElementById('materialName').value = material.name;
+                document.getElementById('materialQuantity').value = material.quantity;
+                document.getElementById('materialUnit').value = material.unit;
+                document.getElementById('materialObservations').value = material.observations || '';
+            } else {
+                title.textContent = 'Adicionar Material';
+                form.reset();
+                document.getElementById('materialQuantity').value = 0;
+            }
+            
+            modal.classList.add('active');
+        }
+        
+        // Fechar modal de material
+        function closeMaterialModal() {
+            document.getElementById('materialModal').classList.remove('active');
+            document.getElementById('materialForm').reset();
+            editingMaterialId = null;
+        }
+        
+        // Abrir modal de nova tabela (sempre permitido)
+        function openNewTableModal() {
+            document.getElementById('newTableModal').classList.add('active');
+            document.getElementById('tableName').value = '';
+        }
+        
+        // Fechar modal de nova tabela
+        function closeNewTableModal() {
+            document.getElementById('newTableModal').classList.remove('active');
+            document.getElementById('newTableForm').reset();
+        }
+        
+        // Abrir modal de renomear tabela
+        function openRenameTableModal(tableId) {
+            if (isLocked) return;
+            
+            renamingTableId = tableId;
+            const table = equipamentosData[tableId];
+            document.getElementById('renameTableName').value = table.name;
+            document.getElementById('renameTableModal').classList.add('active');
+        }
+        
+        // Fechar modal de renomear tabela
+        function closeRenameTableModal() {
+            document.getElementById('renameTableModal').classList.remove('active');
+            document.getElementById('renameTableForm').reset();
+            renamingTableId = null;
+        }
+        
+        // Editar material
+        function editMaterial(tableId, materialIndex) {
+            openMaterialModal(tableId, materialIndex);
+        }
+        
+        // Excluir material
+        function deleteMaterial(tableId, materialIndex) {
+            if (!confirm('Tem certeza que deseja excluir este material?')) {
+                return;
+            }
+            
+            const table = equipamentosData[tableId];
+            table.materials.splice(materialIndex, 1);
+            
+            saveData();
+            renderTable(tableId);
+            
+            // Se estiver na Tabela Principal, recarregar para atualizar dados
+            const mainTableId = findMainTableId();
+            if (mainTableId && currentTableId === mainTableId) {
+                renderTable(mainTableId);
+            }
+        }
+        
+        // Excluir tabela
+        function deleteTable(tableId) {
+            if (isLocked) return;
+            
+            const table = equipamentosData[tableId];
+            if (!confirm(`Tem certeza que deseja excluir a tabela "${table.name}"? Todos os materiais serão perdidos.`)) {
+                return;
+            }
+            
+            delete equipamentosData[tableId];
+            
+            // Remover da ordem das abas
+            tabOrder = tabOrder.filter(id => id !== tableId);
+            saveTabOrder();
+            
+            // Se era a tabela atual, selecionar outra
+            if (currentTableId === tableId) {
+                const remainingIds = Object.keys(equipamentosData);
+                currentTableId = remainingIds.length > 0 ? remainingIds[0] : null;
+            }
+            
+            saveData();
+            renderTabs();
+            
+            if (currentTableId) {
+                renderTable(currentTableId);
+            } else {
+                document.getElementById('tablesContainer').innerHTML = '';
+            }
+        }
+        
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Formulário de material
+            document.getElementById('materialForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('materialName').value.trim();
+                const quantity = parseFloat(document.getElementById('materialQuantity').value) || 0;
+                const unit = document.getElementById('materialUnit').value;
+                const observations = document.getElementById('materialObservations').value.trim();
+                
+                if (!name) {
+                    alert('Por favor, preencha o nome do material.');
+                    return;
+                }
+                
+                const table = equipamentosData[currentTableId];
+                if (!table) return;
+                
+                if (editingMaterialId !== null) {
+                    // Editar material existente
+                    const existingMaterial = table.materials[editingMaterialId];
+                    table.materials[editingMaterialId] = {
+                        id: existingMaterial.id || 'mat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        name,
+                        quantity,
+                        unit,
+                        observations
+                    };
+                } else {
+                    // Adicionar novo material
+                    table.materials.push({
+                        id: 'mat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        name,
+                        quantity,
+                        unit,
+                        observations
+                    });
+                }
+                
+                saveData();
+                renderTable(currentTableId);
+                closeMaterialModal();
+                
+                // Sempre atualizar a Tabela Principal se ela existir e estiver aberta
+                const mainTableId = findMainTableId();
+                if (mainTableId) {
+                    if (currentTableId === mainTableId) {
+                        // Se estamos na Tabela Principal, já foi renderizada acima
+                        renderTable(mainTableId);
+                    } else {
+                        // Se estamos em outra aba, atualizar a Tabela Principal se estiver visível
+                        const mainTableDiv = document.getElementById(`table-${mainTableId}`);
+                        if (mainTableDiv && mainTableDiv.classList.contains('active')) {
+                            renderTable(mainTableId);
+                        }
+                    }
+                }
+            });
+            
+            // Formulário de nova tabela
+            document.getElementById('newTableForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const name = document.getElementById('tableName').value.trim();
+                if (!name) {
+                    alert('Por favor, informe o nome da tabela.');
+                    return;
+                }
+                
+                const tableId = 'table_' + Date.now();
+                equipamentosData[tableId] = {
+                    name,
+                    materials: []
+                };
+                
+                // Adicionar à ordem das abas
+                tabOrder.push(tableId);
+                saveTabOrder();
+                
+                saveData();
+                renderTabs();
+                switchTable(tableId);
+                closeNewTableModal();
+            });
+            
+            // Formulário de renomear tabela
+            document.getElementById('renameTableForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const newName = document.getElementById('renameTableName').value.trim();
+                if (!newName) {
+                    alert('Por favor, informe o novo nome da tabela.');
+                    return;
+                }
+                
+                if (renamingTableId && equipamentosData[renamingTableId]) {
+                    equipamentosData[renamingTableId].name = newName;
+                    saveData();
+                    renderTabs();
+                    renderTable(renamingTableId);
+                    closeRenameTableModal();
+                }
+            });
+            
+            // Formulário de mudança de quantidade
+            document.getElementById('quantityChangeForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!pendingQuantityChange) {
+                    alert('Erro: Dados da mudança não encontrados.');
+                    return;
+                }
+                
+                const reason = document.getElementById('quantityChangeReason').value.trim();
+                const responsible = document.getElementById('quantityChangeResponsible').value.trim();
+                
+                if (!reason) {
+                    alert('Por favor, informe o motivo da movimentação.');
+                    return;
+                }
+                
+                if (!responsible) {
+                    alert('Por favor, informe o nome do responsável.');
+                    return;
+                }
+                
+                // Cancelar timer se ainda estiver ativo
+                const timerKey = `${pendingQuantityChange.tableId}_${pendingQuantityChange.materialIndex}`;
+                if (quantityChangeTimers[timerKey]) {
+                    clearTimeout(quantityChangeTimers[timerKey]);
+                    delete quantityChangeTimers[timerKey];
+                }
+                
+                // Registrar movimentação no histórico
+                const materialKey = getMaterialKey(pendingQuantityChange.tableId, pendingQuantityChange.materialIndex);
+                if (materialKey) {
+                    if (!movementsHistory[materialKey]) {
+                        movementsHistory[materialKey] = [];
+                    }
+                    
+                    const movementType = pendingQuantityChange.change > 0 ? 'entrada' : 'saida';
+                    const movement = {
+                        id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        date: new Date().toISOString(),
+                        type: movementType,
+                        quantity: pendingQuantityChange.quantityChange,
+                        responsible: responsible,
+                        reason: reason,
+                        status: 'finalizado'
+                    };
+                    
+                    movementsHistory[materialKey].push(movement);
+                    saveMovementsHistory();
+                }
+                
+                // Fechar modal e limpar dados pendentes
+                const modal = document.getElementById('quantityChangeModal');
+                if (modal) {
+                    modal.classList.remove('active');
+                }
+                
+                pendingQuantityChange = null;
+                document.getElementById('quantityChangeForm').reset();
+            });
+            
+            // Formulário de retirada/empréstimo
+            document.getElementById('withdrawalForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!pendingWithdrawal) {
+                    alert('Erro: Dados da retirada não encontrados.');
+                    return;
+                }
+                
+                const movementType = document.querySelector('input[name="movementType"]:checked')?.value;
+                const reason = document.getElementById('withdrawalReason').value.trim();
+                const responsible = document.getElementById('withdrawalResponsible').value.trim();
+                const returnDate = document.getElementById('loanReturnDate').value;
+                const destination = document.getElementById('loanDestination').value.trim();
+                
+                if (!reason) {
+                    alert('Por favor, informe o motivo da retirada.');
+                    return;
+                }
+                
+                if (!responsible) {
+                    alert('Por favor, informe o nome do responsável.');
+                    return;
+                }
+                
+                if (movementType === 'emprestimo' && !returnDate) {
+                    alert('Por favor, informe a data prevista para devolução do empréstimo.');
+                    return;
+                }
+                
+                // Registrar movimentação
+                registerWithdrawal({
+                    tableId: pendingWithdrawal.tableId,
+                    materialIndex: pendingWithdrawal.materialIndex,
+                    quantity: pendingWithdrawal.quantity,
+                    type: movementType,
+                    responsible: responsible,
+                    reason: reason,
+                    returnDate: returnDate || null,
+                    destination: destination || null
+                });
+                
+                // Atualizar quantidade do material
+                const table = equipamentosData[pendingWithdrawal.tableId];
+                if (table && table.materials[pendingWithdrawal.materialIndex]) {
+                    table.materials[pendingWithdrawal.materialIndex].quantity = pendingWithdrawal.newQuantity;
+                    saveData();
+                }
+                
+                // Fechar modal e atualizar tabela
+                closeWithdrawalModal();
+                renderTable(pendingWithdrawal.tableId);
+                
+                // Se estiver na Tabela Principal, recarregar
+                const mainTableId = findMainTableId();
+                if (mainTableId && currentTableId === mainTableId) {
+                    renderTable(mainTableId);
+                }
+            });
+            
+            // Permitir Enter no campo de senha para confirmar exclusão
+            const deletePasswordInput = document.getElementById('deletePassword');
+            if (deletePasswordInput) {
+                deletePasswordInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        confirmDeleteMovement();
+                    }
+                });
+            }
+            
+            // Fechar modais ao clicar fora
+            document.querySelectorAll('.modal, .photo-modal').forEach(modal => {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        // Se for o modal de mudança de quantidade, cancelar e reverter
+                        if (modal.id === 'quantityChangeModal') {
+                            cancelQuantityChange();
+                        } else if (modal.id === 'photoModal') {
+                            closePhotoModal();
+                        } else if (modal.id === 'deleteMovementModal') {
+                            closeDeleteMovementModal();
+                        } else if (modal.id === 'returnLoanModal') {
+                            closeReturnLoanModal();
+                        } else {
+                            modal.classList.remove('active');
+                        }
+                    }
+                });
+            });
+        }
+        
+        // Verificar estado de bloqueio inicial
+        function checkLockState() {
+            // Tentar obter estado do parent
+            try {
+                if (window.parent && window.parent !== window) {
+                    // Enviar mensagem solicitando estado
+                    window.parent.postMessage({ type: 'request_lock_state' }, '*');
+                }
+            } catch (e) {
+                console.warn('Não foi possível verificar estado de bloqueio:', e);
+            }
+        }
+        
+        // Atualizar estado de bloqueio
+        function updateLockState() {
+            // Atualizar botões (exceto .btn-add, .add-table-btn, .btn-edit, .btn-delete e .quantity-btn que sempre ficam habilitados)
+            document.querySelectorAll('.tab-edit-btn, .tab-delete-btn').forEach(btn => {
+                btn.disabled = isLocked;
+            });
+            
+            // Manter botões de adicionar, editar, excluir e quantidade sempre habilitados
+            document.querySelectorAll('.btn-add, .add-table-btn, .btn-edit, .btn-delete, .quantity-btn').forEach(btn => {
+                btn.disabled = false;
+            });
+            
+            // Atualizar abas
+            document.querySelectorAll('.internal-tab-button').forEach(btn => {
+                if (isLocked) {
+                    btn.classList.add('locked');
+                } else {
+                    btn.classList.remove('locked');
+                }
+            });
+            
+            // Re-renderizar para atualizar botões na tabela
+            if (currentTableId) {
+                renderTable(currentTableId);
+            }
+            renderTabs();
+        }
+        
+        // Função para calcular similaridade entre strings (Levenshtein simplificado)
+        function calculateSimilarity(str1, str2) {
+            const s1 = str1.toLowerCase();
+            const s2 = str2.toLowerCase();
+            
+            // Se uma string contém a outra, alta similaridade
+            if (s1.includes(s2) || s2.includes(s1)) {
+                return 0.8;
+            }
+            
+            // Calcular distância de Levenshtein simplificada
+            const longer = s1.length > s2.length ? s1 : s2;
+            const shorter = s1.length > s2.length ? s2 : s1;
+            
+            if (longer.length === 0) return 1.0;
+            
+            let matches = 0;
+            for (let i = 0; i < shorter.length; i++) {
+                if (longer.includes(shorter[i])) {
+                    matches++;
+                }
+            }
+            
+            return 1 - (matches / longer.length);
+        }
+        
+        // Encontrar itens similares
+        function findSimilarItems(searchTerm, allMaterials) {
+            if (!searchTerm || searchTerm.trim() === '') return [];
+            
+            const searchLower = searchTerm.toLowerCase().trim();
+            const similarItems = [];
+            
+            allMaterials.forEach(material => {
+                const materialName = material.name.toLowerCase();
+                const similarity = calculateSimilarity(searchLower, materialName);
+                
+                // Se a similaridade for menor que 0.7, considerar similar
+                if (similarity < 0.7 && !materialName.includes(searchLower)) {
+                    similarItems.push({
+                        ...material,
+                        similarity: similarity
+                    });
+                }
+            });
+            
+            // Ordenar por similaridade (menor = mais similar)
+            similarItems.sort((a, b) => a.similarity - b.similarity);
+            
+            // Retornar apenas os 5 mais similares
+            return similarItems.slice(0, 5);
+        }
+        
+        // Executar busca
+        function performSearch() {
+            const searchInput = document.getElementById('searchInput');
+            if (!searchInput) return;
+            
+            const searchTerm = searchInput.value.trim();
+            const table = equipamentosData[currentTableId];
+            
+            // Verificar se estamos na Tabela Principal
+            if (!table || table.name !== 'Tabela Principal') {
+                return;
+            }
+            
+            const tbody = document.querySelector(`#materials-${currentTableId}`);
+            if (!tbody) return;
+            
+            const rows = tbody.querySelectorAll('tr');
+            let foundCount = 0;
+            
+            if (searchTerm === '') {
+                // Se busca vazia, mostrar todas as linhas
+                rows.forEach(row => {
+                    row.classList.remove('hidden', 'highlight');
+                });
+                return;
+            }
+            
+            const searchLower = searchTerm.toLowerCase();
+            
+            // Buscar e destacar linhas
+            rows.forEach(row => {
+                const materialName = row.dataset.materialName || '';
+                
+                if (materialName.includes(searchLower)) {
+                    row.classList.remove('hidden');
+                    row.classList.add('highlight');
+                    foundCount++;
+                } else {
+                    row.classList.add('hidden');
+                    row.classList.remove('highlight');
+                }
+            });
+            
+            // Se nada foi encontrado, mostrar modal
+            if (foundCount === 0) {
+                const allMaterials = getAllMaterials();
+                const similarItems = findSimilarItems(searchTerm, allMaterials);
+                
+                showNoResultsModal(similarItems);
+            }
+        }
+        
+        // Lidar com busca ao pressionar Enter
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                performSearch();
+            }
+        }
+        
+        // Mostrar modal de "Nenhum Item Encontrado"
+        function showNoResultsModal(similarItems) {
+            const modal = document.getElementById('noResultsModal');
+            const similarContainer = document.getElementById('similarItemsContainer');
+            const similarList = document.getElementById('similarItemsList');
+            
+            if (!modal) return;
+            
+            // Limpar lista anterior
+            if (similarList) {
+                similarList.innerHTML = '';
+            }
+            
+            // Se houver itens similares, mostrá-los
+            if (similarItems && similarItems.length > 0 && similarContainer && similarList) {
+                similarContainer.style.display = 'block';
+                
+                similarItems.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = `${item.name} (${item.tableName})`;
+                    li.onclick = function() {
+                        // Preencher o campo de busca com o nome do item similar
+                        const searchInput = document.getElementById('searchInput');
+                        if (searchInput) {
+                            searchInput.value = item.name;
+                            performSearch();
+                        }
+                        closeNoResultsModal();
+                    };
+                    similarList.appendChild(li);
+                });
+            } else {
+                if (similarContainer) {
+                    similarContainer.style.display = 'none';
+                }
+            }
+            
+            modal.classList.add('active');
+        }
+        
+        // Fechar modal de "Nenhum Item Encontrado"
+        function closeNoResultsModal() {
+            const modal = document.getElementById('noResultsModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
+        // Abrir modal de retirada/empréstimo
+        function openWithdrawalModal(tableId, materialIndex, quantity, oldQuantity, newQuantity) {
+            const material = equipamentosData[tableId]?.materials[materialIndex];
+            if (!material) return;
+            
+            pendingWithdrawal = {
+                tableId: tableId,
+                materialIndex: materialIndex,
+                quantity: quantity,
+                oldQuantity: oldQuantity,
+                newQuantity: newQuantity,
+                materialName: material.name
+            };
+            
+            const modal = document.getElementById('withdrawalModal');
+            const quantityInput = document.getElementById('withdrawalQuantity');
+            const title = document.getElementById('withdrawalModalTitle');
+            
+            if (quantityInput) {
+                quantityInput.value = quantity;
+            }
+            
+            if (title) {
+                title.textContent = `Registrar Retirada/Empréstimo - ${material.name}`;
+            }
+            
+            // Limpar formulário
+            document.getElementById('withdrawalForm').reset();
+            document.getElementById('withdrawalQuantity').value = quantity;
+            document.getElementById('typeRetirada').checked = true;
+            toggleLoanInfo();
+            
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+        
+        // Fechar modal de retirada/empréstimo
+        function closeWithdrawalModal() {
+            const modal = document.getElementById('withdrawalModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            pendingWithdrawal = null;
+            document.getElementById('withdrawalForm').reset();
+        }
+        
+        // Alternar exibição de informações de empréstimo
+        function toggleLoanInfo() {
+            const loanInfo = document.getElementById('loanInfo');
+            const emprestimoRadio = document.getElementById('typeEmprestimo');
+            
+            if (loanInfo && emprestimoRadio) {
+                if (emprestimoRadio.checked) {
+                    loanInfo.classList.add('active');
+                } else {
+                    loanInfo.classList.remove('active');
+                }
+            }
+        }
+        
+        // Registrar retirada/empréstimo
+        function registerWithdrawal(data) {
+            const materialKey = getMaterialKey(data.tableId, data.materialIndex);
+            if (!materialKey) return;
+            
+            if (!movementsHistory[materialKey]) {
+                movementsHistory[materialKey] = [];
+            }
+            
+            const movement = {
+                id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                date: new Date().toISOString(),
+                type: data.type,
+                quantity: data.quantity,
+                responsible: data.responsible,
+                reason: data.reason,
+                returnDate: data.returnDate || null,
+                destination: data.destination || null,
+                status: data.type === 'emprestimo' ? 'pendente' : 'finalizado'
+            };
+            
+            movementsHistory[materialKey].push(movement);
+            saveMovementsHistory();
+        }
+        
+        // Registrar devolução
+        function registerReturn(tableId, materialIndex, quantity) {
+            const materialKey = getMaterialKey(tableId, materialIndex);
+            if (!materialKey || !movementsHistory[materialKey]) return;
+            
+            // Encontrar empréstimos pendentes
+            const pendingLoans = movementsHistory[materialKey].filter(m => 
+                m.type === 'emprestimo' && m.status === 'pendente'
+            );
+            
+            if (pendingLoans.length > 0) {
+                // Registrar devolução do primeiro empréstimo pendente
+                const loan = pendingLoans[0];
+                const returnMovement = {
+                    id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    date: new Date().toISOString(),
+                    type: 'devolucao',
+                    quantity: Math.min(quantity, loan.quantity),
+                    responsible: loan.responsible,
+                    reason: `Devolução do empréstimo realizado em ${new Date(loan.date).toLocaleDateString('pt-BR')}`,
+                    relatedLoanId: loan.id,
+                    status: 'finalizado'
+                };
+                
+                movementsHistory[materialKey].push(returnMovement);
+                
+                // Atualizar status do empréstimo
+                loan.status = 'devolvido';
+                loan.returnedDate = new Date().toISOString();
+                
+                saveMovementsHistory();
+            } else {
+                // Se não há empréstimos pendentes, registrar como devolução simples
+                const returnMovement = {
+                    id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    date: new Date().toISOString(),
+                    type: 'devolucao',
+                    quantity: quantity,
+                    responsible: 'Sistema',
+                    reason: 'Devolução de material',
+                    status: 'finalizado'
+                };
+                
+                if (!movementsHistory[materialKey]) {
+                    movementsHistory[materialKey] = [];
+                }
+                movementsHistory[materialKey].push(returnMovement);
+                saveMovementsHistory();
+            }
+        }
+        
+        // Visualizar histórico de movimentações
+        function viewMaterialHistory(tableId, materialIndex) {
+            const material = equipamentosData[tableId]?.materials[materialIndex];
+            if (!material) return;
+            
+            const materialKey = getMaterialKey(tableId, materialIndex);
+            const history = materialKey ? (movementsHistory[materialKey] || []) : [];
+            
+            // Armazenar informações do material atual para uso na exclusão
+            window.currentHistoryMaterial = {
+                tableId: tableId,
+                materialIndex: materialIndex,
+                materialKey: materialKey
+            };
+            
+            const modal = document.getElementById('historyModal');
+            const materialNameEl = document.getElementById('historyMaterialName');
+            const tableBody = document.getElementById('historyTableBody');
+            
+            if (materialNameEl) {
+                materialNameEl.textContent = `Material: ${material.name}`;
+            }
+            
+            if (tableBody) {
+                tableBody.innerHTML = '';
+                
+                if (history.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" style="text-align: center; padding: 20px; color: #666;">
+                                Nenhuma movimentação registrada para este material.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // Ordenar por data (mais recente primeiro)
+                    const sortedHistory = [...history].sort((a, b) => 
+                        new Date(b.date) - new Date(a.date)
+                    );
+                    
+                    sortedHistory.forEach(movement => {
+                        const row = document.createElement('tr');
+                        const date = new Date(movement.date);
+                        const dateStr = date.toLocaleString('pt-BR');
+                        
+                        let typeClass = movement.type;
+                        let typeLabel = '';
+                        
+                        // Mapear tipos de movimentação
+                        switch(movement.type) {
+                            case 'entrada':
+                                typeLabel = 'Entrada';
+                                break;
+                            case 'saida':
+                                typeLabel = 'Saída';
+                                break;
+                            case 'retirada':
+                                typeLabel = 'Retirada';
+                                break;
+                            case 'emprestimo':
+                                typeLabel = 'Empréstimo';
+                                break;
+                            case 'devolucao':
+                                typeLabel = 'Devolução';
+                                break;
+                            default:
+                                typeLabel = movement.type.charAt(0).toUpperCase() + movement.type.slice(1);
+                        }
+                        
+                        let details = '-';
+                        if (movement.type === 'emprestimo') {
+                            if (movement.borrower) {
+                                details = `Emprestado para: ${movement.borrower}`;
+                            }
+                            if (movement.returnDate) {
+                                details += ` | Devolução prevista: ${new Date(movement.returnDate).toLocaleDateString('pt-BR')}`;
+                            }
+                            if (movement.destination) {
+                                details += ` | Destino: ${movement.destination}`;
+                            }
+                            if (movement.status === 'pendente') {
+                                details += ' | Status: Pendente';
+                            } else if (movement.status === 'devolvido') {
+                                details += ` | Status: Devolvido em ${movement.returnedDate ? new Date(movement.returnedDate).toLocaleDateString('pt-BR') : 'N/A'}`;
+                            }
+                        } else if (movement.type === 'devolucao' && movement.relatedLoanId) {
+                            details = 'Devolução de empréstimo';
+                        } else if (movement.type === 'entrada' || movement.type === 'saida') {
+                            details = 'Movimentação de estoque';
+                        }
+                        
+                        // Adicionar coluna de foto se houver
+                        let photoCell = '';
+                        if (movement.photo) {
+                            const photoId = 'photo_' + movement.id;
+                            photoCell = `<td style="text-align: center;">
+                                <img src="${movement.photo}" 
+                                     class="photo-preview" 
+                                     onclick="viewPhotoFromHistory('${movement.id}')" 
+                                     title="Clique para ver foto em tamanho maior"
+                                     style="max-width: 80px; max-height: 80px; cursor: pointer;">
+                            </td>`;
+                        } else {
+                            photoCell = '<td>-</td>';
+                        }
+                        
+                        // Coluna de ações com botão de excluir
+                        // Escapar aspas simples no materialKey e movementId para evitar problemas
+                        const safeMaterialKey = materialKey.replace(/'/g, "\\'");
+                        const safeMovementId = movement.id.replace(/'/g, "\\'");
+                        const actionsCell = `<td style="text-align: center;">
+                            <button class="btn-delete" onclick="deleteMovementFromHistory('${safeMaterialKey}', '${safeMovementId}')" title="Excluir registro">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>`;
+                        
+                        row.innerHTML = `
+                            <td>${dateStr}</td>
+                            <td><span class="movement-type ${typeClass}">${typeLabel}</span></td>
+                            <td>${movement.quantity}</td>
+                            <td>${movement.responsible}</td>
+                            <td>${movement.reason || '-'}</td>
+                            <td>${details}</td>
+                            ${photoCell}
+                            ${actionsCell}
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+            }
+            
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+        
+        // Fechar modal de histórico
+        function closeHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
+        // Lidar com checkbox de empréstimo
+        function handleLoanCheckbox(tableId, materialIndex, checked) {
+            if (checked) {
+                // Abrir modal de empréstimo
+                pendingLoan = {
+                    tableId: tableId,
+                    materialIndex: materialIndex
+                };
+                openLoanModal();
+            } else {
+                // Desmarcar empréstimo - abrir modal de confirmação de devolução
+                const table = equipamentosData[tableId];
+                if (!table || !table.materials[materialIndex]) return;
+                
+                const material = table.materials[materialIndex];
+                const materialKey = getMaterialKey(tableId, materialIndex);
+                
+                // Verificar se há empréstimo pendente no histórico
+                if (materialKey && movementsHistory[materialKey]) {
+                    const pendingLoans = movementsHistory[materialKey].filter(m => 
+                        m.type === 'emprestimo' && m.status === 'pendente'
+                    );
+                    
+                    if (pendingLoans.length > 0) {
+                        // Abrir modal de confirmação de devolução
+                        pendingReturnLoan = {
+                            tableId: tableId,
+                            materialIndex: materialIndex,
+                            materialKey: materialKey,
+                            loan: pendingLoans[0] // Pegar o primeiro empréstimo pendente
+                        };
+                        openReturnLoanModal();
+                    } else {
+                        // Se não há empréstimo pendente, apenas desmarcar
+                        material.onLoan = false;
+                        saveData();
+                        renderTable(tableId);
+                    }
+                } else {
+                    // Se não há histórico, apenas desmarcar
+                    material.onLoan = false;
+                    saveData();
+                    renderTable(tableId);
+                }
+            }
+        }
+        
+        // Abrir modal de confirmação de devolução
+        function openReturnLoanModal() {
+            if (!pendingReturnLoan) return;
+            
+            const modal = document.getElementById('returnLoanModal');
+            const title = document.getElementById('returnLoanModalTitle');
+            const message = document.getElementById('returnLoanMessage');
+            const dateTimeInput = document.getElementById('returnLoanDateTime');
+            
+            if (!modal) return;
+            
+            const material = equipamentosData[pendingReturnLoan.tableId]?.materials[pendingReturnLoan.materialIndex];
+            const loan = pendingReturnLoan.loan;
+            
+            if (title && material) {
+                title.textContent = `Confirmar Devolução - ${material.name}`;
+            }
+            
+            if (message && loan) {
+                message.textContent = `Confirmar devolução do empréstimo realizado por ${loan.borrower || 'N/A'}?`;
+            }
+            
+            // Preencher data e hora atual
+            const now = new Date();
+            const dateTimeStr = now.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            if (dateTimeInput) {
+                dateTimeInput.value = dateTimeStr;
+            }
+            
+            // Limpar observação
+            document.getElementById('returnLoanObservation').value = '';
+            
+            modal.classList.add('active');
+        }
+        
+        // Fechar modal de devolução
+        function closeReturnLoanModal() {
+            const modal = document.getElementById('returnLoanModal');
+            
+            // Salvar referência antes de limpar
+            const returnData = pendingReturnLoan;
+            
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            
+            // Limpar observação
+            const observationField = document.getElementById('returnLoanObservation');
+            if (observationField) {
+                observationField.value = '';
+            }
+            
+            // Reverter checkbox se foi cancelado (antes de limpar pendingReturnLoan)
+            if (returnData) {
+                const table = equipamentosData[returnData.tableId];
+                if (table && table.materials[returnData.materialIndex]) {
+                    // Manter checkbox marcado se cancelou
+                    // Buscar checkbox pelos data attributes
+                    const checkbox = document.querySelector(
+                        `input[type="checkbox"][data-table-id="${returnData.tableId}"][data-material-index="${returnData.materialIndex}"]`
+                    );
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                }
+            }
+            
+            pendingReturnLoan = null;
+        }
+        
+        // Confirmar devolução
+        function confirmReturnLoan() {
+            if (!pendingReturnLoan) {
+                alert('Erro: Dados da devolução não encontrados.');
+                return;
+            }
+            
+            const { tableId, materialIndex, materialKey, loan } = pendingReturnLoan;
+            const observation = document.getElementById('returnLoanObservation').value.trim();
+            const now = new Date();
+            
+            // Registrar devolução no histórico
+            if (movementsHistory[materialKey]) {
+                const returnMovement = {
+                    id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    date: now.toISOString(),
+                    type: 'devolucao',
+                    quantity: loan.quantity || 1,
+                    responsible: loan.responsible || 'Sistema',
+                    reason: observation || `Devolução do empréstimo realizado em ${new Date(loan.date).toLocaleDateString('pt-BR')}`,
+                    relatedLoanId: loan.id,
+                    status: 'finalizado'
+                };
+                
+                movementsHistory[materialKey].push(returnMovement);
+                
+                // Atualizar status do empréstimo
+                loan.status = 'devolvido';
+                loan.returnedDate = now.toISOString();
+                
+                saveMovementsHistory();
+            }
+            
+            // Desmarcar checkbox e atualizar material
+            const table = equipamentosData[tableId];
+            if (table && table.materials[materialIndex]) {
+                table.materials[materialIndex].onLoan = false;
+                saveData();
+            }
+            
+            // Fechar modal
+            closeReturnLoanModal();
+            
+            // Atualizar tabela
+            if (currentTableId === 'emprestimo-tab') {
+                renderLoanTable();
+            } else {
+                renderTable(tableId);
+            }
+            
+            // Se estiver na Tabela Principal, recarregar
+            const mainTableId = findMainTableId();
+            if (mainTableId && currentTableId === mainTableId) {
+                renderTable(mainTableId);
+            }
+            
+            // Sempre atualizar a aba de Empréstimo se existir
+            if (currentTableId !== 'emprestimo-tab') {
+                // Verificar se a aba de empréstimo existe e atualizar se necessário
+                const emprestimoTab = document.querySelector('[data-table-id="emprestimo-tab"]');
+                if (emprestimoTab) {
+                    // A aba existe, mas não está ativa, então não precisa renderizar agora
+                    // Será renderizada quando o usuário clicar nela
+                }
+            }
+        }
+        
+        // Abrir modal de empréstimo
+        function openLoanModal() {
+            const modal = document.getElementById('loanModal');
+            if (!modal || !pendingLoan) return;
+            
+            const material = equipamentosData[pendingLoan.tableId]?.materials[pendingLoan.materialIndex];
+            if (material) {
+                const title = document.getElementById('loanModalTitle');
+                if (title) {
+                    title.textContent = `Registrar Empréstimo - ${material.name}`;
+                }
+            }
+            
+            // Limpar formulário
+            document.getElementById('loanForm').reset();
+            
+            modal.classList.add('active');
+        }
+        
+        // Fechar modal de empréstimo
+        function closeLoanModal() {
+            const modal = document.getElementById('loanModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            pendingLoan = null;
+            document.getElementById('loanForm').reset();
+        }
+        
+        // Abrir modal de câmera
+        function openCameraModal() {
+            // Validar formulário de empréstimo primeiro
+            const lender = document.getElementById('loanLender').value.trim();
+            const borrower = document.getElementById('loanBorrower').value.trim();
+            
+            if (!lender) {
+                alert('Por favor, informe o nome de quem empresta.');
+                return;
+            }
+            
+            if (!borrower) {
+                alert('Por favor, informe o nome de quem pegou emprestado.');
+                return;
+            }
+            
+            // Fechar modal de empréstimo temporariamente
+            const loanModal = document.getElementById('loanModal');
+            if (loanModal) {
+                loanModal.classList.remove('active');
+            }
+            
+            // Abrir modal de câmera
+            const cameraModal = document.getElementById('cameraModal');
+            const video = document.getElementById('cameraVideo');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            const cameraControls = document.getElementById('cameraControls');
+            const photoControls = document.getElementById('photoControls');
+            const capturedImg = document.getElementById('capturedPhoto');
+            
+            if (!cameraModal || !video) return;
+            
+            // Resetar estado
+            capturedPhoto = null;
+            video.style.display = 'none';
+            capturedImg.style.display = 'none';
+            placeholder.style.display = 'block';
+            cameraControls.style.display = 'none';
+            photoControls.style.display = 'none';
+            
+            cameraModal.classList.add('active');
+            
+            // Iniciar câmera
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                .then(function(stream) {
+                    cameraStream = stream;
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    cameraControls.style.display = 'flex';
+                })
+                .catch(function(err) {
+                    console.error('Erro ao acessar câmera:', err);
+                    placeholder.innerHTML = `
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 15px; color: #dc3545;"></i>
+                        <p>Erro ao acessar a câmera.</p>
+                        <p style="font-size: 12px;">${err.message}</p>
+                    `;
+                    alert('Não foi possível acessar a câmera. Verifique as permissões do navegador.');
+                });
+        }
+        
+        // Fechar modal de câmera
+        function closeCameraModal() {
+            const cameraModal = document.getElementById('cameraModal');
+            if (cameraModal) {
+                cameraModal.classList.remove('active');
+            }
+            
+            // Parar stream da câmera
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            const video = document.getElementById('cameraVideo');
+            if (video) {
+                video.srcObject = null;
+            }
+            
+            // Se cancelou, reabrir modal de empréstimo
+            if (pendingLoan) {
+                openLoanModal();
+            }
+        }
+        
+        // Capturar foto
+        function capturePhoto() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.getElementById('cameraCanvas');
+            const capturedImg = document.getElementById('capturedPhoto');
+            const cameraControls = document.getElementById('cameraControls');
+            const photoControls = document.getElementById('photoControls');
+            
+            if (!video || !canvas || !capturedImg) return;
+            
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            // Converter para base64
+            capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+            capturedImg.src = capturedPhoto;
+            
+            // Mostrar foto e controles
+            video.style.display = 'none';
+            capturedImg.style.display = 'block';
+            cameraControls.style.display = 'none';
+            photoControls.style.display = 'flex';
+        }
+        
+        // Tirar foto novamente
+        function retakePhoto() {
+            const video = document.getElementById('cameraVideo');
+            const capturedImg = document.getElementById('capturedPhoto');
+            const cameraControls = document.getElementById('cameraControls');
+            const photoControls = document.getElementById('photoControls');
+            
+            capturedPhoto = null;
+            video.style.display = 'block';
+            capturedImg.style.display = 'none';
+            cameraControls.style.display = 'flex';
+            photoControls.style.display = 'none';
+        }
+        
+        // Confirmar empréstimo sem foto
+        function confirmLoanWithoutPhoto() {
+            if (!pendingLoan) {
+                alert('Erro: Dados do empréstimo não encontrados.');
+                return;
+            }
+            
+            const lender = document.getElementById('loanLender').value.trim();
+            const borrower = document.getElementById('loanBorrower').value.trim();
+            const observation = document.getElementById('loanObservation').value.trim();
+            
+            if (!lender) {
+                alert('Por favor, informe o nome de quem empresta.');
+                return;
+            }
+            
+            if (!borrower) {
+                alert('Por favor, informe o nome de quem pegou emprestado.');
+                return;
+            }
+            
+            // Registrar empréstimo no histórico
+            const materialKey = getMaterialKey(pendingLoan.tableId, pendingLoan.materialIndex);
+            if (materialKey) {
+                if (!movementsHistory[materialKey]) {
+                    movementsHistory[materialKey] = [];
+                }
+                
+                const movement = {
+                    id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    date: new Date().toISOString(),
+                    type: 'emprestimo',
+                    quantity: 1,
+                    responsible: lender,
+                    borrower: borrower,
+                    reason: observation || 'Empréstimo registrado',
+                    photo: null, // Sem foto
+                    status: 'pendente'
+                };
+                
+                movementsHistory[materialKey].push(movement);
+                saveMovementsHistory();
+            }
+            
+            // Marcar material como emprestado
+            const table = equipamentosData[pendingLoan.tableId];
+            if (table && table.materials[pendingLoan.materialIndex]) {
+                table.materials[pendingLoan.materialIndex].onLoan = true;
+                saveData();
+            }
+            
+            // Fechar modal
+            closeLoanModal();
+            
+            // Atualizar tabela
+            if (currentTableId === 'emprestimo-tab') {
+                renderLoanTable();
+            } else {
+                renderTable(pendingLoan.tableId);
+            }
+            
+            // Se estiver na Tabela Principal, recarregar
+            const mainTableId = findMainTableId();
+            if (mainTableId && currentTableId === mainTableId) {
+                renderTable(mainTableId);
+            }
+        }
+        
+        // Confirmar empréstimo sem capturar foto (quando já está no modal da câmera)
+        function confirmPhotoWithoutCapture() {
+            // Usar a mesma lógica de confirmPhoto, mas sem exigir foto
+            capturedPhoto = null; // Garantir que não há foto
+            confirmPhoto();
+        }
+        
+        // Confirmar foto e salvar empréstimo
+        function confirmPhoto() {
+            if (!pendingLoan) {
+                alert('Erro: Dados do empréstimo não encontrados.');
+                return;
+            }
+            
+            const lender = document.getElementById('loanLender').value.trim();
+            const borrower = document.getElementById('loanBorrower').value.trim();
+            const observation = document.getElementById('loanObservation').value.trim();
+            
+            // Registrar empréstimo no histórico
+            const materialKey = getMaterialKey(pendingLoan.tableId, pendingLoan.materialIndex);
+            if (materialKey) {
+                if (!movementsHistory[materialKey]) {
+                    movementsHistory[materialKey] = [];
+                }
+                
+                const movement = {
+                    id: 'mov_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                    date: new Date().toISOString(),
+                    type: 'emprestimo',
+                    quantity: 1,
+                    responsible: lender,
+                    borrower: borrower,
+                    reason: observation || 'Empréstimo registrado',
+                    photo: capturedPhoto || null, // Foto opcional
+                    status: 'pendente'
+                };
+                
+                movementsHistory[materialKey].push(movement);
+                saveMovementsHistory();
+            }
+            
+            // Marcar material como emprestado
+            const table = equipamentosData[pendingLoan.tableId];
+            if (table && table.materials[pendingLoan.materialIndex]) {
+                table.materials[pendingLoan.materialIndex].onLoan = true;
+                saveData();
+            }
+            
+            // Fechar modais
+            closeCameraModal();
+            closeLoanModal();
+            
+            // Atualizar tabela
+            if (currentTableId === 'emprestimo-tab') {
+                renderLoanTable();
+            } else {
+                renderTable(pendingLoan.tableId);
+            }
+            
+            // Se estiver na Tabela Principal, recarregar
+            const mainTableId = findMainTableId();
+            if (mainTableId && currentTableId === mainTableId) {
+                renderTable(mainTableId);
+            }
+        }
+        
+        // Visualizar foto do histórico
+        function viewPhotoFromHistory(movementId) {
+            // Encontrar a movimentação no histórico
+            for (let materialKey in movementsHistory) {
+                const movements = movementsHistory[materialKey];
+                const movement = movements.find(m => m.id === movementId);
+                if (movement && movement.photo) {
+                    viewPhoto(movement.photo);
+                    return;
+                }
+            }
+        }
+        
+        // Visualizar foto
+        function viewPhoto(photoData) {
+            const photoModal = document.getElementById('photoModal');
+            const photoImg = document.getElementById('photoModalImage');
+            
+            if (photoModal && photoImg && photoData) {
+                photoImg.src = photoData;
+                photoModal.classList.add('active');
+            }
+        }
+        
+        // Fechar modal de foto
+        function closePhotoModal() {
+            const photoModal = document.getElementById('photoModal');
+            if (photoModal) {
+                photoModal.classList.remove('active');
+            }
+        }
+        
+        // Excluir movimentação do histórico
+        function deleteMovementFromHistory(materialKey, movementId) {
+            // Usar informações do material atual armazenadas
+            const currentMaterial = window.currentHistoryMaterial;
+            if (!currentMaterial) {
+                alert('Erro: Informações do material não encontradas.');
+                return;
+            }
+            
+            pendingMovementDelete = {
+                materialKey: materialKey,
+                movementId: movementId,
+                tableId: currentMaterial.tableId,
+                materialIndex: currentMaterial.materialIndex
+            };
+            
+            const modal = document.getElementById('deleteMovementModal');
+            if (modal) {
+                document.getElementById('deletePassword').value = '';
+                modal.classList.add('active');
+                document.getElementById('deletePassword').focus();
+            }
+        }
+        
+        // Fechar modal de exclusão
+        function closeDeleteMovementModal() {
+            const modal = document.getElementById('deleteMovementModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            pendingMovementDelete = null;
+            document.getElementById('deletePassword').value = '';
+        }
+        
+        // Obter senha do sistema (mesma função do SOT5.html)
+        function getSystemPassword() {
+            if (!localStorage.getItem('adminPassword')) {
+                localStorage.setItem('adminPassword', '1234');
+            }
+            return localStorage.getItem('adminPassword');
+        }
+        
+        // Confirmar exclusão de movimentação
+        function confirmDeleteMovement() {
+            if (!pendingMovementDelete) {
+                alert('Erro: Dados da exclusão não encontrados.');
+                return;
+            }
+            
+            const password = document.getElementById('deletePassword').value.trim();
+            if (!password) {
+                alert('Por favor, digite a senha.');
+                return;
+            }
+            
+            // Verificar senha usando a mesma função do SOT5.html
+            const correctPassword = getSystemPassword();
+            if (password !== correctPassword) {
+                alert('Senha incorreta. A exclusão foi cancelada.');
+                document.getElementById('deletePassword').value = '';
+                document.getElementById('deletePassword').focus();
+                return;
+            }
+            
+            // Remover movimentação do histórico
+            const { materialKey, movementId } = pendingMovementDelete;
+            
+            if (!movementsHistory[materialKey]) {
+                alert('Erro: Histórico não encontrado.');
+                closeDeleteMovementModal();
+                return;
+            }
+            
+            // Verificar se a movimentação existe
+            const movementExists = movementsHistory[materialKey].some(m => m.id === movementId);
+            if (!movementExists) {
+                alert('Erro: Movimentação não encontrada no histórico.');
+                closeDeleteMovementModal();
+                return;
+            }
+            
+            // Filtrar e remover a movimentação
+            const beforeCount = movementsHistory[materialKey].length;
+            movementsHistory[materialKey] = movementsHistory[materialKey].filter(
+                m => m.id !== movementId
+            );
+            const afterCount = movementsHistory[materialKey].length;
+            
+            // Verificar se a exclusão foi bem-sucedida
+            if (beforeCount === afterCount) {
+                alert('Erro: Não foi possível excluir o registro. O ID pode não corresponder.');
+                closeDeleteMovementModal();
+                return;
+            }
+            
+            // Se não houver mais movimentações, remover a chave
+            if (movementsHistory[materialKey].length === 0) {
+                delete movementsHistory[materialKey];
+            }
+            
+            // Salvar histórico atualizado
+            try {
+                saveMovementsHistory();
+            } catch (e) {
+                console.error('Erro ao salvar histórico:', e);
+                alert('Erro ao salvar as alterações. Tente novamente.');
+                return;
+            }
+            
+            // Fechar modal de senha
+            closeDeleteMovementModal();
+            
+            // Atualizar histórico exibido - usar o material atual armazenado
+            const currentMaterial = window.currentHistoryMaterial;
+            if (currentMaterial && currentMaterial.tableId !== undefined && currentMaterial.materialIndex !== undefined) {
+                // Recarregar o histórico
+                viewMaterialHistory(currentMaterial.tableId, currentMaterial.materialIndex);
+            } else if (pendingMovementDelete.tableId !== undefined && pendingMovementDelete.materialIndex !== undefined) {
+                viewMaterialHistory(pendingMovementDelete.tableId, pendingMovementDelete.materialIndex);
+            } else {
+                // Se não conseguirmos atualizar, fechar o modal e mostrar mensagem
+                closeHistoryModal();
+                alert('Registro excluído com sucesso!');
+            }
+        }
+        
+        // Função para configurar event listener de importação
+        function setupImportListener() {
+            const importInput = document.getElementById('backupImportInput');
+            if (importInput) {
+                // Remover listener anterior se existir
+                importInput.removeEventListener('change', handleImportFile);
+                // Adicionar novo listener
+                importInput.addEventListener('change', handleImportFile);
+            }
+        }
+        
+        function handleImportFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                importBackup(file);
+                // Limpar o input para permitir importar o mesmo arquivo novamente
+                e.target.value = '';
+            }
+        }
+        
+        // Função para importar backup
+        function importBackup(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    
+                    // Verificar se é um backup válido do SOT
+                    if (!backupData || typeof backupData !== 'object') {
+                        alert('Arquivo de backup inválido.');
+                        return;
+                    }
+                    
+                    // Extrair dados de equipamentos e suprimentos
+                    let importedEquipamentos = null;
+                    let importedMovements = null;
+                    
+                    // Verificar se os dados estão como string JSON ou objeto
+                    if (backupData.equipamentosSuprimentos) {
+                        if (typeof backupData.equipamentosSuprimentos === 'string') {
+                            const parsed = backupData.equipamentosSuprimentos.trim();
+                            if (parsed === '' || parsed === '[]' || parsed === '{}') {
+                                console.warn('Backup contém string vazia para equipamentos');
+                                importedEquipamentos = {};
+                            } else {
+                                try {
+                                    importedEquipamentos = JSON.parse(parsed);
+                                } catch (e) {
+                                    console.error('Erro ao fazer parse de equipamentosSuprimentos:', e);
+                                    importedEquipamentos = {};
+                                }
+                            }
+                        } else {
+                            importedEquipamentos = backupData.equipamentosSuprimentos;
+                        }
+                    }
+                    
+                    if (backupData.equipamentosMovements) {
+                        if (typeof backupData.equipamentosMovements === 'string') {
+                            const parsed = backupData.equipamentosMovements.trim();
+                            if (parsed === '' || parsed === '[]' || parsed === '{}') {
+                                console.warn('Backup contém string vazia para movimentações');
+                                importedMovements = {};
+                            } else {
+                                try {
+                                    importedMovements = JSON.parse(parsed);
+                                } catch (e) {
+                                    console.error('Erro ao fazer parse de equipamentosMovements:', e);
+                                    importedMovements = {};
+                                }
+                            }
+                        } else {
+                            importedMovements = backupData.equipamentosMovements;
+                        }
+                    }
+                    
+                    // Log para debug
+                    console.log('Dados importados:', {
+                        equipamentos: importedEquipamentos,
+                        movements: importedMovements,
+                        equipamentosKeys: importedEquipamentos ? Object.keys(importedEquipamentos) : [],
+                        movementsKeys: importedMovements ? Object.keys(importedMovements) : []
+                    });
+                    
+                    // Confirmar importação
+                    const confirmMsg = 'Deseja importar os dados do backup?\n\n' +
+                        'Isso irá substituir os dados atuais de Equipamentos e Suprimentos.\n\n' +
+                        'Dados encontrados:\n' +
+                        `- Tabelas: ${importedEquipamentos && Object.keys(importedEquipamentos).length > 0 ? Object.keys(importedEquipamentos).length : 0}\n` +
+                        `- Movimentações: ${importedMovements && Object.keys(importedMovements).length > 0 ? Object.keys(importedMovements).length : 0}`;
+                    
+                    if (!confirm(confirmMsg)) {
+                        return;
+                    }
+                    
+                    // Restaurar dados
+                    let hasEquipamentosData = false;
+                    if (importedEquipamentos) {
+                        // Verificar se é um objeto vazio ou tem dados
+                        if (typeof importedEquipamentos === 'object' && importedEquipamentos !== null) {
+                            if (Array.isArray(importedEquipamentos)) {
+                                console.warn('Backup contém array para equipamentos, convertendo para objeto');
+                                // Se for array, criar objeto vazio (formato esperado é objeto)
+                                equipamentosData = {};
+                                saveData();
+                            } else if (Object.keys(importedEquipamentos).length > 0) {
+                                equipamentosData = importedEquipamentos;
+                                saveData();
+                                hasEquipamentosData = true;
+                                console.log('Equipamentos importados:', Object.keys(equipamentosData).length, 'tabelas');
+                            } else {
+                                console.warn('Backup contém objeto vazio para equipamentos');
+                                equipamentosData = {};
+                                saveData();
+                            }
+                        }
+                    } else {
+                        // Se não houver dados, limpar
+                        equipamentosData = {};
+                        saveData();
+                    }
+                    
+                    if (importedMovements) {
+                        // Verificar se é um objeto vazio ou tem dados
+                        if (typeof importedMovements === 'object' && importedMovements !== null) {
+                            if (Array.isArray(importedMovements)) {
+                                console.warn('Backup contém array para movimentações, convertendo para objeto');
+                                movementsHistory = {};
+                                saveMovementsHistory();
+                            } else if (Object.keys(importedMovements).length > 0) {
+                                movementsHistory = importedMovements;
+                                saveMovementsHistory();
+                                console.log('Movimentações importadas:', Object.keys(movementsHistory).length, 'registros');
+                            } else {
+                                console.warn('Backup contém objeto vazio para movimentações');
+                                movementsHistory = {};
+                                saveMovementsHistory();
+                            }
+                        }
+                    } else {
+                        movementsHistory = {};
+                        saveMovementsHistory();
+                    }
+                    
+                    // Recarregar dados do localStorage para garantir sincronização
+                    loadData();
+                    loadMovementsHistory();
+                    loadTabOrder();
+                    
+                    // Limpar tabela atual
+                    currentTableId = null;
+                    
+                    // Forçar atualização da interface
+                    console.log('Recarregando interface...');
+                    console.log('Equipamentos carregados:', Object.keys(equipamentosData).length);
+                    
+                    // Recarregar interface completamente
+                    renderTabs();
+                    
+                    // Se não houver tabela ativa, ativar a primeira
+                    const tableIds = Object.keys(equipamentosData);
+                    console.log('IDs de tabelas disponíveis:', tableIds);
+                    
+                    if (tableIds.length > 0) {
+                        // Aguardar um pouco para garantir que renderTabs terminou
+                        setTimeout(function() {
+                            console.log('Ativando tabela:', tableIds[0]);
+                            switchTable(tableIds[0]);
+                        }, 200);
+                    } else {
+                        // Se não houver tabelas, renderizar estado vazio
+                        setTimeout(function() {
+                            renderTabs();
+                        }, 200);
+                    }
+                    
+                    if (hasEquipamentosData) {
+                        alert('Backup importado com sucesso! ' + tableIds.length + ' tabela(s) carregada(s).');
+                    } else {
+                        alert('Backup importado, mas não foram encontrados dados de equipamentos e suprimentos no arquivo.\n\nVerifique se o backup contém os dados corretos.');
+                    }
+                    
+                } catch (error) {
+                    console.error('Erro ao importar backup:', error);
+                    alert('Erro ao importar backup. Verifique se o arquivo está no formato correto.\n\nErro: ' + error.message);
+                }
+            };
+            
+            reader.onerror = function() {
+                alert('Erro ao ler o arquivo de backup.');
+            };
+            
+            reader.readAsText(file);
+        }
+        
+        
+        // Notificar atividade do usuário
+        const userActivityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+        function notifyParentOfActivity() {
+            window.parent.postMessage({ type: 'user_activity' }, '*');
+        }
+        userActivityEvents.forEach(function(eventName) {
+            document.addEventListener(eventName, notifyParentOfActivity, { passive: true });
+        });
+        
+        // Expor funções globalmente para acesso via onclick e outros eventos
+        window.openNewTableModal = openNewTableModal;
+        window.closeNewTableModal = closeNewTableModal;
+        window.openRenameTableModal = openRenameTableModal;
+        window.closeRenameTableModal = closeRenameTableModal;
+        window.deleteTable = deleteTable;
+        window.openMaterialModal = openMaterialModal;
+        window.closeMaterialModal = closeMaterialModal;
+        window.editMaterial = editMaterial;
+        window.deleteMaterial = deleteMaterial;
+        window.viewHistory = viewHistory;
+        window.closeHistoryModal = closeHistoryModal;
+        window.closeNoResultsModal = closeNoResultsModal;
+        window.closeWithdrawalModal = closeWithdrawalModal;
+        window.closeLoanModal = closeLoanModal;
+        window.openCameraModal = openCameraModal;
+        window.closeCameraModal = closeCameraModal;
+        window.capturePhoto = capturePhoto;
+        window.retakePhoto = retakePhoto;
+        window.confirmPhoto = confirmPhoto;
+        window.closePhotoModal = closePhotoModal;
+        window.closeDeleteMovementModal = closeDeleteMovementModal;
+        window.confirmDeleteMovement = confirmDeleteMovement;
+        window.closeReturnLoanModal = closeReturnLoanModal;
+        window.confirmReturnLoan = confirmReturnLoan;
+        window.cancelQuantityChange = cancelQuantityChange;
+        window.handleSearch = handleSearch;
+        window.performSearch = performSearch;
+        window.toggleLoanInfo = toggleLoanInfo;
+        window.importBackup = importBackup;
+        window.confirmLoanWithoutPhoto = confirmLoanWithoutPhoto;
+        window.confirmPhotoWithoutCapture = confirmPhotoWithoutCapture;
+        window.handleLoanReturnCheckbox = handleLoanReturnCheckbox;
+    </script>
+</body>
+</html>
+

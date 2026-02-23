@@ -1,0 +1,4418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - SAÍDAS ADMINISTRATIVAS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js" defer></script>
+<script src="theme-listener.js"></script>
+<script src="api-service.js"></script>
+<script src="data-service.js"></script>
+<script src="junta-saidas-service.js"></script>
+<style>
+:root {
+--primary-blue: #4a69bd; --secondary-blue: #6c88c9; --gray: #dcdcdc;
+--dark-gray: #333d47; --white: #ffffff; --light-gray-bg: #f9f9f9;
+--tab-border: 1px solid #dee2e6; --delete-red: #dc3545; --edit-green: #28a745;
+--warning-orange: #ffc107; --orange: #fd7e14;
+--notice-board-bg: #e0f2f7;
+--notice-item-bg: #ffffff;
+--svc-ro-button: #2d8c92;
+}
+body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); }
+main { margin: 20px 10px; }
+.table-controls #showEscalaBtn { background-color: var(--primary-blue); cursor: pointer; pointer-events: auto; position: relative; z-index: 1; }
+.tab-content { background-color: var(--white); padding: 20px; border-radius: 8px; border: 1px solid var(--tab-border); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.table-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+.table-title { font-size: 22px; color: var(--primary-blue); font-weight: bold; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.35), 0 4px 14px rgba(0,0,0,0.22), 0 4px 16px rgba(74,105,189,0.4); }
+.counter { font-size: 18px; font-weight: bold; color: var(--primary-blue); }
+
+/* Barra de ações moderna - botões à esquerda do contador */
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 6px 6px 6px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(74, 105, 189, 0.12);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 130px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.btn-action i { font-size: 15px; opacity: 0.95; }
+.btn-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.btn-action:active { transform: translateY(0); }
+/* Progressão de azuis: SVC/RO (1) → Retém (2) → Escala Roxa (3) → ESCALA (4) → Baixar (5) → Imprimir (6) → Assinar (7) */
+.btn-action.btn-svc {
+  background: linear-gradient(135deg, #1e4d8c 0%, #173d70 100%);
+  box-shadow: 0 2px 8px rgba(30, 77, 140, 0.4);
+}
+.btn-action.btn-svc:hover { background: linear-gradient(135deg, #2a5a9e 0%, #1e4d8c 100%); }
+.btn-action.btn-pso {
+  background: linear-gradient(135deg, #2a5a9e 0%, #1e4d8c 100%);
+  box-shadow: 0 2px 8px rgba(42, 90, 158, 0.4);
+}
+.btn-action.btn-pso:hover { background: linear-gradient(135deg, #3668b0 0%, #2a5a9e 100%); }
+.btn-action.btn-escala-rocha {
+  background: linear-gradient(135deg, #3668b0 0%, #2a5a9e 100%);
+  box-shadow: 0 2px 8px rgba(54, 104, 176, 0.4);
+}
+.btn-action.btn-escala-rocha:hover { background: linear-gradient(135deg, #4276c2 0%, #3668b0 100%); }
+.btn-action.btn-escala {
+  background: linear-gradient(135deg, #4a69bd 0%, #3668b0 100%);
+  box-shadow: 0 2px 8px rgba(74, 105, 189, 0.4);
+}
+.btn-action.btn-escala:hover { background: linear-gradient(135deg, #5a79cd 0%, #4a69bd 100%); }
+.btn-action.btn-pdf {
+  background: linear-gradient(135deg, #5b7dc9 0%, #4a69bd 100%);
+  box-shadow: 0 2px 8px rgba(91, 125, 201, 0.4);
+}
+.btn-action.btn-pdf:hover { background: linear-gradient(135deg, #6b8dd9 0%, #5b7dc9 100%); }
+.btn-action.btn-print {
+  background: linear-gradient(135deg, #6c8fd4 0%, #5b7dc9 100%);
+  box-shadow: 0 2px 8px rgba(108, 143, 212, 0.4);
+}
+.btn-action.btn-print:hover { background: linear-gradient(135deg, #7c9fe4 0%, #6c8fd4 100%); }
+.btn-action.btn-sign {
+  background: linear-gradient(135deg, #7da1e0 0%, #6c8fd4 100%);
+  box-shadow: 0 2px 8px rgba(125, 161, 224, 0.4);
+}
+.btn-action.btn-sign:hover { background: linear-gradient(135deg, #8db1f0 0%, #7da1e0 100%); }
+.counter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #4a69bd 0%, #3d5a9e 100%);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(74, 105, 189, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.counter-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.9); }
+}
+.date-filter-container { display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid var(--gray); border-radius: 8px; background-color: var(--light-gray-bg); flex-wrap: wrap; justify-content: space-between; }
+.date-filter-container label { font-weight: bold; }
+.date-filter-container input[type="date"] { padding: 8px 12px; border: 1px solid #ced4da; border-radius: 5px; font-size: 16px; font-weight: bold; max-width: 180px; }
+.limite-saidas-alerta {
+  text-align: center;
+  margin: 12px 0;
+  padding: 12px 20px;
+  font-weight: bold;
+  font-size: 16px;
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 8px;
+}
+.limite-saidas-alerta.piscar {
+  animation: limiteAlertaPiscar 0.5s ease-in-out 10 forwards;
+}
+@keyframes limiteAlertaPiscar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.table-container { overflow-x: auto; border: 1px solid var(--gray); border-radius: 8px; }
+table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+th, td { border: 1px solid #e9ecef; padding: 10px; text-align: left; font-size: 14px; }
+thead th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; text-transform: uppercase; font-size: 12px; }
+tbody td { font-weight: bold; }
+tbody tr:nth-child(even) { background-color: #f8f9fa; }
+td[contenteditable="true"]:focus { outline: 2px solid var(--primary-blue); }
+.motorista-cell { cursor: pointer; }
+.motorista-cell:hover { background-color: #e9f7fe; }
+.action-buttons { display: flex; gap: 5px; justify-content: center; }
+.action-buttons button, .table-controls button { color: var(--white); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.action-buttons .delete-row-btn { background-color: var(--delete-red); }
+.action-buttons .edit-row-btn { background-color: var(--edit-green); }
+.obs-btn { background-color: #007bff; }
+.action-buttons .view-row-btn { background-color: #6c757d; }
+.action-buttons .view-row-btn:hover { background-color: #5a6268; }
+.svc-ro-container { margin-top: 25px; padding: 20px; background-color: #f0f8ff; border: 2px dashed var(--primary-blue); border-radius: 8px; }
+.svc-ro-container h3 { margin-top: 0; color: var(--primary-blue); text-align: center; margin-bottom: 15px; font-size: 20px; }
+#svcRoList { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; font-weight: bold; text-align: center; }
+#svcRoList li.no-duty { grid-column: 1 / -1; text-align: center; background-color: #fff3cd; border-left-color: var(--warning-orange); }
+.obs-modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: flex-start; overflow-y: auto; padding-top: 0; padding-bottom: 20px; }
+.obs-modal.show { display: flex; }
+.obs-modal-content { background-color: var(--white); padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; position: relative; margin: 10px auto 20px auto !important; align-self: flex-start !important; flex-shrink: 0; top: 0 !important; }
+.escala-table-container { overflow: auto; }
+#escalaModal .obs-modal-content { width: 100%; max-width: 100%; height: 100vh; display: flex; flex-direction: column; border-radius: 0; margin: 0; }
+#escalaModal .modal-buttons { justify-content: flex-start; gap: 10px; }
+#escalaModal .escala-filter-container { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+#escalaModal .escala-table-container { flex: 1; border: 1px solid var(--gray); border-radius: 8px; background: var(--white); }
+#escalaModal table#escalaTable { width: 100%; border-collapse: collapse; min-width: 900px; }
+#escalaModal #escalaHeaderRow th, #escalaModal #escalaBody td { border: 1px solid #e9ecef; }
+
+/* Tabela moderna no modal ESCALA */
+#escalaModal .escala-table-container { box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+#escalaModal table#escalaTable { border-radius: 12px; overflow: hidden; }
+#escalaModal table#escalaTable thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: linear-gradient(180deg, #4a69bd 0%, #3f5aa3 100%);
+  color: #fff; font-weight: 700; letter-spacing: .02em;
+}
+#escalaModal table#escalaTable tbody tr:nth-child(even) { background-color: #f8f9fb; }
+#escalaModal table#escalaTable tbody tr:hover { background-color: #eef3ff; transition: background-color .2s ease; }
+#escalaModal table#escalaTable th, #escalaModal table#escalaTable td { padding: 10px 12px; font-size: 13px; }
+
+/* Badges para códigos */
+#escalaModal .badge { display: inline-block; min-width: 28px; padding: 3px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; text-align: center; }
+#escalaModal .badge-s { background: #e6f4ff; color: #0b62a4; border: 1px solid #bcdfff; }
+#escalaModal .badge-s2 { background: #fff4e6; color: #a45a0b; border: 1px solid #ffd9b8; }
+#escalaModal .badge-s1 { background: #f5e6ff; color: #6b2ca0; border: 1px solid #e3c8ff; }
+#escalaModal .badge-ro { background: #eaf7ea; color: #1f7a1f; border: 1px solid #cde8cd; }
+#escalaModal td.marked-x { position: relative; }
+#escalaModal td.marked-x::after {
+content: 'X';
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+color: red;
+font-size: 24px;
+font-weight: bold;
+pointer-events: none;
+z-index: 1;
+}
+.close-button { position: absolute; top: 10px; right: 15px; font-size: 30px; color: #aaa; cursor: pointer; }
+.modal-buttons { display: flex; justify-content: center; margin-top: 20px; gap: 10px; }
+.modal-buttons button { padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; border: none; }
+.modal-buttons .save-obs-btn { background-color: var(--primary-blue); color: var(--white); }
+.modal-buttons .cancel-obs-btn { background-color: var(--gray); }
+/* Modal de alerta de quilometragem */
+#kmAlertModal { display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: flex-start; padding-top: 100px; }
+#kmAlertModal.show { display: flex; }
+.km-alert-modal-content { background-color: var(--white); padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; margin-top: 0; }
+.km-alert-modal-content h3 { margin-top: 0; margin-bottom: 20px; color: var(--dark-gray); font-size: 20px; }
+.km-alert-modal-content p { margin-bottom: 25px; color: #666; font-size: 16px; line-height: 1.5; }
+.km-alert-modal-buttons { display: flex; justify-content: center; gap: 10px; }
+.km-alert-modal-buttons button { padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s; }
+.km-alert-confirm-btn { background-color: var(--primary-blue); color: var(--white); }
+.km-alert-confirm-btn:hover { background-color: var(--secondary-blue); }
+.km-alert-cancel-btn { background-color: #6c757d; color: var(--white); }
+.km-alert-cancel-btn:hover { background-color: #5a6268; }
+textarea#obsTextarea { width: 100%; height: 150px; box-sizing: border-box; }
+.assinatura-container-geral { display: none; flex-direction: column; align-items: center; gap: 20px; margin-top: 25px; padding: 20px; background-color: var(--light-gray-bg); border: 1px solid var(--gray); border-radius: 8px; }
+.assinatura-box { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.assinatura-box select { width: 250px; padding: 8px; border: 1px solid #ccc; border-radius: 5-px; font-size: 14px; }
+.assinatura-box label { font-weight: bold; font-size: 14px; color: var(--dark-gray); }
+.saida-realizada { background-color: #dbe4ff !important; }
+@keyframes piscarVermelho { 0% { background-color: inherit; } 50% { background-color: rgba(250, 0, 0, 0.2); } 100% { background-color: inherit; } }
+.alarme-oleo-piscando { animation: piscarVermelho 1.5s infinite; }
+@keyframes piscarAmarelo { 0% { background-color: inherit; } 50% { background-color: rgba(250, 250, 0, 0.3); } 100% { background-color: inherit; } }
+.alarme-hora-saida-piscando {
+animation: piscarAmarelo 1s infinite;
+cursor: pointer;
+}
+.alarme-hora-saida-piscando:hover::after {
+content: "Clique para cancelar o alarme";
+position: absolute;
+background: rgba(0,0,0,0.8);
+color: white;
+padding: 5px 10px;
+border-radius: 4px;
+font-size: 12px;
+z-index: 1000;
+pointer-events: none;
+margin-top: -30px;
+margin-left: 10px;
+}
+@keyframes piscarAzul { 0% { background-color: inherit; } 50% { background-color: rgba(0, 100, 250, 0.2); } 100% { background-color: inherit; } }
+.alarme-pre-saida-piscando {
+animation: piscarAzul 1.2s infinite;
+}
+.alarme-pre-saida-piscando:hover::after {
+content: "Alarme de pré-saída ativo";
+position: absolute;
+background: rgba(0,0,0,0.8);
+color: white;
+padding: 5px 10px;
+border-radius: 4px;
+font-size: 12px;
+z-index: 1000;
+pointer-events: none;
+margin-top: -30px;
+margin-left: 10px;
+}
+.quadro-e-lembretes-wrapper {
+position: relative;
+margin-top: 25px;
+}
+.notice-board-container { width: 100%; border: 1px solid var(--gray); border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); background-color: var(--notice-board-bg); padding: 15px; box-sizing: border-box; }
+.notice-board-container h2 { color: var(--primary-blue); margin-top: 0; margin-bottom: 15px; font-size: 24px; text-align: center; }
+.notice-list { list-style: none; padding: 0; margin: 0; max-height: 150px; overflow-y: auto; }
+.notice-item { background-color: var(--notice-item-bg); border: 1px solid #ddd; border-radius: 5px; padding: 10px 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.notice-item:last-child { margin-bottom: 0; }
+.notice-item-content { flex-grow: 1; margin-right: 10px; font-size: 24px; font-weight: bold; }
+.notice-item-date { font-size: 0.9em; color: #666; white-space: nowrap; margin-left: 10px; }
+.table-locked .delete-row-btn,
+.table-locked .edit-row-btn {
+display: none;
+}
+@keyframes slideDireitaEsquerda {
+0% { transform: translateX(105vw); }
+100% { transform: translateX(-250px); }
+}
+#mascote-container { width: 100%; height: 150px; overflow-x: hidden; position: relative; margin: 20px 0; }
+#mascote-doblo { position: absolute; height: 150px; width: auto; animation: slideDireitaEsquerda 15s linear infinite; }
+#choiceModalContent { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.choice-btn {
+background-color: var(--primary-blue); color: var(--white); border: none;
+padding: 12px; border-radius: 5px; cursor: pointer;
+font-size: 16px; font-weight: bold; text-align: center;
+transition: background-color 0.3s;
+}
+.choice-btn:hover { background-color: var(--secondary-blue); }
+.choice-item-container {
+display: flex;
+align-items: center;
+gap: 10px;
+justify-content: space-between;
+}
+.choice-item-container .choice-btn {
+flex: 1;
+}
+/* Estilos para setores clicáveis */
+.setor-juntado {
+display: inline-block;
+margin: 2px 4px;
+padding: 4px 8px;
+border-radius: 4px;
+cursor: pointer;
+user-select: none;
+transition: all 0.2s;
+background-color: #e3f2fd;
+border: 1px solid #4a69bd;
+color: #1976d2;
+font-weight: bold;
+}
+.setor-juntado:hover {
+background-color: #bbdefb;
+transform: scale(1.05);
+}
+.setor-juntado:active {
+transform: scale(0.95);
+}
+.setor-cell {
+position: relative;
+}
+.setor-cell .setor-container {
+display: flex;
+flex-wrap: wrap;
+align-items: center;
+gap: 4px;
+}
+.setor-separador {
+display: inline-block;
+margin: 0 2px;
+color: #666;
+}
+.destino-cell {
+position: relative;
+}
+.drop-zone-indicator {
+border-top: 2px dashed #4a69bd;
+background-color: #e3f2fd;
+min-height: 30px;
+margin: 5px 0;
+}
+.row-drag-over {
+background-color: #e3f2fd !important;
+border-top: 3px solid #4a69bd;
+}
+
+@keyframes piscarAmareloLembrete {
+50% { background-color: rgba(250, 250, 0, 0.5); }
+}
+@keyframes piscarAmareloHeader {
+50% { background-color: var(--warning-orange); }
+}
+.header-piscando {
+animation: piscarAmareloHeader 1.2s infinite;
+}
+#lembretesFlutuanteContainer {
+position: absolute;
+top: 0;
+right: 0;
+width: 350px;
+background-color: var(--white);
+border: 1px solid var(--gray);
+border-radius: 8px;
+box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+z-index: 100;
+display: none;
+}
+#lembretesHeader {
+background-color: var(--primary-blue); color: var(--white); padding: 10px 15px;
+font-weight: bold; border-top-left-radius: 8px; border-top-right-radius: 8px;
+cursor: move; display: flex; justify-content: space-between; align-items: center;
+transition: background-color 0.3s;
+}
+#toggleLembretesBtn { background: none; border: none; color: white; cursor: pointer; font-size: 16px; }
+#lembretesBody {
+max-height: 180px;
+overflow-y: auto;
+padding: 5px;
+}
+.lembrete-item {
+display: flex; align-items: center; padding: 10px;
+border-bottom: 1px solid #f0f0f0; font-size: 14px; font-weight: bold;
+}
+.lembrete-item:last-child { border-bottom: none; }
+.lembrete-item input[type="checkbox"] { margin-right: 10px; min-width: 18px; height: 18px; cursor: pointer; }
+.lembrete-item .texto { flex-grow: 1; }
+.lembrete-item .hora {
+font-size: 0.9em; color: #333; background-color: #e9e9e9;
+padding: 3px 6px; border-radius: 4px; margin-left: 10px;
+}
+.lembrete-piscando { animation: piscarAmareloLembrete 1.2s infinite; }
+#saidasStatusContainer {
+display: flex;
+gap: 30px;
+padding: 5px 20px;
+background-color: #f1f3f5;
+border: 1px solid var(--gray);
+border-radius: 20px;
+cursor: pointer;
+transition: background-color 0.3s;
+box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+}
+#saidasStatusContainer:hover {
+background-color: #e4e7eb;
+}
+#saidasStatusContainer.locked {
+cursor: not-allowed;
+opacity: 0.7;
+}
+#saidasStatusContainer.locked:hover {
+background-color: #f1f3f5;
+}
+.status-periodo {
+display: flex;
+align-items: center;
+gap: 10px;
+font-weight: bold;
+font-size: 16px;
+text-shadow: 0 2px 4px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.15);
+}
+.status-dot {
+width: 20px;
+height: 20px;
+border-radius: 50%;
+border: 1px solid rgba(0,0,0,0.2);
+}
+.status-dot.green { background-color: var(--edit-green); }
+.status-dot.orange { background-color: var(--orange); }
+.status-dot.red { background-color: var(--delete-red); }
+.config-input-group {
+display: grid;
+grid-template-columns: 1fr 80px;
+align-items: center;
+gap: 15px;
+margin-bottom: 15px;
+}
+.config-input-group label {
+font-weight: bold;
+font-size: 16px;
+}
+.config-input-group input[type="number"] {
+padding: 8px;
+border-radius: 5px;
+border: 1px solid var(--gray);
+font-size: 16px;
+text-align: center;
+}
+#configStatusModal p {
+font-size: 14px; color: #666; margin-top: 0;
+text-align: center;
+}
+.config-section {
+border: 1px solid #e0e0e0; padding: 15px; border-radius: 8px; margin-top: 20px;
+}
+.config-section-title {
+font-size: 18px; color: var(--primary-blue); font-weight: bold; margin-top: -30px;
+background-color: var(--white); display: inline-block; padding: 0 10px;
+}
+input[type="time"][data-key="chegada"] {
+font-weight: bold;
+}
+
+/* NOVOS ESTILOS PARA VIATURAS COM PROBLEMAS */
+.viatura-com-problema {
+color: var(--orange) !important;
+font-weight: bold !important;
+cursor: pointer !important;
+text-decoration: underline;
+transition: color 0.3s;
+}
+.viatura-com-problema:hover {
+color: #e8590c !important;
+}
+#problemasModal .obs-modal-content {
+max-width: 600px;
+}
+#problemasModal h2 {
+color: var(--orange);
+margin-bottom: 20px;
+}
+.problema-item {
+background-color: #fff3cd;
+border-left: 4px solid var(--orange);
+padding: 12px;
+margin-bottom: 10px;
+border-radius: 4px;
+}
+.problema-item strong {
+color: var(--dark-gray);
+display: block;
+margin-bottom: 5px;
+}
+.problema-item p {
+margin: 0;
+color: #856404;
+}
+/* Modo Escuro */
+body[data-theme="dark"],
+body[data-theme="dark"] * {
+transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+body[data-theme="dark"] {
+background-color: #1a1a1a !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] main,
+body[data-theme="dark"] .tab-content {
+background-color: #1a1a1a !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .table-container,
+body[data-theme="dark"] .form-container {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #444 !important;
+}
+body[data-theme="dark"] table {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] table th {
+background-color: #3d3d3d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] table td {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] input,
+body[data-theme="dark"] select,
+body[data-theme="dark"] textarea {
+background-color: #1a1a1a !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] label {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] h1,
+body[data-theme="dark"] h2,
+body[data-theme="dark"] h3 {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] button,
+body[data-theme="dark"] .btn {
+background-color: #4a69bd !important;
+color: #ffffff !important;
+}
+body[data-theme="dark"] button:hover,
+body[data-theme="dark"] .btn:hover {
+background-color: #6c88c9 !important;
+}
+body[data-theme="dark"] .toolbar-actions {
+  background: linear-gradient(135deg, #2d2d2d 0%, #252525 100%);
+  border-color: rgba(74, 105, 189, 0.25);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-svc { background: linear-gradient(135deg, #1e4d8c 0%, #173d70 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-pso { background: linear-gradient(135deg, #2a5a9e 0%, #1e4d8c 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-escala-rocha { background: linear-gradient(135deg, #3668b0 0%, #2a5a9e 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-escala { background: linear-gradient(135deg, #4a69bd 0%, #3668b0 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-pdf { background: linear-gradient(135deg, #5b7dc9 0%, #4a69bd 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-print { background: linear-gradient(135deg, #6c8fd4 0%, #5b7dc9 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-sign { background: linear-gradient(135deg, #7da1e0 0%, #6c8fd4 100%) !important; }
+body[data-theme="dark"] .counter-badge {
+  background: linear-gradient(135deg, #3d5a9e 0%, #4a69bd 100%) !important;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+</style>
+</head>
+<body>
+<main>
+<div id="saidasAdministrativasSection" class="tab-content active">
+<div class="table-controls">
+<h2 class="table-title">SAÍDAS ADMINISTRATIVAS</h2>
+<div id="saidasStatusContainer" title="Clique para configurar os limites de saídas">
+<div class="status-periodo">
+<span>Manhã:</span>
+<div class="status-dot" id="statusManha"></div>
+</div>
+<div class="status-periodo">
+<span>Tarde:</span>
+<div class="status-dot" id="statusTarde"></div>
+</div>
+</div>
+<div class="toolbar-actions">
+<button type="button" id="showSvcRoBtn" class="btn-action btn-svc" title="Serviço / Rotina">SVC/RO</button>
+<button type="button" id="showPsoBtn" class="btn-action btn-pso" title="Retém">Retém</button>
+<button type="button" id="showEscalaRochaBtn" class="btn-action btn-escala-rocha" title="Escala Roxa">Escala Roxa</button>
+<button type="button" id="showEscalaBtn" class="btn-action btn-escala" onclick="(window.openEscalaModal ? window.openEscalaModal() : (function(){var m=document.getElementById('escalaModal'); if(m){m.style.display='flex'; setTimeout(function(){m.scrollTop=0;},0);} else {alert('openEscalaModal não disponível e modal não encontrado.');}})())" title="Abrir escala"><i class="fas fa-calendar"></i> ESCALA</button>
+<button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
+<button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
+<button type="button" id="toggleSignaturesBtn" class="btn-action btn-sign" title="Exibir assinaturas"><i class="fas fa-signature"></i> Assinar</button>
+<div class="counter-badge counter" id="saidasCounter">Número de Saídas: 0</div>
+</div>
+</div>
+<div class="date-filter-container">
+<label for="filterDateAdm">Filtrar por Data:</label>
+<input type="date" id="filterDateAdm">
+</div>
+<div id="limiteSaidasAlerta" class="limite-saidas-alerta" style="display: none;">Atenção para o limite de saídas</div>
+<div class="table-container">
+<table id="saidasTable">
+<thead>
+<tr>
+<th>VIATURA</th> <th>MOTORISTA</th> <th>SAÍDA</th> <th>DESTINO</th>
+<th>OM</th> <th>KM SAÍDA</th> <th>KM CHEGADA</th> <th>CHEGADA</th> <th>SETOR</th> <th>AÇÕES</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+<div id="svcRoDisplay" class="svc-ro-container" style="display: none;">
+<h3><i class="fas fa-clipboard-check"></i> Motoristas em Serviço/Rotina Hoje</h3>
+<ul id="svcRoList"></ul>
+</div>
+<div id="mascote-container">
+<img id="mascote-doblo" src="mascotedoblo.png" alt="Mascote Doblo em movimento">
+</div>
+<div class="assinatura-container-geral">
+<div class="assinatura-box">
+<select id="divisaoTransporteSelect"><option value="">Selecione um responsável...</option></select>
+<label for="divisaoTransporteSelect">Divisão de Transporte</label>
+</div>
+</div>
+<div class="quadro-e-lembretes-wrapper">
+<div class="notice-board-container">
+<h2>Quadro de Avisos</h2>
+<ul class="notice-list" id="noticeList">
+</ul>
+</div>
+<div id="lembretesFlutuanteContainer">
+<div id="lembretesHeader">
+<span><i class="fas fa-bell"></i> Lembretes</span>
+<button id="toggleLembretesBtn"><i class="fas fa-plus"></i></button>
+</div>
+<div id="lembretesBody" style="display: none;"></div>
+</div>
+</div>
+</div>
+</main>
+<div id="obsModal" class="obs-modal">
+<div class="obs-modal-content">
+<span class="close-button">&times;</span>
+<h2>Observações / Ocorrências</h2>
+<textarea id="obsTextarea"></textarea>
+<div class="modal-buttons">
+<button id="saveObsBtn" class="save-obs-btn">Salvar</button>
+<button id="cancelObsBtn" class="cancel-obs-btn">Cancelar</button>
+</div>
+</div>
+</div>
+<div id="choiceModal" class="obs-modal">
+<div class="obs-modal-content">
+<span class="close-button">&times;</span>
+<h2 id="choiceModalTitle">Escolha a Saída</h2>
+<div id="choiceModalContent"></div>
+<div class="modal-buttons">
+<button id="cancelChoiceBtn" class="cancel-obs-btn">Cancelar</button>
+</div>
+</div>
+</div>
+<div id="viewSaidaModal" class="obs-modal">
+<div class="obs-modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+<span class="close-button">&times;</span>
+<h2>Detalhes da Saída</h2>
+<div id="viewSaidaContent" style="margin-top: 20px;"></div>
+<div class="modal-buttons">
+<button class="cancel-obs-btn">Fechar</button>
+</div>
+</div>
+</div>
+<div id="configStatusModal" class="obs-modal">
+<div class="obs-modal-content">
+<span class="close-button">&times;</span>
+<h2>Configurar Limites de Saídas</h2>
+<p>Defina a quantidade máxima de saídas para cada status e período.</p>
+<div class="config-section" style="margin-bottom: 16px;">
+<label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+<input type="checkbox" id="useAutoLimitsCheckbox">
+<span>Usar limites automáticos (conforme escala: motoristas com RO no dia + 2 vagas para manhã e tarde)</span>
+</label>
+</div>
+<div class="config-section">
+<span class="config-section-title">Período da Manhã</span>
+<div class="config-input-group">
+<label for="greenLimitInputManha">Status Verde (Normal) até:</label>
+<input type="number" id="greenLimitInputManha" min="0">
+</div>
+<div class="config-input-group">
+<label for="orangeLimitInputManha">Status Laranja (Atenção) até:</label>
+<input type="number" id="orangeLimitInputManha" min="0">
+</div>
+</div>
+<div class="config-section">
+<span class="config-section-title">Período da Tarde</span>
+<div class="config-input-group">
+<label for="greenLimitInputTarde">Status Verde (Normal) até:</label>
+<input type="number" id="greenLimitInputTarde" min="0">
+</div>
+<div class="config-input-group">
+<label for="orangeLimitInputTarde">Status Laranja (Atenção) até:</label>
+<input type="number" id="orangeLimitInputTarde" min="0">
+</div>
+</div>
+<p style="margin-top: 20px;">Valores acima do limite Laranja serão considerados Vermelho (Crítico).</p>
+<div class="modal-buttons">
+<button id="saveConfigBtn" class="save-obs-btn">Salvar</button>
+<button id="cancelConfigBtn" class="cancel-obs-btn">Cancelar</button>
+</div>
+</div>
+</div>
+
+<!-- NOVO MODAL PARA EXIBIR PROBLEMAS DA VIATURA -->
+<div id="problemasModal" class="obs-modal">
+<div class="obs-modal-content">
+<span class="close-button">&times;</span>
+<h2><i class="fas fa-exclamation-triangle"></i> Problemas da Viatura <span id="problemasPlaca"></span></h2>
+<div id="problemasLista"></div>
+<div class="modal-buttons">
+<button class="cancel-obs-btn" id="closeProblemasBtn">Fechar</button>
+</div>
+</div>
+</div>
+
+<!-- NOVO MODAL PARA EXIBIR ESCALA -->
+<div id="escalaModal" class="obs-modal">
+<div class="obs-modal-content">
+<span class="close-button" id="closeEscalaModalBtn">&times;</span>
+<h2><i class="fas fa-calendar"></i> Escala</h2>
+<div class="escala-filter-container">
+<label for="escalaMonthSelect">Mês:</label>
+<select id="escalaMonthSelect"></select>
+<label for="escalaYearSelect">Ano:</label>
+<select id="escalaYearSelect"></select>
+</div>
+<div class="escala-table-container">
+<table id="escalaTable">
+<thead>
+<tr id="escalaHeaderRow"></tr>
+</thead>
+<tbody id="escalaBody"></tbody>
+</table>
+</div>
+<div id="escalaEmpty" style="display: none;">Nenhuma escala encontrada.</div>
+</div>
+</div>
+
+<!-- MODAL DE IMPRESSÃO -->
+<div id="printModal" class="obs-modal">
+<div class="obs-modal-content" style="max-width: 600px;">
+<span class="close-button" id="closePrintModal">&times;</span>
+<h2><i class="fas fa-print"></i> Imprimir Saídas</h2>
+<div style="margin: 20px 0;">
+<p style="margin-bottom: 15px; color: var(--dark-gray);">Selecione as datas que deseja imprimir:</p>
+<div id="printDateList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--gray); border-radius: 5px; padding: 10px;">
+<!-- Dates will be populated here -->
+</div>
+</div>
+<div class="modal-buttons">
+<button id="confirmPrintBtn" class="save-obs-btn"><i class="fas fa-print"></i> Imprimir</button>
+<button id="cancelPrintBtn" class="cancel-obs-btn">Cancelar</button>
+</div>
+</div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+let saidasAdministrativas = [];
+let motoristasCadastrados = [];
+let frotaData = [];
+let isSystemLocked = true;
+let statusThresholds = {
+manha: { green: 1, orange: 2 },
+tarde: { green: 1, orange: 2 }
+};
+let viaturasComProblemas = {};
+let limiteAlertaJaMostradoNestaVisibilidade = false;
+
+const saidasTableBody = document.querySelector('#saidasTable tbody');
+const filterDateAdmInput = document.getElementById('filterDateAdm');
+const saidasCounter = document.getElementById('saidasCounter');
+const divisaoTransporteSelect = document.getElementById('divisaoTransporteSelect');
+const obsModal = document.getElementById('obsModal');
+const obsTextarea = document.getElementById('obsTextarea');
+const noticeList = document.getElementById('noticeList');
+let currentObsContext = null;
+const choiceModal = document.getElementById('choiceModal');
+const choiceModalContent = document.getElementById('choiceModalContent');
+const choiceModalTitle = document.getElementById('choiceModalTitle');
+const configStatusModal = document.getElementById('configStatusModal');
+const saidasStatusContainer = document.getElementById('saidasStatusContainer');
+const greenLimitInputManha = document.getElementById('greenLimitInputManha');
+const orangeLimitInputManha = document.getElementById('orangeLimitInputManha');
+const greenLimitInputTarde = document.getElementById('greenLimitInputTarde');
+const orangeLimitInputTarde = document.getElementById('orangeLimitInputTarde');
+const saveConfigBtn = document.getElementById('saveConfigBtn');
+const cancelConfigBtn = document.getElementById('cancelConfigBtn');
+const speechSynthesizer = window.speechSynthesis;
+let cachedFemaleVoicePtBR = null;
+function cacheFemaleVoice() {
+const voices = speechSynthesizer.getVoices();
+const ptBR = voices.filter(v => v.lang === 'pt-BR' || v.lang === 'pt_BR');
+const femininas = ptBR.filter(v => {
+const n = (v.name || '').toLowerCase();
+return (v.gender === 'female') || /\b(maria|luciana|francisca|female|mulher)\b/.test(n);
+});
+cachedFemaleVoicePtBR = femininas[0] || ptBR[0] || null;
+}
+if (speechSynthesizer) {
+cacheFemaleVoice();
+speechSynthesizer.addEventListener('voiceschanged', function onVoicesChanged() {
+speechSynthesizer.removeEventListener('voiceschanged', onVoicesChanged);
+cacheFemaleVoice();
+});
+}
+let isSpeaking = false;
+let alertedVehiclesOil = new Set();
+let alertedHoraSaida = new Set();
+let alertedPreSaida = new Set();
+const preSaidaAlarmsActive = new Map();
+const lembretesContainer = document.getElementById('lembretesFlutuanteContainer');
+const lembretesBody = document.getElementById('lembretesBody');
+const lembretesHeader = document.getElementById('lembretesHeader');
+const toggleLembretesBtn = document.getElementById('toggleLembretesBtn');
+let lembretesAtivos = [];
+makeDraggable(lembretesContainer, lembretesHeader);
+const showSvcRoBtn = document.getElementById('showSvcRoBtn');
+const showEscalaBtn = document.getElementById('showEscalaBtn');
+const escalaModal = document.getElementById('escalaModal');
+const closeEscalaModalBtn = document.getElementById('closeEscalaModalBtn');
+const escalaMonthSelect = document.getElementById('escalaMonthSelect');
+const escalaYearSelect = document.getElementById('escalaYearSelect');
+const escalaTable = document.getElementById('escalaTable');
+const escalaHeaderRow = document.getElementById('escalaHeaderRow');
+const escalaBody = document.getElementById('escalaBody');
+const escalaEmpty = document.getElementById('escalaEmpty');
+const svcRoDisplay = document.getElementById('svcRoDisplay');
+const svcRoList = document.getElementById('svcRoList');
+
+// ===== ESCALA: helpers e renderização =====
+const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+function populateMonthYearFilters() {
+    const now = new Date();
+    const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+    const currentYear = String(now.getFullYear());
+
+    // Mês
+    escalaMonthSelect.innerHTML = '';
+    for (let m = 1; m <= 12; m++) {
+        const val = String(m).padStart(2, '0');
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = `${val} - ${MONTH_NAMES[m-1]}`;
+        if (val === currentMonth) opt.selected = true;
+        escalaMonthSelect.appendChild(opt);
+    }
+
+    // Ano (pegar existentes no storage + faixa padrão)
+    const yearsSet = new Set();
+    yearsSet.add(currentYear);
+    try {
+        Object.keys(localStorage)
+            .filter(k => /^\d{4}-\d{2}$/.test(k))
+            .forEach(k => yearsSet.add(k.split('-')[0]));
+    } catch {}
+    for (let y = parseInt(currentYear,10) - 3; y <= parseInt(currentYear,10) + 3; y++) {
+        yearsSet.add(String(y));
+    }
+    const years = Array.from(yearsSet).sort((a,b)=>b.localeCompare(a));
+    escalaYearSelect.innerHTML = '';
+    years.forEach(y => {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        if (y === currentYear) opt.selected = true;
+        escalaYearSelect.appendChild(opt);
+    });
+}
+
+function loadEscalaData(year, month) {
+    try {
+        const m = String(parseInt(month, 10) || 0).padStart(2, '0');
+        const keyPadded = `${year}-${m}`;
+        const keyUnpadded = `${year}-${parseInt(month, 10)}`;
+        const raw = localStorage.getItem(keyPadded) || localStorage.getItem(keyUnpadded);
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        return data || null;
+    } catch (e) {
+        console.error('Erro ao carregar escala:', e);
+        return null;
+    }
+}
+
+function getRoCountForDate(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return 0;
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return 0;
+    const year = parts[0];
+    const month = parts[1];
+    const day = parseInt(parts[2], 10);
+    if (!day || day < 1) return 0;
+    const escalaData = loadEscalaData(year, month);
+    if (!escalaData || !Array.isArray(escalaData.members)) return 0;
+    let count = 0;
+    escalaData.members.forEach(function(member) {
+        if (!Array.isArray(member)) return;
+        const val = (member[day] || '').toString().toUpperCase().trim();
+        if (val === 'RO') count++;
+    });
+    return count;
+}
+
+function getAutoLimitForDate(dateStr) {
+    return getRoCountForDate(dateStr) + 2;
+}
+
+function getUseAutoLimits() {
+    const v = localStorage.getItem('useAutoLimits');
+    return v !== 'false';
+}
+
+function getEffectiveThresholds(dateStr) {
+    const dateToUse = dateStr || new Date().toISOString().slice(0, 10);
+    if (getUseAutoLimits()) {
+        const L = getAutoLimitForDate(dateToUse);
+        const green = Math.max(0, L - 1);
+        return {
+            manha: { green: green, orange: L },
+            tarde: { green: green, orange: L }
+        };
+    }
+    return statusThresholds;
+}
+
+function daysInMonth(year, month) {
+    return new Date(parseInt(year,10), parseInt(month,10), 0).getDate();
+}
+
+function renderEscala(year, month) {
+    const escalaData = loadEscalaData(year, month);
+    escalaHeaderRow.innerHTML = '';
+    escalaBody.innerHTML = '';
+    if (!escalaData || !Array.isArray(escalaData.members) || escalaData.members.length === 0) {
+        escalaTable.style.display = 'none';
+        escalaEmpty.style.display = 'block';
+        return;
+    }
+    escalaEmpty.style.display = 'none';
+    escalaTable.style.display = '';
+
+    const totalDays = daysInMonth(year, month);
+    // Cabeçalho
+    const thName = document.createElement('th');
+    thName.textContent = 'Nome';
+    thName.style.padding = '10px';
+    thName.style.border = '1px solid #e9ecef';
+    escalaHeaderRow.appendChild(thName);
+    for (let d = 1; d <= totalDays; d++) {
+        const th = document.createElement('th');
+        th.textContent = String(d).padStart(2, '0');
+        th.style.padding = '8px';
+        th.style.border = '1px solid #e9ecef';
+        const dayOfWeek = new Date(parseInt(year,10), parseInt(month,10) - 1, d).getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        if (isWeekend) {
+            th.style.background = 'linear-gradient(180deg, #4a69bd 0%, #3f5aa3 100%)';
+            th.style.color = '#ffffff';
+        }
+        escalaHeaderRow.appendChild(th);
+    }
+
+    // Linhas
+    escalaData.members.forEach((member, memberIndex) => {
+        if (!Array.isArray(member) || member.length === 0) return;
+        const tr = document.createElement('tr');
+        tr.style.backgroundColor = '#fff';
+        const nameTd = document.createElement('td');
+        nameTd.textContent = member[0] || '';
+        nameTd.style.fontWeight = 'bold';
+        nameTd.style.border = '1px solid #e9ecef';
+        nameTd.style.padding = '8px';
+        tr.appendChild(nameTd);
+        for (let d = 1; d <= totalDays; d++) {
+            const td = document.createElement('td');
+            td.style.border = '1px solid #e9ecef';
+            td.style.padding = '6px 8px';
+            td.style.position = 'relative';
+            const val = (member[d] || '').toString().toUpperCase();
+            td.textContent = val;
+            
+            // Adiciona atributos para identificação
+            td.dataset.memberIndex = memberIndex;
+            td.dataset.dayIndex = d;
+            
+            // Carrega marcação de X vermelho se existir
+            const markKey = 'cellMarks';
+            const marks = JSON.parse(localStorage.getItem(markKey) || '{}');
+            const monthPadded = String(month).padStart(2, '0');
+            const key = `${year}-${monthPadded}-${memberIndex}-${d}`;
+            if (marks[key]) td.classList.add('marked-x');
+            
+            const dayOfWeek = new Date(parseInt(year,10), parseInt(month,10) - 1, d).getDay();
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            if (isWeekend) {
+                // Fim de semana: usar exatamente as mesmas cores do cabeçalho
+                td.style.background = 'linear-gradient(180deg, #4a69bd 0%, #3f5aa3 100%)';
+                td.style.color = '#ffffff';
+                td.style.textAlign = 'center';
+                if (val === 'S' || val === 'RO' || val === 'S1' || val === 'S2') {
+                    td.style.fontWeight = 'bold';
+                }
+            } else {
+                // Dias úteis: sem fundo especial; apenas enfatizar códigos
+                if (val === 'S' || val === 'RO' || val === 'S1' || val === 'S2') {
+                    td.style.fontWeight = 'bold';
+                    td.style.textAlign = 'center';
+                    td.style.color = '#333';
+                } else {
+                    td.style.textAlign = 'center';
+                    td.style.color = '#333';
+                }
+            }
+            tr.appendChild(td);
+        }
+        escalaBody.appendChild(tr);
+    });
+}
+
+function openEscalaModal() {
+    // Usa valores atuais dos selects se existirem, senão usa mês/ano atuais
+    let y = (escalaYearSelect && escalaYearSelect.value) ? escalaYearSelect.value : String(new Date().getFullYear());
+    let m = (escalaMonthSelect && escalaMonthSelect.value) ? escalaMonthSelect.value : String(new Date().getMonth() + 1).padStart(2, '0');
+    // Solicita abertura do overlay global no documento pai
+    try { window.parent.postMessage({ type: 'open_global_escala', year: y, month: m }, '*'); } catch(e) { console.error('Falha ao solicitar overlay global:', e); }
+}
+window.openEscalaModal = openEscalaModal;
+
+function closeEscalaModal() {
+    escalaModal.style.display = 'none';
+}
+
+// Eventos
+showEscalaBtn.addEventListener('click', openEscalaModal);
+escalaMonthSelect.addEventListener('change', () => { renderEscala(escalaYearSelect.value, escalaMonthSelect.value); });
+escalaYearSelect.addEventListener('change', () => { renderEscala(escalaYearSelect.value, escalaMonthSelect.value); });
+closeEscalaModalBtn.addEventListener('click', closeEscalaModal);
+// Fechar ao clicar fora do conteúdo
+escalaModal.addEventListener('click', (e) => { if (e.target === escalaModal) escalaModal.style.display = 'none'; });
+
+// NOVOS ELEMENTOS PARA MODAL DE PROBLEMAS
+const problemasModal = document.getElementById('problemasModal');
+const problemasPlaca = document.getElementById('problemasPlaca');
+const problemasLista = document.getElementById('problemasLista');
+const closeProblemasBtn = document.getElementById('closeProblemasBtn');
+
+// FUNÇÃO PARA CARREGAR VIATURAS COM PROBLEMAS
+function loadViaturasComProblemas() {
+viaturasComProblemas = JSON.parse(localStorage.getItem('viaturasComProblemas') || '{}');
+}
+
+// FUNÇÃO PARA EXIBIR MODAL DE PROBLEMAS
+function showProblemasModal(placa) {
+// Carregar vistorias e problemas marcados
+const vistorias = JSON.parse(localStorage.getItem('vistorias') || '[]');
+const viaturasComProblemasMarcados = JSON.parse(localStorage.getItem('viaturasComProblemas') || '{}');
+
+// Pegar apenas a última vistoria da viatura (mesma lógica da aba Situação)
+const vehicleInspections = vistorias
+.filter(insp => insp.placa === placa && insp.status !== 'OFICINA')
+.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+const lastInspection = vehicleInspections.length > 0 ? vehicleInspections[0] : null;
+
+if (!lastInspection || !lastInspection.resultados) {
+return; // Sem vistoria ou sem resultados
+}
+
+// Pegar problemas pendentes da última vistoria
+const problemasPendentes = [];
+lastInspection.resultados.forEach(result => {
+if (result.nota && result.nota.trim() !== '' && result.resolvido === false) {
+// Gerar uniqueId da mesma forma que na aba Situação
+const uniqueId = `${placa}_${result.item}_${result.nota}`.replace(/\s/g, '_').replace(/[^\w-]/g, '');
+// Verificar se está marcado na coluna "Marcar Problema"
+const estaMarcado = viaturasComProblemasMarcados[placa]?.some(p => p.id === uniqueId) || false;
+if (estaMarcado) {
+problemasPendentes.push({
+item: result.item,
+nota: result.nota
+});
+}
+}
+});
+
+// Se não houver problemas marcados, não mostrar o modal
+if (problemasPendentes.length === 0) return;
+
+problemasPlaca.textContent = placa;
+problemasLista.innerHTML = '';
+
+problemasPendentes.forEach(problema => {
+const div = document.createElement('div');
+div.className = 'problema-item';
+div.innerHTML = `
+<strong><i class="fas fa-tools"></i> ${problema.item}</strong>
+<p>${problema.nota}</p>
+`;
+problemasLista.appendChild(div);
+});
+
+problemasModal.style.display = 'flex';
+// Garantir que o modal esteja no topo
+setTimeout(() => {
+    problemasModal.scrollTop = 0;
+}, 0);
+}
+
+// FUNÇÃO PARA FECHAR MODAL DE PROBLEMAS
+function closeProblemasModal() {
+problemasModal.style.display = 'none';
+}
+
+function loadStatusThresholds() {
+const savedThresholds = localStorage.getItem('statusThresholds');
+if (savedThresholds) {
+const parsed = JSON.parse(savedThresholds);
+statusThresholds = {
+manha: { ...statusThresholds.manha, ...parsed.manha },
+tarde: { ...statusThresholds.tarde, ...parsed.tarde }
+};
+}
+}
+function saveStatusThresholds() {
+const newGreenManha = parseInt(greenLimitInputManha.value, 10);
+const newOrangeManha = parseInt(orangeLimitInputManha.value, 10);
+const newGreenTarde = parseInt(greenLimitInputTarde.value, 10);
+const newOrangeTarde = parseInt(orangeLimitInputTarde.value, 10);
+if ([newGreenManha, newOrangeManha, newGreenTarde, newOrangeTarde].some(v => isNaN(v) || v < 0)) {
+alert("Por favor, insira valores numéricos válidos e não negativos em todos os campos.");
+return;
+}
+if (newOrangeManha <= newGreenManha) {
+alert("No período da Manhã, o limite Laranja deve ser maior que o limite Verde.");
+return;
+}
+if (newOrangeTarde <= newGreenTarde) {
+alert("No período da Tarde, o limite Laranja deve ser maior que o limite Verde.");
+return;
+}
+const useAutoCheckbox = document.getElementById('useAutoLimitsCheckbox');
+if (useAutoCheckbox && useAutoCheckbox.checked) {
+localStorage.setItem('useAutoLimits', 'true');
+} else {
+localStorage.setItem('useAutoLimits', 'false');
+statusThresholds.manha = { green: newGreenManha, orange: newOrangeManha };
+statusThresholds.tarde = { green: newGreenTarde, orange: newOrangeTarde };
+localStorage.setItem('statusThresholds', JSON.stringify(statusThresholds));
+}
+configStatusModal.style.display = 'none';
+populateTables();
+}
+function toggleSvcRoDisplay() {
+if (svcRoDisplay.style.display !== 'none') {
+svcRoDisplay.style.display = 'none';
+return;
+}
+const filterDateValue = filterDateAdmInput.value;
+if (!filterDateValue) {
+svcRoList.innerHTML = '<li class="no-duty">Por favor, selecione uma data no filtro.</li>';
+svcRoDisplay.style.display = 'block';
+return;
+}
+const [year, month, dayStr] = filterDateValue.split('-');
+const day = parseInt(dayStr, 10);
+const dataKey = `${year}-${month}`;
+const escalaDataJSON = localStorage.getItem(dataKey);
+svcRoList.innerHTML = '';
+if (!escalaDataJSON) {
+svcRoList.innerHTML = `<li class="no-duty">Nenhuma escala encontrada para ${month}/${year}.</li>`;
+svcRoDisplay.style.display = 'block';
+return;
+}
+const escalaData = JSON.parse(escalaDataJSON);
+const driversOnDuty = [];
+// Células com X vermelho na escala: não exibir no quadro Motoristas em Serviço/Rotina
+// Ex.: se "BBB" tem RO ou S com X no dia 8/fev, ao clicar SVC/RO com data 08/02 não deve aparecer BBB
+const cellMarks = JSON.parse(localStorage.getItem('cellMarks') || '{}');
+const monthPadded = String(month).padStart(2, '0');
+const monthNum = parseInt(month, 10);
+function isCellMarkedWithX(memberIndex, dayNum) {
+const keyPadded = `${year}-${monthPadded}-${memberIndex}-${dayNum}`;
+const keyUnpadded = `${year}-${monthNum}-${memberIndex}-${dayNum}`;
+return !!(cellMarks[keyPadded] || cellMarks[keyUnpadded]);
+}
+if (escalaData && escalaData.members) {
+escalaData.members.forEach((member, memberIndex) => {
+const memberName = member[0];
+const dutyStatus = member[day] ? member[day].toUpperCase().trim() : '';
+if (!memberName || (dutyStatus !== 'S' && dutyStatus !== 'RO')) return;
+if (isCellMarkedWithX(memberIndex, day)) return;
+driversOnDuty.push(`${memberName} (${dutyStatus})`);
+});
+}
+if (driversOnDuty.length > 0) {
+driversOnDuty.sort();
+driversOnDuty.forEach(driverInfo => {
+const li = document.createElement('li');
+li.textContent = driverInfo;
+svcRoList.appendChild(li);
+});
+} else {
+svcRoList.innerHTML = `<li class="no-duty">Nenhum motorista escalado com "S" ou "RO" para ${dayStr}/${month}/${year}.</li>`;
+}
+svcRoDisplay.style.display = 'block';
+}
+function getFemaleVoicePtBR() {
+if (cachedFemaleVoicePtBR) return cachedFemaleVoicePtBR;
+cacheFemaleVoice();
+return cachedFemaleVoicePtBR;
+}
+function playVoiceAlert(text, onEndCallback) {
+if (!speechSynthesizer || isSpeaking) { if(onEndCallback) onEndCallback(); return; }
+const utterance = new SpeechSynthesisUtterance(text);
+utterance.lang = 'pt-BR';
+const femaleVoice = getFemaleVoicePtBR();
+if (femaleVoice) utterance.voice = femaleVoice;
+utterance.onstart = () => isSpeaking = true;
+utterance.onend = () => { isSpeaking = false; if (onEndCallback) onEndCallback(); };
+speechSynthesizer.speak(utterance);
+}
+function getMotoristaPrefixo(motorista) {
+if (!motorista || typeof motorista !== 'string') return '';
+const nomeTrimmed = motorista.trim();
+const nomeUpper = nomeTrimmed.toUpperCase();
+if (nomeUpper.startsWith('SO RM1') || /^SO\s+RM1\s+/i.test(nomeTrimmed)) return 'Suboficial ';
+if (nomeUpper.startsWith('SO ') || /^SO\s+/i.test(nomeTrimmed)) return 'Suboficial ';
+if (nomeUpper.startsWith('SG ') || /^SG\s+/i.test(nomeTrimmed)) return 'Sargento ';
+if (nomeUpper.startsWith('FC ') || /^FC\s+/i.test(nomeTrimmed)) return 'Funcionário Civil ';
+return '';
+}
+function getNomeSemPrefixo(motorista) {
+if (!motorista || typeof motorista !== 'string') return motorista;
+const nomeTrimmed = motorista.trim();
+return nomeTrimmed.replace(/^(SO\s+RM1|SG|SO|FC)\s+/i, '').trim();
+}
+function playOilChangeAlert(viatura) { playVoiceAlert(`Atenção, troca de óleo necessária da viatura ${viatura}.`); }
+function playHoraSaidaAlert(motorista, viatura, destino) {
+const prefixo = getMotoristaPrefixo(motorista);
+const nomeMotorista = getNomeSemPrefixo(motorista);
+const destinoTexto = destino ? ` com destino a ${destino}` : '';
+playVoiceAlert(`Atenção ${prefixo}${nomeMotorista}, hora da sua saída com a viatura ${viatura}${destinoTexto}.`);
+}
+function playPreSaidaAlert(motorista, viatura) {
+const prefixo = getMotoristaPrefixo(motorista);
+const nomeMotorista = getNomeSemPrefixo(motorista);
+playVoiceAlert(`${prefixo}${nomeMotorista} faltam poucos minutos para sua saída, verifique a viatura com a placa ${viatura}`);
+}
+function setDateToToday() {
+const today = new Date();
+const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+filterDateAdmInput.value = todayFormatted;
+}
+async function loadState() {
+    try {
+        // IMPORTANTE: Sempre carregar TODAS as saídas do localStorage/API
+        // As saídas devem espelhar exatamente o que está cadastrado na sub-aba "Saídas Cadastradas"
+        // NÃO filtrar ou remover saídas baseado em avisos de junção removidos
+        
+        // Usar dataService para carregar dados
+        if (typeof dataService !== 'undefined') {
+            saidasAdministrativas = await dataService.getSaidasAdministrativas();
+            motoristasCadastrados = await dataService.getMotoristas();
+            frotaData = await dataService.getViaturas();
+        } else {
+            // Fallback para localStorage - carregar TODAS as saídas sem filtros
+            const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+            saidasAdministrativas = [...todasSaidas]; // Criar cópia para garantir que não seja modificada
+            console.log(`[loadState] Carregadas ${saidasAdministrativas.length} saídas administrativas do localStorage`);
+            motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+            frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+        }
+        loadViaturasComProblemas();
+    } catch (error) {
+        console.error('Erro ao carregar estado:', error);
+        // Fallback para localStorage - carregar TODAS as saídas sem filtros
+        const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+        saidasAdministrativas = [...todasSaidas]; // Criar cópia para garantir que não seja modificada
+        console.log(`[loadState - Error] Carregadas ${saidasAdministrativas.length} saídas administrativas do localStorage`);
+        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+        frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+        loadViaturasComProblemas();
+    }
+}
+
+async function saveState() {
+    try {
+        // Sempre manter localStorage como backup
+        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        
+        // Salvar na API se disponível
+        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+            // A API será atualizada quando uma saída individual for salva
+            // Aqui apenas sincronizamos
+        }
+    } catch (error) {
+        console.error('Erro ao salvar estado:', error);
+        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+    }
+}
+function getLastKmChegadaAdm(placa) {
+    const allSaidas = [...saidasAdministrativas].filter(s => s.viatura === placa);
+    allSaidas.sort((a, b) => {
+        const dateA = new Date(a.dataSaida + 'T' + (a.saida || '00:00'));
+        const dateB = new Date(b.dataSaida + 'T' + (b.saida || '00:00'));
+        return dateB - dateA;
+    });
+    for (let s of allSaidas) {
+        if (s.kmChegada && s.kmChegada.trim() !== '') return s.kmChegada;
+    }
+    return '';
+}
+function populateNotices() {
+let avisos = JSON.parse(localStorage.getItem('avisos')) || [];
+noticeList.innerHTML = '';
+const today = new Date(); today.setHours(0, 0, 0, 0);
+avisos = avisos.filter(a => {
+if(!a.expiryDate) return true;
+const expiryDate = new Date(a.expiryDate + 'T00:00:00');
+return expiryDate >= today;
+});
+if (avisos.length > 0) {
+avisos.sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+avisos.forEach(aviso => {
+const li = document.createElement('li');
+li.classList.add('notice-item');
+li.innerHTML = `<span class="notice-item-content">${aviso.text}</span><span class="notice-item-date">Expira em: ${aviso.expiryDate.split('-').reverse().join('/')}</span>`;
+noticeList.appendChild(li);
+});
+} else { noticeList.innerHTML = '<li>Nenhum aviso no momento.</li>'; }
+}
+function atualizarEstiloDaLinha(row) {
+const ids = row.dataset.id.split(',');
+if (!ids[0]) return;
+const saidaPrincipal = saidasAdministrativas.find(s => s.id === ids[0]);
+if (!saidaPrincipal) return;
+const placa = saidaPrincipal.viatura, kmChegada = parseFloat(saidaPrincipal.kmChegada);
+let alarmeOleoAtivo = false;
+if (placa && !isNaN(kmChegada) && frotaData.length > 0) {
+const dadosViatura = frotaData.find(v => v.placa === placa);
+if (dadosViatura) {
+const proxTrocaKm = parseFloat(dadosViatura.proxTrocaKm);
+if (!isNaN(proxTrocaKm) && kmChegada >= proxTrocaKm && !dadosViatura.confirma) {
+alarmeOleoAtivo = true;
+if (!alertedVehiclesOil.has(placa)) { playOilChangeAlert(placa); alertedVehiclesOil.add(placa); }
+}
+}
+}
+row.classList.toggle('alarme-oleo-piscando', alarmeOleoAtivo);
+if (!alarmeOleoAtivo) { row.classList.toggle('saida-realizada', !!(saidaPrincipal.kmSaida && saidaPrincipal.kmChegada && saidaPrincipal.chegada)); }
+}
+function formatarListaComE(itens) {
+if (!itens || itens.length === 0) return '';
+const itensUnicos = [...new Set(itens)].filter(i => i && i.trim());
+if (itensUnicos.length === 1) return itensUnicos[0];
+if (itensUnicos.length === 2) return `${itensUnicos[0]} e ${itensUnicos[1]}`;
+const todosExcetoUltimo = itensUnicos.slice(0, -1);
+const ultimo = itensUnicos[itensUnicos.length - 1];
+return `${todosExcetoUltimo.join(', ')} e ${ultimo}`;
+}
+
+/**
+ * Extrai apenas o bairro do destino, removendo a cidade se presente
+ * @param {string} destino - String do destino (pode ser "Cidade - Bairro" ou apenas "Bairro")
+ * @returns {string} - Apenas o bairro
+ */
+function extrairBairroDoDestino(destino) {
+    if (!destino || !destino.trim()) return '';
+    // Se contém " - ", pega apenas a parte após o " - " (bairro)
+    if (destino.includes(' - ')) {
+        return destino.split(' - ').slice(-1)[0].trim();
+    }
+    // Se não contém, já é só o bairro
+    return destino.trim();
+}
+function groupSaidas(saidas) {
+if (!saidas || saidas.length === 0) return [];
+const groups = new Map();
+const saidasJuntadas = new Set(); // IDs de saídas que foram juntadas e devem ser ocultadas
+saidas.forEach(saida => {
+// Se a saída foi juntada (juntada: true), ela já tem destinos e setores formatados
+if (saida.juntada) {
+// Adicionar IDs das saídas originais à lista de ocultas
+if (saida.saidas_originais && Array.isArray(saida.saidas_originais)) {
+saida.saidas_originais.forEach(id => saidasJuntadas.add(id));
+}
+// Usar a saída juntada diretamente, não agrupar com outras
+groups.set(saida.id, saida);
+return;
+}
+// Ignorar saídas que foram juntadas em outra saída
+if (saidasJuntadas.has(saida.id)) {
+return;
+}
+const groupKey = `${saida.dataSaida}-${saida.viatura}-${saida.motorista}-${saida.saida}`;
+if (!groups.has(groupKey)) { groups.set(groupKey, { isGroup: true, ids: [], ...saida, destinos: [], setores: [], observacoes: [] }); }
+const group = groups.get(groupKey);
+group.ids.push(saida.id); group.destinos.push(saida.destino); group.setores.push(saida.setor);
+if (saida.observacoes) group.observacoes.push(saida.observacoes);
+});
+// Filtrar saídas juntadas e formatar grupos
+const resultado = Array.from(groups.values()).map(group => {
+if (group.juntada) {
+// Saída juntada já formatada
+return group;
+} else if (group.ids.length === 1) {
+// Saída única
+return saidas.find(s => s.id === group.ids[0]);
+} else {
+// Grupo de saídas - formatar destinos e setores com vírgulas e "e"
+group.destino = formatarListaComE(group.destinos);
+group.setor = formatarListaComE(group.setores);
+return group;
+}
+});
+return resultado;
+}
+function updateSaidasStatus(saidasAgrupadas, dateStr) {
+const statusManhaDot = document.getElementById('statusManha');
+const statusTardeDot = document.getElementById('statusTarde');
+let manhaCount = 0;
+let tardeCount = 0;
+saidasAgrupadas.forEach(saida => {
+if (!saida.saida) return;
+if (saida.saida >= '00:00' && saida.saida <= '12:00') {
+manhaCount++;
+} else if (saida.saida > '12:00' && saida.saida <= '23:59') {
+tardeCount++;
+}
+});
+const thresholds = getEffectiveThresholds(dateStr);
+const setDotColor = (dotElement, count, th) => {
+dotElement.className = 'status-dot';
+if (count <= th.green) {
+dotElement.classList.add('green');
+} else if (count <= th.orange) {
+dotElement.classList.add('orange');
+} else {
+dotElement.classList.add('red');
+}
+};
+setDotColor(statusManhaDot, manhaCount, thresholds.manha);
+setDotColor(statusTardeDot, tardeCount, thresholds.tarde);
+const isRed = (statusManhaDot && statusManhaDot.classList.contains('red')) || (statusTardeDot && statusTardeDot.classList.contains('red'));
+const alertEl = document.getElementById('limiteSaidasAlerta');
+if (alertEl) {
+if (!isRed) {
+alertEl.style.display = 'none';
+alertEl.classList.remove('piscar');
+} else if (!limiteAlertaJaMostradoNestaVisibilidade) {
+alertEl.style.display = 'block';
+alertEl.classList.remove('piscar');
+alertEl.offsetHeight;
+alertEl.classList.add('piscar');
+setTimeout(function() {
+alertEl.classList.remove('piscar');
+alertEl.style.display = 'none';
+limiteAlertaJaMostradoNestaVisibilidade = true;
+}, 5000);
+}
+}
+}
+function populateTables() {
+alertedVehiclesOil.clear();
+saidasTableBody.innerHTML = '';
+// IMPORTANTE: Sempre exibir TODAS as saídas carregadas do localStorage
+// Apenas aplicar filtro de data se houver um valor selecionado
+// NÃO remover saídas baseado em avisos de junção removidos
+const filteredSaidas = filterDateAdmInput.value ? saidasAdministrativas.filter(s => s.dataSaida === filterDateAdmInput.value) : saidasAdministrativas;
+console.log(`[populateTables] Exibindo ${filteredSaidas.length} saídas (total carregado: ${saidasAdministrativas.length})`);
+filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
+const groupedSaidas = groupSaidas(filteredSaidas);
+const dateForLimits = filterDateAdmInput.value || new Date().toISOString().slice(0, 10);
+updateSaidasStatus(groupedSaidas, dateForLimits);
+groupedSaidas.forEach(item => {
+const row = document.createElement('tr');
+row.dataset.id = item.juntada ? item.id : (item.isGroup ? item.ids.join(',') : item.id);
+
+// VERIFICA SE A VIATURA TEM PROBLEMAS
+const temProblema = viaturasComProblemas[item.viatura] && viaturasComProblemas[item.viatura].length > 0;
+const classeViatura = temProblema ? 'viatura-com-problema' : '';
+
+// Determinar destino e setor formatados
+let destinoFormatado = item.destino || '';
+let setorFormatado = item.setor || '';
+
+// Se for saída juntada, criar elementos arrastáveis para cada setor
+let destinoCellHTML = '';
+let setorCellHTML = '';
+if (item.juntada && item.setores_multiplos && Array.isArray(item.setores_multiplos) && item.setores_multiplos.length > 1) {
+    // Criar elementos arrastáveis para cada setor
+    const destinos = item.destinos_multiplos || [];
+    const setores = item.setores_multiplos || [];
+    
+    // Destinos formatados normalmente (apenas bairros, sem cidade)
+    destinoCellHTML = item.destino ? extrairBairroDoDestino(item.destino) : formatarListaComE(destinos.map(d => extrairBairroDoDestino(d.destino || '') || d.bairro || ''));
+    
+    // Setores como elementos clicáveis (duplo clique para separar)
+    setorCellHTML = '<div class="setor-container">';
+    setores.forEach((setorItem, idx) => {
+        if (setorItem) {
+            const destinoObj = destinos[idx] || {};
+            setorCellHTML += `<span class="setor-juntado" data-saida-id="${item.id}" data-setor-index="${idx}" data-setor="${setorItem}" data-destino="${destinoObj.destino || destinoObj.bairro || destinoObj.cidade || ''}" data-bairro="${destinoObj.bairro || ''}" data-cidade="${destinoObj.cidade || ''}">${setorItem}</span>`;
+            if (idx < setores.length - 1) {
+                setorCellHTML += '<span class="setor-separador">,</span>';
+            }
+            if (idx === setores.length - 2) {
+                setorCellHTML += '<span class="setor-separador"> e</span>';
+            }
+        }
+    });
+    setorCellHTML += '</div>';
+} else {
+    destinoCellHTML = item.juntada ? extrairBairroDoDestino(item.destino || '') : (item.isGroup ? formatarListaComE((item.destinos || []).map(d => extrairBairroDoDestino(d))) : extrairBairroDoDestino(destinoFormatado));
+    setorCellHTML = setorFormatado;
+}
+
+// Se for saída juntada, usar destino e setor já formatados (apenas bairro)
+if (item.juntada && !item.destinos_multiplos) {
+destinoFormatado = extrairBairroDoDestino(item.destino || '');
+setorFormatado = item.setor || '';
+} else if (item.isGroup) {
+// Se for grupo, formatar com vírgulas e "e" (apenas bairros)
+destinoFormatado = formatarListaComE((item.destinos || []).map(d => extrairBairroDoDestino(d)));
+setorFormatado = formatarListaComE(item.setores);
+}
+
+row.innerHTML = `
+<td class="${classeViatura}" data-placa="${item.viatura || ''}">${item.viatura || ''}</td>
+<td class="motorista-cell" data-original-value="${item.motorista || ''}">${item.motorista || ''}</td>
+<td>${item.saida || ''}</td>
+<td class="destino-cell">${destinoCellHTML}</td>
+<td>${item.om || (item.isGroup ? [...new Set(item.ids.map(id => {
+    const saida = saidasAdministrativas.find(s => s.id === id);
+    return saida ? saida.om : '';
+}).filter(om => om))].join(', ') : '')}</td>
+<td contenteditable="true" data-key="kmSaida">${item.kmSaida || ''}</td>
+<td contenteditable="true" data-key="kmChegada">${item.kmChegada || ''}</td>
+<td><input type="time" data-key="chegada" value="${item.chegada || ''}" style="border: none; background: transparent; width: 100%; font-size: 14px; font-weight: bold;"></td>
+<td class="setor-cell">${setorCellHTML || setorFormatado}</td>
+<td class="action-buttons">
+<button class="view-row-btn" title="Visualizar"><i class="fas fa-eye"></i></button>
+<button class="edit-row-btn" title="Editar"><i class="fas fa-edit"></i></button>
+<button class="obs-btn" title="Observações"><i class="fas fa-comment"></i></button>
+<button class="delete-row-btn" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+</td>`;
+saidasTableBody.appendChild(row);
+attachEventListenersToRow(row);
+atualizarEstiloDaLinha(row);
+
+// Adicionar event listeners para duplo clique em setores juntados
+if (item.juntada && item.setores_multiplos && Array.isArray(item.setores_multiplos) && item.setores_multiplos.length > 1) {
+    attachSetorDoubleClickListeners(row, item);
+}
+});
+saidasCounter.textContent = `Número de Saídas: ${filteredSaidas.length}`;
+
+// Verificar e exibir avisos de saídas próximas
+verificarESeixibirAvisoSaidasProximas(filteredSaidas);
+}
+
+/**
+ * Verifica se um bairro está na lista pré-definida de bairros cadastrados
+ * @param {string} cidade - Nome da cidade
+ * @param {string} bairro - Nome do bairro
+ * @returns {boolean} - true se o bairro está na lista pré-definida, false caso contrário
+ */
+function bairroEstaNaListaPredefinida(cidade, bairro) {
+    if (!cidade || !bairro || !bairro.trim()) {
+        return false;
+    }
+    
+    try {
+        // Carregar itens personalizados do localStorage usando a chave correta
+        const ITENS_STORAGE_KEY = 'cadastroItensPersonalizados';
+        const itensPersonalizados = JSON.parse(localStorage.getItem(ITENS_STORAGE_KEY) || '{}');
+        
+        // Verificar se a cidade tem bairros cadastrados (comparação case-insensitive)
+        if (!itensPersonalizados.bairros) {
+            return false;
+        }
+        
+        // Encontrar a cidade (comparação case-insensitive)
+        const cidadeNormalizada = cidade.trim().toLowerCase();
+        const cidadeEncontrada = Object.keys(itensPersonalizados.bairros).find(
+            c => c.trim().toLowerCase() === cidadeNormalizada
+        );
+        
+        if (!cidadeEncontrada) {
+            return false;
+        }
+        
+        // Verificar se o bairro está na lista (comparação case-insensitive)
+        const bairrosCadastrados = itensPersonalizados.bairros[cidadeEncontrada];
+        const bairroNormalizado = bairro.trim().toLowerCase();
+        
+        return bairrosCadastrados.some(b => b.trim().toLowerCase() === bairroNormalizado);
+    } catch (error) {
+        console.error('Erro ao verificar bairro na lista pré-definida:', error);
+        return false;
+    }
+}
+
+/**
+ * Verifica saídas próximas (menos de 10km) e exibe aviso abaixo da tabela
+ * IMPORTANTE: Apenas verifica proximidades para bairros que estão na lista pré-definida
+ * @param {Array} saidas - Array de saídas administrativas
+ */
+async function verificarESeixibirAvisoSaidasProximas(saidas) {
+    const avisoContainer = document.getElementById('avisoSaidasProximas');
+    const avisoLista = document.getElementById('avisoSaidasProximasLista');
+    
+    if (!avisoContainer || !avisoLista || typeof juntaSaidasService === 'undefined') {
+        if (avisoContainer) avisoContainer.style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Carregar mensagens removidas do localStorage
+        let mensagensRemovidas = JSON.parse(localStorage.getItem('avisosJuntarSaidasRemovidos') || '{}');
+        
+        // Filtrar apenas saídas não juntadas, com setor definido E com bairro na lista pré-definida
+        const saidasNaoJuntadas = saidas.filter(s => {
+            if (!s.juntada && s.setor && s.setor.trim() !== '') {
+                // Se não tiver bairro, não incluir na verificação
+                if (!s.bairro || !s.bairro.trim()) {
+                    return false;
+                }
+                // Verificar se o bairro está na lista pré-definida
+                return bairroEstaNaListaPredefinida(s.cidade || '', s.bairro);
+            }
+            return false;
+        });
+        
+        // Se não houver saídas não juntadas suficientes, ocultar mensagem
+        if (saidasNaoJuntadas.length < 2) {
+            avisoContainer.style.display = 'none';
+            avisoLista.innerHTML = '';
+            return;
+        }
+        
+        // Verificar se os destinos das saídas mudaram desde a última verificação
+        // Se mudaram, limpar apenas mensagens removidas relacionadas à saída específica alterada
+        const destinosAtuais = saidasNaoJuntadas.map(s => ({
+            id: s.id,
+            setor: s.setor,
+            bairro: s.bairro || '',
+            cidade: s.cidade || ''
+        }));
+        
+        // Comparar com destinos armazenados (se existirem)
+        const destinosArmazenados = JSON.parse(localStorage.getItem('destinosSaidasArmazenados') || '{}');
+        
+        // Verificar se algum destino mudou e limpar apenas mensagens removidas relacionadas àquela saída específica
+        let mensagensRemovidasAtualizadas = { ...mensagensRemovidas };
+        destinosAtuais.forEach(destinoAtual => {
+            const destinoArmazenado = destinosArmazenados[destinoAtual.id];
+            if (destinoArmazenado) {
+                if (destinoArmazenado.setor !== destinoAtual.setor ||
+                    destinoArmazenado.bairro !== destinoAtual.bairro ||
+                    destinoArmazenado.cidade !== destinoAtual.cidade) {
+                    // Destino mudou - limpar apenas mensagens removidas que contêm exatamente o setor desta saída específica
+                    // Usar setor antigo e novo para identificar grupos relacionados apenas a esta saída
+                    const setorAntigo = destinoArmazenado.setor || '';
+                    const setorNovo = destinoAtual.setor || '';
+                    
+                    // Remover apenas mensagens cuja chave do grupo contém o setor específico desta saída
+                    // A chave do grupo é no formato "grupo-SETOR1-SETOR2" (setores ordenados)
+                    Object.keys(mensagensRemovidasAtualizadas).forEach(chave => {
+                        // Verificar se a chave contém o setor antigo ou novo desta saída específica
+                        // Usar verificação mais precisa: verificar se o setor aparece como parte completa do grupo
+                        const chaveSemPrefixo = chave.replace('grupo-', '');
+                        const setoresNoGrupo = chaveSemPrefixo.split('-');
+                        
+                        // Remover apenas se o setor antigo OU novo desta saída está presente no grupo
+                        const contemSetorAntigo = setorAntigo && setoresNoGrupo.includes(setorAntigo);
+                        const contemSetorNovo = setorNovo && setoresNoGrupo.includes(setorNovo);
+                        
+                        if (contemSetorAntigo || contemSetorNovo) {
+                            delete mensagensRemovidasAtualizadas[chave];
+                        }
+                    });
+                }
+            }
+        });
+        
+        // Salvar destinos atuais para próxima verificação
+        const destinosAtuaisMap = {};
+        destinosAtuais.forEach(d => {
+            destinosAtuaisMap[d.id] = d;
+        });
+        localStorage.setItem('destinosSaidasArmazenados', JSON.stringify(destinosAtuaisMap));
+        
+        // Atualizar mensagens removidas se houver mudanças
+        if (JSON.stringify(mensagensRemovidas) !== JSON.stringify(mensagensRemovidasAtualizadas)) {
+            mensagensRemovidas = mensagensRemovidasAtualizadas;
+            localStorage.setItem('avisosJuntarSaidasRemovidos', JSON.stringify(mensagensRemovidas));
+        }
+        
+        // Verificar proximidades e calcular distâncias exatas
+        const gruposComDistancias = []; // Armazenar grupos com suas distâncias e bairros
+        const setoresProcessados = new Set();
+        
+        for (let i = 0; i < saidasNaoJuntadas.length; i++) {
+            const saida1 = saidasNaoJuntadas[i];
+            const setor1 = saida1.setor;
+            
+            // Se já processou este setor, pular
+            if (setoresProcessados.has(setor1)) continue;
+            
+            const setoresProximos = [setor1];
+            const distanciasGrupo = []; // Distâncias deste grupo
+            const bairrosGrupo = new Map(); // Bairros deste grupo específico
+            
+            // Armazenar bairro do setor1
+            if (saida1.bairro && saida1.bairro.trim() !== '') {
+                if (!bairrosGrupo.has(setor1)) {
+                    bairrosGrupo.set(setor1, new Set());
+                }
+                bairrosGrupo.get(setor1).add(saida1.bairro);
+            }
+            
+            for (let j = i + 1; j < saidasNaoJuntadas.length; j++) {
+                const saida2 = saidasNaoJuntadas[j];
+                const setor2 = saida2.setor;
+                
+                // Verificar se não é o mesmo setor e se já não foi processado
+                if (setor1 === setor2 || setoresProcessados.has(setor2)) continue;
+                
+                // Verificar se ambos os bairros estão na lista pré-definida
+                // Se algum bairro não estiver na lista, não verificar proximidade
+                const bairro1Valido = saida1.bairro && saida1.bairro.trim() && 
+                    bairroEstaNaListaPredefinida(saida1.cidade || '', saida1.bairro);
+                const bairro2Valido = saida2.bairro && saida2.bairro.trim() && 
+                    bairroEstaNaListaPredefinida(saida2.cidade || '', saida2.bairro);
+                
+                // Se algum bairro não estiver na lista pré-definida, pular esta verificação
+                if (!bairro1Valido || !bairro2Valido) {
+                    continue;
+                }
+                
+                // Obter coordenadas para calcular distância exata
+                const coord1 = await juntaSaidasService.getCoordenadas(
+                    saida1.cidade || '',
+                    saida1.bairro || ''
+                );
+                
+                const coord2 = await juntaSaidasService.getCoordenadas(
+                    saida2.cidade || '',
+                    saida2.bairro || ''
+                );
+                
+                // Calcular distância exata se tiver coordenadas
+                let distanciaExata = null;
+                if (coord1 && coord2 && coord1.lat && coord1.lng && coord2.lat && coord2.lng) {
+                    distanciaExata = juntaSaidasService.calcularDistancia(
+                        coord1.lat,
+                        coord1.lng,
+                        coord2.lat,
+                        coord2.lng
+                    );
+                }
+                
+                // Se não tiver distância exata, verificar proximidade usando métodos do serviço
+                let saoProximos = false;
+                let estaoNoCaminho = false;
+                
+                if (distanciaExata === null) {
+                    // Apenas verificar se não tivermos distância exata
+                    saoProximos = await juntaSaidasService.saoProximos(
+                        saida1.cidade || '',
+                        saida1.bairro || '',
+                        saida2.cidade || '',
+                        saida2.bairro || ''
+                    );
+                    
+                    estaoNoCaminho = await juntaSaidasService.estaNoCaminho(
+                        saida1.cidade || '',
+                        saida1.bairro || '',
+                        saida2.cidade || '',
+                        saida2.bairro || ''
+                    );
+                }
+                
+                // Só incluir se a distância for inferior a 10km
+                // Prioridade: usar distância exata se disponível, senão usar métodos de proximidade
+                let deveIncluir = false;
+                
+                if (distanciaExata !== null) {
+                    // Se temos distância exata, validar diretamente (< 10km)
+                    if (distanciaExata < 10) {
+                        deveIncluir = true;
+                    }
+                } else {
+                    // Se não temos distância exata, usar métodos de proximidade
+                    // (esses métodos já verificam < 10km internamente)
+                    if (saoProximos || estaoNoCaminho) {
+                        deveIncluir = true;
+                    }
+                }
+                
+                if (deveIncluir) {
+                    setoresProximos.push(setor2);
+                    setoresProcessados.add(setor2);
+                    
+                    // Armazenar bairro do setor2 no grupo
+                    if (saida2.bairro && saida2.bairro.trim() !== '') {
+                        if (!bairrosGrupo.has(setor2)) {
+                            bairrosGrupo.set(setor2, new Set());
+                        }
+                        bairrosGrupo.get(setor2).add(saida2.bairro);
+                    }
+                    
+                    // Armazenar distância se disponível
+                    if (distanciaExata !== null && distanciaExata < 10) {
+                        distanciasGrupo.push({
+                            setor1: setor1,
+                            setor2: setor2,
+                            bairro1: saida1.bairro || '',
+                            bairro2: saida2.bairro || '',
+                            distancia: distanciaExata
+                        });
+                    }
+                }
+            }
+            
+            if (setoresProximos.length > 1) {
+                // Armazenar grupo completo com seus dados
+                gruposComDistancias.push({
+                    setores: [...setoresProximos],
+                    distancias: [...distanciasGrupo],
+                    bairros: new Map(bairrosGrupo)
+                });
+                setoresProximos.forEach(s => setoresProcessados.add(s));
+            }
+        }
+        
+        // Verificar se há saídas juntadas que contêm os setores dos grupos próximos
+        // Se os setores já estão agrupados, não mostrar mensagem
+        const saidasJuntadas = saidas.filter(s => s.juntada && s.setores_multiplos && Array.isArray(s.setores_multiplos));
+        
+        // Filtrar grupos que não estão já agrupados
+        const gruposParaExibir = gruposComDistancias.filter(grupo => {
+            // Verificar se todos os setores deste grupo já estão na MESMA saída juntada
+            const jaAgrupadosNaMesmaSaida = saidasJuntadas.some(saidaJuntada => {
+                const setoresJuntados = saidaJuntada.setores_multiplos || [];
+                // Verificar se todos os setores do grupo estão nesta saída juntada
+                const todosSetoresPresentes = grupo.setores.every(setor => setoresJuntados.includes(setor));
+                // Verificar se a quantidade de setores coincide (para evitar falsos positivos)
+                const quantidadeCoincide = grupo.setores.length === setoresJuntados.length;
+                return todosSetoresPresentes && quantidadeCoincide;
+            });
+            // Só exibir se NÃO estiverem agrupados na mesma saída
+            return !jaAgrupadosNaMesmaSaida;
+        });
+        
+        // Filtrar grupos que não foram removidos pelo usuário
+        const gruposNaoRemovidos = gruposParaExibir.filter(grupo => {
+            // Criar chave única para este grupo (baseada nos setores ordenados)
+            const setoresOrdenados = [...grupo.setores].sort().join('-');
+            const chaveGrupo = `grupo-${setoresOrdenados}`;
+            
+            // Verificar se este grupo foi removido
+            return !mensagensRemovidas[chaveGrupo];
+        });
+        
+        // Exibir avisos se houver grupos próximos que não estão agrupados e não foram removidos
+        if (gruposNaoRemovidos.length > 0) {
+            // Limpar lista anterior
+            avisoLista.innerHTML = '';
+            
+            // Criar um item para cada mensagem com botão de lixeira
+            gruposNaoRemovidos.forEach(grupo => {
+                // Formatar lista de setores deste grupo
+                const listaSetores = grupo.setores.length === 2
+                    ? `${grupo.setores[0]} e ${grupo.setores[1]}`
+                    : grupo.setores.slice(0, -1).join(', ') + ' e ' + grupo.setores[grupo.setores.length - 1];
+                
+                // Formatar lista de bairros deste grupo
+                const todosBairros = [];
+                grupo.setores.forEach(setor => {
+                    if (grupo.bairros.has(setor)) {
+                        grupo.bairros.get(setor).forEach(bairro => {
+                            if (!todosBairros.includes(bairro)) {
+                                todosBairros.push(bairro);
+                            }
+                        });
+                    }
+                });
+                
+                let listaBairros = '';
+                if (todosBairros.length === 2) {
+                    listaBairros = `${todosBairros[0]} e ${todosBairros[1]}`;
+                } else if (todosBairros.length > 2) {
+                    listaBairros = todosBairros.slice(0, -1).join(', ') + ' e ' + todosBairros[todosBairros.length - 1];
+                } else if (todosBairros.length === 1) {
+                    listaBairros = todosBairros[0];
+                }
+                
+                // Criar mensagem para este grupo
+                let mensagemTexto = 'Destino';
+                if (listaBairros) {
+                    mensagemTexto += ` ${listaBairros}`;
+                }
+                mensagemTexto += ` dos setores ${listaSetores}`;
+                
+                // Adicionar distância exata se disponível
+                if (grupo.distancias.length > 0) {
+                    // Encontrar a menor distância do grupo
+                    const menorDistancia = Math.min(...grupo.distancias.map(d => d.distancia));
+                    const distanciaFormatada = menorDistancia.toFixed(2).replace('.', ',');
+                    mensagemTexto += ` encontram-se a <strong>${distanciaFormatada} KM</strong> de distância`;
+                } else {
+                    mensagemTexto += ` encontram-se a <strong>menos de 10 KM</strong> de distância`;
+                }
+                
+                mensagemTexto += `. Verifique a disponibilidade de junção de saídas.`;
+                
+                // Criar chave única para este grupo
+                const setoresOrdenados = [...grupo.setores].sort().join('-');
+                const chaveGrupo = `grupo-${setoresOrdenados}`;
+                
+                // Criar elemento HTML para esta mensagem
+                const mensagemItem = document.createElement('div');
+                mensagemItem.className = 'aviso-mensagem-item';
+                mensagemItem.dataset.grupoChave = chaveGrupo;
+                
+                const mensagemParagrafo = document.createElement('p');
+                mensagemParagrafo.className = 'aviso-mensagem-texto';
+                mensagemParagrafo.innerHTML = mensagemTexto;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'aviso-delete-btn';
+                deleteBtn.title = 'Remover aviso';
+                deleteBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                deleteBtn.addEventListener('click', (e) => {
+                    // Prevenir qualquer propagação de evento que possa afetar a tabela
+                    e.stopPropagation();
+                    e.preventDefault();
+                    
+                    // Carregar mensagens removidas atualizadas
+                    let mensagensRemovidasAtual = JSON.parse(localStorage.getItem('avisosJuntarSaidasRemovidos') || '{}');
+                    
+                    // Marcar como removido no localStorage
+                    mensagensRemovidasAtual[chaveGrupo] = true;
+                    localStorage.setItem('avisosJuntarSaidasRemovidos', JSON.stringify(mensagensRemovidasAtual));
+                    
+                    // Remover elemento visual
+                    mensagemItem.remove();
+                    
+                    // Se não houver mais mensagens, ocultar container
+                    if (avisoLista.children.length === 0) {
+                        avisoContainer.style.display = 'none';
+                    }
+                    
+                    // IMPORTANTE: NÃO recarregar a tabela - as saídas devem permanecer visíveis
+                    // Apenas o aviso foi removido, as saídas continuam na tabela normalmente
+                });
+                
+                mensagemItem.appendChild(mensagemParagrafo);
+                mensagemItem.appendChild(deleteBtn);
+                avisoLista.appendChild(mensagemItem);
+            });
+            
+            // Exibir container
+            avisoContainer.style.display = 'block';
+        } else {
+            avisoContainer.style.display = 'none';
+            avisoLista.innerHTML = '';
+        }
+    } catch (error) {
+        console.error('Erro ao verificar saídas próximas:', error);
+        avisoContainer.style.display = 'none';
+    }
+}
+
+/**
+ * Adiciona event listeners para duplo clique em setores juntados
+ */
+function attachSetorDoubleClickListeners(row, saidaItem) {
+    const setoresJuntados = row.querySelectorAll('.setor-juntado');
+    
+    setoresJuntados.forEach(setorEl => {
+        // Duplo clique
+        setorEl.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const setorData = {
+                saidaId: setorEl.dataset.saidaId,
+                setorIndex: parseInt(setorEl.dataset.setorIndex),
+                setor: setorEl.dataset.setor,
+                destino: setorEl.dataset.destino,
+                bairro: setorEl.dataset.bairro,
+                cidade: setorEl.dataset.cidade
+            };
+            
+            console.log('🖱️ Duplo clique no setor:', setorData.setor);
+            
+            // Exibir modal de confirmação
+            exibirModalConfirmarSeparacaoSetor(setorData, saidaItem);
+        });
+    });
+}
+
+/**
+ * Exibe modal para confirmar separação do setor
+ */
+function exibirModalConfirmarSeparacaoSetor(setorData, saidaJuntada) {
+    // Criar ou usar modal existente
+    let separarSetorModal = document.getElementById('separarSetorModal');
+    
+    if (!separarSetorModal) {
+        // Criar modal se não existir
+        separarSetorModal = document.createElement('div');
+        separarSetorModal.id = 'separarSetorModal';
+        separarSetorModal.className = 'obs-modal';
+        separarSetorModal.innerHTML = `
+            <div class="obs-modal-content">
+                <span class="close-button" id="closeSepararSetorModal">&times;</span>
+                <h2 id="separarSetorModalTitle" style="margin-top: 0; color: var(--primary-blue);">Separar Saída</h2>
+                <p id="separarSetorModalMessage" style="font-size: 16px; margin: 20px 0;"></p>
+                <div class="modal-buttons">
+                    <button id="confirmarSepararSetorBtn" class="save-obs-btn" style="background-color: var(--edit-green);">Sim, Separar</button>
+                    <button id="cancelarSepararSetorBtn" class="cancel-obs-btn">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(separarSetorModal);
+        
+        // Event listeners para fechar modal (usar delegação de eventos para evitar duplicação)
+        document.getElementById('closeSepararSetorModal').onclick = () => {
+            separarSetorModal.classList.remove('show');
+        };
+        
+        document.getElementById('cancelarSepararSetorBtn').onclick = () => {
+            separarSetorModal.classList.remove('show');
+        };
+        
+        // Confirmar separação
+        document.getElementById('confirmarSepararSetorBtn').onclick = async () => {
+            const setorDataStr = separarSetorModal.dataset.setorData;
+            const saidaId = separarSetorModal.dataset.saidaId;
+            
+            if (setorDataStr && saidaId) {
+                try {
+                    const setorDataParsed = JSON.parse(setorDataStr);
+                    await separarSetorPorDuploClique(saidaId, setorDataParsed);
+                    separarSetorModal.classList.remove('show');
+                } catch (error) {
+                    console.error('Erro ao processar separação:', error);
+                    alert('Erro ao separar setor. Por favor, tente novamente.');
+                }
+            }
+        };
+        
+        // Fechar ao clicar fora
+        separarSetorModal.onclick = (e) => {
+            if (e.target === separarSetorModal) {
+                separarSetorModal.classList.remove('show');
+            }
+        };
+    }
+    
+    // Preparar mensagem do modal
+    const totalSetores = saidaJuntada.setores_multiplos ? saidaJuntada.setores_multiplos.length : 0;
+    const mensagem = totalSetores > 2 
+        ? `Deseja separar o setor "${setorData.setor}" dos outros ${totalSetores - 1} setores?`
+        : `Deseja separar o setor "${setorData.setor}" do outro setor?`;
+    
+    // Preencher modal
+    document.getElementById('separarSetorModalMessage').textContent = mensagem;
+    separarSetorModal.dataset.setorData = JSON.stringify(setorData);
+    separarSetorModal.dataset.saidaId = saidaJuntada.id;
+    
+    // Exibir modal
+    separarSetorModal.classList.add('show');
+}
+
+
+/**
+ * Separa um setor de uma saída juntada via duplo clique e cria nova linha com todos os dados
+ */
+async function separarSetorPorDuploClique(saidaJuntadaId, setorData) {
+    try {
+        console.log('🔧 separarSetorPorDuploClique chamado com:', {
+            saidaJuntadaId,
+            setorData
+        });
+        
+        // Buscar a saída juntada
+        const indexJuntada = saidasAdministrativas.findIndex(s => s.id === saidaJuntadaId);
+        if (indexJuntada === -1) {
+            console.warn('⚠️ Saída juntada não encontrada com ID:', saidaJuntadaId);
+            console.log('📋 IDs disponíveis:', saidasAdministrativas.map(s => s.id));
+            alert('Saída juntada não encontrada.');
+            return;
+        }
+        
+        const saidaJuntada = saidasAdministrativas[indexJuntada];
+        console.log('✅ Saída juntada encontrada:', saidaJuntada);
+        
+        const indiceSetor = setorData.setorIndex;
+        
+        // Obter dados do setor que está sendo separado
+        const destinos = saidaJuntada.destinos_multiplos || [];
+        const setores = saidaJuntada.setores_multiplos || [];
+        const saidasOriginais = saidaJuntada.saidas_originais || [];
+        
+        const destinoObj = destinos[indiceSetor] || {};
+        const setorItem = setores[indiceSetor] || setorData.setor;
+        const destinoTexto = setorData.destino || destinoObj.destino || destinoObj.bairro || destinoObj.cidade || '';
+        const bairroItem = setorData.bairro || destinoObj.bairro || saidaJuntada.bairro || '';
+        const cidadeItem = setorData.cidade || destinoObj.cidade || saidaJuntada.cidade || '';
+        const saidaOriginalId = saidasOriginais[indiceSetor];
+        
+        // Verificar se já existe uma saída com esse ID (para evitar duplicação)
+        const idJaExiste = saidasAdministrativas.some(s => s.id === saidaOriginalId && s.id !== saidaJuntadaId);
+        const novoId = idJaExiste ? `saida_separada_${Date.now()}_${Math.random().toString(36).substr(2, 9)}` : (saidaOriginalId || `saida_separada_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+        
+        // Usar o mesmo horário da saída juntada para a nova saída
+        let horarioNovo = saidaJuntada.saida || saidaJuntada.horario || saidaJuntada.hora || '';
+        
+        // Criar nova saída individual
+        const novaSaidaIndividual = {
+            tipo: saidaJuntada.tipo || 'Administrativa',
+            dataPedido: saidaJuntada.dataPedido || saidaJuntada.data || '',
+            horaPedido: saidaJuntada.horaPedido || saidaJuntada.hora || '',
+            dataSaida: saidaJuntada.dataSaida || saidaJuntada.data || '',
+            saida: horarioNovo,
+            horario: horarioNovo,
+            hora: horarioNovo,
+            id: novoId,
+            setor: setorItem,
+            destino: destinoTexto,
+            bairro: bairroItem,
+            cidade: cidadeItem,
+            endereco_bairro: bairroItem,
+            endereco_cidade: cidadeItem,
+            viatura: saidaJuntada.viatura || '',
+            motorista: saidaJuntada.motorista || '',
+            motorista_id: saidaJuntada.motorista_id || '',
+            viatura_id: saidaJuntada.viatura_id || '',
+            kmSaida: saidaJuntada.kmSaida || '',
+            kmChegada: saidaJuntada.kmChegada || '',
+            chegada: saidaJuntada.chegada || '',
+            objetivo: saidaJuntada.objetivo || saidaJuntada.motivo || '',
+            motivo: saidaJuntada.motivo || saidaJuntada.objetivo || '',
+            observacoes: saidaJuntada.observacoes || '',
+            juntada: false
+        };
+        
+        console.log('🆕 Nova saída individual criada:', novaSaidaIndividual);
+        console.log('🔍 ID da nova saída:', novoId);
+        console.log('🔍 ID já existia?', idJaExiste);
+        
+        // Remover o setor da saída juntada
+        const setoresAtualizados = [...setores];
+        const destinosAtualizados = [...destinos];
+        const saidasOriginaisAtualizadas = [...saidasOriginais];
+        
+        setoresAtualizados.splice(indiceSetor, 1);
+        destinosAtualizados.splice(indiceSetor, 1);
+        saidasOriginaisAtualizadas.splice(indiceSetor, 1);
+        
+        console.log('📊 Setores restantes após remoção:', setoresAtualizados.length);
+        
+        // Se sobrou apenas uma saída na junção, desagrupar completamente
+        if (setoresAtualizados.length === 1) {
+            // Criar saída individual para a que sobrou
+            const ultimoDestino = destinosAtualizados[0] || {};
+            const ultimoSetor = setoresAtualizados[0] || '';
+            const ultimoDestinoTexto = ultimoDestino.destino || ultimoDestino.bairro || ultimoDestino.cidade || saidaJuntada.destino || '';
+            
+            const ultimaSaida = {
+                ...saidaJuntada,
+                id: saidasOriginaisAtualizadas[0] || `saida_individual_${Date.now() + 1}_${Math.random()}`,
+                setor: ultimoSetor,
+                destino: ultimoDestinoTexto,
+                bairro: ultimoDestino.bairro || saidaJuntada.bairro || '',
+                cidade: ultimoDestino.cidade || saidaJuntada.cidade || '',
+                endereco_bairro: ultimoDestino.bairro || saidaJuntada.bairro || '',
+                endereco_cidade: ultimoDestino.cidade || saidaJuntada.cidade || '',
+                juntada: false
+            };
+            delete ultimaSaida.setores_multiplos;
+            delete ultimaSaida.destinos_multiplos;
+            delete ultimaSaida.saidas_originais;
+            
+            // Remover saída juntada e adicionar as duas individuais
+            saidasAdministrativas.splice(indexJuntada, 1);
+            saidasAdministrativas.push(novaSaidaIndividual);
+            saidasAdministrativas.push(ultimaSaida);
+        } else {
+            // Atualizar saída juntada com os itens restantes
+            const saidaJuntadaAtualizada = {
+                ...saidaJuntada,
+                setor: typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.formatarListaComE
+                    ? juntaSaidasService.formatarListaComE(setoresAtualizados)
+                    : setoresAtualizados.join(', '),
+                destino: typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.formatarListaComE
+                    ? juntaSaidasService.formatarListaComE(destinosAtualizados.map(d => d.destino || d.bairro || d.cidade))
+                    : destinosAtualizados.map(d => d.destino || d.bairro || d.cidade).join(', '),
+                setores_multiplos: setoresAtualizados,
+                destinos_multiplos: destinosAtualizados,
+                saidas_originais: saidasOriginaisAtualizadas
+            };
+            
+            console.log('🔄 Atualizando saída juntada. Removendo setor e criando nova saída individual.');
+            console.log('📋 Saída juntada atualizada ID:', saidaJuntadaAtualizada.id);
+            console.log('📋 Nova saída individual ID:', novaSaidaIndividual.id);
+            
+            // Atualizar na lista (substituir a saída juntada pela versão atualizada)
+            saidasAdministrativas[indexJuntada] = saidaJuntadaAtualizada;
+            
+            // Verificar se a nova saída já existe antes de adicionar
+            const jaExiste = saidasAdministrativas.some(s => s.id === novaSaidaIndividual.id);
+            if (!jaExiste) {
+                saidasAdministrativas.push(novaSaidaIndividual);
+                console.log('✅ Nova saída adicionada à lista. Total de saídas:', saidasAdministrativas.length);
+            } else {
+                console.warn('⚠️ Saída já existe, não adicionando duplicata:', novaSaidaIndividual.id);
+            }
+        }
+        
+        // Remover duplicatas antes de ordenar (verificar por ID)
+        const idsVistos = new Set();
+        const saidasSemDuplicatas = [];
+        for (const saida of saidasAdministrativas) {
+            if (!idsVistos.has(saida.id)) {
+                idsVistos.add(saida.id);
+                saidasSemDuplicatas.push(saida);
+            } else {
+                console.warn('⚠️ Duplicata removida:', saida.id);
+            }
+        }
+        saidasAdministrativas.length = 0;
+        saidasAdministrativas.push(...saidasSemDuplicatas);
+        
+        // Ordenar por horário
+        saidasAdministrativas.sort((a, b) => {
+            const horarioA = a.saida || a.horario || a.hora || '00:00';
+            const horarioB = b.saida || b.horario || b.hora || '00:00';
+            return horarioA.localeCompare(horarioB);
+        });
+        
+        console.log('📊 Saídas após remoção de duplicatas e ordenação:', saidasAdministrativas.length);
+        
+        // Salvar estado
+        await saveState();
+        console.log('💾 Estado salvo');
+        
+        // Salvar via API se disponível
+        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+            try {
+                if (setoresAtualizados.length === 1) {
+                    await dataService.saveSaidaAdministrativa(novaSaidaIndividual);
+                    await dataService.saveSaidaAdministrativa(ultimaSaida);
+                    if (saidaJuntada.id && typeof api !== 'undefined' && api) {
+                        try {
+                            await api.deleteSaidaAdministrativa(saidaJuntada.id);
+                        } catch (err) {
+                            console.warn('Erro ao deletar saída juntada da API:', err);
+                        }
+                    }
+                } else {
+                    await dataService.saveSaidaAdministrativa(saidaJuntadaAtualizada);
+                    await dataService.saveSaidaAdministrativa(novaSaidaIndividual);
+                }
+            } catch (error) {
+                console.warn('Erro ao salvar na API:', error);
+            }
+        }
+        
+        // Atualizar tabela
+        populateTables();
+        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        
+        console.log('✅ Setor separado com sucesso via duplo clique!');
+    } catch (error) {
+        console.error('❌ Erro ao separar setor via duplo clique:', error);
+        alert('Erro ao separar setor. Por favor, tente novamente.');
+    }
+}
+
+/**
+ * Separa um setor de uma saída juntada via drag and drop e cria nova linha com todos os dados
+ * (FUNÇÃO MANTIDA PARA COMPATIBILIDADE, MAS NÃO É MAIS USADA)
+ */
+async function separarSetorViaDrag(saidaJuntadaId, indiceSetor, setor, destino, bairro, cidade, linhaDrop, criarNovaLinha = false, linhaReferencia = null) {
+    try {
+        console.log('🔧 separarSetorViaDrag chamado com:', {
+            saidaJuntadaId,
+            indiceSetor,
+            setor,
+            destino,
+            criarNovaLinha,
+            linhaReferencia: linhaReferencia ? 'existe' : 'null'
+        });
+        
+        // Buscar a saída juntada
+        const indexJuntada = saidasAdministrativas.findIndex(s => s.id === saidaJuntadaId);
+        if (indexJuntada === -1) {
+            console.warn('⚠️ Saída juntada não encontrada com ID:', saidaJuntadaId);
+            console.log('📋 IDs disponíveis:', saidasAdministrativas.map(s => s.id));
+            return;
+        }
+        
+        const saidaJuntada = saidasAdministrativas[indexJuntada];
+        console.log('✅ Saída juntada encontrada:', saidaJuntada);
+        
+        // Obter dados do setor que está sendo separado
+        const destinos = saidaJuntada.destinos_multiplos || [];
+        const setores = saidaJuntada.setores_multiplos || [];
+        const saidasOriginais = saidaJuntada.saidas_originais || [];
+        
+        const destinoObj = destinos[indiceSetor] || {};
+        const setorItem = setores[indiceSetor] || setor;
+        const destinoTexto = destino || destinoObj.destino || destinoObj.bairro || destinoObj.cidade || '';
+        const bairroItem = bairro || destinoObj.bairro || saidaJuntada.bairro || '';
+        const cidadeItem = cidade || destinoObj.cidade || saidaJuntada.cidade || '';
+        const saidaOriginalId = saidasOriginais[indiceSetor];
+        
+        // Obter horário da linha onde foi solto para criar nova saída
+        let horarioNovo = '';
+        
+        if (linhaDrop) {
+            const horarioCell = linhaDrop.querySelector('td:nth-child(3)'); // Coluna de horário (índice 3: viatura=1, motorista=2, horário=3)
+            horarioNovo = horarioCell ? horarioCell.textContent.trim() : '';
+            
+            // Se a linha de destino é de uma saída diferente, usar o horário dessa saída
+            const linhaDropId = linhaDrop.dataset.id;
+            if (linhaDropId && linhaDropId !== saidaJuntadaId) {
+                const saidaDestino = saidasAdministrativas.find(s => s.id === linhaDropId || (Array.isArray(s.ids) && s.ids.includes(linhaDropId)));
+                if (saidaDestino) {
+                    horarioNovo = saidaDestino.saida || saidaDestino.horario || saidaDestino.hora || horarioNovo;
+                }
+            }
+        }
+        
+        // Se não tiver horário, usar o horário da saída juntada original
+        if (!horarioNovo) {
+            horarioNovo = saidaJuntada.saida || saidaJuntada.horario || saidaJuntada.hora || '';
+        }
+        
+        // Se criarNovaLinha é true, sempre criar uma nova linha abaixo
+        // O horário será o da linha de referência ou calculado
+        if (criarNovaLinha && linhaReferencia) {
+            const refHorarioCell = linhaReferencia.querySelector('td:nth-child(3)');
+            if (refHorarioCell) {
+                const refHorario = refHorarioCell.textContent.trim();
+                if (refHorario) {
+                    // Tentar adicionar 1 hora ao horário de referência para criar nova linha abaixo
+                    try {
+                        const [h, m] = refHorario.split(':').map(Number);
+                        const novaHora = (h + 1) % 24;
+                        horarioNovo = `${String(novaHora).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    } catch (e) {
+                        // Se falhar, usar o horário de referência
+                        horarioNovo = refHorario;
+                    }
+                }
+            }
+        }
+        
+        // Criar nova saída individual
+        const novaSaidaIndividual = {
+            tipo: saidaJuntada.tipo || 'Administrativa',
+            dataPedido: saidaJuntada.dataPedido || saidaJuntada.data || '',
+            horaPedido: saidaJuntada.horaPedido || saidaJuntada.hora || '',
+            dataSaida: saidaJuntada.dataSaida || saidaJuntada.data || '',
+            saida: horarioNovo,
+            horario: horarioNovo,
+            hora: horarioNovo,
+            id: saidaOriginalId || `saida_drag_${Date.now()}_${Math.random()}`,
+            setor: setorItem,
+            destino: destinoTexto,
+            bairro: bairroItem,
+            cidade: cidadeItem,
+            endereco_bairro: bairroItem,
+            endereco_cidade: cidadeItem,
+            viatura: saidaJuntada.viatura || '',
+            motorista: saidaJuntada.motorista || '',
+            motorista_id: saidaJuntada.motorista_id || '',
+            viatura_id: saidaJuntada.viatura_id || '',
+            kmSaida: saidaJuntada.kmSaida || '',
+            kmChegada: saidaJuntada.kmChegada || '',
+            chegada: saidaJuntada.chegada || '',
+            objetivo: saidaJuntada.objetivo || saidaJuntada.motivo || '',
+            motivo: saidaJuntada.motivo || saidaJuntada.objetivo || '',
+            observacoes: saidaJuntada.observacoes || '',
+            juntada: false
+        };
+        
+        console.log('🆕 Nova saída individual criada:', novaSaidaIndividual);
+        
+        // Remover o destino da saída juntada
+        const setoresAtualizados = [...setores];
+        const destinosAtualizados = [...destinos];
+        const saidasOriginaisAtualizadas = [...saidasOriginais];
+        
+        setoresAtualizados.splice(indiceSetor, 1);
+        destinosAtualizados.splice(indiceSetor, 1);
+        saidasOriginaisAtualizadas.splice(indiceSetor, 1);
+        
+        // Se sobrou apenas uma saída na junção, desagrupar completamente
+        if (setoresAtualizados.length === 1) {
+            // Criar saída individual para a que sobrou
+            const ultimoDestino = destinosAtualizados[0] || {};
+            const ultimoSetor = setoresAtualizados[0] || '';
+            const ultimoDestinoTexto = ultimoDestino.destino || ultimoDestino.bairro || ultimoDestino.cidade || saidaJuntada.destino || '';
+            
+            const ultimaSaida = {
+                ...saidaJuntada,
+                id: saidasOriginaisAtualizadas[0] || `saida_individual_${Date.now() + 1}_${Math.random()}`,
+                setor: ultimoSetor,
+                destino: ultimoDestinoTexto,
+                bairro: ultimoDestino.bairro || saidaJuntada.bairro || '',
+                cidade: ultimoDestino.cidade || saidaJuntada.cidade || '',
+                endereco_bairro: ultimoDestino.bairro || saidaJuntada.bairro || '',
+                endereco_cidade: ultimoDestino.cidade || saidaJuntada.cidade || '',
+                juntada: false
+            };
+            delete ultimaSaida.setores_multiplos;
+            delete ultimaSaida.destinos_multiplos;
+            delete ultimaSaida.saidas_originais;
+            
+            // Remover saída juntada e adicionar as duas individuais
+            saidasAdministrativas.splice(indexJuntada, 1);
+            saidasAdministrativas.push(novaSaidaIndividual);
+            saidasAdministrativas.push(ultimaSaida);
+        } else {
+            // Atualizar saída juntada com os itens restantes
+            const saidaJuntadaAtualizada = {
+                ...saidaJuntada,
+                setor: typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.formatarListaComE
+                    ? juntaSaidasService.formatarListaComE(setoresAtualizados)
+                    : setoresAtualizados.join(', '),
+                destino: typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.formatarListaComE
+                    ? juntaSaidasService.formatarListaComE(destinosAtualizados.map(d => d.destino || d.bairro || d.cidade))
+                    : destinosAtualizados.map(d => d.destino || d.bairro || d.cidade).join(', '),
+                setores_multiplos: setoresAtualizados,
+                destinos_multiplos: destinosAtualizados,
+                saidas_originais: saidasOriginaisAtualizadas
+            };
+            
+            // Atualizar na lista
+            saidasAdministrativas[indexJuntada] = saidaJuntadaAtualizada;
+            
+            // Adicionar nova saída individual
+            saidasAdministrativas.push(novaSaidaIndividual);
+            console.log('✅ Nova saída adicionada à lista. Total de saídas:', saidasAdministrativas.length);
+        }
+        
+        // Ordenar por horário
+        saidasAdministrativas.sort((a, b) => {
+            const horarioA = a.saida || a.horario || a.hora || '00:00';
+            const horarioB = b.saida || b.horario || b.hora || '00:00';
+            return horarioA.localeCompare(horarioB);
+        });
+        
+        console.log('📊 Saídas após ordenação:', saidasAdministrativas.length);
+        
+        // Salvar estado
+        await saveState();
+        console.log('💾 Estado salvo');
+        
+        // Salvar via API se disponível
+        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+            try {
+                if (setoresAtualizados.length === 1) {
+                    await dataService.saveSaidaAdministrativa(novaSaidaIndividual);
+                    await dataService.saveSaidaAdministrativa(ultimaSaida);
+                    if (saidaJuntada.id) {
+                        await api?.deleteSaidaAdministrativa(saidaJuntada.id);
+                    }
+                } else {
+                    await dataService.saveSaidaAdministrativa(saidaJuntadaAtualizada);
+                    await dataService.saveSaidaAdministrativa(novaSaidaIndividual);
+                }
+            } catch (error) {
+                console.warn('Erro ao salvar na API:', error);
+            }
+        }
+        
+        console.log('✅ Destino separado via drag and drop');
+    } catch (error) {
+        console.error('❌ Erro ao separar destino via drag:', error);
+        alert('Erro ao separar destino. Por favor, tente novamente.');
+    }
+}
+
+function attachEventListenersToRow(row) {
+row.querySelector('.view-row-btn')?.addEventListener('click', handleViewRow);
+row.querySelector('.edit-row-btn')?.addEventListener('click', handleEditRow);
+row.querySelector('.obs-btn')?.addEventListener('click', handleObsButtonClick);
+row.querySelector('.delete-row-btn')?.addEventListener('click', handleDeleteRow);
+
+// ADICIONA LISTENER PARA DUPLO CLIQUE NA CÉLULA DO MOTORISTA
+const motoristaCell = row.querySelector('.motorista-cell');
+if (motoristaCell) {
+motoristaCell.addEventListener('dblclick', handleMotoristaEdit);
+}
+
+// ADICIONA LISTENER PARA CLIQUE NA PLACA COM PROBLEMA
+const viaturaCell = row.querySelector('.viatura-com-problema');
+if (viaturaCell) {
+viaturaCell.addEventListener('click', (e) => {
+e.stopPropagation();
+const placa = viaturaCell.dataset.placa;
+showProblemasModal(placa);
+});
+}
+
+row.addEventListener('click', (e) => {
+if (row.classList.contains('alarme-pre-saida-piscando') || row.classList.contains('alarme-hora-saida-piscando')) {
+e.preventDefault();
+e.stopPropagation();
+const ids = row.dataset.id.split(',');
+const today = new Date().toISOString().split('T')[0];
+ids.forEach(id => {
+const saidaIndex = saidasAdministrativas.findIndex(s => s.id === id);
+if (saidaIndex !== -1) {
+if (row.classList.contains('alarme-pre-saida-piscando')) {
+saidasAdministrativas[saidaIndex].preSaidaAlarmDismissed = true;
+localStorage.setItem(`preSaidaAlarmDismissed_${id}_${today}`, 'true');
+}
+if (row.classList.contains('alarme-hora-saida-piscando')) {
+saidasAdministrativas[saidaIndex].saidaAlarmDismissed = true;
+localStorage.setItem(`saidaAlarmDismissed_${id}_${today}`, 'true');
+}
+}
+});
+row.classList.remove('alarme-pre-saida-piscando', 'alarme-hora-saida-piscando');
+saveState();
+}
+});
+row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+cell.addEventListener('blur', handleCellEdit);
+});
+const timeInput = row.querySelector('input[type="time"]');
+if (timeInput) {
+timeInput.addEventListener('change', handleTimeInputChange);
+}
+row.querySelector('td[contenteditable="true"][data-key="kmSaida"]')?.addEventListener('focus', (e) => {
+if (e.target.textContent.trim() === '') {
+const placa = row.querySelector('td').textContent.trim(); // Assume primeira coluna é VIATURA
+e.target.textContent = getLastKmChegadaAdm(placa);
+}
+});
+}
+function handleTimeInputChange(event) {
+const input = event.target;
+const row = input.closest('tr');
+const ids = row.dataset.id.split(',');
+const keyToUpdate = input.dataset.key;
+const valueToSave = input.value;
+ids.forEach(id => {
+const index = saidasAdministrativas.findIndex(item => item.id === id);
+if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
+});
+localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+atualizarEstiloDaLinha(row);
+window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+}
+function formatKm(value) {
+    let num = value.replace(/,/g, '').replace(/\./g, '');
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function handleCellEdit(event) {
+const cell = event.target;
+const row = cell.closest('tr');
+const ids = row.dataset.id.split(',');
+const keyToUpdate = cell.dataset.key;
+let valueToSave = cell.textContent.trim();
+
+// Formatar KM se for kmSaida ou kmChegada
+if (keyToUpdate === 'kmSaida' || keyToUpdate === 'kmChegada') {
+    valueToSave = formatKm(valueToSave);
+    cell.textContent = valueToSave; // Atualizar a célula também
+}
+
+// Validação de quilometragem ANTES de salvar
+if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
+    const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
+    if (saidaData) {
+        const kmSaidaStr = saidaData.kmSaida ? saidaData.kmSaida.replace(/\./g, '') : '';
+        const kmChegadaStr = valueToSave.replace(/\./g, '');
+        
+        if (kmSaidaStr && kmChegadaStr) {
+            const kmSaida = parseFloat(kmSaidaStr);
+            const kmChegada = parseFloat(kmChegadaStr);
+            
+            if (!isNaN(kmSaida) && !isNaN(kmChegada)) {
+                // Verificar se KM chegada <= KM saída
+                if (kmChegada <= kmSaida) {
+                    showKmAlertModal('Quilometragem de chegada incorreta, verifique o preenchimento novamente.');
+                    // Reverter o valor
+                    const oldValue = saidaData.kmChegada || '';
+                    cell.textContent = oldValue ? formatKm(oldValue) : '';
+                    return; // Não salvar se a validação falhar
+                }
+                
+                // Verificar se a distância percorrida é maior que 110km
+                const distancia = kmChegada - kmSaida;
+                if (distancia > 110) {
+                    showKmAlertModal('Quilometragem alta, está certo desse preenchimento?', cell, row, ids, true);
+                }
+            }
+        }
+    }
+}
+
+ids.forEach(id => {
+const index = saidasAdministrativas.findIndex(item => item.id === id);
+if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
+});
+localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+atualizarEstiloDaLinha(row);
+
+// Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos
+if (keyToUpdate === 'destino' || keyToUpdate === 'bairro' || keyToUpdate === 'setor' || keyToUpdate === 'cidade') {
+    // Limpar destinos armazenados apenas das saídas alteradas para forçar reexibição de mensagens removidas específicas
+    const destinosArmazenados = JSON.parse(localStorage.getItem('destinosSaidasArmazenados') || '{}');
+    const mensagensRemovidas = JSON.parse(localStorage.getItem('avisosJuntarSaidasRemovidos') || '{}');
+    
+    // Para cada saída alterada, encontrar seu setor e remover apenas mensagens relacionadas a este setor específico
+    ids.forEach(id => {
+        const saidaAlterada = saidasAdministrativas.find(s => s.id === id);
+        if (saidaAlterada) {
+            const setorAlterado = saidaAlterada.setor || '';
+            
+            // Remover apenas mensagens cuja chave do grupo contém exatamente o setor desta saída específica
+            // A chave do grupo é no formato "grupo-SETOR1-SETOR2" (setores ordenados)
+            Object.keys(mensagensRemovidas).forEach(chave => {
+                // Verificar se a chave contém o setor desta saída específica
+                const chaveSemPrefixo = chave.replace('grupo-', '');
+                const setoresNoGrupo = chaveSemPrefixo.split('-');
+                
+                // Remover apenas se o setor desta saída está presente no grupo
+                if (setorAlterado && setoresNoGrupo.includes(setorAlterado)) {
+                    delete mensagensRemovidas[chave];
+                }
+            });
+            
+            // Remover destino armazenado desta saída para forçar reexibição
+            delete destinosArmazenados[id];
+        }
+    });
+    
+    localStorage.setItem('destinosSaidasArmazenados', JSON.stringify(destinosArmazenados));
+    localStorage.setItem('avisosJuntarSaidasRemovidos', JSON.stringify(mensagensRemovidas));
+    
+    // Reexibir avisos de junção
+    populateTables();
+}
+
+window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+
+// Novo: Preencher CHEGADA automaticamente se KM CHEGADA foi preenchido
+if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
+    const timeInput = row.querySelector('input[data-key="chegada"]');
+    if (timeInput && !timeInput.value) {
+        const now = new Date();
+        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
+        if (confirm(`Confirmar hora de chegada: ${currentTime}?`)) {
+            timeInput.value = currentTime;
+            // Salvar também a chegada
+            ids.forEach(id => {
+                const index = saidasAdministrativas.findIndex(item => item.id === id);
+                if (index !== -1) saidasAdministrativas[index].chegada = currentTime;
+            });
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            atualizarEstiloDaLinha(row);
+        }
+    }
+}
+}
+
+// Função para manipular a edição de motorista com senha
+function handleMotoristaEdit(event) {
+const cell = event.target;
+const row = cell.closest('tr');
+const ids = row.dataset.id.split(',');
+const originalValue = cell.dataset.originalValue;
+
+// Verifica se o valor original era "ASD" ou se a célula está vazia
+if (originalValue === 'ASD' || originalValue === '') {
+// Solicita a senha antes de permitir a edição
+const senha = prompt('Digite a senha para editar o motorista:');
+    
+// Verifica se a senha está correta
+const senhaCorreta = localStorage.getItem('adminPassword') || '1234';
+    
+if (senha === senhaCorreta) {
+// Permite a edição
+cell.contentEditable = 'true';
+        
+// Aguarda um momento para garantir que a célula está editável
+setTimeout(() => {
+cell.focus();
+        
+// Seleciona todo o texto para facilitar a edição
+const range = document.createRange();
+range.selectNodeContents(cell);
+const sel = window.getSelection();
+sel.removeAllRanges();
+sel.addRange(range);
+}, 10);
+        
+// Adiciona event listener para salvar quando perder o foco
+const saveEdit = () => {
+cell.contentEditable = 'false';
+const newValue = cell.textContent.trim();
+            
+// Atualiza o valor original
+cell.dataset.originalValue = newValue;
+            
+// Salva no localStorage
+ids.forEach(id => {
+const index = saidasAdministrativas.findIndex(item => item.id === id);
+if (index !== -1) {
+saidasAdministrativas[index].motorista = newValue;
+}
+});
+            
+localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+            
+// Remove o event listener
+cell.removeEventListener('blur', saveEdit);
+cell.removeEventListener('keydown', handleKeyDown);
+};
+        
+// Adiciona event listener para salvar ao pressionar Enter
+const handleKeyDown = (e) => {
+if (e.key === 'Enter') {
+e.preventDefault();
+saveEdit();
+}
+};
+        
+cell.addEventListener('blur', saveEdit);
+cell.addEventListener('keydown', handleKeyDown);
+} else if (senha !== null) {
+// Se a senha foi digitada e está incorreta
+alert('Senha incorreta!');
+}
+}
+}
+
+function handleViewRow(event) {
+event.stopPropagation();
+const ids = event.target.closest('tr').dataset.id.split(',');
+if (ids.length > 1) {
+choiceModalTitle.textContent = "Escolha a Saída para Visualizar";
+choiceModalContent.innerHTML = '';
+const departures = ids.map(id => saidasAdministrativas.find(s => s.id === id)).filter(Boolean);
+departures.forEach(saida => {
+const btn = document.createElement('button');
+btn.className = 'choice-btn';
+btn.textContent = `Setor: ${saida.setor || 'N/A'} - Destino: ${saida.destino || 'N/A'}`;
+btn.onclick = () => { 
+showViewSaidaModal(saida);
+choiceModal.style.display = 'none'; 
+};
+choiceModalContent.appendChild(btn);
+});
+choiceModal.style.display = 'flex';
+// Garantir que o modal esteja no topo
+setTimeout(() => {
+    choiceModal.scrollTop = 0;
+}, 0);
+} else {
+const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
+if (saidaData) {
+showViewSaidaModal(saidaData);
+}
+}
+}
+function showViewSaidaModal(saidaData) {
+const modal = document.getElementById('viewSaidaModal');
+const content = document.getElementById('viewSaidaContent');
+if (!modal || !content || !saidaData) return;
+const formatDate = (dateStr) => {
+if (!dateStr) return 'N/A';
+try {
+const date = new Date(dateStr + 'T00:00:00');
+return date.toLocaleDateString('pt-BR');
+} catch {
+return dateStr;
+}
+};
+const formatTime = (timeStr) => timeStr || 'N/A';
+content.innerHTML = `
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+<div><strong>Tipo de Saída:</strong> ${saidaData.tipo || 'N/A'}</div>
+<div><strong>Data do Pedido:</strong> ${formatDate(saidaData.dataPedido)}</div>
+<div><strong>Hora do Pedido:</strong> ${formatTime(saidaData.horaPedido)}</div>
+<div><strong>Data da Saída:</strong> ${formatDate(saidaData.dataSaida)}</div>
+<div><strong>Hora da Saída:</strong> ${formatTime(saidaData.horaSaida || saidaData.saida)}</div>
+<div><strong>Setor:</strong> ${saidaData.setor || 'N/A'}</div>
+<div><strong>Ramal:</strong> ${saidaData.ramal || 'N/A'}</div>
+<div><strong>Cidade:</strong> ${saidaData.cidade || 'N/A'}</div>
+<div><strong>Bairro:</strong> ${saidaData.bairro || 'N/A'}</div>
+<div><strong>Destino:</strong> ${saidaData.destino || 'N/A'}</div>
+<div><strong>Objetivo:</strong> ${saidaData.objetivo || 'N/A'}</div>
+<div><strong>Número de Passageiros:</strong> ${saidaData.numPassageiros || 'N/A'}</div>
+<div><strong>Responsável pelo Pedido:</strong> ${saidaData.responsavelPedido || 'N/A'}</div>
+<div><strong>Viatura:</strong> ${saidaData.viatura || 'N/A'}</div>
+<div><strong>Motorista:</strong> ${saidaData.motorista || 'N/A'}</div>
+<div><strong>KM Saída:</strong> ${saidaData.kmSaida || 'N/A'}</div>
+<div><strong>KM Chegada:</strong> ${saidaData.kmChegada || 'N/A'}</div>
+<div><strong>Chegada:</strong> ${formatTime(saidaData.chegada)}</div>
+${saidaData.hospital ? `<div><strong>Hospital:</strong> ${saidaData.hospital}</div>` : ''}
+</div>
+${saidaData.observacoes ? `<div style="margin-top: 15px; padding: 15px; background-color: #f8f9fa; border-radius: 5px; border-left: 4px solid var(--primary-blue);">
+<strong>Observações:</strong><br>
+<div style="margin-top: 10px; white-space: pre-wrap;">${saidaData.observacoes}</div>
+</div>` : ''}
+`;
+modal.style.display = 'flex';
+// Garantir que o modal esteja no topo
+setTimeout(() => {
+    modal.scrollTop = 0;
+}, 0);
+}
+function closeViewSaidaModal() {
+const modal = document.getElementById('viewSaidaModal');
+if (modal) {
+modal.style.display = 'none';
+}
+}
+// Fechar modal ao clicar fora dele
+const viewSaidaModalClick = document.getElementById('viewSaidaModal');
+if (viewSaidaModalClick) {
+viewSaidaModalClick.addEventListener('click', function(e) {
+if (e.target === viewSaidaModalClick) {
+closeViewSaidaModal();
+}
+});
+}
+/**
+ * Desagrupa uma saída juntada imediatamente ao selecionar para edição
+ */
+async function desagruparParaEdicao(saidaJuntada, indice, setor, destinoObj) {
+    try {
+        console.log('🔄 Desagrupando saída juntada para edição...');
+        
+        // Carregar saídas atualizadas
+        await loadState();
+        
+        // Buscar a saída juntada na lista atual
+        const indexJuntada = saidasAdministrativas.findIndex(s => s.id === saidaJuntada.id);
+        if (indexJuntada === -1) {
+            console.log('⚠️ Saída juntada não encontrada, pulando desagrupamento');
+            return;
+        }
+        
+        const saidaJuntadaAtual = saidasAdministrativas[indexJuntada];
+        
+        // Se a junção tinha mais de uma saída, criar saídas individuais para todas
+        if (saidaJuntadaAtual.setores_multiplos && saidaJuntadaAtual.setores_multiplos.length > 1) {
+            const setores = saidaJuntadaAtual.setores_multiplos || [];
+            const destinos = saidaJuntadaAtual.destinos_multiplos || [];
+            const saidasOriginais = saidaJuntadaAtual.saidas_originais || [];
+            
+            // Criar saídas individuais para todas (incluindo a que será editada)
+            for (let i = 0; i < setores.length; i++) {
+                const setorItem = setores[i];
+                const destinoObjItem = destinos[i] || {};
+                const saidaOriginalId = saidasOriginais[i];
+                
+                // Verificar se já existe uma saída individual com este ID
+                const jaExiste = saidasAdministrativas.find(s => s.id === saidaOriginalId && !s.juntada);
+                if (!jaExiste) {
+                    // Criar saída individual
+                    const saidaIndividual = {
+                        tipo: saidaJuntadaAtual.tipo || 'Administrativa',
+                        dataPedido: saidaJuntadaAtual.dataPedido || saidaJuntadaAtual.data || '',
+                        horaPedido: saidaJuntadaAtual.horaPedido || saidaJuntadaAtual.hora || '',
+                        dataSaida: saidaJuntadaAtual.dataSaida || saidaJuntadaAtual.data || '',
+                        saida: saidaJuntadaAtual.saida || saidaJuntadaAtual.horario || saidaJuntadaAtual.hora || '',
+                        horario: saidaJuntadaAtual.horario || saidaJuntadaAtual.hora || saidaJuntadaAtual.saida || '',
+                        hora: saidaJuntadaAtual.hora || saidaJuntadaAtual.saida || saidaJuntadaAtual.horario || '',
+                        id: saidaOriginalId || `saida_individual_${Date.now()}_${i}_${Math.random()}`,
+                        setor: setorItem,
+                        destino: destinoObjItem.destino || destinoObjItem.bairro || destinoObjItem.cidade || saidaJuntadaAtual.destino,
+                        bairro: destinoObjItem.bairro || saidaJuntadaAtual.bairro,
+                        cidade: destinoObjItem.cidade || saidaJuntadaAtual.cidade,
+                        endereco_bairro: destinoObjItem.bairro || saidaJuntadaAtual.bairro,
+                        endereco_cidade: destinoObjItem.cidade || saidaJuntadaAtual.cidade,
+                        viatura: saidaJuntadaAtual.viatura || '',
+                        motorista: saidaJuntadaAtual.motorista || '',
+                        motorista_id: saidaJuntadaAtual.motorista_id || '',
+                        viatura_id: saidaJuntadaAtual.viatura_id || '',
+                        kmSaida: saidaJuntadaAtual.kmSaida || '',
+                        kmChegada: saidaJuntadaAtual.kmChegada || '',
+                        chegada: saidaJuntadaAtual.chegada || '',
+                        objetivo: saidaJuntadaAtual.objetivo || saidaJuntadaAtual.motivo || '',
+                        motivo: saidaJuntadaAtual.motivo || saidaJuntadaAtual.objetivo || '',
+                        observacoes: saidaJuntadaAtual.observacoes || '',
+                        juntada: false
+                    };
+                    
+                    saidasAdministrativas.push(saidaIndividual);
+                    console.log('✅ Saída individual criada:', saidaIndividual.setor, '-', saidaIndividual.destino);
+                }
+            }
+        }
+        
+        // Remover a saída juntada original
+        saidasAdministrativas.splice(indexJuntada, 1);
+        
+        // Salvar estado
+        await saveState();
+        
+        // Salvar via API se disponível
+        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+            try {
+                if (saidaJuntadaAtual.id) {
+                    await api?.deleteSaidaAdministrativa(saidaJuntadaAtual.id);
+                }
+            } catch (e) {
+                console.warn('Erro ao deletar saída juntada da API:', e);
+            }
+        }
+        
+        // Atualizar tabela para mostrar as saídas desagrupadas
+        populateTables();
+        
+        // Notificar parent window
+        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        
+        console.log('✅ Saída juntada desagrupada para edição');
+    } catch (error) {
+        console.error('❌ Erro ao desagrupar para edição:', error);
+    }
+}
+
+/**
+ * Desagrupa uma saída individual de uma saída juntada
+ * FUNÇÃO DESABILITADA - Removida conforme solicitação do usuário
+ */
+async function desagruparSaida_OLD_DISABLED(saidaJuntada, indice, setor, destinoObj) {
+    try {
+        // Extrair dados específicos do destino
+        const destinoTexto = destinoObj.destino || destinoObj.bairro || destinoObj.cidade || saidaJuntada.destino || '';
+        const bairro = destinoObj.bairro || saidaJuntada.bairro || '';
+        const cidade = destinoObj.cidade || saidaJuntada.cidade || '';
+        
+        // Remover os itens correspondentes dos arrays
+        const setoresAtualizados = [...(saidaJuntada.setores_multiplos || [])];
+        const destinosAtualizados = [...(saidaJuntada.destinos_multiplos || [])];
+        const saidasOriginaisAtualizadas = [...(saidaJuntada.saidas_originais || [])];
+        
+        // Remover o item no índice
+        setoresAtualizados.splice(indice, 1);
+        destinosAtualizados.splice(indice, 1);
+        const saidaOriginalId = saidasOriginaisAtualizadas.splice(indice, 1)[0];
+        
+        // Verificar se já existe uma saída com o mesmo ID (para evitar duplicatas)
+        const indexExistente = saidaOriginalId ? saidasAdministrativas.findIndex(s => s.id === saidaOriginalId) : -1;
+        
+        // Criar nova saída individual com apenas os dados necessários
+        // Não usar spread operator para evitar copiar propriedades indesejadas
+        const novaSaidaIndividual = {
+            id: saidaOriginalId || `saida_individual_${Date.now()}_${Math.random()}`,
+            tipo: saidaJuntada.tipo || 'Administrativa',
+            dataPedido: saidaJuntada.dataPedido || saidaJuntada.data || '',
+            horaPedido: saidaJuntada.horaPedido || saidaJuntada.hora || '',
+            dataSaida: saidaJuntada.dataSaida || saidaJuntada.data || '',
+            saida: saidaJuntada.saida || saidaJuntada.horario || saidaJuntada.hora || '',
+            horario: saidaJuntada.horario || saidaJuntada.hora || saidaJuntada.saida || '',
+            hora: saidaJuntada.hora || saidaJuntada.saida || saidaJuntada.horario || '',
+            setor: setor,
+            destino: destinoTexto,
+            bairro: bairro,
+            cidade: cidade,
+            endereco_bairro: bairro,
+            endereco_cidade: cidade,
+            viatura: saidaJuntada.viatura || '',
+            motorista: saidaJuntada.motorista || '',
+            motorista_id: saidaJuntada.motorista_id || '',
+            viatura_id: saidaJuntada.viatura_id || '',
+            kmSaida: saidaJuntada.kmSaida || '',
+            kmChegada: saidaJuntada.kmChegada || '',
+            chegada: saidaJuntada.chegada || '',
+            objetivo: saidaJuntada.objetivo || saidaJuntada.motivo || '',
+            motivo: saidaJuntada.motivo || saidaJuntada.objetivo || '',
+            observacoes: saidaJuntada.observacoes || '',
+            juntada: false
+        };
+        
+        // Se sobrou apenas uma saída na junção, também desagrupar completamente
+        if (setoresAtualizados.length === 1) {
+            // Criar saída individual para a que sobrou
+            const ultimoDestino = destinosAtualizados[0] || {};
+            const ultimoSetor = setoresAtualizados[0] || '';
+            const ultimoDestinoTexto = ultimoDestino.destino || ultimoDestino.bairro || ultimoDestino.cidade || saidaJuntada.destino || '';
+            
+            const ultimaSaida = {
+                id: saidasOriginaisAtualizadas[0] || `saida_individual_${Date.now() + 1}_${Math.random()}`,
+                tipo: saidaJuntada.tipo || 'Administrativa',
+                dataPedido: saidaJuntada.dataPedido || saidaJuntada.data || '',
+                horaPedido: saidaJuntada.horaPedido || saidaJuntada.hora || '',
+                dataSaida: saidaJuntada.dataSaida || saidaJuntada.data || '',
+                saida: saidaJuntada.saida || saidaJuntada.horario || saidaJuntada.hora || '',
+                horario: saidaJuntada.horario || saidaJuntada.hora || saidaJuntada.saida || '',
+                hora: saidaJuntada.hora || saidaJuntada.saida || saidaJuntada.horario || '',
+                setor: ultimoSetor,
+                destino: ultimoDestinoTexto,
+                bairro: ultimoDestino.bairro || saidaJuntada.bairro || '',
+                cidade: ultimoDestino.cidade || saidaJuntada.cidade || '',
+                endereco_bairro: ultimoDestino.bairro || saidaJuntada.bairro || '',
+                endereco_cidade: ultimoDestino.cidade || saidaJuntada.cidade || '',
+                viatura: saidaJuntada.viatura || '',
+                motorista: saidaJuntada.motorista || '',
+                motorista_id: saidaJuntada.motorista_id || '',
+                viatura_id: saidaJuntada.viatura_id || '',
+                kmSaida: saidaJuntada.kmSaida || '',
+                kmChegada: saidaJuntada.kmChegada || '',
+                chegada: saidaJuntada.chegada || '',
+                objetivo: saidaJuntada.objetivo || saidaJuntada.motivo || '',
+                motivo: saidaJuntada.motivo || saidaJuntada.objetivo || '',
+                observacoes: saidaJuntada.observacoes || '',
+                juntada: false
+            };
+            
+            // Remover saída juntada da lista
+            const indexJuntada = saidasAdministrativas.findIndex(s => s.id === saidaJuntada.id);
+            if (indexJuntada !== -1) {
+                saidasAdministrativas.splice(indexJuntada, 1);
+            }
+            
+            // Remover duplicatas se existirem antes de adicionar
+            saidasAdministrativas = saidasAdministrativas.filter(s => 
+                s.id !== novaSaidaIndividual.id && s.id !== ultimaSaida.id
+            );
+            
+            // Adicionar as duas saídas individuais
+            saidasAdministrativas.push(novaSaidaIndividual);
+            saidasAdministrativas.push(ultimaSaida);
+            
+            // Tentar salvar via API
+            if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+                try {
+                    await dataService.saveSaidaAdministrativa(novaSaidaIndividual);
+                    await dataService.saveSaidaAdministrativa(ultimaSaida);
+                    if (saidaJuntada.id) {
+                        try {
+                            await api?.deleteSaidaAdministrativa(saidaJuntada.id);
+                        } catch (e) {
+                            console.warn('Erro ao deletar saída juntada da API:', e);
+                        }
+                    }
+                } catch (error) {
+                    console.warn('Erro ao salvar na API, salvando localmente:', error);
+                }
+            }
+        } else {
+            // Atualizar saída juntada com os itens restantes
+            const saidaJuntadaAtualizada = {
+                ...saidaJuntada,
+                setor: typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.formatarListaComE
+                    ? juntaSaidasService.formatarListaComE(setoresAtualizados)
+                    : setoresAtualizados.join(', '),
+                destino: typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.formatarListaComE
+                    ? juntaSaidasService.formatarListaComE(destinosAtualizados.map(d => d.destino || d.bairro || d.cidade))
+                    : destinosAtualizados.map(d => d.destino || d.bairro || d.cidade).join(', '),
+                setores_multiplos: setoresAtualizados,
+                destinos_multiplos: destinosAtualizados,
+                saidas_originais: saidasOriginaisAtualizadas
+            };
+            
+            // Remover a saída juntada antiga e duplicatas
+            const indexJuntada = saidasAdministrativas.findIndex(s => s.id === saidaJuntada.id);
+            if (indexJuntada !== -1) {
+                saidasAdministrativas.splice(indexJuntada, 1);
+            }
+            
+            // Remover duplicata se existir
+            saidasAdministrativas = saidasAdministrativas.filter(s => s.id !== novaSaidaIndividual.id);
+            
+            // Adicionar saída juntada atualizada
+            saidasAdministrativas.push(saidaJuntadaAtualizada);
+            
+            // Adicionar nova saída individual
+            saidasAdministrativas.push(novaSaidaIndividual);
+            
+            // Tentar salvar via API
+            if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
+                try {
+                    await dataService.saveSaidaAdministrativa(saidaJuntadaAtualizada);
+                    await dataService.saveSaidaAdministrativa(novaSaidaIndividual);
+                } catch (error) {
+                    console.warn('Erro ao salvar na API, salvando localmente:', error);
+                }
+            }
+        }
+        
+        // Salvar estado
+        await saveState();
+        
+        console.log('✅ Saída desagrupada com sucesso!');
+    } catch (error) {
+        console.error('❌ Erro ao desagrupar saída:', error);
+        alert('Erro ao desagrupar saída. Por favor, tente novamente.');
+    }
+}
+
+function handleEditRow(event) {
+event.stopPropagation();
+const ids = event.target.closest('tr').dataset.id.split(',');
+if (ids.length > 1) {
+choiceModalTitle.textContent = "Escolha a Saída para Editar";
+choiceModalContent.innerHTML = '';
+const departures = ids.map(id => saidasAdministrativas.find(s => s.id === id)).filter(Boolean);
+departures.forEach(saida => {
+const btn = document.createElement('button');
+btn.className = 'choice-btn';
+btn.textContent = `Setor: ${saida.setor || 'N/A'} - Destino: ${saida.destino || 'N/A'}`;
+btn.onclick = () => { 
+window.parent.postMessage({ type: 'edit_saida', data: saida }, '*'); 
+choiceModal.style.display = 'none'; 
+};
+choiceModalContent.appendChild(btn);
+});
+choiceModal.style.display = 'flex';
+// Garantir que o modal esteja no topo
+setTimeout(() => {
+    choiceModal.scrollTop = 0;
+}, 0);
+} else {
+const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
+if (saidaData) {
+    // Verificar se é uma saída juntada
+    if (saidaData.juntada && (saidaData.setores_multiplos || saidaData.destinos_multiplos)) {
+        // Abrir modal para selecionar qual saída individual editar
+        choiceModalTitle.textContent = "Escolha a Saída para Editar";
+        choiceModalContent.innerHTML = '';
+        
+        // Usar separarListaFormatada se disponível, caso contrário usar o array diretamente
+        let setores = [];
+        if (typeof juntaSaidasService !== 'undefined' && juntaSaidasService && juntaSaidasService.separarListaFormatada) {
+            setores = juntaSaidasService.separarListaFormatada(saidaData.setor || '');
+        } else if (saidaData.setores_multiplos && Array.isArray(saidaData.setores_multiplos)) {
+            setores = saidaData.setores_multiplos.filter(s => s);
+        } else if (saidaData.setor) {
+            // Fallback: separar manualmente se não tiver o serviço
+            const setorStr = String(saidaData.setor || '');
+            if (setorStr.includes(' e ')) {
+                const partes = setorStr.split(' e ');
+                const antesDoE = partes[0].split(',').map(s => s.trim()).filter(s => s);
+                setores = [...antesDoE, ...partes.slice(1).map(s => s.trim())].filter(s => s);
+            } else if (setorStr.includes(',')) {
+                setores = setorStr.split(',').map(s => s.trim()).filter(s => s);
+            } else {
+                setores = [setorStr.trim()].filter(s => s);
+            }
+        }
+        
+        // Obter destinos
+        let destinos = [];
+        if (saidaData.destinos_multiplos && Array.isArray(saidaData.destinos_multiplos)) {
+            destinos = saidaData.destinos_multiplos;
+        } else if (saidaData.destino) {
+            // Se não tem destinos_multiplos, usar o destino formatado
+            const destinoStr = String(saidaData.destino || '');
+            if (destinoStr.includes(' e ')) {
+                const partes = destinoStr.split(' e ');
+                const antesDoE = partes[0].split(',').map(d => d.trim()).filter(d => d);
+                const destinosSimples = [...antesDoE, ...partes.slice(1).map(d => d.trim())].filter(d => d);
+                destinos = destinosSimples.map(d => ({ destino: d }));
+            } else if (destinoStr.includes(',')) {
+                destinos = destinoStr.split(',').map(d => ({ destino: d.trim() })).filter(d => d.destino);
+            } else {
+                destinos = [{ destino: destinoStr.trim() }].filter(d => d.destino);
+            }
+        }
+        
+        // Criar opções baseadas na combinação de setores e destinos
+        // Se temos a mesma quantidade de setores e destinos, parear 1:1
+        // Caso contrário, criar opções para cada setor ou cada destino
+        const maxItems = Math.max(setores.length, destinos.length);
+        
+        for (let i = 0; i < maxItems; i++) {
+            const setor = setores[i] || setores[0] || 'N/A';
+            const destinoObj = destinos[i] || destinos[0] || {};
+            const destino = destinoObj.destino || destinoObj.bairro || destinoObj.cidade || saidaData.destino || 'N/A';
+            
+            // Criar container para o botão e o link de desagrupar
+            const container = document.createElement('div');
+            container.className = 'choice-item-container';
+            
+            // Botão de editar
+            const btn = document.createElement('button');
+            btn.className = 'choice-btn';
+            btn.textContent = `Setor: ${setor} - Destino: ${destino}`;
+            
+            // Criar uma representação da saída individual para edição
+            btn.onclick = async () => {
+                // Desagrupar imediatamente antes de editar
+                await desagruparParaEdicao(saidaData, i, setor, destinoObj);
+                
+                // Reconstruir a saída individual baseada na saída juntada
+                const saidaIndividual = {
+                    ...saidaData,
+                    id: saidaData.saidas_originais && saidaData.saidas_originais[i] 
+                        ? saidaData.saidas_originais[i] 
+                        : `${saidaData.id}_individual_${i}`,
+                    setor: setor,
+                    destino: destino,
+                    bairro: destinoObj.bairro || saidaData.bairro,
+                    cidade: destinoObj.cidade || saidaData.cidade,
+                    juntada: false, // Não é mais juntada quando editada individualmente
+                    isEdicaoIndividual: true // Flag para identificar que é edição individual
+                };
+                
+                // Remover propriedades relacionadas à junção
+                delete saidaIndividual.setores_multiplos;
+                delete saidaIndividual.destinos_multiplos;
+                delete saidaIndividual.saidas_originais;
+                delete saidaIndividual.saidaJuntadaOriginal;
+                
+                // Recarregar dados antes de enviar para edição
+                await loadState();
+                
+                // Buscar a saída individual desagrupada atualizada
+                const saidaAtualizada = saidasAdministrativas.find(s => s.id === saidaIndividual.id);
+                const saidaParaEditar = saidaAtualizada || saidaIndividual;
+                
+                window.parent.postMessage({ type: 'edit_saida', data: saidaParaEditar }, '*'); 
+                choiceModal.style.display = 'none'; 
+            };
+            
+            container.appendChild(btn);
+            choiceModalContent.appendChild(container);
+        }
+        
+        choiceModal.style.display = 'flex';
+        // Garantir que o modal esteja no topo
+        setTimeout(() => {
+            choiceModal.scrollTop = 0;
+        }, 0);
+    } else {
+        // Saída normal, não juntada
+window.parent.postMessage({ type: 'edit_saida', data: saidaData }, '*');
+    }
+}
+}
+}
+async function handleDeleteRow(event) {
+event.stopPropagation();
+if (confirm('Tem certeza que deseja excluir esta(s) saída(s)?')) {
+const idsToRemove = event.target.closest('tr').dataset.id.split(',');
+try {
+// Deletar da API se disponível
+if (typeof api !== 'undefined' && typeof dataService !== 'undefined' && dataService.apiAvailable) {
+for (const id of idsToRemove) {
+try {
+await api.deleteSaidaAdministrativa(id);
+} catch (error) {
+console.warn('Erro ao deletar da API, continuando:', error);
+}
+}
+}
+saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
+await saveState(); 
+populateTables();
+window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+} catch (error) {
+console.error('Erro ao deletar saída:', error);
+saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
+localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+populateTables();
+}
+}
+}
+function handleObsButtonClick(event) {
+event.stopPropagation();
+const ids = event.target.closest('tr').dataset.id.split(',');
+const openObsModal = (id) => {
+currentObsContext = { ids: [id] };
+const saida = saidasAdministrativas.find(s => s.id === id);
+obsTextarea.value = saida ? saida.observacoes || '' : '';
+obsModal.style.display = 'flex';
+// Garantir que o modal esteja no topo
+setTimeout(() => {
+    obsModal.scrollTop = 0;
+}, 0);
+};
+if (ids.length > 1) {
+choiceModalTitle.textContent = "Escolha para qual Saída é a Ocorrência";
+choiceModalContent.innerHTML = '';
+const departures = ids.map(id => saidasAdministrativas.find(s => s.id === id)).filter(Boolean);
+departures.forEach(saida => {
+const btn = document.createElement('button');
+btn.className = 'choice-btn';
+btn.textContent = `Setor: ${saida.setor || 'N/A'} - Destino: ${saida.destino || 'N/A'}`;
+btn.onclick = () => { choiceModal.style.display = 'none'; openObsModal(saida.id); };
+choiceModalContent.appendChild(btn);
+});
+choiceModal.style.display = 'flex';
+// Garantir que o modal esteja no topo
+setTimeout(() => {
+    choiceModal.scrollTop = 0;
+}, 0);
+} else { openObsModal(ids[0]); }
+}
+function populateDivisaoTransporteSelect(responsaveis) {
+const selectedValue = divisaoTransporteSelect.value;
+divisaoTransporteSelect.innerHTML = `<option value="">Selecione um responsável...</option>`;
+responsaveis.forEach(r => { if (r.nome) divisaoTransporteSelect.add(new Option(r.nome, r.nome)); });
+divisaoTransporteSelect.value = selectedValue;
+}
+
+// FUNÇÃO CORRIGIDA DO PDF
+function downloadPdf() {
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF({ orientation: 'landscape' });
+
+const filteredSaidas = filterDateAdmInput.value ? saidasAdministrativas.filter(s => s.dataSaida === filterDateAdmInput.value) : saidasAdministrativas;
+filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
+const groupedSaidas = groupSaidas(filteredSaidas);
+
+const counterText = document.getElementById('saidasCounter').textContent;
+doc.setFontSize(16);
+doc.text('Relatório de Saídas Administrativas', 14, 20);
+doc.setFontSize(12);
+doc.text(`Data: ${filterDateAdmInput.value.split('-').reverse().join('/')}`, 14, 28);
+doc.text(counterText, 14, 34);
+
+const tableHeaders = [
+'VIATURA', 'MOTORISTA', 'SAÍDA', 'DESTINO',
+'OM', 'KM SAÍDA', 'KM CHEGADA', 'CHEGADA', 'SETOR'
+];
+
+// CORRIGIDO: Busca o valor do input de chegada da tela
+const tableBody = groupedSaidas.map((item, index) => {
+const rowElement = saidasTableBody.children[index];
+let chegadaValue = item.chegada || '';
+if (rowElement) {
+const chegadaInput = rowElement.querySelector('input[data-key="chegada"]');
+if (chegadaInput) {
+chegadaValue = chegadaInput.value || '';
+}
+}
+
+return [
+item.viatura || '',
+item.motorista || '',
+item.saida || '',
+item.juntada ? extrairBairroDoDestino(item.destino || '') : (item.isGroup ? formatarListaComE((item.destinos || []).map(d => extrairBairroDoDestino(d))) : extrairBairroDoDestino(item.destino || '')),
+item.om || (item.isGroup ? [...new Set(item.ids.map(id => {
+    const saida = saidasAdministrativas.find(s => s.id === id);
+    return saida ? saida.om : '';
+}).filter(om => om))].join(', ') : ''),
+item.kmSaida || '',
+item.kmChegada || '',
+chegadaValue,
+item.juntada ? item.setor : (item.isGroup ? formatarListaComE(item.setores) : item.setor || '')
+];
+});
+
+doc.autoTable({
+head: [tableHeaders],
+body: tableBody,
+startY: 40,
+theme: 'grid',
+didDrawPage: (data) => {
+let finalY = data.cursor.y + 20;
+if (finalY + 40 > doc.internal.pageSize.getHeight()) {
+doc.addPage();
+finalY = 20;
+}
+const divisaoTransporte = divisaoTransporteSelect.value || '__________________________________';
+doc.setFontSize(10);
+doc.text(divisaoTransporte, doc.internal.pageSize.getWidth() / 2, finalY, { align: 'center' });
+doc.text('Divisão de Transporte', doc.internal.pageSize.getWidth() / 2, finalY + 6, { align: 'center' });
+}
+});
+
+doc.save(`Relatorio_Saidas_Administrativas_${filterDateAdmInput.value || 'Geral'}.pdf`);
+}
+
+function checkAlarms() {
+const now = new Date();
+const todayStr = now.toISOString().split('T')[0];
+const saidasDoDia = saidasAdministrativas.filter(s => s.dataSaida === todayStr);
+saidasDoDia.forEach(saida => {
+if (!saida.saida || saida.chegada || !saida.id) {
+return;
+}
+const preSaidaAlarmDismissed = localStorage.getItem(`preSaidaAlarmDismissed_${saida.id}_${todayStr}`) === 'true';
+const saidaAlarmDismissed = localStorage.getItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`) === 'true';
+const preSaidaAlarmPlayed = localStorage.getItem(`preSaidaAlarmPlayed_${saida.id}_${todayStr}`) === 'true';
+const saidaAlarmPlayed = localStorage.getItem(`saidaAlarmPlayed_${saida.id}_${todayStr}`) === 'true';
+const [saidaHours, saidaMinutes] = saida.saida.split(':').map(Number);
+const saidaDT = new Date(now.getFullYear(), now.getMonth(), now.getDate(), saidaHours, saidaMinutes, 0, 0);
+const preSaidaDT = new Date(saidaDT.getTime() - 10 * 60 * 1000);
+const row = document.querySelector(`tr[data-id*="${saida.id}"]`);
+if (!row) return;
+const hasSaidaAlarm = row.classList.contains('alarme-hora-saida-piscando');
+if (now >= preSaidaDT && now < saidaDT) {
+if (!preSaidaAlarmDismissed && !preSaidaAlarmPlayed) {
+row.classList.add('alarme-pre-saida-piscando');
+playPreSaidaAlert(saida.motorista, saida.viatura);
+localStorage.setItem(`preSaidaAlarmPlayed_${saida.id}_${todayStr}`, 'true');
+alertedPreSaida.add(saida.id);
+setTimeout(() => {
+row.classList.remove('alarme-pre-saida-piscando');
+localStorage.setItem(`preSaidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
+}, 10000);
+}
+} else if (now >= saidaDT) {
+if (!saidaAlarmDismissed) {
+const alarmStartTime = localStorage.getItem(`saidaAlarmStartTime_${saida.id}_${todayStr}`);
+let shouldShowAlarm = false;
+let remainingTime = 0;
+if (alarmStartTime) {
+const elapsed = now.getTime() - parseInt(alarmStartTime);
+if (elapsed < 10 * 60 * 1000) {
+shouldShowAlarm = true;
+remainingTime = 10 * 60 * 1000 - elapsed;
+} else {
+localStorage.setItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
+}
+} else {
+shouldShowAlarm = true;
+localStorage.setItem(`saidaAlarmStartTime_${saida.id}_${todayStr}`, now.getTime().toString());
+remainingTime = 10 * 60 * 1000;
+}
+if (shouldShowAlarm) {
+if (!hasSaidaAlarm) {
+row.classList.remove('alarme-pre-saida-piscando');
+row.classList.add('alarme-hora-saida-piscando');
+}
+if (!saidaAlarmPlayed) {
+const destinoAlarme = saida.destino || (Array.isArray(saida.destinos) ? saida.destinos.join(' e ') : '');
+playHoraSaidaAlert(saida.motorista, saida.viatura, destinoAlarme);
+localStorage.setItem(`saidaAlarmPlayed_${saida.id}_${todayStr}`, 'true');
+alertedHoraSaida.add(saida.id);
+}
+if (remainingTime > 0) {
+setTimeout(() => {
+if (!localStorage.getItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`)) {
+const currentRow = document.querySelector(`tr[data-id*="${saida.id}"]`);
+if (currentRow) {
+currentRow.classList.remove('alarme-hora-saida-piscando');
+localStorage.setItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
+}
+}
+}, remainingTime);
+}
+} else if (hasSaidaAlarm) {
+row.classList.remove('alarme-hora-saida-piscando');
+}
+}
+} else {
+row.classList.remove('alarme-pre-saida-piscando');
+row.classList.remove('alarme-hora-saida-piscando');
+}
+});
+}
+function renderLembretesFlutuante(lembretes) {
+lembretesContainer.style.removeProperty('height');
+const todayString = new Date().toISOString().split('T')[0];
+const lembretesDeHoje = lembretes.filter(l => l.date === todayString && !l.completed);
+lembretesAtivos = lembretesDeHoje;
+lembretesBody.innerHTML = '';
+if (lembretesAtivos.length === 0) {
+lembretesContainer.style.display = 'none';
+return;
+}
+lembretesContainer.style.display = 'block';
+lembretesAtivos.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+lembretesAtivos.forEach(lembrete => {
+const itemDiv = document.createElement('div');
+itemDiv.className = 'lembrete-item'; itemDiv.dataset.id = lembrete.id;
+itemDiv.innerHTML = `<input type="checkbox" data-id="${lembrete.id}" title="Marcar como concluído"><span class="texto">${lembrete.text}</span><span class="hora">${lembrete.time}</span>`;
+lembretesBody.appendChild(itemDiv);
+});
+}
+lembretesBody.addEventListener('change', (e) => {
+if (e.target.type === 'checkbox') {
+const id = e.target.dataset.id;
+const itemElement = e.target.closest('.lembrete-item');
+if (itemElement) {
+itemElement.remove();
+}
+let todos = JSON.parse(localStorage.getItem('lembretes_ativos')) || [];
+const novosLembretes = todos.filter(l => l.id !== id);
+localStorage.setItem('lembretes_ativos', JSON.stringify(novosLembretes));
+window.parent.postMessage({ type: 'lembretes_update', data: novosLembretes }, '*');
+}
+});
+function checkLembretesAlarms() {
+const now = new Date();
+let hasActiveAlarm = false;
+document.querySelectorAll('.lembrete-item').forEach(item => {
+const lembrete = lembretesAtivos.find(l => l.id === item.dataset.id);
+if (lembrete) {
+const lembreteDT = new Date(`${lembrete.date}T${lembrete.time}`);
+const shouldBlink = now >= lembreteDT;
+item.classList.toggle('lembrete-piscando', shouldBlink);
+if (shouldBlink) {
+hasActiveAlarm = true;
+}
+}
+});
+const isMinimized = lembretesBody.style.display === 'none';
+if (isMinimized && hasActiveAlarm) {
+lembretesHeader.classList.add('header-piscando');
+} else {
+lembretesHeader.classList.remove('header-piscando');
+}
+}
+function makeDraggable(element, handle) {
+let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+handle.onmousedown = dragMouseDown;
+function dragMouseDown(e) {
+e = e || window.event; e.preventDefault();
+element.style.height = element.offsetHeight + 'px';
+element.style.bottom = 'auto';
+pos3 = e.clientX; pos4 = e.clientY;
+document.onmouseup = closeDragElement;
+document.onmousemove = elementDrag;
+}
+function elementDrag(e) {
+e = e || window.event; e.preventDefault();
+pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY;
+pos3 = e.clientX; pos4 = e.clientY;
+element.style.top = (element.offsetTop - pos2) + "px";
+element.style.left = (element.offsetLeft - pos1) + "px";
+}
+function closeDragElement() {
+element.style.removeProperty('height');
+document.onmouseup = null; document.onmousemove = null;
+}
+}
+toggleLembretesBtn.addEventListener('click', () => {
+const isHidden = lembretesBody.style.display === 'none';
+lembretesBody.style.display = isHidden ? 'block' : 'none';
+if (isHidden) {
+lembretesContainer.style.removeProperty('height');
+}
+toggleLembretesBtn.innerHTML = isHidden ? '<i class="fas fa-minus"></i>' : '<i class="fas fa-plus"></i>';
+if (!isHidden) {
+lembretesHeader.classList.remove('header-piscando');
+}
+});
+obsModal.querySelector('#saveObsBtn').onclick = () => {
+if (currentObsContext && currentObsContext.ids.length > 0) {
+const newObs = obsTextarea.value.trim();
+currentObsContext.ids.forEach(id => {
+const index = saidasAdministrativas.findIndex(item => item.id === id);
+if (index !== -1) {
+saidasAdministrativas[index].observacoes = newObs;
+}
+});
+saveState(); populateTables(); obsModal.style.display = 'none';
+window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+}
+};
+obsModal.querySelector('.close-button').onclick = () => obsModal.style.display = 'none';
+obsModal.querySelector('#cancelObsBtn').onclick = () => obsModal.style.display = 'none';
+choiceModal.querySelector('.close-button').onclick = () => choiceModal.style.display = 'none';
+choiceModal.querySelector('#cancelChoiceBtn').onclick = () => choiceModal.style.display = 'none';
+const viewSaidaModal = document.getElementById('viewSaidaModal');
+if (viewSaidaModal) {
+viewSaidaModal.querySelector('.close-button').onclick = () => closeViewSaidaModal();
+const closeBtn = viewSaidaModal.querySelector('.cancel-obs-btn');
+if (closeBtn) {
+closeBtn.onclick = () => closeViewSaidaModal();
+}
+}
+
+// EVENT LISTENERS PARA MODAL DE PROBLEMAS
+closeProblemasBtn.addEventListener('click', closeProblemasModal);
+problemasModal.querySelector('.close-button').addEventListener('click', closeProblemasModal);
+
+filterDateAdmInput.addEventListener('change', populateTables);
+showSvcRoBtn.addEventListener('click', toggleSvcRoDisplay);
+
+document.addEventListener('visibilitychange', function() {
+if (document.visibilityState === 'hidden') {
+limiteAlertaJaMostradoNestaVisibilidade = false;
+}
+});
+
+// Função para exibir o nome do próximo integrante do PSO
+const showPsoProximo = () => {
+    try {
+        // Buscar dados do PSO do localStorage
+        const psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
+        
+        // Encontrar o integrante marcado como "próximo"
+        const proximoIntegrante = psoFila.find(item => item.ultimoRegressoProximo === true);
+        
+        const modal = document.getElementById('psoProximoModal');
+        const nomeIntegrante = document.getElementById('psoProximoNome');
+        const mensagemVazio = document.getElementById('psoProximoVazio');
+        
+        if (proximoIntegrante && proximoIntegrante.nome) {
+            // Exibir o nome do próximo integrante no modal
+            if (nomeIntegrante) {
+                nomeIntegrante.textContent = proximoIntegrante.nome;
+                nomeIntegrante.style.display = 'block';
+            }
+            if (mensagemVazio) {
+                mensagemVazio.style.display = 'none';
+            }
+        } else {
+            // Se não houver integrante marcado como próximo
+            if (nomeIntegrante) {
+                nomeIntegrante.style.display = 'none';
+            }
+            if (mensagemVazio) {
+                mensagemVazio.style.display = 'block';
+            }
+        }
+        
+        // Se estiver dentro de um iframe, enviar mensagem para a janela pai e não exibir modal local
+        try {
+            if (window.top !== window.self) {
+                // Enviar mensagem para a janela pai com os dados do modal
+                window.top.postMessage({
+                    type: 'showPsoModal',
+                    nome: proximoIntegrante && proximoIntegrante.nome ? proximoIntegrante.nome : null,
+                    temProximo: !!(proximoIntegrante && proximoIntegrante.nome)
+                }, '*');
+                // Não exibir o modal local quando estiver em iframe
+                return;
+            }
+        } catch (e) {
+            // Se houver erro, continuar com modal local apenas se não estiver em iframe
+            console.warn('Erro ao comunicar com janela pai:', e);
+        }
+        
+        // Abrir o modal apenas se não estiver em iframe
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Erro ao buscar dados do PSO:', error);
+        const modal = document.getElementById('psoProximoModal');
+        const nomeIntegrante = document.getElementById('psoProximoNome');
+        const mensagemVazio = document.getElementById('psoProximoVazio');
+        if (nomeIntegrante) {
+            nomeIntegrante.style.display = 'none';
+        }
+        if (mensagemVazio) {
+            mensagemVazio.textContent = 'Erro ao buscar dados do PSO. Por favor, tente novamente.';
+            mensagemVazio.style.display = 'block';
+        }
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+};
+
+// Função para fechar o modal do PSO
+const closePsoProximoModal = () => {
+    const modal = document.getElementById('psoProximoModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Event listener para o botão PSO
+const showPsoBtn = document.getElementById('showPsoBtn');
+if (showPsoBtn) {
+    showPsoBtn.addEventListener('click', showPsoProximo);
+}
+
+// Função para exibir a Escala Rocha do integrante com data mais próxima
+const showEscalaRocha = () => {
+    try {
+        // Buscar dados do PSO do localStorage
+        const psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
+        
+        if (psoFila.length === 0) {
+            // Se não houver registros
+            try {
+                if (window.top !== window.self) {
+                    window.top.postMessage({
+                        type: 'showEscalaRochaModal',
+                        nome: null,
+                        observacoes: null,
+                        dataRegresso: null,
+                        temRegistro: false
+                    }, '*');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Erro ao comunicar com janela pai:', e);
+            }
+            return;
+        }
+        
+        // Data atual
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        // Função para extrair datas do texto da coluna Escala Rocha
+        const extrairDatasDoTexto = (texto) => {
+            if (!texto) return [];
+            const datas = [];
+            
+            // Padrões para encontrar datas: DD/MM/YYYY ou DD/MM/YY
+            const padraoData = /(\d{1,2})\/(\d{1,2})\/(\d{4}|\d{2})/g;
+            let match;
+            
+            while ((match = padraoData.exec(texto)) !== null) {
+                const dia = parseInt(match[1], 10);
+                const mes = parseInt(match[2], 10) - 1; // Mês começa em 0
+                let ano = parseInt(match[3], 10);
+                
+                // Se o ano tem 2 dígitos, assumir 20XX se for >= 26, senão 20XX
+                if (match[3].length === 2) {
+                    ano = ano >= 26 ? 2000 + ano : 2000 + ano;
+                }
+                
+                try {
+                    const data = new Date(ano, mes, dia);
+                    data.setHours(0, 0, 0, 0);
+                    if (!isNaN(data.getTime())) {
+                        datas.push(data);
+                    }
+                } catch (e) {
+                    console.warn('Erro ao converter data:', match[0], e);
+                }
+            }
+            
+            return datas;
+        };
+        
+        // Encontrar o registro com a data FUTURA mais próxima do dia atual baseado na coluna Escala Rocha
+        let registroMaisProximo = null;
+        let menorDiferenca = Infinity;
+        
+        psoFila.forEach(item => {
+            // Verificar a coluna Escala Rocha (observacoes)
+            if (item.observacoes) {
+                const datasEscalaRocha = extrairDatasDoTexto(item.observacoes);
+                
+                // Verificar cada data extraída do texto
+                datasEscalaRocha.forEach(dataEscala => {
+                    // Considerar APENAS datas futuras (maiores que hoje)
+                    if (dataEscala > hoje) {
+                        // Calcular diferença em dias (apenas para datas futuras)
+                        const diferenca = dataEscala - hoje;
+                        
+                        if (diferenca < menorDiferenca) {
+                            menorDiferenca = diferenca;
+                            registroMaisProximo = item;
+                        }
+                    }
+                });
+            }
+        });
+        
+        // Formatar conteúdo: "NOME conteudoEscalaRocha"
+        let conteudoFormatado = '';
+        if (registroMaisProximo && registroMaisProximo.nome) {
+            conteudoFormatado = registroMaisProximo.nome;
+            if (registroMaisProximo.observacoes && registroMaisProximo.observacoes.trim()) {
+                conteudoFormatado += ' ' + registroMaisProximo.observacoes.trim();
+            }
+        }
+        
+        // Se estiver dentro de um iframe, enviar mensagem para a janela pai
+        try {
+            if (window.top !== window.self) {
+                window.top.postMessage({
+                    type: 'showEscalaRochaModal',
+                    nome: registroMaisProximo ? registroMaisProximo.nome : null,
+                    observacoes: registroMaisProximo ? registroMaisProximo.observacoes : null,
+                    dataRegresso: registroMaisProximo && registroMaisProximo.ultimoRegressoData ? registroMaisProximo.ultimoRegressoData : null,
+                    conteudoFormatado: conteudoFormatado,
+                    temRegistro: !!registroMaisProximo
+                }, '*');
+                return;
+            }
+        } catch (e) {
+            console.warn('Erro ao comunicar com janela pai:', e);
+        }
+        
+        // Se não estiver em iframe, usar modal local
+        const modal = document.getElementById('escalaRochaModal');
+        const nomeIntegrante = document.getElementById('escalaRochaNome');
+        const conteudoEscala = document.getElementById('escalaRochaConteudo');
+        const mensagemVazio = document.getElementById('escalaRochaVazio');
+        
+        if (registroMaisProximo && registroMaisProximo.nome) {
+            if (nomeIntegrante) {
+                nomeIntegrante.textContent = registroMaisProximo.nome;
+                nomeIntegrante.style.display = 'block';
+            }
+            if (conteudoEscala) {
+                conteudoEscala.textContent = conteudoFormatado;
+                conteudoEscala.style.display = 'block';
+            }
+            if (mensagemVazio) {
+                mensagemVazio.style.display = 'none';
+            }
+        } else {
+            if (nomeIntegrante) {
+                nomeIntegrante.style.display = 'none';
+            }
+            if (conteudoEscala) {
+                conteudoEscala.style.display = 'none';
+            }
+            if (mensagemVazio) {
+                mensagemVazio.textContent = 'Nenhum registro com data encontrado no Protocolo de Sucessão Operacional (PSO).';
+                mensagemVazio.style.display = 'block';
+            }
+        }
+        
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('Erro ao buscar dados da Escala Rocha:', error);
+        try {
+            if (window.top !== window.self) {
+                window.top.postMessage({
+                    type: 'showEscalaRochaModal',
+                    nome: null,
+                    observacoes: null,
+                    dataRegresso: null,
+                    temRegistro: false
+                }, '*');
+                return;
+            }
+        } catch (e) {
+            console.warn('Erro ao comunicar com janela pai:', e);
+        }
+    }
+};
+
+// Função para fechar o modal da Escala Rocha
+const closeEscalaRochaModal = () => {
+    const modal = document.getElementById('escalaRochaModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Event listener para o botão Escala Rocha
+const showEscalaRochaBtn = document.getElementById('showEscalaRochaBtn');
+if (showEscalaRochaBtn) {
+    showEscalaRochaBtn.addEventListener('click', showEscalaRocha);
+}
+
+document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+
+// FUNCIONALIDADE DE IMPRESSÃO
+const printModal = document.getElementById('printModal');
+const printDateList = document.getElementById('printDateList');
+const confirmPrintBtn = document.getElementById('confirmPrintBtn');
+const cancelPrintBtn = document.getElementById('cancelPrintBtn');
+const closePrintModal = document.getElementById('closePrintModal');
+
+function openPrintModal() {
+    // Obter todas as datas únicas das saídas
+    const allDates = [...new Set(saidasAdministrativas.map(s => s.dataSaida).filter(Boolean))].sort().reverse();
+    
+    if (allDates.length === 0) {
+        alert('Não há saídas cadastradas para imprimir.');
+        return;
+    }
+    
+    // Limpar lista anterior
+    printDateList.innerHTML = '';
+    
+    // Criar checkboxes para cada data
+    allDates.forEach(date => {
+        const dateFormatted = new Date(date + 'T00:00:00').toLocaleDateString('pt-BR');
+        const div = document.createElement('div');
+        div.style.cssText = 'display: flex; align-items: center; padding: 8px; margin-bottom: 5px;';
+        div.innerHTML = `
+            <input type="checkbox" value="${date}" id="printDate_${date}" style="margin-right: 10px; cursor: pointer;">
+            <label for="printDate_${date}" style="cursor: pointer; flex: 1;">${dateFormatted}</label>
+        `;
+        printDateList.appendChild(div);
+    });
+    
+    printModal.style.display = 'flex';
+}
+
+function generatePrintHTML(selectedDates) {
+    const currentSignature = divisaoTransporteSelect.value || '__________________________________';
+    let printHTML = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Relatório de Saídas Administrativas</title>
+            <style>
+                @media print {
+                    @page { margin: 1cm; size: landscape; }
+                    body { margin: 0; }
+                }
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                h1 { color: #4a69bd; font-size: 20px; margin-bottom: 5px; }
+                h2 { color: #333; font-size: 14px; margin-bottom: 10px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 120px; page-break-inside: auto; }
+                th, td { border: 1px solid #e9ecef; padding: 6px; text-align: left; font-size: 10px; }
+                thead th { background-color: #4a69bd; color: white; font-weight: bold; text-transform: uppercase; }
+                tbody tr:nth-child(even) { background-color: #f8f9fa; }
+                .signature { text-align: center; margin-top: 120px; page-break-inside: avoid; }
+                .signature-line { border-top: 1px solid #000; width: 300px; margin: 0 auto; padding-top: 5px; }
+            </style>
+        </head>
+        <body>
+    `;
+    
+    selectedDates.forEach((date, index) => {
+        const filteredSaidas = saidasAdministrativas.filter(s => s.dataSaida === date);
+        if (filteredSaidas.length === 0) return;
+        
+        filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
+        const groupedSaidas = groupSaidas(filteredSaidas);
+        const dateFormatted = new Date(date + 'T00:00:00').toLocaleDateString('pt-BR');
+        
+        printHTML += `
+            <h1>Relatório de Saídas Administrativas</h1>
+            <h2>Data: ${dateFormatted}</h2>
+            <h2>Total de Saídas: ${filteredSaidas.length}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>VIATURA</th>
+                        <th>MOTORISTA</th>
+                        <th>SAÍDA</th>
+                        <th>DESTINO</th>
+                        <th>OM</th>
+                        <th>KM SAÍDA</th>
+                        <th>KM CHEGADA</th>
+                        <th>CHEGADA</th>
+                        <th>SETOR</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        groupedSaidas.forEach(item => {
+            printHTML += `
+                <tr>
+                    <td>${item.viatura || ''}</td>
+                    <td>${item.motorista || ''}</td>
+                    <td>${item.saida || ''}</td>
+                    <td>${item.juntada ? extrairBairroDoDestino(item.destino || '') : (item.isGroup ? formatarListaComE((item.destinos || []).map(d => extrairBairroDoDestino(d))) : extrairBairroDoDestino(item.destino || ''))}</td>
+                    <td>${item.om || (item.isGroup ? [...new Set(item.ids.map(id => {
+                        const saida = saidasAdministrativas.find(s => s.id === id);
+                        return saida ? saida.om : '';
+                    }).filter(om => om))].join(', ') : '')}</td>
+                    <td>${item.kmSaida || ''}</td>
+                    <td>${item.kmChegada || ''}</td>
+                    <td>${item.chegada || ''}</td>
+                    <td>${item.juntada ? item.setor : (item.isGroup ? formatarListaComE(item.setores) : item.setor || '')}</td>
+                </tr>
+            `;
+        });
+        
+        printHTML += `
+                </tbody>
+            </table>
+            <div class="signature">
+                <div class="signature-line">${currentSignature}</div>
+                <div style="margin-top: 5px;">Divisão de Transporte</div>
+            </div>
+        `;
+        
+        // Adicionar quebra de página se não for a última data
+        if (index < selectedDates.length - 1) {
+            printHTML += '<div style="page-break-after: always;"></div>';
+        }
+    });
+    
+    printHTML += `
+        </body>
+        </html>
+    `;
+    
+    return printHTML;
+}
+
+function printSelectedDates() {
+    const selectedCheckboxes = printDateList.querySelectorAll('input[type="checkbox"]:checked');
+    
+    if (selectedCheckboxes.length === 0) {
+        alert('Selecione pelo menos uma data para imprimir.');
+        return;
+    }
+    
+    const selectedDates = Array.from(selectedCheckboxes).map(cb => cb.value);
+    
+    // Gerar HTML de impressão
+    const printHTML = generatePrintHTML(selectedDates);
+    
+    // Criar janela de impressão
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printHTML);
+    printWindow.document.close();
+    
+    // Aguardar o carregamento e abrir diálogo de impressão
+    printWindow.onload = () => {
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
+    };
+    
+    // Fechar modal
+    printModal.style.display = 'none';
+}
+
+document.getElementById('printBtn').addEventListener('click', openPrintModal);
+confirmPrintBtn.addEventListener('click', printSelectedDates);
+cancelPrintBtn.addEventListener('click', () => { printModal.style.display = 'none'; });
+closePrintModal.addEventListener('click', () => { printModal.style.display = 'none'; });
+printModal.addEventListener('click', (e) => {
+    if (e.target === printModal) {
+        printModal.style.display = 'none';
+    }
+});
+
+document.getElementById('toggleSignaturesBtn').addEventListener('click', () => {
+document.querySelector('.assinatura-container-geral').style.display = document.querySelector('.assinatura-container-geral').style.display === 'none' ? 'flex' : 'none';
+});
+saidasStatusContainer.addEventListener('click', () => {
+if (isSystemLocked) {
+return;
+}
+const useAutoCheckbox = document.getElementById('useAutoLimitsCheckbox');
+if (useAutoCheckbox) useAutoCheckbox.checked = getUseAutoLimits();
+const dateForLimits = filterDateAdmInput.value || new Date().toISOString().slice(0, 10);
+const effective = getEffectiveThresholds(dateForLimits);
+greenLimitInputManha.value = effective.manha.green;
+orangeLimitInputManha.value = effective.manha.orange;
+greenLimitInputTarde.value = effective.tarde.green;
+orangeLimitInputTarde.value = effective.tarde.orange;
+configStatusModal.style.display = 'flex';
+setTimeout(() => {
+    configStatusModal.scrollTop = 0;
+}, 0);
+});
+saveConfigBtn.addEventListener('click', saveStatusThresholds);
+cancelConfigBtn.addEventListener('click', () => configStatusModal.style.display = 'none');
+configStatusModal.querySelector('.close-button').addEventListener('click', () => configStatusModal.style.display = 'none');
+window.addEventListener('message', async (event) => {
+if (event.data?.type === 'lock_state_change') {
+isSystemLocked = event.data.locked;
+saidasTableBody.classList.toggle('table-locked', isSystemLocked);
+saidasStatusContainer.classList.toggle('locked', isSystemLocked);
+}
+else if (event.data?.type === 'refresh_data' || event.data?.type === 'refresh_all_data') { 
+await loadState(); 
+populateTables(); 
+populateDivisaoTransporteSelect(motoristasCadastrados); 
+}
+else if (event.data?.type === 'new_saida_administrativa' || event.data?.type === 'save_saida_administrativa') {
+// Nova saída criada, salvar na API
+const saida = event.data.data;
+if (saida && typeof dataService !== 'undefined') {
+try {
+await dataService.saveSaidaAdministrativa(saida);
+saidasAdministrativas.push(saida);
+await saveState();
+
+// Verificar se há saídas para juntar
+// Aguardar um pouco para garantir que o script foi carregado
+setTimeout(async () => {
+if (typeof juntaSaidasService !== 'undefined' && juntaSaidasService) {
+console.log('🔍 Verificando junção de saídas após cadastro...');
+try {
+// DESABILITADO: Modal automático de junção substituído por aviso abaixo da tabela
+// A verificação de proximidade agora é feita na função populateTables() e exibe um aviso abaixo da tabela
+// const resultado = await juntaSaidasService.verificarAposCadastro(saida, saidasAdministrativas);
+// if (resultado.aceitar && resultado.sugestao) {
+//     console.log('✅ Usuário aceitou juntar as saídas');
+//     // Se o usuário aceitou, a saída juntada já foi criada
+//     // Recarregar a lista para mostrar a saída juntada
+//     await loadState();
+//     populateTables();
+// } else {
+//     console.log('ℹ️ Nenhuma junção sugerida ou usuário recusou');
+// }
+
+// Apenas recarregar a tabela para exibir o aviso de saídas próximas
+await loadState();
+populateTables();
+} catch (error) {
+console.error('❌ Erro ao verificar junção de saídas:', error);
+}
+} else {
+console.warn('⚠️ juntaSaidasService não está disponível. Verifique se junta-saidas-service.js foi carregado.');
+}
+}, 100);
+
+populateTables();
+} catch (error) {
+console.error('Erro ao salvar nova saída:', error);
+saidasAdministrativas.push(saida);
+localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+populateTables();
+}
+}
+}
+else if (event.data?.type === 'avisos_update') populateNotices();
+else if (event.data?.type === 'lembretes_update') renderLembretesFlutuante(event.data.data);
+// NOVO: LISTENER PARA ATUALIZAÇÃO DE VIATURAS COM PROBLEMAS
+else if (event.data?.type === 'viaturas_problemas_update') {
+loadViaturasComProblemas();
+populateTables();
+}
+});
+function clearDailyAlarmStates() {
+const today = new Date().toISOString().split('T')[0];
+const keys = Object.keys(localStorage);
+keys.forEach(key => {
+if ((key.includes('preSaidaAlarmDismissed_') || key.includes('saidaAlarmDismissed_') || 
+     key.includes('preSaidaAlarmPlayed_') || key.includes('saidaAlarmPlayed_') || 
+     key.includes('saidaAlarmStartTime_')) && !key.includes(today)) {
+localStorage.removeItem(key);
+}
+});
+}
+loadStatusThresholds();
+setDateToToday();
+loadState();
+populateTables();
+populateDivisaoTransporteSelect(motoristasCadastrados);
+populateNotices();
+clearDailyAlarmStates();
+setInterval(checkAlarms, 20000);
+setInterval(checkLembretesAlarms, 5000);
+window.parent.postMessage({ type: 'request_lembretes_data' }, '*');
+['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(e => document.addEventListener(e, () => window.parent.postMessage({ type: 'user_activity' }, '*')));
+
+// Variáveis globais para armazenar contexto do modal
+let kmAlertCell = null;
+let kmAlertRow = null;
+let kmAlertIds = null;
+let kmAlertCanClear = false; // Flag para indicar se pode apagar o valor
+
+// Modal de alerta de quilometragem
+function showKmAlertModal(message, cell, row, ids, canClear = false) {
+    const modal = document.getElementById('kmAlertModal');
+    const messageElement = document.getElementById('kmAlertMessage');
+    if (modal && messageElement) {
+        messageElement.textContent = message;
+        modal.classList.add('show');
+        // Armazenar contexto para poder apagar o valor se necessário
+        kmAlertCell = cell;
+        kmAlertRow = row;
+        kmAlertIds = ids;
+        kmAlertCanClear = canClear;
+    }
+}
+
+function closeKmAlertModal() {
+    const modal = document.getElementById('kmAlertModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+    // Limpar variáveis ao fechar
+    kmAlertCell = null;
+    kmAlertRow = null;
+    kmAlertIds = null;
+    kmAlertCanClear = false;
+}
+
+// Função para apagar KM CHEGADA
+function clearKmChegada() {
+    if (kmAlertCell && kmAlertRow && kmAlertIds && kmAlertCanClear) {
+        // Limpar o valor na célula
+        kmAlertCell.textContent = '';
+        
+        // Limpar o valor nos dados
+        kmAlertIds.forEach(id => {
+            const index = saidasAdministrativas.findIndex(item => item.id === id);
+            if (index !== -1) {
+                saidasAdministrativas[index].kmChegada = '';
+            }
+        });
+        
+        // Salvar os dados
+        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        atualizarEstiloDaLinha(kmAlertRow);
+        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+    }
+}
+
+// Event listeners para o modal
+const confirmBtn = document.getElementById('kmAlertConfirmBtn');
+const cancelBtn = document.getElementById('kmAlertCancelBtn');
+const closeBtn = document.getElementById('kmAlertCloseBtn');
+
+if (confirmBtn) {
+    confirmBtn.addEventListener('click', function() {
+        // "Sim" - mantém o preenchimento
+        closeKmAlertModal();
+    });
+}
+
+if (cancelBtn) {
+    cancelBtn.addEventListener('click', function() {
+        // "Não" - apaga o KM CHEGADA
+        clearKmChegada();
+        closeKmAlertModal();
+    });
+}
+
+if (closeBtn) {
+    closeBtn.addEventListener('click', function() {
+        // Ao fechar pelo X, mantém o preenchimento (comportamento padrão)
+        closeKmAlertModal();
+    });
+}
+
+// Fechar modal ao clicar fora dele
+const modal = document.getElementById('kmAlertModal');
+if (modal) {
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            // Ao clicar fora, mantém o preenchimento (comportamento padrão)
+            closeKmAlertModal();
+        }
+    });
+}
+});
+</script>
+
+<!-- Modal de Alerta de Quilometragem -->
+<div id="kmAlertModal" class="km-alert-modal">
+    <div class="km-alert-modal-content">
+        <span id="kmAlertCloseBtn" class="close-button">&times;</span>
+        <h3>⚠️ Alerta de Quilometragem</h3>
+        <p id="kmAlertMessage"></p>
+        <div class="km-alert-modal-buttons">
+            <button id="kmAlertConfirmBtn" class="km-alert-confirm-btn">Sim</button>
+            <button id="kmAlertCancelBtn" class="km-alert-cancel-btn">Não</button>
+        </div>
+    </div>
+</div>
+
+    <!-- Modal PSO - Próximo Integrante -->
+    <div id="psoProximoModal" class="pso-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100vw; height: 100vh; overflow: auto; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: flex-start; padding-top: 60px;">
+        <div class="pso-modal-content" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: auto; padding: 0; border-radius: 20px; width: 90%; max-width: 700px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease-out;">
+            <div class="pso-modal-header" style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center; backdrop-filter: blur(10px);">
+                <h2 style="margin: 0; font-size: 28px; color: white; font-weight: bold; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-user-check" style="font-size: 32px;"></i>
+                    Protocolo de Sucessão Operacional
+                </h2>
+                <span class="close-pso-modal" id="closePsoProximoModal" style="color: white; font-size: 36px; font-weight: bold; cursor: pointer; line-height: 1; transition: transform 0.2s;">&times;</span>
+            </div>
+            <div class="pso-modal-body" style="padding: 50px 40px; text-align: center; background: white; border-radius: 0 0 20px 20px;">
+                <div style="margin-bottom: 30px;">
+                    <p style="font-size: 18px; color: #666; margin: 0 0 20px 0; font-weight: 500;">Próximo Integrante:</p>
+                    <div id="psoProximoNome" style="font-size: 48px; font-weight: bold; color: #667eea; margin: 20px 0; padding: 30px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 15px; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2); text-transform: uppercase; letter-spacing: 2px; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+                    </div>
+                    <div id="psoProximoVazio" style="font-size: 20px; color: #999; padding: 40px; background: #f8f9fa; border-radius: 15px; display: none;">
+                        Nenhum integrante está marcado como "Próximo" no Protocolo de Sucessão Operacional (PSO).
+                    </div>
+                </div>
+            </div>
+            <div class="pso-modal-footer" style="padding: 25px 40px; background: #f8f9fa; border-radius: 0 0 20px 20px; text-align: center; border-top: 1px solid #e9ecef;">
+                <button id="fecharPsoProximoBtn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); transition: transform 0.2s, box-shadow 0.2s;">
+                    <i class="fas fa-check"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        .pso-modal-content {
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        .close-pso-modal:hover {
+            transform: rotate(90deg);
+        }
+        
+        #fecharPsoProximoBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        #fecharPsoProximoBtn:active {
+            transform: translateY(0);
+        }
+    </style>
+
+    <!-- Modal Escala Rocha -->
+    <div id="escalaRochaModal" class="modal" style="display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #7f00b2 0%, #6a0095 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 20px;"><i class="fas fa-calendar-alt"></i> Escala Roxa</h2>
+                <span class="close-modal" id="closeEscalaRochaModal" style="color: white; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 30px; text-align: center;">
+                <p style="font-size: 36px; color: #666; margin: 0 0 20px 0; font-weight: 500;">PRÓXIMO A CHORAR 😢:</p>
+                <div id="escalaRochaNome" style="font-size: 32px; font-weight: bold; color: #7f00b2; margin-bottom: 20px; display: none;"></div>
+                <div id="escalaRochaConteudo" style="font-size: 24px; color: #7f00b2; margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; display: none; font-weight: bold;"></div>
+                <div id="escalaRochaVazio" style="font-size: 18px; color: #999; padding: 40px; display: none;">
+                    Nenhum registro encontrado.
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="fecharEscalaRochaBtn" style="background-color: #7f00b2; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-times"></i> Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Event listeners do modal PSO
+        const closePsoProximoModalBtn = document.getElementById('closePsoProximoModal');
+        const fecharPsoProximoBtn = document.getElementById('fecharPsoProximoBtn');
+        const psoProximoModal = document.getElementById('psoProximoModal');
+        
+        if (closePsoProximoModalBtn) {
+            closePsoProximoModalBtn.addEventListener('click', closePsoProximoModal);
+        }
+        
+        if (fecharPsoProximoBtn) {
+            fecharPsoProximoBtn.addEventListener('click', closePsoProximoModal);
+        }
+        
+        // Fechar modal ao clicar fora dele
+        if (psoProximoModal) {
+            psoProximoModal.addEventListener('click', (e) => {
+                if (e.target === psoProximoModal) {
+                    closePsoProximoModal();
+                }
+            });
+        }
+        
+        // Fechar modal com ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && psoProximoModal && psoProximoModal.style.display === 'flex') {
+                closePsoProximoModal();
+            }
+        });
+        
+        // Event listeners do modal Escala Rocha
+        const closeEscalaRochaModalBtn = document.getElementById('closeEscalaRochaModal');
+        const fecharEscalaRochaBtn = document.getElementById('fecharEscalaRochaBtn');
+        const escalaRochaModal = document.getElementById('escalaRochaModal');
+        
+        if (closeEscalaRochaModalBtn) {
+            closeEscalaRochaModalBtn.addEventListener('click', closeEscalaRochaModal);
+        }
+        
+        if (fecharEscalaRochaBtn) {
+            fecharEscalaRochaBtn.addEventListener('click', closeEscalaRochaModal);
+        }
+        
+        // Fechar modal ao clicar fora dele
+        if (escalaRochaModal) {
+            escalaRochaModal.addEventListener('click', (e) => {
+                if (e.target === escalaRochaModal) {
+                    closeEscalaRochaModal();
+                }
+            });
+        }
+        
+        // Fechar modal com ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && escalaRochaModal && escalaRochaModal.style.display === 'block') {
+                closeEscalaRochaModal();
+            }
+        });
+    </script>
+</body>
+</html>
