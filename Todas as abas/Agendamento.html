@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendamento de Saídas Administrativas - SOT</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="api-service.js"></script>
     <script src="data-service.js"></script>
     <style>
@@ -683,10 +686,135 @@
         .admin-link:hover {
             background: rgba(255,255,255,0.3);
         }
+        #loginOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+        #loginOverlay.hidden { display: none; }
+        .login-box {
+            background: var(--white);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        .login-box h2 {
+            margin-bottom: 24px;
+            color: var(--primary-blue);
+            text-align: center;
+        }
+        .login-box .form-group { margin-bottom: 16px; }
+        .login-box label { display: block; margin-bottom: 6px; font-weight: 600; }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .login-box button:hover { opacity: 0.9; }
+        .login-error { color: var(--error-red); font-size: 14px; margin-top: 8px; text-align: center; }
+        .user-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .user-bar span { font-size: 14px; color: var(--dark-gray); }
+        .user-bar button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            background: var(--primary-blue);
+            color: white;
+        }
+        .user-bar button:hover { opacity: 0.9; }
+        .user-bar button.btn-alt { background: var(--gray); color: var(--dark-gray); }
+        #alterarSenhaModal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #alterarSenhaModal.show { display: flex; }
+        #alterarSenhaModal .login-box { max-width: 380px; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Overlay de Login (visível quando não logado) -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2><i class="fas fa-lock"></i> Acesso ao Agendamento</h2>
+            <form id="formLogin">
+                <div class="form-group">
+                    <label>Login</label>
+                    <input type="text" id="inputLogin" required placeholder="Seu login" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Senha</label>
+                    <input type="password" id="inputSenha" required placeholder="Sua senha" autocomplete="current-password">
+                </div>
+                <div id="loginError" class="login-error"></div>
+                <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+            </form>
+        </div>
+    </div>
+    <!-- Modal Alterar Senha -->
+    <div id="alterarSenhaModal">
+        <div class="login-box">
+            <h2><i class="fas fa-key"></i> Alterar Senha</h2>
+            <form id="formAlterarSenha">
+                <div class="form-group">
+                    <label>Senha atual</label>
+                    <input type="password" id="alterarSenhaAtual" required placeholder="Senha atual">
+                </div>
+                <div class="form-group">
+                    <label>Nova senha</label>
+                    <input type="password" id="alterarSenhaNova" required placeholder="Nova senha">
+                </div>
+                <div class="form-group">
+                    <label>Confirmar nova senha</label>
+                    <input type="password" id="alterarSenhaConfirma" required placeholder="Repita a nova senha">
+                </div>
+                <div id="alterarSenhaError" class="login-error"></div>
+                <button type="submit">Alterar senha</button>
+                <button type="button" class="btn-alt" style="width:100%;margin-top:8px;" onclick="fecharModalAlterarSenha()">Cancelar</button>
+            </form>
+        </div>
+    </div>
+    <div class="container" id="agendamentoContainer">
         <header>
             <a href="DisponibilidadeAdmin.html" class="admin-link" title="Acessar configurações de administrador">
                 <i class="fas fa-cog"></i>
@@ -702,6 +830,11 @@
             </h1>
             <p>Sistema de Organização de Transporte - SOT</p>
         </header>
+        <div class="user-bar" id="userBar" style="display: none;">
+            <span>Logado como <strong id="userBarLogin"></strong></span>
+            <button type="button" onclick="abrirModalAlterarSenha()"><i class="fas fa-key"></i> Alterar senha</button>
+            <button type="button" class="btn-alt" onclick="sairAgendamento()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </div>
 
         <main>
             <div id="messageContainer"></div>
@@ -917,6 +1050,115 @@
     </div>
 
     <script>
+        // --- Login Agendamento (Firebase) ---
+        const COL_USUARIOS_AGENDAMENTO = 'sot_agendamento_usuarios';
+        const STORAGE_AGENDAMENTO_USER = 'agendamento_user';
+        const STORAGE_AGENDAMENTO_LOGADO = 'agendamento_logado';
+        function loginToDocId(login) {
+            return (login || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '');
+        }
+        function checkAuth() {
+            const logado = sessionStorage.getItem(STORAGE_AGENDAMENTO_LOGADO);
+            const user = sessionStorage.getItem(STORAGE_AGENDAMENTO_USER);
+            const overlay = document.getElementById('loginOverlay');
+            const container = document.getElementById('agendamentoContainer');
+            const userBar = document.getElementById('userBar');
+            if (logado === 'true' && user) {
+                if (overlay) overlay.classList.add('hidden');
+                if (userBar) {
+                    userBar.style.display = 'flex';
+                    var loginEl = document.getElementById('userBarLogin');
+                    if (loginEl) loginEl.textContent = user;
+                }
+                if (container) container.style.display = 'block';
+                return true;
+            }
+            if (overlay) overlay.classList.remove('hidden');
+            if (userBar) userBar.style.display = 'none';
+            if (container) container.style.display = 'block';
+            return false;
+        }
+        document.getElementById('formLogin').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var login = document.getElementById('inputLogin').value.trim();
+            var senha = document.getElementById('inputSenha').value;
+            var errEl = document.getElementById('loginError');
+            errEl.textContent = '';
+            if (!window.firebaseDb) {
+                errEl.textContent = 'Firebase não configurado. Contate o administrador.';
+                return;
+            }
+            var docId = loginToDocId(login);
+            if (!docId) {
+                errEl.textContent = 'Login inválido.';
+                return;
+            }
+            try {
+                var doc = await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).get();
+                if (!doc.exists || doc.data().senha !== senha) {
+                    errEl.textContent = 'Login ou senha incorretos.';
+                    return;
+                }
+                sessionStorage.setItem(STORAGE_AGENDAMENTO_LOGADO, 'true');
+                sessionStorage.setItem(STORAGE_AGENDAMENTO_USER, doc.data().login || login);
+                checkAuth();
+                if (typeof init === 'function') init();
+            } catch (err) {
+                errEl.textContent = 'Erro ao verificar login. Tente novamente.';
+            }
+        });
+        function abrirModalAlterarSenha() {
+            document.getElementById('alterarSenhaModal').classList.add('show');
+            document.getElementById('alterarSenhaError').textContent = '';
+            document.getElementById('formAlterarSenha').reset();
+        }
+        function fecharModalAlterarSenha() {
+            document.getElementById('alterarSenhaModal').classList.remove('show');
+        }
+        document.getElementById('formAlterarSenha').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var atual = document.getElementById('alterarSenhaAtual').value;
+            var nova = document.getElementById('alterarSenhaNova').value;
+            var confirma = document.getElementById('alterarSenhaConfirma').value;
+            var errEl = document.getElementById('alterarSenhaError');
+            errEl.textContent = '';
+            if (nova !== confirma) {
+                errEl.textContent = 'A nova senha e a confirmação não conferem.';
+                return;
+            }
+            var user = sessionStorage.getItem(STORAGE_AGENDAMENTO_USER);
+            var docId = loginToDocId(user);
+            if (!window.firebaseDb || !docId) {
+                errEl.textContent = 'Erro. Faça login novamente.';
+                return;
+            }
+            try {
+                var doc = await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).get();
+                if (!doc.exists || doc.data().senha !== atual) {
+                    errEl.textContent = 'Senha atual incorreta.';
+                    return;
+                }
+                await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).update({
+                    senha: nova,
+                    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                    senhaAlteradaEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                fecharModalAlterarSenha();
+                showMessage('Senha alterada com sucesso.', 'success');
+            } catch (err) {
+                errEl.textContent = 'Erro ao alterar senha. Tente novamente.';
+            }
+        });
+        function sairAgendamento() {
+            sessionStorage.removeItem(STORAGE_AGENDAMENTO_LOGADO);
+            sessionStorage.removeItem(STORAGE_AGENDAMENTO_USER);
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('userBar').style.display = 'none';
+            document.getElementById('inputLogin').value = '';
+            document.getElementById('inputSenha').value = '';
+            document.getElementById('loginError').textContent = '';
+        }
+
         // Elementos do formulário
         const form = document.getElementById('agendamentoForm');
         const tipoViaturaSelect = document.getElementById('tipoViatura');
@@ -1570,11 +1812,13 @@
             setInterval(loadAgendamentos, 60000); // Recarregar agendamentos a cada minuto
         }
 
-        // Iniciar quando o DOM estiver pronto
+        // Iniciar quando o DOM estiver pronto (só carrega agendamentos se já estiver logado)
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', init);
+            document.addEventListener('DOMContentLoaded', function() {
+                if (checkAuth()) init();
+            });
         } else {
-            init();
+            if (checkAuth()) init();
         }
     </script>
 </body>
