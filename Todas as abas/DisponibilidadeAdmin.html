@@ -1302,9 +1302,9 @@
                     <div class="form-group">
                         <label>
                             <i class="fas fa-car-side"></i>
-                            Viatura <span style="color: var(--error-red);">*</span>
+                            Viatura <span class="help-text">(opcional)</span>
                         </label>
-                        <select id="modalViatura" required>
+                        <select id="modalViatura">
                             <option value="">-- Selecione a Viatura --</option>
                         </select>
                         <span class="help-text">Viatura que será utilizada</span>
@@ -1313,9 +1313,9 @@
                     <div class="form-group">
                         <label>
                             <i class="fas fa-user-tie"></i>
-                            Motorista <span style="color: var(--error-red);">*</span>
+                            Motorista <span class="help-text">(opcional)</span>
                         </label>
-                        <select id="modalMotorista" required>
+                        <select id="modalMotorista">
                             <option value="">-- Selecione o Motorista --</option>
                         </select>
                         <span class="help-text">Motorista responsável</span>
@@ -2318,13 +2318,8 @@
                 return;
             }
 
-            const viatura = modalViatura.value;
-            const motorista = modalMotorista.value;
-
-            if (!viatura || !motorista) {
-                showMessage('Por favor, selecione a viatura e o motorista.', 'error');
-                return;
-            }
+            const viatura = (modalViatura.value || '').trim();
+            const motorista = (modalMotorista.value || '').trim();
 
             try {
                 // Atualizar agendamento
@@ -2364,7 +2359,16 @@
                 }
 
                 const nomeResponsavel = agendamentoAtual.responsavelPedido || 'o solicitante';
-                showMessage(`✅ Agendamento confirmado com sucesso! A viatura ${viatura} e o motorista ${motorista} foram atribuídos. ${nomeResponsavel} será notificado.`, 'success');
+                let msg = '✅ Agendamento confirmado com sucesso!';
+                if (viatura && motorista) {
+                    msg += ` A viatura ${viatura} e o motorista ${motorista} foram atribuídos.`;
+                } else if (viatura) {
+                    msg += ` A viatura ${viatura} foi atribuída.`;
+                } else if (motorista) {
+                    msg += ` O motorista ${motorista} foi atribuído.`;
+                }
+                msg += ` ${nomeResponsavel} será notificado.`;
+                showMessage(msg, 'success');
                 
                 // Aguardar um pouco para mostrar a mensagem antes de fechar
                 setTimeout(() => {
