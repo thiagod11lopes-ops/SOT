@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usuários do Agendamento - SOT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --error-red: #dc3545;
+            --success-green: #28a745;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: var(--light-gray-bg); padding: 24px; color: var(--dark-gray); }
+        .section {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 24px;
+        }
+        .section h2 { margin-bottom: 8px; color: var(--primary-blue); font-size: 22px; display: flex; align-items: center; gap: 10px; }
+        .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+        .form-group { flex: 1; min-width: 180px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; }
+        .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary-blue); color: white; }
+        .btn-primary:hover { opacity: 0.9; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: var(--light-gray-bg); color: var(--primary-blue); font-weight: 600; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #666; }
+        .empty-state i { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+        .message { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .message.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div id="messageContainer"></div>
+    <div class="section">
+        <h2><i class="fas fa-users-cog"></i> Usuários do Agendamento</h2>
+        <p style="margin-bottom: 20px; color: #666;">Cadastre login e senha para que apenas pessoas autorizadas acessem a página de Agendamento. Todas as alterações de senha ficam registradas aqui.</p>
+        <form id="formUsuarioAgendamento" style="max-width: 600px; margin-bottom: 30px;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Login <span style="color: var(--error-red);">*</span></label>
+                    <input type="text" id="usuarioLogin" required placeholder="Ex: joao.silva" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Senha <span style="color: var(--error-red);">*</span></label>
+                    <input type="password" id="usuarioSenha" required placeholder="Senha inicial" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-building"></i> Setor <span style="color: var(--error-red);">*</span></label>
+                    <input type="text" id="usuarioSetor" required placeholder="Ex: Administração, RH">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-user-plus"></i> Cadastrar Usuário
+            </button>
+        </form>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Login</th>
+                        <th>Senha</th>
+                        <th>Setor</th>
+                        <th>Criado em</th>
+                        <th>Última alteração de senha</th>
+                    </tr>
+                </thead>
+                <tbody id="usuariosAgendamentoBody">
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Carregando usuários...</p>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const COL_USUARIOS_AGENDAMENTO = 'sot_agendamento_usuarios';
+        function loginToDocId(login) {
+            return (login || '').trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_.-]/g, '');
+        }
+        function showMessage(text, type) {
+            var c = document.getElementById('messageContainer');
+            c.innerHTML = '<div class="message ' + (type || 'info') + '"><i class="fas fa-info-circle"></i><span>' + text + '</span></div>';
+            setTimeout(function() { c.innerHTML = ''; }, 5000);
+        }
+        async function loadUsuariosAgendamento() {
+            var tbody = document.getElementById('usuariosAgendamentoBody');
+            tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div></td></tr>';
+            try {
+                if (typeof window.firebaseDb === 'undefined') {
+                    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Firebase não configurado. Edite firebase-config.js com as credenciais do seu projeto.</p></div></td></tr>';
+                    return;
+                }
+                var snapshot = await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).get();
+                var usuarios = [];
+                snapshot.forEach(function(doc) {
+                    usuarios.push({ id: doc.id, login: doc.data().login, senha: doc.data().senha, setor: doc.data().setor, criadoEm: doc.data().criadoEm, senhaAlteradaEm: doc.data().senhaAlteradaEm });
+                });
+                usuarios.sort(function(a, b) {
+                    var ta = a.criadoEm && a.criadoEm.toDate ? a.criadoEm.toDate().getTime() : 0;
+                    var tb = b.criadoEm && b.criadoEm.toDate ? b.criadoEm.toDate().getTime() : 0;
+                    return tb - ta;
+                });
+                tbody.innerHTML = '';
+                if (usuarios.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-users"></i><p>Nenhum usuário cadastrado. Cadastre acima.</p></div></td></tr>';
+                } else {
+                    usuarios.forEach(function(u) {
+                        var criadoEm = u.criadoEm && u.criadoEm.toDate ? u.criadoEm.toDate().toLocaleString('pt-BR') : '-';
+                        var alteradoEm = u.senhaAlteradaEm && u.senhaAlteradaEm.toDate ? u.senhaAlteradaEm.toDate().toLocaleString('pt-BR') : '-';
+                        var tr = document.createElement('tr');
+                        tr.innerHTML = '<td>' + (u.login || u.id) + '</td><td>' + (u.senha || '') + '</td><td>' + (u.setor || '-') + '</td><td>' + criadoEm + '</td><td>' + alteradoEm + '</td>';
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar usuários. Verifique o Firebase.</p></div></td></tr>';
+            }
+        }
+        document.getElementById('formUsuarioAgendamento').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var login = document.getElementById('usuarioLogin').value.trim();
+            var senha = document.getElementById('usuarioSenha').value;
+            var setor = document.getElementById('usuarioSetor').value.trim();
+            if (!login || !senha || !setor) {
+                showMessage('Preencha login, senha e setor.', 'error');
+                return;
+            }
+            if (typeof window.firebaseDb === 'undefined') {
+                showMessage('Firebase não configurado. Edite firebase-config.js.', 'error');
+                return;
+            }
+            var docId = loginToDocId(login);
+            if (!docId) {
+                showMessage('Login inválido (use apenas letras, números, ponto e traço).', 'error');
+                return;
+            }
+            try {
+                await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).set({
+                    login: login,
+                    senha: senha,
+                    setor: setor,
+                    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showMessage('Usuário cadastrado com sucesso.', 'success');
+                document.getElementById('usuarioLogin').value = '';
+                document.getElementById('usuarioSenha').value = '';
+                document.getElementById('usuarioSetor').value = '';
+                loadUsuariosAgendamento();
+            } catch (err) {
+                showMessage('Erro ao cadastrar usuário: ' + (err.message || err), 'error');
+            }
+        });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadUsuariosAgendamento);
+        } else {
+            loadUsuariosAgendamento();
+        }
+    </script>
+</body>
+</html>
