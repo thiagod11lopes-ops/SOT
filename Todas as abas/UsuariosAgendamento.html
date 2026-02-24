@@ -132,13 +132,26 @@
                 tbody.appendChild(tr);
             });
         }
+        function loadFromLocalStorage() {
+            var local = localStorage.getItem(STORAGE_USUARIOS);
+            var usuarios = local ? JSON.parse(local) : [];
+            usuarios.sort(function(a, b) {
+                var ta = 0;
+                if (a.criadoEm) ta = new Date(a.criadoEm).getTime();
+                var tb = 0;
+                if (b.criadoEm) tb = new Date(b.criadoEm).getTime();
+                return tb - ta;
+            });
+            renderTabelaUsuarios(usuarios);
+        }
         async function loadUsuariosAgendamento() {
             var tbody = document.getElementById('usuariosAgendamentoBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div></td></tr>';
-            try {
-                if (typeof window.firebaseDb !== 'undefined') {
+            if (typeof window.firebaseDb !== 'undefined') {
+                try {
                     var snapshot = await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).get();
+                    window.sotUsuariosFirestoreOk = true;
                     var usuarios = [];
                     snapshot.forEach(function(doc) {
                         var d = doc.data();
@@ -162,21 +175,14 @@
                     });
                     renderTabelaUsuarios(usuarios);
                     return;
+                } catch (error) {
+                    console.warn('Firestore indisponível (permission-denied ou rede). Usando localStorage.', error.code || error.message);
+                    window.sotUsuariosFirestoreOk = false;
                 }
-                var local = localStorage.getItem(STORAGE_USUARIOS);
-                var usuarios = local ? JSON.parse(local) : [];
-                usuarios.sort(function(a, b) {
-                    var ta = 0;
-                    if (a.criadoEm) ta = new Date(a.criadoEm).getTime();
-                    var tb = 0;
-                    if (b.criadoEm) tb = new Date(b.criadoEm).getTime();
-                    return tb - ta;
-                });
-                renderTabelaUsuarios(usuarios);
-            } catch (error) {
-                console.error('loadUsuariosAgendamento', error);
-                tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erro ao carregar: ' + (error.message || error) + '</p></div></td></tr>';
+            } else {
+                window.sotUsuariosFirestoreOk = false;
             }
+            loadFromLocalStorage();
         }
         document.getElementById('formUsuarioAgendamento').addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -193,8 +199,22 @@
                 return;
             }
             var criadoEmStr = new Date().toISOString();
-            try {
-                if (typeof window.firebaseDb !== 'undefined' && typeof firebase !== 'undefined') {
+            function salvarNoLocalERenderizar() {
+                var local = localStorage.getItem(STORAGE_USUARIOS);
+                var usuarios = local ? JSON.parse(local) : [];
+                var idx = usuarios.findIndex(function(u) { return loginToDocId(u.login) === docId; });
+                var novo = { id: docId, login: login, senha: senha, setor: setor, criadoEm: criadoEmStr };
+                if (idx >= 0) usuarios[idx] = novo;
+                else usuarios.push(novo);
+                localStorage.setItem(STORAGE_USUARIOS, JSON.stringify(usuarios));
+                showMessage('Usuário cadastrado com sucesso.', 'success');
+                document.getElementById('usuarioLogin').value = '';
+                document.getElementById('usuarioSenha').value = '';
+                document.getElementById('usuarioSetor').value = '';
+                loadFromLocalStorage();
+            }
+            if (window.sotUsuariosFirestoreOk === true && typeof window.firebaseDb !== 'undefined' && typeof firebase !== 'undefined') {
+                try {
                     await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).set({
                         login: login,
                         senha: senha,
@@ -208,22 +228,13 @@
                     document.getElementById('usuarioSetor').value = '';
                     setTimeout(function() { loadUsuariosAgendamento(); }, 400);
                     return;
+                } catch (err) {
+                    console.warn('Firestore falhou ao salvar. Usando localStorage.', err.code || err.message);
+                    window.sotUsuariosFirestoreOk = false;
+                    salvarNoLocalERenderizar();
                 }
-                var local = localStorage.getItem(STORAGE_USUARIOS);
-                var usuarios = local ? JSON.parse(local) : [];
-                var idx = usuarios.findIndex(function(u) { return loginToDocId(u.login) === docId; });
-                var novo = { id: docId, login: login, senha: senha, setor: setor, criadoEm: criadoEmStr };
-                if (idx >= 0) usuarios[idx] = novo;
-                else usuarios.push(novo);
-                localStorage.setItem(STORAGE_USUARIOS, JSON.stringify(usuarios));
-                showMessage('Usuário cadastrado com sucesso.', 'success');
-                document.getElementById('usuarioLogin').value = '';
-                document.getElementById('usuarioSenha').value = '';
-                document.getElementById('usuarioSetor').value = '';
-                renderTabelaUsuarios(usuarios);
-            } catch (err) {
-                console.error('cadastrar', err);
-                showMessage('Erro ao cadastrar: ' + (err.message || err), 'error');
+            } else {
+                salvarNoLocalERenderizar();
             }
         });
         if (document.readyState === 'loading') {
