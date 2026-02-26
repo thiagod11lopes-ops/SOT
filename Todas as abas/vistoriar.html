@@ -595,6 +595,7 @@ body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color
 <button id="closeBatchPrintModal" class="btn btn-danger"><i class="fas fa-times"></i> Fechar</button>
 <button id="openFilledReportBtn" class="btn" style="background-color: var(--secondary-blue);"><i class="fas fa-file-pdf"></i> Imprimir relatório preenchido</button>
 <button id="generateBatchPdfsBtn" class="btn btn-success" style="display: none;"><i class="fas fa-print"></i> Imprimir selecionados</button>
+<button id="downloadBatchPdfBtn" class="btn btn-success" style="display: none;"><i class="fas fa-file-download"></i> Gerar PDF</button>
 </footer>
 </div>
 </div>
@@ -613,6 +614,7 @@ body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color
 </div>
 <footer class="filled-report-footer">
 <button id="closeFilledReportModal" class="btn btn-danger"><i class="fas fa-times"></i> Fechar</button>
+<button id="downloadFilledPdfBtn" class="btn btn-success"><i class="fas fa-file-download"></i> Gerar PDF</button>
 <button id="printFilledReportBtn" class="btn btn-success"><i class="fas fa-print"></i> Imprimir</button>
 </footer>
 </div>
@@ -652,6 +654,7 @@ console.error('Erro ao salvar itens de vistoria:', e);
 }
 
 function renderCalendar() {
+loadData(); // Atualiza motoristas e vistorias para as cores do calendário (vermelho/verde) e escala
 const year = currentDate.getFullYear();
 const month = currentDate.getMonth();
 const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -672,6 +675,7 @@ for (let day = 1; day <= daysInMonth; day++) {
 const dayCell = document.createElement('div');
 dayCell.classList.add('calendar-day');
 dayCell.textContent = day;
+// Formato YYYY-MM-DD (igual ao usado na Escala para a chave YYYY-MM e índice do dia 1..31)
 const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 dayCell.setAttribute('data-date', dateString);
 if (new Date(year, month, day).toDateString() === new Date().toDateString()) {
@@ -696,6 +700,7 @@ calendarGrid.appendChild(dayCell);
 
 function onCalendarDayClick(selectedDate) {
 selectedDateForVistoria = selectedDate;
+loadData(); // Atualiza motoristas e vistorias do localStorage (escala é lida dentro de getDriversOnDutyForDate)
 const driversOnDuty = getDriversOnDutyForDate(selectedDate);
 const modalContent = document.getElementById('driverSelectionModalContent');
 const modalTitle = document.getElementById('driverSelectionModalTitle');
@@ -920,7 +925,7 @@ addSituationPageToPdf(doc, vehiclePlate);
 doc.save(`vistoria_${vehiclePlate}_${dateString}.pdf`);
 }
 
-function printBatchInspections(inspectionsList) {
+function printBatchInspections(inspectionsList, options) {
 if (!inspectionsList || inspectionsList.length === 0) {
 alert("Nenhuma vistoria selecionada.");
 return;
@@ -1007,11 +1012,26 @@ console.log(`\n📄 Processando viatura ${index + 1}/${inspectionsList.length}: 
 addSituationPageToPdfWithFilter(doc, vehicle, imprimirItems);
 });
 
-// Fazer download do PDF em lote
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 console.log('\n✅ PDF gerado com sucesso!');
 console.log('🖨️ === FIM DA IMPRESSÃO EM MASSA ===\n');
+const action = (options && options.action) || 'download';
+if (action === 'print') {
+try {
+const blob = doc.output('blob');
+const url = URL.createObjectURL(blob);
+const win = window.open(url, '_blank');
+if (win) {
+win.onload = () => { win.print(); win.onafterprint = () => URL.revokeObjectURL(url); };
+} else {
 doc.save(`vistorias_lote_${timestamp}.pdf`);
+}
+} catch (e) {
+doc.save(`vistorias_lote_${timestamp}.pdf`);
+}
+} else {
+doc.save(`vistorias_lote_${timestamp}.pdf`);
+}
 }
 
 function saveWorkshopInspection() {
@@ -1245,16 +1265,29 @@ pending.delete(result.item);
 return pending;
 }
 
+function normalizeName(name) {
+return (name || '').toString().trim().toLowerCase();
+}
 function getDriversOnDutyForDate(date) {
-const [year, month, day] = date.split('-'), escalaKey = `${year}-${month}`, dayOfMonth = parseInt(day, 10);
+// Formato da data (igual ao da Escala): YYYY-MM-DD (ex.: 2026-02-23). Chave da escala no localStorage: YYYY-MM (ex.: 2026-02). Índice do dia na linha da escala: 1 a 31 (memberRow[dayOfMonth]).
+const [year, month, day] = date.split('-');
+const dayOfMonth = parseInt(day, 10);
+if (!dayOfMonth || dayOfMonth < 1) return [];
+const monthNum = parseInt(month, 10);
+const monthPadded = String(monthNum).padStart(2, '0');
+const escalaKey = `${year}-${monthPadded}`;
 try {
-const escalaData = JSON.parse(localStorage.getItem(escalaKey) || '{}');
-if (!escalaData.members) return [];
-const driversOnDutyNames = [];
+const raw = localStorage.getItem(escalaKey) || localStorage.getItem(`${year}-${month}`);
+const escalaData = raw ? JSON.parse(raw) : null;
+if (!escalaData || !Array.isArray(escalaData.members)) return [];
+const dutyNamesNormalized = new Set();
+const dutyValues = ['S', 'S1', 'S2', 'RO'];
 escalaData.members.forEach(memberRow => {
-if (memberRow[dayOfMonth] && memberRow[dayOfMonth].toUpperCase() === 'S') driversOnDutyNames.push(memberRow[0]);
+const name = (memberRow[0] || '').toString().trim();
+const cellVal = (memberRow[dayOfMonth] || '').toString().trim().toUpperCase();
+if (name && dutyValues.includes(cellVal)) dutyNamesNormalized.add(normalizeName(name));
 });
-return inspectionDrivers.filter(driver => driversOnDutyNames.includes(driver.nome));
+return inspectionDrivers.filter(driver => driver.nome && dutyNamesNormalized.has(normalizeName(driver.nome)));
 } catch (e) { console.error("Erro na escala:", e); return []; }
 }
 
@@ -1377,6 +1410,7 @@ const batchDatesList = document.getElementById('batchDatesList');
 const datesCheckboxContainer = document.getElementById('datesCheckboxContainer');
 const selectAllDates = document.getElementById('selectAllDates');
 const generateBatchPdfsBtn = document.getElementById('generateBatchPdfsBtn');
+const downloadBatchPdfBtn = document.getElementById('downloadBatchPdfBtn');
 const totalPdfsCount = document.getElementById('totalPdfsCount');
 const batchSummary = document.getElementById('batchSummary');
 const openFilledReportBtn = document.getElementById('openFilledReportBtn');
@@ -1384,6 +1418,7 @@ const filledReportModal = document.getElementById('filledReportModal');
 const filledVehiclesList = document.getElementById('filledVehiclesList');
 const selectAllFilledVehicles = document.getElementById('selectAllFilledVehicles');
 const printFilledReportBtn = document.getElementById('printFilledReportBtn');
+const downloadFilledPdfBtn = document.getElementById('downloadFilledPdfBtn');
 const closeFilledReportModal = document.getElementById('closeFilledReportModal');
 
 let selectedInspectionsForBatch = [];
@@ -1486,7 +1521,7 @@ y += 20;
 });
 }
 
-function printFilledInspections(plates) {
+function printFilledInspections(plates, options) {
 if (!plates || plates.length === 0) {
 alert('Selecione pelo menos uma viatura.');
 return;
@@ -1506,7 +1541,23 @@ alert('Nenhuma vistoria preenchida encontrada para as viaturas selecionadas.');
 return;
 }
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const action = (options && options.action) || 'download';
+if (action === 'print') {
+try {
+const blob = doc.output('blob');
+const url = URL.createObjectURL(blob);
+const win = window.open(url, '_blank');
+if (win) {
+win.onload = () => { win.print(); win.onafterprint = () => URL.revokeObjectURL(url); };
+} else {
 doc.save(`vistorias_preenchidas_${timestamp}.pdf`);
+}
+} catch (e) {
+doc.save(`vistorias_preenchidas_${timestamp}.pdf`);
+}
+} else {
+doc.save(`vistorias_preenchidas_${timestamp}.pdf`);
+}
 }
 
 batchPrintBtn.addEventListener('click', () => {
@@ -1516,6 +1567,7 @@ batchEndDate.value = today;
 batchDatesList.style.display = 'none';
 batchSummary.style.display = 'none';
 generateBatchPdfsBtn.style.display = 'none';
+if (downloadBatchPdfBtn) downloadBatchPdfBtn.style.display = 'none';
 if (openFilledReportBtn) openFilledReportBtn.style.display = '';
 datesCheckboxContainer.innerHTML = '';
 selectedInspectionsForBatch = [];
@@ -1585,6 +1637,7 @@ alert('Nenhuma vistoria pendente encontrada no período selecionado.\n\nTodas as
 batchDatesList.style.display = 'none';
 batchSummary.style.display = 'none';
 generateBatchPdfsBtn.style.display = 'none';
+if (downloadBatchPdfBtn) downloadBatchPdfBtn.style.display = 'none';
 return;
 }
 
@@ -1628,6 +1681,7 @@ datesCheckboxContainer.appendChild(dateDiv);
 batchDatesList.style.display = 'block';
 batchSummary.style.display = 'block';
 generateBatchPdfsBtn.style.display = 'inline-flex';
+if (downloadBatchPdfBtn) downloadBatchPdfBtn.style.display = 'inline-flex';
 if (openFilledReportBtn) openFilledReportBtn.style.display = 'none';
 updateBatchSummary();
 
@@ -1658,25 +1712,42 @@ if (selectedInspectionsForBatch.length === 0) {
 alert('Selecione pelo menos uma vistoria para imprimir.');
 return;
 }
-
-const confirmMsg = `Voc\u00ea est\u00e1 prestes a gerar um \u00fanico PDF com ${selectedInspectionsForBatch.length} vistoria(s).\n\nO documento abrir\u00e1 automaticamente para impress\u00e3o.\n\nDeseja continuar?`;
+const confirmMsg = `Gerar um PDF com ${selectedInspectionsForBatch.length} vistoria(s) e abrir a impressão?\n\nDeseja continuar?`;
 if (!confirm(confirmMsg)) return;
-
 generateBatchPdfsBtn.disabled = true;
-generateBatchPdfsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando PDF...';
-
+generateBatchPdfsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
 try {
-printBatchInspections(selectedInspectionsForBatch);
-alert(`PDF com ${selectedInspectionsForBatch.length} vistoria(s) gerado com sucesso!\n\nO documento foi aberto em uma nova aba.`);
+printBatchInspections(selectedInspectionsForBatch, { action: 'print' });
+alert(`PDF com ${selectedInspectionsForBatch.length} vistoria(s) gerado. Use a janela aberta para imprimir.`);
 } catch (error) {
 console.error('Erro ao gerar PDF:', error);
 alert(`Erro ao gerar PDF: ${error.message}`);
 }
-
 generateBatchPdfsBtn.disabled = false;
-generateBatchPdfsBtn.innerHTML = '<i class="fas fa-print"></i> Imprimir Selecionados';
+generateBatchPdfsBtn.innerHTML = '<i class="fas fa-print"></i> Imprimir selecionados';
 batchPrintModal.classList.remove('show');
 });
+
+if (downloadBatchPdfBtn) {
+downloadBatchPdfBtn.addEventListener('click', () => {
+if (selectedInspectionsForBatch.length === 0) {
+alert('Selecione pelo menos uma vistoria para gerar o PDF.');
+return;
+}
+downloadBatchPdfBtn.disabled = true;
+downloadBatchPdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando PDF...';
+try {
+printBatchInspections(selectedInspectionsForBatch, { action: 'download' });
+alert(`PDF com ${selectedInspectionsForBatch.length} vistoria(s) gerado com sucesso!\n\nO arquivo foi salvo no seu computador.`);
+} catch (error) {
+console.error('Erro ao gerar PDF:', error);
+alert(`Erro ao gerar PDF: ${error.message}`);
+}
+downloadBatchPdfBtn.disabled = false;
+downloadBatchPdfBtn.innerHTML = '<i class="fas fa-file-download"></i> Gerar PDF';
+batchPrintModal.classList.remove('show');
+});
+}
 
 if (openFilledReportBtn && filledReportModal) {
 openFilledReportBtn.addEventListener('click', () => {
@@ -1710,10 +1781,25 @@ checkboxes.forEach(cb => cb.checked = e.target.checked);
 });
 }
 
+if (downloadFilledPdfBtn) {
+downloadFilledPdfBtn.addEventListener('click', () => {
+const selected = Array.from(document.querySelectorAll('.filled-vehicle-checkbox:checked')).map(cb => cb.value);
+if (selected.length === 0) {
+alert('Selecione pelo menos uma viatura para gerar o PDF.');
+return;
+}
+printFilledInspections(selected, { action: 'download' });
+filledReportModal.classList.remove('show');
+});
+}
 if (printFilledReportBtn) {
 printFilledReportBtn.addEventListener('click', () => {
 const selected = Array.from(document.querySelectorAll('.filled-vehicle-checkbox:checked')).map(cb => cb.value);
-printFilledInspections(selected);
+if (selected.length === 0) {
+alert('Selecione pelo menos uma viatura para imprimir.');
+return;
+}
+printFilledInspections(selected, { action: 'print' });
 filledReportModal.classList.remove('show');
 });
 }
@@ -1721,6 +1807,14 @@ filledReportModal.classList.remove('show');
 if (closeFilledReportModal) {
 closeFilledReportModal.addEventListener('click', () => filledReportModal.classList.remove('show'));
 }
+
+// Atualizar calendário quando a aba receber refresh (ex.: ao trocar de aba ou após editar Escala/Responsabilidades)
+window.addEventListener('message', function(e) {
+if (e.data && (e.data.type === 'refresh_all_data' || e.data.type === 'refresh_data' || e.data.type === 'escala_data_updated')) {
+loadData();
+renderCalendar();
+}
+});
 
 // INICIALIZAÇÃO COM CORREÇÃO
 (function initializeApp() {
