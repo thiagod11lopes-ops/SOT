@@ -4,6 +4,8 @@
  * Facilita migração gradual do sistema
  */
 
+const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
+
 class DataService {
     constructor() {
         this.useAPI = false;
@@ -11,6 +13,18 @@ class DataService {
         this.apiCheckPromise = null;
         this.useFirebase = false;
         setTimeout(() => this.checkAPI(), 100);
+    }
+
+    /** Se true, as leituras priorizam o localStorage deste computador em vez do Firebase (útil ao acessar pelo GitHub) */
+    _preferLocalStorage() {
+        return typeof localStorage !== 'undefined' && localStorage.getItem(SOT_PREFER_LOCAL_KEY) === 'true';
+    }
+
+    /** Ativa ou desativa o uso prioritário dos dados do armazenamento local (deste computador) */
+    setPreferLocalStorage(value) {
+        if (typeof localStorage === 'undefined') return;
+        if (value) localStorage.setItem(SOT_PREFER_LOCAL_KEY, 'true');
+        else localStorage.removeItem(SOT_PREFER_LOCAL_KEY);
     }
 
     _checkFirebase() {
@@ -102,6 +116,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('viaturasCadastradas', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('viaturasCadastradas');
             if (Array.isArray(data)) return data;
@@ -144,6 +159,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('motoristasCadastrados', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('motoristasCadastrados');
             if (Array.isArray(data)) return data;
@@ -185,6 +201,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAdministrativas', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('saidasAdministrativas');
             if (Array.isArray(data)) return data;
@@ -237,6 +254,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAmbulancias', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('saidasAmbulancias');
             if (Array.isArray(data)) return data;
@@ -266,6 +284,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('vistoriasRealizadas', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('vistoriasRealizadas');
             if (Array.isArray(data)) return data;
@@ -309,6 +328,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('abastecimentos', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('abastecimentos');
             if (Array.isArray(data)) return data;
@@ -352,6 +372,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('escalaData', {});
         if (this.useFirebase) {
             const data = await this._getFromFirebase('escalaData');
             if (data && typeof data === 'object') return data;
@@ -391,6 +412,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('avisos', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('avisos');
             if (Array.isArray(data)) return data;
@@ -434,6 +456,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('lembretes_ativos', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('lembretes_ativos');
             if (Array.isArray(data)) return data;
@@ -455,6 +478,7 @@ class DataService {
                 this.useAPI = false;
             }
         }
+        if (this._preferLocalStorage() && typeof localStorage !== 'undefined') return localStorage.getItem(chave);
         if (this.useFirebase && window.firebaseSot && window.firebaseSot.getConfig) {
             try {
                 const v = await window.firebaseSot.getConfig(chave);

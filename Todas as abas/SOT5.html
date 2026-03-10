@@ -3697,6 +3697,10 @@ updateMaximizeState();
 
     // Listener para receber mensagens dos iframes
     window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'reload_required') {
+            window.location.reload();
+            return;
+        }
         if (event.data && event.data.type === 'showPsoModal') {
             const modal = document.getElementById('psoProximoModalMain');
             const nomeIntegrante = document.getElementById('psoProximoNomeMain');
