@@ -641,6 +641,10 @@ background-color: rgba(0,0,0,0.5);
 justify-content: center;
 align-items: center;
 }
+#confirmarPreencherEdicaoModal {
+align-items: flex-start;
+padding-top: 12vh;
+}
 #addItemModal {
 position: fixed;
 inset: 0;
@@ -3175,18 +3179,45 @@ displayMessage(`${selectedDates.size} SAÍDA(S) CADASTRADA(S)!`, 'success');
 clearRegisterForm();
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 });
-// Fluxo de edição: locate_saida = abrir Saídas cadastradas com só a linha e destacar Editar; populate_form_for_edit = abrir formulário já preenchido
+// Dados da saída pendente para preencher após o usuário clicar OK no modal de confirmação
+var pendingEditSaidaData = null;
+
+// Fluxo de edição: locate_saida = abrir Saídas cadastradas com só a linha e destacar Editar; populate_form_for_edit = abrir subaba e modal, ao OK preencher formulário
 window.addEventListener('message', function(event) {
 var payload = event.data || {};
 var type = payload.type, data = payload.data, id = payload.id;
 if (type === 'locate_saida') {
 locateAndHighlightButton(id);
 } else if (type === 'populate_form_for_edit' || type === 'edit_saida') {
-if (data) setTimeout(function() { populateFormForEdit(data); }, 250);
+if (data) {
+pendingEditSaidaData = data;
+showSubTab('registerFormContent');
+var modal = document.getElementById('confirmarPreencherEdicaoModal');
+if (modal) modal.style.display = 'flex';
+}
 } else if (type === 'refresh_data' || type === 'refresh_all_data') {
 loadDataAndPopulateTables();
 }
 });
+
+// Botão OK do modal "Todos os campos serão preenchidos com os dados da saída"
+var confirmarPreencherEdicaoOkBtn = document.getElementById('confirmarPreencherEdicaoOk');
+var confirmarPreencherEdicaoModal = document.getElementById('confirmarPreencherEdicaoModal');
+if (confirmarPreencherEdicaoOkBtn && confirmarPreencherEdicaoModal) {
+confirmarPreencherEdicaoOkBtn.addEventListener('click', function() {
+confirmarPreencherEdicaoModal.style.display = 'none';
+if (pendingEditSaidaData) {
+populateFormForEdit(pendingEditSaidaData);
+pendingEditSaidaData = null;
+}
+});
+confirmarPreencherEdicaoModal.addEventListener('click', function(e) {
+if (e.target === confirmarPreencherEdicaoModal) {
+confirmarPreencherEdicaoModal.style.display = 'none';
+pendingEditSaidaData = null;
+}
+});
+}
 function applyEditButtonHighlight(editButton) {
 if (!editButton) return;
 editButton.classList.add('blink-red-button', 'edit-btn-locate-highlight');
@@ -5487,6 +5518,17 @@ document.addEventListener('DOMContentLoaded', function() {
         <h3>Limite de Saídas</h3>
         <p>Limite de Saídas Excedido para esse horário.</p>
         <button type="button" class="limite-saidas-ok" id="limiteSaidasModalOk">OK</button>
+    </div>
+</div>
+
+<!-- Modal de confirmação antes de preencher formulário para edição -->
+<div id="confirmarPreencherEdicaoModal" class="obs-modal" style="display: none;">
+    <div class="obs-modal-content" style="max-width: 420px; text-align: center;">
+        <h3 style="margin-top: 0; margin-bottom: 16px; font-size: 18px;">Editar saída</h3>
+        <p id="confirmarPreencherEdicaoTexto" style="margin: 15px 0; font-size: 16px; line-height: 1.4;">Todos os campos serão preenchidos com os dados da saída.</p>
+        <div class="modal-buttons" style="justify-content: center; gap: 10px;">
+            <button type="button" id="confirmarPreencherEdicaoOk" class="save-obs-btn">OK</button>
+        </div>
     </div>
 </div>
 
