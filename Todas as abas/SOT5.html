@@ -2277,35 +2277,29 @@ id: saidaId
 }, 100);
 }
 }
-// Editar saída - abrir formulário de cadastro com dados preenchidos
+// Editar saída: ir para Cadastro de Saídas → Saídas cadastradas (só a linha) e destacar botão Editar
 if (event.data?.type === 'edit_saida') {
-const saidaData = event.data.data;
-const cadastroTabButton = document.querySelector('.tab-button[data-tab-id="cadastro-saidas"]');
-const cadastroIframe = document.getElementById('iframe-cadastro-saidas');
+var saidaData = event.data.data;
+var saidaId = saidaData && (saidaData.id !== undefined && saidaData.id !== null) ? saidaData.id : null;
+var cadastroTabButton = document.querySelector('.tab-button[data-tab-id="cadastro-saidas"]');
+var cadastroIframe = document.getElementById('iframe-cadastro-saidas');
 if (cadastroTabButton && !cadastroTabButton.classList.contains('active')) {
 changeTab({ currentTarget: cadastroTabButton }, 'cadastro-saidas');
 }
-if (cadastroIframe && cadastroIframe.contentWindow && saidaData) {
-// Aguardar o iframe carregar e então enviar os dados
-const sendEditData = () => {
+if (cadastroIframe && cadastroIframe.contentWindow) {
+var msg = saidaId
+? { type: 'locate_saida', id: saidaId }
+: { type: 'populate_form_for_edit', data: saidaData };
+var sendMsg = function() {
 try {
-if (cadastroIframe.contentWindow) {
-cadastroIframe.contentWindow.postMessage({
-type: 'populate_form_for_edit',
-data: saidaData
-}, '*');
-}
-} catch (e) {
-console.warn('Erro ao enviar dados de edição:', e);
-}
+cadastroIframe.contentWindow.postMessage(msg, '*');
+} catch (e) { console.warn('Erro postMessage Cadastro:', e); }
 };
-// Se o iframe já está carregado, enviar imediatamente
 if (cadastroIframe.contentDocument && cadastroIframe.contentDocument.readyState === 'complete') {
-setTimeout(sendEditData, 100);
+setTimeout(sendMsg, 100);
 } else {
-// Se não, aguardar o carregamento
 cadastroIframe.addEventListener('load', function onLoad() {
-setTimeout(sendEditData, 100);
+setTimeout(sendMsg, 100);
 cadastroIframe.removeEventListener('load', onLoad);
 }, { once: true });
 }

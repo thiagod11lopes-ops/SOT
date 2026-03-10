@@ -856,13 +856,24 @@ display: none !important;
 background-color: #fff3cd !important;
 }
 @keyframes piscarBotaoVermelho {
-50% {
+0%, 100% {
 background-color: #dc3545;
-box-shadow: 0 0 10px #dc3545;
+box-shadow: 0 0 12px #dc3545;
+}
+50% {
+background-color: #ff6b6b;
+box-shadow: 0 0 16px #ff6b6b;
 }
 }
 .blink-red-button {
-animation: piscarBotaoVermelho 1s infinite;
+animation: piscarBotaoVermelho 0.8s ease-in-out infinite !important;
+}
+/* Botão Editar em destaque quando localizado a partir de Saídas admin/ambulância — 50% maior e piscando */
+.edit-btn-locate-highlight {
+transform: scale(1.5) !important;
+transform-origin: center;
+z-index: 10;
+position: relative;
 }
 /* Tooltip personalizado para campos editáveis */
 #registerCidade, #registerBairro, #registerObjetivoSelect {
@@ -1824,10 +1835,9 @@ window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
 function populateFormForEdit(saidaData) {
     if (!saidaData) return;
-
-    var tipo = saidaData.tipo || 'Administrativa';
-    var viaturaValue = saidaData.viatura || saidaData.viatura_id || '';
-    var motoristaValue = saidaData.motorista || saidaData.motorista_id || '';
+    var tipo = String(saidaData.tipo || 'Administrativa').trim() || 'Administrativa';
+    var viaturaValue = (saidaData.viatura || saidaData.viatura_id || '').toString().trim();
+    var motoristaValue = (saidaData.motorista || saidaData.motorista_id || '').toString().trim();
 
     // 1) Abrir a subaba Cadastrar nova saída e configurar título/botão
     showSubTab('registerFormContent');
@@ -1910,15 +1920,16 @@ function populateFormForEdit(saidaData) {
     }, 350);
 }
 function handleEditRow(event) {
-const row = event.target.closest('tr');
+var row = event.target.closest('tr');
 if (!row) return;
-const idToEdit = row.dataset.id;
-const tipoSaida = row.dataset.tipo;
-let saidaData = (tipoSaida === 'Administrativa')
-? saidasAdministrativas.find(s => s.id === idToEdit)
-: saidasAmbulancias.find(s => s.id === idToEdit);
+var idToEdit = row.dataset.id;
+var tipoSaida = row.dataset.tipo || 'Administrativa';
+var idStr = String(idToEdit || '');
+var saidaData = (tipoSaida === 'Ambulância')
+    ? (saidasAmbulancias || []).find(function(s) { return String(s.id) === idStr; })
+    : (saidasAdministrativas || []).find(function(s) { return String(s.id) === idStr; });
 if (saidaData) {
-populateFormForEdit(saidaData);
+    populateFormForEdit(saidaData);
 }
 }
 // Retorna um Set com as placas marcadas como Inoperantes no RDV (Relatório Diário de Viaturas)
@@ -2597,16 +2608,20 @@ if (!dateString) return '';
 const [year, month, day] = dateString.split('-');
 return `${day}/${month}/${year}`;
 }
-function populateTodasSaidasTable() {
-const allSaidas = [...saidasAdministrativas.map(s => ({ ...s, tipo: 'Administrativa' })), ...saidasAmbulancias.map(s => ({ ...s, tipo: 'Ambulância' }))];
+function populateTodasSaidasTable(onlySaidaId) {
+var allSaidas = [...saidasAdministrativas.map(s => ({ ...s, tipo: 'Administrativa' })), ...saidasAmbulancias.map(s => ({ ...s, tipo: 'Ambulância' }))];
+if (onlySaidaId != null && onlySaidaId !== '') {
+var idStr = String(onlySaidaId);
+allSaidas = allSaidas.filter(function(s) { return String(s.id) === idStr; });
+}
 allSaidas.sort((a, b) => {
 const dateA = new Date(`${a.dataSaida || a.dataPedido}T${a.horaSaida || a.saida || '00:00'}`);
-const dateB = new Date(`${b.dataSaida || b.dataPedido}T${b.horaSaida || a.saida || '00:00'}`);
+const dateB = new Date(`${b.dataSaida || b.dataPedido}T${b.horaSaida || b.saida || '00:00'}`);
 return dateB - dateA;
 });
 todasSaidasTableBody.innerHTML = '';
-allSaidas.forEach(saida => {
-const row = todasSaidasTableBody.insertRow();
+allSaidas.forEach(function(saida) {
+var row = todasSaidasTableBody.insertRow();
 row.dataset.id = saida.id;
 row.dataset.tipo = saida.tipo;
 if (isRowIncomplete(saida)) row.classList.add('incomplete-row');
@@ -3160,34 +3175,64 @@ displayMessage(`${selectedDates.size} SAÍDA(S) CADASTRADA(S)!`, 'success');
 clearRegisterForm();
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 });
+// Fluxo de edição: locate_saida = abrir Saídas cadastradas com só a linha e destacar Editar; populate_form_for_edit = abrir formulário já preenchido
 window.addEventListener('message', function(event) {
-const { type, data, id } = event.data || {};
-if (type === 'populate_form_for_edit' || type === 'edit_saida') {
-// Atrasar para evitar que o setTimeout(200) de ajuste do formulário (ao carregar a aba) limpe viatura/motorista depois do preenchimento
-setTimeout(function() { populateFormForEdit(data); }, 250);
-} else if (type === 'locate_saida') {
+var payload = event.data || {};
+var type = payload.type, data = payload.data, id = payload.id;
+if (type === 'locate_saida') {
 locateAndHighlightButton(id);
+} else if (type === 'populate_form_for_edit' || type === 'edit_saida') {
+if (data) setTimeout(function() { populateFormForEdit(data); }, 250);
 } else if (type === 'refresh_data' || type === 'refresh_all_data') {
 loadDataAndPopulateTables();
 }
 });
-function locateAndHighlightButton(id) {
-if (!id) return;
+function applyEditButtonHighlight(editButton) {
+if (!editButton) return;
+editButton.classList.add('blink-red-button', 'edit-btn-locate-highlight');
+function removeHighlight() {
+editButton.classList.remove('blink-red-button', 'edit-btn-locate-highlight');
+editButton.removeEventListener('click', removeHighlight);
+}
+editButton.addEventListener('click', removeHighlight, { once: true });
+}
+async function locateAndHighlightButton(id) {
+if (id == null || id === '') return;
+var idStr = String(id).trim();
 showSubTab('todasSaidasContent');
-setTimeout(() => {
-const targetRow = todasSaidasTableBody.querySelector(`tr[data-id="${id}"]`);
+await loadDataAndPopulateTables();
+populateTodasSaidasTable(idStr);
+setTimeout(function() {
+var tbody = document.querySelector('#todasSaidasTable tbody');
+if (!tbody) return;
+var rows = tbody.querySelectorAll('tr');
+var targetRow = null;
+if (rows.length === 1) {
+targetRow = rows[0];
+} else if (rows.length > 1) {
+for (var i = 0; i < rows.length; i++) {
+var rid = rows[i].dataset.id;
+if (rid === idStr || (rid && rid.split(',').map(function(s) { return s.trim(); }).indexOf(idStr) !== -1)) {
+targetRow = rows[i];
+break;
+}
+}
+}
+if (!targetRow && rows.length === 0) {
+populateTodasSaidasTable();
+rows = tbody.querySelectorAll('tr');
+for (var j = 0; j < rows.length; j++) {
+if (String(rows[j].dataset.id) === idStr) {
+targetRow = rows[j];
+break;
+}
+}
+}
 if (targetRow) {
 targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-const editButton = targetRow.querySelector('.edit-row-btn');
-if (editButton) {
-editButton.classList.add('blink-red-button');
-editButton.addEventListener('click', function stopBlinking() {
-editButton.classList.remove('blink-red-button');
-editButton.removeEventListener('click', stopBlinking);
-});
+applyEditButtonHighlight(targetRow.querySelector('.edit-row-btn'));
 }
-}
-}, 100);
+}, 150);
 }
 loadDataAndPopulateTables();
 

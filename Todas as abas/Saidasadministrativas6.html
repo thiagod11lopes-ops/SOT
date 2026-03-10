@@ -133,24 +133,6 @@ main { margin: 20px 10px; }
 .date-filter-container { display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid var(--gray); border-radius: 8px; background-color: var(--light-gray-bg); flex-wrap: wrap; justify-content: space-between; }
 .date-filter-container label { font-weight: bold; }
 .date-filter-container input[type="date"] { padding: 8px 12px; border: 1px solid #ced4da; border-radius: 5px; font-size: 16px; font-weight: bold; max-width: 180px; }
-.limite-saidas-alerta {
-  text-align: center;
-  margin: 12px 0;
-  padding: 12px 20px;
-  font-weight: bold;
-  font-size: 16px;
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 8px;
-}
-.limite-saidas-alerta.piscar {
-  animation: limiteAlertaPiscar 0.5s ease-in-out 10 forwards;
-}
-@keyframes limiteAlertaPiscar {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
 .table-container { overflow-x: auto; border: 1px solid var(--gray); border-radius: 8px; }
 table { width: 100%; border-collapse: collapse; min-width: 1000px; }
 th, td { border: 1px solid #e9ecef; padding: 10px; text-align: left; font-size: 14px; }
@@ -238,41 +220,6 @@ textarea#obsTextarea { width: 100%; height: 150px; box-sizing: border-box; }
 .saida-realizada { background-color: #dbe4ff !important; }
 @keyframes piscarVermelho { 0% { background-color: inherit; } 50% { background-color: rgba(250, 0, 0, 0.2); } 100% { background-color: inherit; } }
 .alarme-oleo-piscando { animation: piscarVermelho 1.5s infinite; }
-@keyframes piscarAmarelo { 0% { background-color: inherit; } 50% { background-color: rgba(250, 250, 0, 0.3); } 100% { background-color: inherit; } }
-.alarme-hora-saida-piscando {
-animation: piscarAmarelo 1s infinite;
-cursor: pointer;
-}
-.alarme-hora-saida-piscando:hover::after {
-content: "Clique para cancelar o alarme";
-position: absolute;
-background: rgba(0,0,0,0.8);
-color: white;
-padding: 5px 10px;
-border-radius: 4px;
-font-size: 12px;
-z-index: 1000;
-pointer-events: none;
-margin-top: -30px;
-margin-left: 10px;
-}
-@keyframes piscarAzul { 0% { background-color: inherit; } 50% { background-color: rgba(0, 100, 250, 0.2); } 100% { background-color: inherit; } }
-.alarme-pre-saida-piscando {
-animation: piscarAzul 1.2s infinite;
-}
-.alarme-pre-saida-piscando:hover::after {
-content: "Alarme de pré-saída ativo";
-position: absolute;
-background: rgba(0,0,0,0.8);
-color: white;
-padding: 5px 10px;
-border-radius: 4px;
-font-size: 12px;
-z-index: 1000;
-pointer-events: none;
-margin-top: -30px;
-margin-left: 10px;
-}
 .quadro-e-lembretes-wrapper {
 position: relative;
 margin-top: 25px;
@@ -617,7 +564,6 @@ body[data-theme="dark"] .counter-badge {
 <label for="filterDateAdm">Filtrar por Data:</label>
 <input type="date" id="filterDateAdm">
 </div>
-<div id="limiteSaidasAlerta" class="limite-saidas-alerta" style="display: none;">Atenção para o limite de saídas</div>
 <div class="table-container">
 <table id="saidasTable">
 <thead>
@@ -794,7 +740,6 @@ manha: { green: 1, orange: 2 },
 tarde: { green: 1, orange: 2 }
 };
 let viaturasComProblemas = {};
-let limiteAlertaJaMostradoNestaVisibilidade = false;
 
 const saidasTableBody = document.querySelector('#saidasTable tbody');
 const filterDateAdmInput = document.getElementById('filterDateAdm');
@@ -835,9 +780,6 @@ cacheFemaleVoice();
 }
 let isSpeaking = false;
 let alertedVehiclesOil = new Set();
-let alertedHoraSaida = new Set();
-let alertedPreSaida = new Set();
-const preSaidaAlarmsActive = new Map();
 const lembretesContainer = document.getElementById('lembretesFlutuanteContainer');
 const lembretesBody = document.getElementById('lembretesBody');
 const lembretesHeader = document.getElementById('lembretesHeader');
@@ -1250,33 +1192,7 @@ utterance.onstart = () => isSpeaking = true;
 utterance.onend = () => { isSpeaking = false; if (onEndCallback) onEndCallback(); };
 speechSynthesizer.speak(utterance);
 }
-function getMotoristaPrefixo(motorista) {
-if (!motorista || typeof motorista !== 'string') return '';
-const nomeTrimmed = motorista.trim();
-const nomeUpper = nomeTrimmed.toUpperCase();
-if (nomeUpper.startsWith('SO RM1') || /^SO\s+RM1\s+/i.test(nomeTrimmed)) return 'Suboficial ';
-if (nomeUpper.startsWith('SO ') || /^SO\s+/i.test(nomeTrimmed)) return 'Suboficial ';
-if (nomeUpper.startsWith('SG ') || /^SG\s+/i.test(nomeTrimmed)) return 'Sargento ';
-if (nomeUpper.startsWith('FC ') || /^FC\s+/i.test(nomeTrimmed)) return 'Funcionário Civil ';
-return '';
-}
-function getNomeSemPrefixo(motorista) {
-if (!motorista || typeof motorista !== 'string') return motorista;
-const nomeTrimmed = motorista.trim();
-return nomeTrimmed.replace(/^(SO\s+RM1|SG|SO|FC)\s+/i, '').trim();
-}
 function playOilChangeAlert(viatura) { playVoiceAlert(`Atenção, troca de óleo necessária da viatura ${viatura}.`); }
-function playHoraSaidaAlert(motorista, viatura, destino) {
-const prefixo = getMotoristaPrefixo(motorista);
-const nomeMotorista = getNomeSemPrefixo(motorista);
-const destinoTexto = destino ? ` com destino a ${destino}` : '';
-playVoiceAlert(`Atenção ${prefixo}${nomeMotorista}, hora da sua saída com a viatura ${viatura}${destinoTexto}.`);
-}
-function playPreSaidaAlert(motorista, viatura) {
-const prefixo = getMotoristaPrefixo(motorista);
-const nomeMotorista = getNomeSemPrefixo(motorista);
-playVoiceAlert(`${prefixo}${nomeMotorista} faltam poucos minutos para sua saída, verifique a viatura com a placa ${viatura}`);
-}
 function setDateToToday() {
 const today = new Date();
 const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1474,24 +1390,6 @@ dotElement.classList.add('red');
 };
 setDotColor(statusManhaDot, manhaCount, thresholds.manha);
 setDotColor(statusTardeDot, tardeCount, thresholds.tarde);
-const isRed = (statusManhaDot && statusManhaDot.classList.contains('red')) || (statusTardeDot && statusTardeDot.classList.contains('red'));
-const alertEl = document.getElementById('limiteSaidasAlerta');
-if (alertEl) {
-if (!isRed) {
-alertEl.style.display = 'none';
-alertEl.classList.remove('piscar');
-} else if (!limiteAlertaJaMostradoNestaVisibilidade) {
-alertEl.style.display = 'block';
-alertEl.classList.remove('piscar');
-alertEl.offsetHeight;
-alertEl.classList.add('piscar');
-setTimeout(function() {
-alertEl.classList.remove('piscar');
-alertEl.style.display = 'none';
-limiteAlertaJaMostradoNestaVisibilidade = true;
-}, 5000);
-}
-}
 }
 function populateTables() {
 alertedVehiclesOil.clear();
@@ -2545,29 +2443,6 @@ showProblemasModal(placa);
 });
 }
 
-row.addEventListener('click', (e) => {
-if (row.classList.contains('alarme-pre-saida-piscando') || row.classList.contains('alarme-hora-saida-piscando')) {
-e.preventDefault();
-e.stopPropagation();
-const ids = row.dataset.id.split(',');
-const today = new Date().toISOString().split('T')[0];
-ids.forEach(id => {
-const saidaIndex = saidasAdministrativas.findIndex(s => s.id === id);
-if (saidaIndex !== -1) {
-if (row.classList.contains('alarme-pre-saida-piscando')) {
-saidasAdministrativas[saidaIndex].preSaidaAlarmDismissed = true;
-localStorage.setItem(`preSaidaAlarmDismissed_${id}_${today}`, 'true');
-}
-if (row.classList.contains('alarme-hora-saida-piscando')) {
-saidasAdministrativas[saidaIndex].saidaAlarmDismissed = true;
-localStorage.setItem(`saidaAlarmDismissed_${id}_${today}`, 'true');
-}
-}
-});
-row.classList.remove('alarme-pre-saida-piscando', 'alarme-hora-saida-piscando');
-saveState();
-}
-});
 row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
 cell.addEventListener('blur', handleCellEdit);
 });
@@ -3430,85 +3305,6 @@ doc.text('Divisão de Transporte', doc.internal.pageSize.getWidth() / 2, finalY 
 doc.save(`Relatorio_Saidas_Administrativas_${filterDateAdmInput.value || 'Geral'}.pdf`);
 }
 
-function checkAlarms() {
-const now = new Date();
-const todayStr = now.toISOString().split('T')[0];
-const saidasDoDia = saidasAdministrativas.filter(s => s.dataSaida === todayStr);
-saidasDoDia.forEach(saida => {
-if (!saida.saida || saida.chegada || !saida.id) {
-return;
-}
-const preSaidaAlarmDismissed = localStorage.getItem(`preSaidaAlarmDismissed_${saida.id}_${todayStr}`) === 'true';
-const saidaAlarmDismissed = localStorage.getItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`) === 'true';
-const preSaidaAlarmPlayed = localStorage.getItem(`preSaidaAlarmPlayed_${saida.id}_${todayStr}`) === 'true';
-const saidaAlarmPlayed = localStorage.getItem(`saidaAlarmPlayed_${saida.id}_${todayStr}`) === 'true';
-const [saidaHours, saidaMinutes] = saida.saida.split(':').map(Number);
-const saidaDT = new Date(now.getFullYear(), now.getMonth(), now.getDate(), saidaHours, saidaMinutes, 0, 0);
-const preSaidaDT = new Date(saidaDT.getTime() - 10 * 60 * 1000);
-const row = document.querySelector(`tr[data-id*="${saida.id}"]`);
-if (!row) return;
-const hasSaidaAlarm = row.classList.contains('alarme-hora-saida-piscando');
-if (now >= preSaidaDT && now < saidaDT) {
-if (!preSaidaAlarmDismissed && !preSaidaAlarmPlayed) {
-row.classList.add('alarme-pre-saida-piscando');
-playPreSaidaAlert(saida.motorista, saida.viatura);
-localStorage.setItem(`preSaidaAlarmPlayed_${saida.id}_${todayStr}`, 'true');
-alertedPreSaida.add(saida.id);
-setTimeout(() => {
-row.classList.remove('alarme-pre-saida-piscando');
-localStorage.setItem(`preSaidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
-}, 10000);
-}
-} else if (now >= saidaDT) {
-if (!saidaAlarmDismissed) {
-const alarmStartTime = localStorage.getItem(`saidaAlarmStartTime_${saida.id}_${todayStr}`);
-let shouldShowAlarm = false;
-let remainingTime = 0;
-if (alarmStartTime) {
-const elapsed = now.getTime() - parseInt(alarmStartTime);
-if (elapsed < 10 * 60 * 1000) {
-shouldShowAlarm = true;
-remainingTime = 10 * 60 * 1000 - elapsed;
-} else {
-localStorage.setItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
-}
-} else {
-shouldShowAlarm = true;
-localStorage.setItem(`saidaAlarmStartTime_${saida.id}_${todayStr}`, now.getTime().toString());
-remainingTime = 10 * 60 * 1000;
-}
-if (shouldShowAlarm) {
-if (!hasSaidaAlarm) {
-row.classList.remove('alarme-pre-saida-piscando');
-row.classList.add('alarme-hora-saida-piscando');
-}
-if (!saidaAlarmPlayed) {
-const destinoAlarme = saida.destino || (Array.isArray(saida.destinos) ? saida.destinos.join(' e ') : '');
-playHoraSaidaAlert(saida.motorista, saida.viatura, destinoAlarme);
-localStorage.setItem(`saidaAlarmPlayed_${saida.id}_${todayStr}`, 'true');
-alertedHoraSaida.add(saida.id);
-}
-if (remainingTime > 0) {
-setTimeout(() => {
-if (!localStorage.getItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`)) {
-const currentRow = document.querySelector(`tr[data-id*="${saida.id}"]`);
-if (currentRow) {
-currentRow.classList.remove('alarme-hora-saida-piscando');
-localStorage.setItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
-}
-}
-}, remainingTime);
-}
-} else if (hasSaidaAlarm) {
-row.classList.remove('alarme-hora-saida-piscando');
-}
-}
-} else {
-row.classList.remove('alarme-pre-saida-piscando');
-row.classList.remove('alarme-hora-saida-piscando');
-}
-});
-}
 function renderLembretesFlutuante(lembretes) {
 lembretesContainer.style.removeProperty('height');
 const todayString = new Date().toISOString().split('T')[0];
@@ -3628,12 +3424,6 @@ problemasModal.querySelector('.close-button').addEventListener('click', closePro
 
 filterDateAdmInput.addEventListener('change', populateTables);
 showSvcRoBtn.addEventListener('click', toggleSvcRoDisplay);
-
-document.addEventListener('visibilitychange', function() {
-if (document.visibilityState === 'hidden') {
-limiteAlertaJaMostradoNestaVisibilidade = false;
-}
-});
 
 // Função para exibir o nome do próximo integrante do PSO
 const showPsoProximo = () => {
@@ -4194,12 +3984,13 @@ localStorage.removeItem(key);
 }
 loadStatusThresholds();
 setDateToToday();
-loadState();
+(async function initTable() {
+await loadState();
 populateTables();
 populateDivisaoTransporteSelect(motoristasCadastrados);
+})();
 populateNotices();
 clearDailyAlarmStates();
-setInterval(checkAlarms, 20000);
 setInterval(checkLembretesAlarms, 5000);
 window.parent.postMessage({ type: 'request_lembretes_data' }, '*');
 ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(e => document.addEventListener(e, () => window.parent.postMessage({ type: 'user_activity' }, '*')));
