@@ -1903,40 +1903,48 @@ if (document.getElementById('registerOM')) {
     document.getElementById('registerOM').value = saidaData.om || '';
 }
 
-// Preencher campos que dependem de selects carregados (aguardar um pouco)
+// Preencher campos que dependem de selects: primeiro repopular selects, depois setar viatura/motorista (sem nova chamada que os limpe)
 setTimeout(() => {
-    // Viatura
-    if (document.getElementById('registerViatura')) {
-        const viaturaValue = saidaData.viatura || saidaData.viatura_id || '';
-        document.getElementById('registerViatura').value = viaturaValue;
+    var viaturaEl = document.getElementById('registerViatura');
+    var motoristaEl = document.getElementById('registerMotorista');
+    var viaturaValue = saidaData.viatura || saidaData.viatura_id || '';
+    var motoristaValue = saidaData.motorista || saidaData.motorista_id || '';
+
+    // 1) Repopular selects e ajustar visibilidade dos grupos (só uma vez)
+    if (typeof adjustRegisterFormFields === 'function') {
+        adjustRegisterFormFields();
     }
-    
-    // Motorista
-    if (document.getElementById('registerMotorista')) {
-        const motoristaValue = saidaData.motorista || saidaData.motorista_id || '';
-        document.getElementById('registerMotorista').value = motoristaValue;
+
+    // 2) Definir viatura: garantir que a opção exista e então selecionar
+    if (viaturaEl && viaturaValue) {
+        var hasViatura = Array.prototype.some.call(viaturaEl.options, function(o) { return o.value === viaturaValue; });
+        if (!hasViatura) {
+            viaturaEl.appendChild(new Option(viaturaValue + ' (não cadastrado)', viaturaValue));
+        }
+        viaturaEl.value = viaturaValue;
     }
-    
-    // Hospital (para ambulâncias)
+
+    // 3) Definir motorista: garantir que a opção exista e então selecionar
+    if (motoristaEl && motoristaValue) {
+        var hasMotorista = Array.prototype.some.call(motoristaEl.options, function(o) { return o.value === motoristaValue; });
+        if (!hasMotorista) {
+            motoristaEl.appendChild(new Option(motoristaValue + ' (não cadastrado)', motoristaValue));
+        }
+        motoristaEl.value = motoristaValue;
+    }
+
+    // 4) Demais campos
     if (document.getElementById('registerHospital')) {
         document.getElementById('registerHospital').value = saidaData.hospital || '';
     }
-    
-    // KM SAÍDA, KM CHEGADA e CHEGADA (para ambulâncias)
     if (document.getElementById('registerKmSaida')) {
-        const kmSaidaValue = saidaData.kmSaida || '';
-        document.getElementById('registerKmSaida').value = formatKm(kmSaidaValue);
+        document.getElementById('registerKmSaida').value = formatKm(saidaData.kmSaida || '');
     }
     if (document.getElementById('registerKmChegada')) {
-        const kmChegadaValue = saidaData.kmChegada || '';
-        document.getElementById('registerKmChegada').value = formatKm(kmChegadaValue);
+        document.getElementById('registerKmChegada').value = formatKm(saidaData.kmChegada || '');
     }
     if (document.getElementById('registerChegada')) {
         document.getElementById('registerChegada').value = saidaData.chegada || '';
-    }
-    // Após preencher todos os campos, ajustar o formulário (mostra/esconde grupos, repopula selects preservando seleção)
-    if (typeof adjustRegisterFormFields === 'function') {
-        adjustRegisterFormFields();
     }
 }, 300);
 }
