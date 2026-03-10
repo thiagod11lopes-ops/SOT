@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamento de Saídas Administrativas - SOT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="api-service.js"></script>
+    <script src="data-service.js"></script>
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --success-green: #28a745;
+            --warning-orange: #ffc107;
+            --error-red: #dc3545;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark-gray);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: var(--white);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: var(--white);
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        header h1 i {
+            font-size: 36px;
+        }
+
+        header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator.online {
+            background: rgba(40, 167, 69, 0.3);
+        }
+
+        .status-indicator.offline {
+            background: rgba(255, 193, 7, 0.3);
+        }
+
+        .status-indicator .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success-green);
+        }
+
+        .status-indicator.offline .status-dot {
+            background: var(--warning-orange);
+        }
+
+        main {
+            padding: 40px;
+        }
+
+        .form-section {
+            margin-bottom: 40px;
+        }
+
+        .form-section h2 {
+            font-size: 24px;
+            color: var(--primary-blue);
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .agendamento-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            background: var(--light-gray-bg);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--gray);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--dark-gray);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group label .required {
+            color: var(--error-red);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(74, 105, 189, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .tipo-saida-group {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .tipo-saida-option {
+            flex: 1;
+            position: relative;
+        }
+
+        .tipo-saida-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .tipo-saida-option label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            background: var(--white);
+        }
+
+        .tipo-saida-option input[type="radio"]:checked + label {
+            background: var(--primary-blue);
+            color: var(--white);
+            border-color: var(--primary-blue);
+        }
+
+        .tipo-saida-option label:hover {
+            border-color: var(--primary-blue);
+            background: var(--light-gray-bg);
+        }
+
+        .tipo-saida-option input[type="radio"]:checked + label:hover {
+            background: var(--secondary-blue);
+        }
+
+        .form-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 10px;
+            padding-top: 20px;
+            border-top: 2px solid var(--gray);
+        }
+
+        .btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+            color: var(--dark-gray);
+        }
+
+        .btn-secondary:hover {
+            background: #c0c0c0;
+        }
+
+        .btn-success {
+            background: var(--success-green);
+            color: var(--white);
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .message.hidden {
+            display: none;
+        }
+
+        .recent-agendamentos {
+            margin-top: 40px;
+        }
+
+        .agendamentos-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .agendamentos-table thead {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: var(--white);
+        }
+
+        .agendamentos-table th,
+        .agendamentos-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray);
+        }
+
+        .agendamentos-table th {
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+
+        .agendamentos-table tbody tr:hover {
+            background: var(--light-gray-bg);
+        }
+
+        .agendamentos-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.administrativa {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge.ambulancia {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .badge.pendente {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge.confirmado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .empty-state p {
+            font-size: 18px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: var(--white);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Modal de aviso para Caminhão */
+        .modal-aviso {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-aviso.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal-aviso-content {
+            background-color: var(--white);
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 550px;
+            width: 90%;
+            position: relative;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-aviso-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--warning-orange);
+        }
+
+        .modal-aviso-header h3 {
+            margin: 0;
+            color: var(--primary-blue);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .modal-aviso-header h3 i {
+            color: var(--warning-orange);
+            font-size: 28px;
+        }
+
+        .close-modal-aviso {
+            background: none;
+            border: none;
+            font-size: 32px;
+            cursor: pointer;
+            color: var(--dark-gray);
+            line-height: 1;
+            padding: 0;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close-modal-aviso:hover {
+            background-color: var(--gray);
+            color: var(--error-red);
+        }
+
+        .modal-aviso-body {
+            margin-bottom: 25px;
+        }
+
+        .modal-aviso-body p {
+            margin-bottom: 15px;
+            line-height: 1.8;
+            color: var(--dark-gray);
+            font-size: 16px;
+        }
+
+        .modal-aviso-body .info-box {
+            background-color: #fff3cd;
+            border-left: 4px solid var(--warning-orange);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .modal-aviso-body .info-box h4 {
+            margin: 0 0 12px 0;
+            color: #856404;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-aviso-body .info-box ul {
+            margin: 0;
+            padding-left: 25px;
+            color: #856404;
+        }
+
+        .modal-aviso-body .info-box li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .modal-aviso-footer {
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-entendi {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: var(--white);
+            border: none;
+            padding: 12px 35px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-entendi:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 105, 189, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .agendamento-form {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .tipo-saida-group {
+                flex-direction: column;
+            }
+
+            header h1 {
+                font-size: 24px;
+            }
+
+            main {
+                padding: 20px;
+            }
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .disponibilidade-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .disponibilidade-badge.disponivel {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .disponibilidade-badge.esgotado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .disponibilidade-badge.limitado {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        #periodoGroup select,
+        #horaGroup select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--gray);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background-color: var(--white);
+        }
+
+        #periodoGroup select:focus,
+        #horaGroup select:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(74, 105, 189, 0.1);
+        }
+
+        .admin-link {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.3s;
+        }
+
+        .admin-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="DisponibilidadeAdmin.html" class="admin-link" title="Acessar configurações de administrador">
+                <i class="fas fa-cog"></i>
+                Admin
+            </a>
+            <div class="status-indicator offline" id="statusIndicator">
+                <span class="status-dot"></span>
+                <span id="statusText">Modo Offline</span>
+            </div>
+            <h1>
+                <i class="fas fa-calendar-check"></i>
+                Agendamento de Saídas Administrativas
+            </h1>
+            <p>Sistema de Organização de Transporte - SOT</p>
+        </header>
+
+        <main>
+            <div id="messageContainer"></div>
+
+            <section class="form-section">
+                <h2><i class="fas fa-plus-circle"></i> Novo Agendamento</h2>
+                
+                <div id="disponibilidadeInfo" class="message info" style="display: none; margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="disponibilidadeText"></span>
+                </div>
+                
+                <form id="agendamentoForm" class="agendamento-form">
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-calendar-alt"></i>
+                            Data da Saída <span class="required">*</span>
+                        </label>
+                        <input type="date" id="dataSaida" name="dataSaida" required>
+                        <span class="help-text">Selecione a data primeiro</span>
+                    </div>
+
+                    <div class="form-group" id="periodoGroup" style="display: none;">
+                        <label>
+                            <i class="fas fa-sun"></i>
+                            Período <span class="required">*</span>
+                        </label>
+                        <select id="periodo" name="periodo" required>
+                            <option value="">-- Selecione o Período --</option>
+                            <option value="Manhã">Manhã (07:00 - 11:00)</option>
+                            <option value="Tarde">Tarde (12:00 - 15:00)</option>
+                        </select>
+                        <span class="help-text">Escolha o período após selecionar a data</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-car-side"></i>
+                            Tipo de Viatura <span class="required">*</span>
+                        </label>
+                        <select id="tipoViatura" name="tipoViatura" required>
+                            <option value="">-- Selecione o Tipo --</option>
+                            <option value="Carro">Carro</option>
+                            <option value="Van">Van</option>
+                            <option value="Caminhão">Caminhão</option>
+                        </select>
+                        <span class="help-text">Tipo de viatura necessária para o agendamento</span>
+                    </div>
+
+                    <div class="form-group" id="horaGroup" style="display: none;">
+                        <label>
+                            <i class="fas fa-clock"></i>
+                            Horário <span class="required">*</span>
+                        </label>
+                        <select id="horaSaida" name="horaSaida" required>
+                            <option value="">-- Selecione o Horário --</option>
+                        </select>
+                        <span class="help-text">Horários disponíveis no período selecionado</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-map-marker-alt"></i>
+                            Cidade <span class="required">*</span>
+                        </label>
+                        <input type="text" id="cidade" name="cidade" required placeholder="Ex: Rio de Janeiro">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-map-pin"></i>
+                            Bairro/Destino <span class="required">*</span>
+                        </label>
+                        <input type="text" id="bairro" name="bairro" required placeholder="Ex: Copacabana">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-building"></i>
+                            Setor
+                        </label>
+                        <input type="text" id="setor" name="setor" placeholder="Ex: Administração">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-phone"></i>
+                            Ramal
+                        </label>
+                        <input type="text" id="ramal" name="ramal" placeholder="Ex: 1234">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-bullseye"></i>
+                            Objetivo/Motivo <span class="required">*</span>
+                        </label>
+                        <textarea id="objetivo" name="objetivo" required placeholder="Descreva o motivo da saída..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-users"></i>
+                            Número de Passageiros
+                        </label>
+                        <input type="number" id="numPassageiros" name="numPassageiros" min="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <i class="fas fa-user"></i>
+                            Responsável pelo Pedido
+                        </label>
+                        <input type="text" id="responsavelPedido" name="responsavelPedido" placeholder="Nome do responsável">
+                    </div>
+
+
+                    <div class="form-group full-width">
+                        <label>
+                            <i class="fas fa-sticky-note"></i>
+                            Observações
+                        </label>
+                        <textarea id="observacoes" name="observacoes" placeholder="Informações adicionais (opcional)"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="btnLimpar">
+                            <i class="fas fa-eraser"></i>
+                            Limpar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <i class="fas fa-save"></i>
+                            Salvar Agendamento
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="form-section recent-agendamentos">
+                <h2><i class="fas fa-list"></i> Meus Agendamentos</h2>
+                <div style="margin-bottom: 15px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
+                    <p style="margin: 0; color: #0c5460; font-size: 14px;">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Como funciona:</strong> Após fazer seu agendamento, ele ficará pendente até que o administrador atribua uma viatura e motorista. Você será notificado quando estiver confirmado.
+                    </p>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="agendamentos-table">
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Tipo</th>
+                                <th>Tipo de Viatura</th>
+                                <th>Destino</th>
+                                <th>Motivo</th>
+                                <th>Status</th>
+                                <th>Atribuição</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agendamentosTableBody">
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>Nenhum agendamento encontrado</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de Aviso para Caminhão -->
+    <div id="modalAvisoCaminhao" class="modal-aviso">
+        <div class="modal-aviso-content">
+            <div class="modal-aviso-header">
+                <h3>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Restrição de Horários - Caminhão
+                </h3>
+                <button class="close-modal-aviso" onclick="fecharModalAvisoCaminhao()">&times;</button>
+            </div>
+            <div class="modal-aviso-body">
+                <p>
+                    <strong>Atenção!</strong> Para agendamentos com <strong>Caminhão</strong>, existem restrições de horários que devem ser observadas.
+                </p>
+                <div class="info-box">
+                    <h4>
+                        <i class="fas fa-clock"></i>
+                        Horários não disponíveis para Caminhão:
+                    </h4>
+                    <ul>
+                        <li><strong>Manhã:</strong> Entre 06:00 e 09:59 horas não estão disponíveis</li>
+                        <li><strong>Tarde/Noite:</strong> Entre 17:00 e 21:00 horas não estão disponíveis</li>
+                    </ul>
+                </div>
+                <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                    <i class="fas fa-info-circle"></i> 
+                    Apenas os horários permitidos serão exibidos na lista de seleção quando você escolher o período.
+                </p>
+            </div>
+            <div class="modal-aviso-footer">
+                <button class="btn-entendi" onclick="fecharModalAvisoCaminhao()">
+                    <i class="fas fa-check"></i>
+                    Entendi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos do formulário
+        const form = document.getElementById('agendamentoForm');
+        const tipoViaturaSelect = document.getElementById('tipoViatura');
+        const dataSaidaInput = document.getElementById('dataSaida');
+        const periodoSelect = document.getElementById('periodo');
+        const horaSaidaSelect = document.getElementById('horaSaida');
+        const periodoGroup = document.getElementById('periodoGroup');
+        const horaGroup = document.getElementById('horaGroup');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const messageContainer = document.getElementById('messageContainer');
+        const btnSalvar = document.getElementById('btnSalvar');
+        const btnLimpar = document.getElementById('btnLimpar');
+        const agendamentosTableBody = document.getElementById('agendamentosTableBody');
+        const disponibilidadeInfo = document.getElementById('disponibilidadeInfo');
+        const disponibilidadeText = document.getElementById('disponibilidadeText');
+
+        // Definir data mínima como hoje
+        const today = new Date().toISOString().split('T')[0];
+        dataSaidaInput.setAttribute('min', today);
+
+        // Horários por período
+        const horariosManha = ['07:00', '08:00', '09:00', '10:00', '11:00'];
+        const horariosTarde = ['12:00', '13:00', '14:00', '15:00'];
+
+        // Variáveis globais
+        let isAPIOnline = false;
+
+        // Função para mostrar mensagem
+        function showMessage(text, type = 'info') {
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                        type === 'error' ? 'fa-exclamation-circle' : 
+                        'fa-info-circle';
+            
+            message.innerHTML = `
+                <i class="fas ${icon}"></i>
+                <span>${text}</span>
+            `;
+            
+            messageContainer.innerHTML = '';
+            messageContainer.appendChild(message);
+            
+            // Auto-remover após 5 segundos
+            if (type !== 'error') {
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    setTimeout(() => message.remove(), 300);
+                }, 5000);
+            }
+
+            // Scroll para o topo
+            message.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Função para verificar status da API
+        async function checkAPIStatus() {
+            try {
+                if (typeof dataService !== 'undefined') {
+                    await dataService.waitForAPICheck();
+                    isAPIOnline = dataService.apiAvailable;
+                    
+                    if (isAPIOnline) {
+                        statusIndicator.classList.remove('offline');
+                        statusIndicator.classList.add('online');
+                        statusText.textContent = 'Modo Online (Backend)';
+                    } else {
+                        statusIndicator.classList.remove('online');
+                        statusIndicator.classList.add('offline');
+                        statusText.textContent = 'Modo Offline (Local)';
+                    }
+                } else {
+                    isAPIOnline = false;
+                    statusIndicator.classList.remove('online');
+                    statusIndicator.classList.add('offline');
+                    statusText.textContent = 'Modo Offline (Local)';
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status da API:', error);
+                isAPIOnline = false;
+                statusIndicator.classList.remove('online');
+                statusIndicator.classList.add('offline');
+                statusText.textContent = 'Modo Offline (Local)';
+            }
+        }
+
+
+        // Quando data mudar, verificar disponibilidade e mostrar períodos
+        dataSaidaInput.addEventListener('change', async function() {
+            const data = dataSaidaInput.value;
+            
+            if (!data) {
+                periodoGroup.style.display = 'none';
+                horaGroup.style.display = 'none';
+                periodoSelect.value = '';
+                horaSaidaSelect.value = '';
+                disponibilidadeInfo.style.display = 'none';
+                return;
+            }
+            
+            await verificarDisponibilidadeData(data);
+        });
+
+        // Quando período mudar, carregar horários do período
+        periodoSelect.addEventListener('change', function() {
+            const periodo = periodoSelect.value;
+            
+            if (!periodo) {
+                horaGroup.style.display = 'none';
+                horaSaidaSelect.value = '';
+                disponibilidadeInfo.style.display = 'none';
+                return;
+            }
+            
+            carregarHorariosPeriodo(periodo);
+            horaGroup.style.display = 'block';
+        });
+
+        // Quando tipo de viatura mudar, recarregar horários se período já estiver selecionado
+        tipoViaturaSelect.addEventListener('change', function() {
+            const tipoViatura = tipoViaturaSelect.value;
+            const periodo = periodoSelect.value;
+            
+            // Se Caminhão for selecionado, abrir modal de aviso
+            if (tipoViatura === 'Caminhão') {
+                abrirModalAvisoCaminhao();
+            }
+            
+            if (periodo) {
+                carregarHorariosPeriodo(periodo);
+                horaSaidaSelect.value = ''; // Limpar seleção de horário
+            }
+        });
+
+        // Função para abrir modal de aviso para Caminhão
+        function abrirModalAvisoCaminhao() {
+            const modal = document.getElementById('modalAvisoCaminhao');
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+
+        // Função para fechar modal de aviso para Caminhão
+        function fecharModalAvisoCaminhao() {
+            const modal = document.getElementById('modalAvisoCaminhao');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        // Fechar modal ao clicar fora dele
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('modalAvisoCaminhao');
+            if (modal && event.target === modal) {
+                fecharModalAvisoCaminhao();
+            }
+        });
+
+        // Fechar modal com a tecla ESC
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                fecharModalAvisoCaminhao();
+            }
+        });
+
+        // Quando horário mudar, verificar disponibilidade específica
+        horaSaidaSelect.addEventListener('change', function() {
+            checkDisponibilidadeHorario();
+        });
+
+        // Função para formatar data
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // Função para verificar disponibilidade da data
+        async function verificarDisponibilidadeData(data) {
+            try {
+                const disponibilidades = getDisponibilidades();
+                
+                // Verificar se há disponibilidade para manhã ou tarde nesta data
+                const disponibilidadeManha = disponibilidades[`${data}_Manhã`];
+                const disponibilidadeTarde = disponibilidades[`${data}_Tarde`];
+                
+                // Contar agendamentos existentes
+                let todasSaidas = [];
+                if (typeof dataService !== 'undefined' && isAPIOnline) {
+                    todasSaidas = await dataService.getSaidasAdministrativas();
+                } else {
+                    todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                }
+                
+                const saidasNaData = todasSaidas.filter(s => {
+                    const saidaData = s.dataSaida || s.data || '';
+                    return saidaData === data && !s.realizada;
+                });
+                
+                // Calcular vagas ocupadas por período
+                const ocupadasManha = saidasNaData.filter(s => {
+                    const hora = s.horaSaida || s.hora || s.horario || '';
+                    return hora >= '07:00' && hora <= '11:00';
+                }).length;
+                
+                const ocupadasTarde = saidasNaData.filter(s => {
+                    const hora = s.horaSaida || s.hora || s.horario || '';
+                    return hora >= '12:00' && hora <= '15:00';
+                }).length;
+                
+                let mensagem = '';
+                let podeAgendar = false;
+                
+                if (!disponibilidadeManha && !disponibilidadeTarde) {
+                    mensagem = `<i class="fas fa-info-circle"></i> Não há disponibilidade configurada para ${formatDate(data)}. Você pode agendar, mas é recomendado que o administrador configure a disponibilidade.`;
+                    podeAgendar = true;
+                    // Mostrar ambos os períodos se não há configuração
+                    periodoGroup.style.display = 'block';
+                    periodoSelect.innerHTML = `
+                        <option value="">-- Selecione o Período --</option>
+                        <option value="Manhã">Manhã (07:00 - 11:00)</option>
+                        <option value="Tarde">Tarde (12:00 - 15:00)</option>
+                    `;
+                } else {
+                    const disponiveisManha = disponibilidadeManha ? (disponibilidadeManha.vagas - ocupadasManha) : 0;
+                    const disponiveisTarde = disponibilidadeTarde ? (disponibilidadeTarde.vagas - ocupadasTarde) : 0;
+                    
+                    if (disponiveisManha <= 0 && disponiveisTarde <= 0) {
+                        mensagem = `<i class="fas fa-times-circle"></i> <strong>Vagas esgotadas!</strong> Não há vagas disponíveis para ${formatDate(data)}. Escolha outra data.`;
+                        podeAgendar = false;
+                        periodoGroup.style.display = 'none';
+                        horaGroup.style.display = 'none';
+                        periodoSelect.value = '';
+                        horaSaidaSelect.value = '';
+                    } else {
+                        let periodosDisponiveis = [];
+                        periodoSelect.innerHTML = '<option value="">-- Selecione o Período --</option>';
+                        
+                        if (disponiveisManha > 0 && disponibilidadeManha) {
+                            periodosDisponiveis.push(`Manhã (${disponiveisManha} vagas)`);
+                            const option = document.createElement('option');
+                            option.value = 'Manhã';
+                            option.textContent = `Manhã (07:00 - 11:00) - ${disponiveisManha} vagas`;
+                            periodoSelect.appendChild(option);
+                        }
+                        if (disponiveisTarde > 0 && disponibilidadeTarde) {
+                            periodosDisponiveis.push(`Tarde (${disponiveisTarde} vagas)`);
+                            const option = document.createElement('option');
+                            option.value = 'Tarde';
+                            option.textContent = `Tarde (12:00 - 15:00) - ${disponiveisTarde} vagas`;
+                            periodoSelect.appendChild(option);
+                        }
+                        
+                        mensagem = `<i class="fas fa-check-circle"></i> <strong>Disponível!</strong> Períodos disponíveis para ${formatDate(data)}: ${periodosDisponiveis.join(', ')}.`;
+                        podeAgendar = true;
+                        periodoGroup.style.display = 'block';
+                    }
+                }
+                
+                disponibilidadeInfo.style.display = 'block';
+                disponibilidadeInfo.className = podeAgendar ? 'message success' : 'message error';
+                disponibilidadeText.innerHTML = mensagem;
+                
+            } catch (error) {
+                console.error('Erro ao verificar disponibilidade:', error);
+                disponibilidadeInfo.style.display = 'none';
+            }
+        }
+
+        // Função para verificar se um horário está bloqueado para Caminhão
+        function isHorarioBloqueadoCaminhao(horario) {
+            const tipoViatura = tipoViaturaSelect.value;
+            if (tipoViatura !== 'Caminhão') {
+                return false;
+            }
+            
+            // Converter horário para minutos para facilitar comparação
+            const [hora, minuto] = horario.split(':').map(Number);
+            const minutosTotais = hora * 60 + minuto;
+            
+            // Bloquear horários entre 06:00 e 09:59 (360 a 599 minutos)
+            if (minutosTotais >= 360 && minutosTotais < 600) {
+                return true;
+            }
+            
+            // Bloquear horários entre 17:00 e 21:00 (1020 a 1260 minutos)
+            if (minutosTotais >= 1020 && minutosTotais <= 1260) {
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Função para carregar horários do período selecionado
+        function carregarHorariosPeriodo(periodo) {
+            horaSaidaSelect.innerHTML = '<option value="">-- Selecione o Horário --</option>';
+            
+            const horarios = periodo === 'Manhã' ? horariosManha : horariosTarde;
+            const tipoViatura = tipoViaturaSelect.value;
+            
+            horarios.forEach(horario => {
+                // Se for Caminhão, verificar se o horário está bloqueado
+                if (tipoViatura === 'Caminhão' && isHorarioBloqueadoCaminhao(horario)) {
+                    return; // Pular este horário
+                }
+                
+                const option = document.createElement('option');
+                option.value = horario;
+                option.textContent = horario;
+                horaSaidaSelect.appendChild(option);
+            });
+            
+            // Se não houver horários disponíveis após o filtro, mostrar mensagem
+            if (tipoViatura === 'Caminhão' && horaSaidaSelect.options.length === 1) {
+                const periodoTexto = periodo === 'Manhã' ? 'manhã' : 'tarde';
+                showMessage(`Não há horários disponíveis para Caminhão no período da ${periodoTexto}. Os horários entre 06:00-09:59 e 17:00-21:00 não estão disponíveis para este tipo de viatura.`, 'error');
+            }
+        }
+
+        // Função para verificar disponibilidade do horário específico
+        async function checkDisponibilidadeHorario() {
+            const data = dataSaidaInput.value;
+            const periodo = periodoSelect.value;
+            const hora = horaSaidaSelect.value;
+            
+            if (!data || !periodo || !hora) {
+                return;
+            }
+            
+            try {
+                const disponibilidades = getDisponibilidades();
+                const key = `${data}_${periodo}`;
+                const disponibilidade = disponibilidades[key];
+                
+                if (!disponibilidade) {
+                    btnSalvar.disabled = false;
+                    return;
+                }
+                
+                // Contar agendamentos no período
+                let todasSaidas = [];
+                if (typeof dataService !== 'undefined' && isAPIOnline) {
+                    todasSaidas = await dataService.getSaidasAdministrativas();
+                } else {
+                    todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                }
+                
+                const horariosPeriodo = periodo === 'Manhã' ? horariosManha : horariosTarde;
+                const saidasNoPeriodo = todasSaidas.filter(s => {
+                    const saidaData = s.dataSaida || s.data || '';
+                    const saidaHora = s.horaSaida || s.hora || s.horario || '';
+                    return saidaData === data && horariosPeriodo.includes(saidaHora) && !s.realizada;
+                });
+                
+                const vagasOcupadas = saidasNoPeriodo.length;
+                const vagasDisponiveis = disponibilidade.vagas - vagasOcupadas;
+                
+                if (vagasDisponiveis <= 0) {
+                    disponibilidadeInfo.style.display = 'block';
+                    disponibilidadeInfo.className = 'message error';
+                    disponibilidadeText.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Vagas esgotadas!</strong> Todas as ${disponibilidade.vagas} vagas do período ${periodo} para ${formatDate(data)} estão ocupadas.`;
+                    btnSalvar.disabled = true;
+                } else {
+                    disponibilidadeInfo.style.display = 'block';
+                    disponibilidadeInfo.className = 'message success';
+                    disponibilidadeText.innerHTML = `<i class="fas fa-check-circle"></i> <strong>Disponível!</strong> ${vagasDisponiveis} de ${disponibilidade.vagas} vagas disponíveis no período ${periodo} para ${formatDate(data)}. Horário selecionado: ${hora}.`;
+                    btnSalvar.disabled = false;
+                }
+            } catch (error) {
+                console.error('Erro ao verificar disponibilidade:', error);
+                btnSalvar.disabled = false;
+            }
+        }
+
+        // Função para formatar data
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('pt-BR');
+        }
+        
+        // Função para obter disponibilidades configuradas
+        function getDisponibilidades() {
+            try {
+                const stored = localStorage.getItem('disponibilidadeViaturas');
+                return stored ? JSON.parse(stored) : {};
+            } catch (error) {
+                console.error('Erro ao carregar disponibilidades:', error);
+                return {};
+            }
+        }
+
+        // Limpar formulário
+        btnLimpar.addEventListener('click', function() {
+            form.reset();
+            dataSaidaInput.value = today;
+            tipoViaturaSelect.value = '';
+            periodoSelect.value = '';
+            horaSaidaSelect.value = '';
+            periodoGroup.style.display = 'none';
+            horaGroup.style.display = 'none';
+            disponibilidadeInfo.style.display = 'none';
+            btnSalvar.disabled = false;
+            showMessage('Formulário limpo.', 'info');
+        });
+
+        // Salvar agendamento
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                tipo: 'Administrativa',
+                dataSaida: dataSaidaInput.value,
+                periodo: periodoSelect.value,
+                horaSaida: horaSaidaSelect.value,
+                tipoViatura: tipoViaturaSelect.value,
+                cidade: document.getElementById('cidade').value.trim(),
+                bairro: document.getElementById('bairro').value.trim(),
+                setor: document.getElementById('setor').value.trim() || '',
+                ramal: document.getElementById('ramal').value.trim() || '',
+                objetivo: document.getElementById('objetivo').value.trim(),
+                numPassageiros: parseInt(document.getElementById('numPassageiros').value) || 1,
+                responsavelPedido: document.getElementById('responsavelPedido').value.trim() || '',
+                observacoes: document.getElementById('observacoes').value.trim() || ''
+            };
+
+            // Validações
+            if (!formData.dataSaida || !formData.periodo || !formData.horaSaida || !formData.tipoViatura || 
+                !formData.cidade || !formData.bairro || !formData.objetivo) {
+                showMessage('Por favor, preencha todos os campos obrigatórios.', 'error');
+                return;
+            }
+            
+            // Validar horário dentro do período
+            const horariosValidos = formData.periodo === 'Manhã' ? horariosManha : horariosTarde;
+            if (!horariosValidos.includes(formData.horaSaida)) {
+                showMessage(`O horário ${formData.horaSaida} não é válido para o período ${formData.periodo}.`, 'error');
+                return;
+            }
+            
+            // Validar se o horário não está bloqueado para Caminhão
+            if (formData.tipoViatura === 'Caminhão' && isHorarioBloqueadoCaminhao(formData.horaSaida)) {
+                showMessage(`O horário ${formData.horaSaida} não está disponível para Caminhão. Os horários entre 06:00-09:59 e 17:00-21:00 não estão disponíveis para este tipo de viatura.`, 'error');
+                return;
+            }
+            
+            // Verificar disponibilidade antes de salvar (se configurada)
+            const disponibilidades = getDisponibilidades();
+            const key = `${formData.dataSaida}_${formData.periodo}`;
+            const disponibilidade = disponibilidades[key];
+            
+            if (disponibilidade && disponibilidade.vagas !== undefined) {
+                // Contar agendamentos existentes no período
+                let todasSaidas = [];
+                if (typeof dataService !== 'undefined' && isAPIOnline) {
+                    todasSaidas = await dataService.getSaidasAdministrativas();
+                } else {
+                    todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                }
+                
+                const saidasNoPeriodo = todasSaidas.filter(s => {
+                    const saidaData = s.dataSaida || s.data || '';
+                    const saidaHora = s.horaSaida || s.hora || s.horario || '';
+                    return saidaData === formData.dataSaida && horariosValidos.includes(saidaHora) && !s.realizada;
+                });
+                
+                const vagasOcupadas = saidasNoPeriodo.length;
+                
+                if (vagasOcupadas >= disponibilidade.vagas) {
+                    showMessage(`Não há vagas disponíveis para ${formatDate(formData.dataSaida)} no período ${formData.periodo}. Todas as ${disponibilidade.vagas} vagas estão ocupadas.`, 'error');
+                    checkDisponibilidadeHorario(); // Atualizar display
+                    return;
+                }
+            }
+            // Se não houver configuração, permite agendar (com aviso já mostrado)
+
+            // Desabilitar botão durante salvamento
+            btnSalvar.disabled = true;
+            btnSalvar.innerHTML = '<div class="loading"></div> Salvando...';
+
+            try {
+                const novaSaida = {
+                    id: `saida_${Date.now()}_${Math.random()}`,
+                    ...formData,
+                    dataPedido: new Date().toISOString().split('T')[0],
+                    horaPedido: new Date().toTimeString().split(' ')[0].substring(0, 5),
+                    data: formData.dataSaida,
+                    saida: formData.horaSaida,
+                    horario: formData.horaSaida,
+                    hora: formData.horaSaida,
+                    destino: formData.bairro,
+                    viatura: '', // Viatura será atribuída posteriormente pelo administrador
+                    motorista: '', // Motorista será atribuído posteriormente pelo administrador
+                    kmSaida: '',
+                    kmChegada: '',
+                    chegada: '',
+                    observacoes: formData.observacoes,
+                    realizada: false,
+                    isUnplanned: false,
+                    dataCriacao: new Date().toISOString(),
+                    agendadoViaFrontend: true // Flag para identificar que foi agendado via este frontend
+                };
+
+                // Salvar usando dataService ou localStorage direto
+                if (typeof dataService !== 'undefined' && isAPIOnline) {
+                    await dataService.saveSaidaAdministrativa(novaSaida);
+                } else {
+                    // Salvar no localStorage
+                    const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    saidas.push(novaSaida);
+                    localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+                }
+
+                showMessage('✅ Agendamento salvo com sucesso! Aguarde a confirmação do administrador. Você será notificado quando a viatura e motorista forem atribuídos.', 'success');
+                form.reset();
+                dataSaidaInput.value = today;
+                tipoViaturaSelect.value = '';
+                periodoSelect.value = '';
+                horaSaidaSelect.value = '';
+                periodoGroup.style.display = 'none';
+                horaGroup.style.display = 'none';
+                disponibilidadeInfo.style.display = 'none';
+                btnSalvar.disabled = false;
+                
+                // Recarregar agendamentos
+                await loadAgendamentos();
+                
+            } catch (error) {
+                console.error('Erro ao salvar agendamento:', error);
+                showMessage('Erro ao salvar agendamento. Tente novamente.', 'error');
+            } finally {
+                btnSalvar.disabled = false;
+                btnSalvar.innerHTML = '<i class="fas fa-save"></i> Salvar Agendamento';
+            }
+        });
+
+        // Carregar agendamentos recentes
+        async function loadAgendamentos() {
+            try {
+                let todasSaidas = [];
+
+                if (typeof dataService !== 'undefined' && isAPIOnline) {
+                    todasSaidas = await dataService.getSaidasAdministrativas();
+                } else {
+                    todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                }
+                
+                // Filtrar apenas saídas administrativas
+                todasSaidas = todasSaidas.filter(s => !s.tipo || s.tipo === 'Administrativa');
+
+                // Ordenar por data mais recente
+                todasSaidas.sort((a, b) => {
+                    const dateA = new Date(`${a.dataSaida || a.data}T${a.horaSaida || a.hora || '00:00'}`);
+                    const dateB = new Date(`${b.dataSaida || b.data}T${b.horaSaida || b.hora || '00:00'}`);
+                    return dateB - dateA;
+                });
+
+                // Mostrar apenas os 10 mais recentes
+                todasSaidas = todasSaidas.slice(0, 10);
+
+                agendamentosTableBody.innerHTML = '';
+
+                if (todasSaidas.length === 0) {
+                    agendamentosTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox"></i>
+                                    <p>Nenhum agendamento encontrado</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    todasSaidas.forEach(saida => {
+                        const tr = document.createElement('tr');
+                        const dataHora = saida.dataSaida || saida.data || 'N/A';
+                        const hora = saida.horaSaida || saida.hora || saida.horario || 'N/A';
+                        const tipoViatura = saida.tipoViatura || 'Não especificado';
+                        const destino = `${saida.cidade || ''} - ${saida.bairro || ''}`.trim() || 'N/A';
+                        const objetivo = (saida.objetivo || '').substring(0, 50) + ((saida.objetivo || '').length > 50 ? '...' : '');
+                        
+                        // Verificar status de confirmação
+                        const temViatura = saida.viatura && saida.viatura.trim() !== '';
+                        const temMotorista = saida.motorista && saida.motorista.trim() !== '';
+                        const estaConfirmado = saida.statusConfirmacao === 'confirmado' || (temViatura && temMotorista && !saida.agendadoViaFrontend);
+                        
+                        let statusBadge = '';
+                        let atribuicaoHtml = '';
+                        
+                        if (estaConfirmado) {
+                            statusBadge = '<span class="badge confirmado"><i class="fas fa-check-circle"></i> Confirmado</span>';
+                            atribuicaoHtml = '<strong style="color: var(--success-green);">Confirmado</strong>';
+                            tr.style.background = '#f0f9f4'; // Fundo verde claro para confirmados
+                        } else {
+                            statusBadge = '<span class="badge pendente"><i class="fas fa-clock"></i> Pendente</span>';
+                            atribuicaoHtml = '<small style="color: #856404;">Aguardando atribuição de viatura e motorista pelo administrador</small>';
+                        }
+
+                        tr.innerHTML = `
+                            <td>${dataHora}<br><small style="color: #666;">${hora}</small></td>
+                            <td><span class="badge administrativa">Administrativa</span></td>
+                            <td><strong>${tipoViatura}</strong></td>
+                            <td>${destino}</td>
+                            <td>${objetivo}</td>
+                            <td>${statusBadge}</td>
+                            <td>${atribuicaoHtml}</td>
+                        `;
+                        agendamentosTableBody.appendChild(tr);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar agendamentos:', error);
+                agendamentosTableBody.innerHTML = `
+                    <tr>
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <p>Erro ao carregar agendamentos</p>
+                                    </div>
+                                </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Listener para mensagens de confirmação de agendamento
+        window.addEventListener('message', function(event) {
+            if (event.data?.type === 'agendamento_confirmado') {
+                showMessage('Um de seus agendamentos foi confirmado! Recarregando...', 'success');
+                setTimeout(() => {
+                    loadAgendamentos();
+                }, 1000);
+            }
+        });
+
+        // Listener para mudanças no localStorage (de outras abas)
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'saidasAdministrativas') {
+                loadAgendamentos();
+            }
+        });
+
+        // Inicialização
+        async function init() {
+            await checkAPIStatus();
+            await loadAgendamentos();
+
+            // Verificar status periodicamente
+            setInterval(checkAPIStatus, 30000); // A cada 30 segundos
+            setInterval(loadAgendamentos, 60000); // Recarregar agendamentos a cada minuto
+        }
+
+        // Iniciar quando o DOM estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    </script>
+</body>
+</html>

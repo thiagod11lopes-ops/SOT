@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Histórico de Vistorias - Sistema Integrado</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+--tab-inactive-bg: #e9ecef;
+--tab-active-bg: var(--white);
+--tab-border: 1px solid #dee2e6;
+--delete-red: #dc3545;
+--success-green: #28a745;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); color: var(--dark-gray); font-weight: 500; }
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+.tabs { display: flex; border-bottom: 2px solid var(--primary-blue); margin-bottom: 20px; background-color: var(--white); border-radius: 8px 8px 0 0; overflow: hidden; }
+.tabs a { text-decoration: none; color: inherit; flex: 1; display: flex; }
+.tab-button { background-color: var(--tab-inactive-bg); color: var(--dark-gray); border: none; padding: 15px 25px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.tab-button:hover:not(.active) { background-color: #e2e6ea; }
+.tab-button.active { background-color: var(--primary-blue); color: var(--white); }
+.tab-content { display: none; background-color: var(--white); padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.tab-content.active { display: block; }
+.page-title { font-size: 28px; color: var(--primary-blue); text-align: center; font-weight: bold; margin: 0 0 30px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.table-container { overflow-x: auto; border: 2px solid var(--primary-blue); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); background-color: var(--white); margin-top: 20px; }
+.data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.data-table th, .data-table td { border: 1px solid var(--tab-border); padding: 15px; }
+.data-table th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; text-transform: uppercase; font-size: 12px; position: sticky; top: 0; }
+.data-table td ul { padding-left: 20px; margin: 0; }
+.data-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
+.action-buttons button { background-color: transparent; border: none; cursor: pointer; font-size: 16px; padding: 8px; border-radius: 4px; transition: all 0.2s ease; margin: 0 2px; }
+.delete-btn { color: var(--delete-red); }
+.delete-btn:hover { background-color: #ffebee; }
+.btn { background-color: var(--primary-blue); color: var(--white); border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; }
+.btn-danger { background-color: var(--delete-red); }
+.btn-success { background-color: var(--success-green); }
+.global-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--gray); padding-bottom: 15px; }
+.filter-container { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; padding: 20px; background-color: var(--light-gray-bg); border-radius: 8px; }
+.filter-container .form-group { flex: 1; min-width: 200px; }
+.filter-container label { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+.filter-container select, .filter-container input { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--gray); background-color: var(--white); }
+.hidden { display: none; }
+
+/* Estilos para itens resolvidos */
+.resolved-item {
+text-decoration: line-through;
+color: #888;
+}
+.resolved-badge {
+display: inline-block;
+background-color: var(--success-green);
+color: white;
+padding: 2px 8px;
+border-radius: 4px;
+font-size: 11px;
+font-weight: bold;
+margin-left: 8px;
+text-decoration: none;
+}
+.resolved-date {
+font-size: 11px;
+color: #666;
+font-style: italic;
+margin-left: 5px;
+text-decoration: none;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="tabs">
+<a href="vistoriar.html"><button class="tab-button"><i class="fas fa-car"></i> Vistoriar Viatura</button></a>
+<a href="historico.html"><button class="tab-button active"><i class="fas fa-history"></i> Histórico</button></a>
+<a href="situacao.html"><button class="tab-button"><i class="fas fa-info-circle"></i> Situação</button></a>
+<a href="responsabilidades.html"><button class="tab-button"><i class="fas fa-users"></i> Responsabilidades</button></a>
+<a href="vtr-oficina.html"><button class="tab-button"><i class="fas fa-tools"></i> Registro de Manutenções</button></a>
+</div>
+<div id="history" class="tab-content active">
+<h1 class="page-title"><i class="fas fa-history"></i> Histórico de Vistorias</h1>
+<div class="global-actions">
+<button id="btnPdf" class="btn"><i class="fas fa-file-pdf"></i> Gerar PDF</button>
+<button id="btnCsv" class="btn"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+<button id="btnImport" class="btn btn-success"><i class="fas fa-upload"></i> Importar CSV</button>
+<button id="btnDeleteAll" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
+<input type="file" id="csvFileInput" class="hidden" accept=".csv">
+</div>
+<div class="filter-container">
+<div class="form-group">
+<label for="filterDate">Data</label>
+<input type="date" id="filterDate">
+</div>
+<div class="form-group">
+<label for="filterViatura">Viatura</label>
+<select id="filterViatura"></select>
+</div>
+<div class="form-group">
+<label for="filterMotorista">Motorista</label>
+<select id="filterMotorista"></select>
+</div>
+<div class="form-group">
+<label for="filterSearch"><i class="fas fa-search"></i> Pesquisar</label>
+<input type="search" id="filterSearch" placeholder="Busque em qualquer campo...">
+</div>
+</div>
+<div class="table-container">
+<table class="data-table" id="historyTable">
+<thead><tr><th>Data</th><th>Viatura</th><th>Motorista</th><th>Anotações/Problemas</th><th>Ações</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+let inspections = [];
+const historyTableBody = document.querySelector('#historyTable tbody');
+const filterDate = document.getElementById('filterDate');
+const filterViatura = document.getElementById('filterViatura');
+const filterMotorista = document.getElementById('filterMotorista');
+const filterSearch = document.getElementById('filterSearch');
+const btnPdf = document.getElementById('btnPdf');
+const btnCsv = document.getElementById('btnCsv');
+const btnImport = document.getElementById('btnImport');
+const btnDeleteAll = document.getElementById('btnDeleteAll');
+const csvFileInput = document.getElementById('csvFileInput');
+
+function formatDate(d) { 
+if (!d) return ''; 
+const [y, m, day] = d.split('-'); 
+return `${day}/${m}/${y}`; 
+}
+
+function loadData() { 
+inspections = JSON.parse(localStorage.getItem('vistorias') || '[]'); 
+}
+
+function saveData() { 
+localStorage.setItem('vistorias', JSON.stringify(inspections)); 
+}
+
+function populateFilters() {
+const allViaturas = [...new Set(inspections.map(i => i.placa))].sort();
+const allMotoristas = [...new Set(inspections.map(i => i.motorista))].sort();
+filterViatura.innerHTML = '<option value="">Todas as Viaturas</option>';
+allViaturas.forEach(placa => {
+filterViatura.innerHTML += `<option value="${placa}">${placa}</option>`;
+});
+filterMotorista.innerHTML = '<option value="">Todos os Motoristas</option>';
+allMotoristas.forEach(motorista => {
+filterMotorista.innerHTML += `<option value="${motorista}">${motorista}</option>`;
+});
+}
+
+function getFilteredData() {
+const dateValue = filterDate.value;
+const viaturaValue = filterViatura.value;
+const motoristaValue = filterMotorista.value;
+const searchValue = filterSearch.value.trim().toLowerCase();
+
+let filtered = inspections;
+
+if (dateValue) filtered = filtered.filter(i => i.data === dateValue);
+if (viaturaValue) filtered = filtered.filter(i => i.placa === viaturaValue);
+if (motoristaValue) filtered = filtered.filter(i => i.motorista === motoristaValue);
+if (searchValue) {
+filtered = filtered.filter(i => {
+const searchableContent = [
+i.placa, i.motorista, (i.resultados || []).map(r => `${r.item} ${r.nota || ''}` ).join(' ')
+].join(' ').toLowerCase();
+return searchableContent.includes(searchValue);
+});
+}
+return filtered.sort((a, b) => new Date(b.data) - new Date(a.data));
+}
+
+function escapeHtml(text) {
+const div = document.createElement('div');
+div.textContent = text;
+return div.innerHTML;
+}
+
+function populateHistoryTable() {
+historyTableBody.innerHTML = '';
+const filteredInspections = getFilteredData();
+
+if (filteredInspections.length === 0) {
+const row = document.createElement('tr');
+const cell = document.createElement('td');
+cell.colSpan = 5;
+cell.style.textAlign = 'center';
+cell.textContent = 'Nenhuma vistoria encontrada para os filtros aplicados.';
+row.appendChild(cell);
+historyTableBody.appendChild(row);
+return;
+}
+
+filteredInspections.forEach(inspection => {
+const row = document.createElement('tr');
+
+// Data
+const cellData = document.createElement('td');
+cellData.textContent = formatDate(inspection.data);
+row.appendChild(cellData);
+
+// Placa
+const cellPlaca = document.createElement('td');
+cellPlaca.textContent = inspection.placa;
+row.appendChild(cellPlaca);
+
+// Motorista
+const cellMotorista = document.createElement('td');
+cellMotorista.textContent = inspection.motorista;
+row.appendChild(cellMotorista);
+
+// Anotações - MODIFICADO: Mostra APENAS itens com anotações (problemas)
+const cellItens = document.createElement('td');
+
+if (inspection.status === 'OFICINA') {
+const oficinaText = document.createElement('b');
+oficinaText.style.color = 'red';
+oficinaText.textContent = 'OFICINA';
+cellItens.appendChild(oficinaText);
+} else {
+// FILTRO CRÍTICO: Apenas itens que TÊM ANOTAÇÃO (nota não vazia)
+const itemsWithNotes = (inspection.resultados || []).filter(res => 
+res.nota && res.nota.trim() !== ''
+);
+
+if (itemsWithNotes.length > 0) {
+const ul = document.createElement('ul');
+itemsWithNotes.forEach(res => {
+const li = document.createElement('li');
+                    
+// Se resolvido, adiciona classe de traçado
+if (res.resolvido) {
+li.className = 'resolved-item';
+}
+
+// Monta o texto do item
+const itemText = document.createElement('strong');
+itemText.textContent = res.item + ': ';
+li.appendChild(itemText);
+
+const notaText = document.createTextNode(res.nota);
+li.appendChild(notaText);
+
+// Se resolvido, adiciona badge e data
+if (res.resolvido) {
+const badge = document.createElement('span');
+badge.className = 'resolved-badge';
+badge.textContent = 'RESOLVIDO';
+li.appendChild(badge);
+
+if (res.dataResolucao) {
+const dateSpan = document.createElement('span');
+dateSpan.className = 'resolved-date';
+dateSpan.textContent = ` (${formatDate(res.dataResolucao)})`;
+li.appendChild(dateSpan);
+}
+}
+
+ul.appendChild(li);
+});
+cellItens.appendChild(ul);
+} else {
+// Se não há itens com anotações, mostra "Nenhum problema"
+const okText = document.createElement('span');
+okText.style.color = '#28a745';
+okText.style.fontWeight = 'bold';
+okText.textContent = '✓ Nenhum problema encontrado';
+cellItens.appendChild(okText);
+}
+}
+
+row.appendChild(cellItens);
+
+// Ações
+const cellActions = document.createElement('td');
+const actionsDiv = document.createElement('div');
+actionsDiv.className = 'action-buttons';
+
+const btnDelete = document.createElement('button');
+btnDelete.className = 'delete-btn';
+btnDelete.title = 'Excluir Vistoria';
+btnDelete.innerHTML = '<i class="fas fa-trash-alt"></i>';
+btnDelete.onclick = () => deleteInspection(inspection.id);
+
+actionsDiv.appendChild(btnDelete);
+cellActions.appendChild(actionsDiv);
+row.appendChild(cellActions);
+
+historyTableBody.appendChild(row);
+});
+}
+
+function generatePdf() {
+const { jsPDF } = window.jspdf;
+const doc = new jsPDF();
+const filteredData = getFilteredData();
+
+const tableHead = [['Data', 'Viatura', 'Motorista', 'Problemas']];
+const tableBody = filteredData.map(insp => {
+let itemsText = 'Nenhum problema';
+if (insp.status === 'OFICINA') {
+itemsText = 'OFICINA';
+} else {
+// Apenas itens com anotações
+const itemsWithNotes = (insp.resultados || []).filter(res => 
+res.nota && res.nota.trim() !== ''
+);
+if (itemsWithNotes.length > 0) {
+itemsText = itemsWithNotes.map(res => {
+const resolvedTag = res.resolvido ? ' [RESOLVIDO]' : '';
+const dateTag = res.resolvido && res.dataResolucao ? ` (${formatDate(res.dataResolucao)})` : '';
+return `${res.item}: ${res.nota}${resolvedTag}${dateTag}`;
+}).join('\n');
+}
+}
+return [formatDate(insp.data), insp.placa, insp.motorista, itemsText];
+});
+
+doc.autoTable({
+head: tableHead,
+body: tableBody,
+startY: 20,
+headStyles: { fillColor: [74, 105, 189] }
+});
+
+doc.text("Histórico de Vistorias", 14, 15);
+doc.save(`historico_vistorias_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+function exportCsv() {
+const filteredData = getFilteredData();
+let csvContent = "data:text/csv;charset=utf-8,";
+csvContent += "ID,Data,Viatura,Motorista,Status,Item,Anotacao,Resolvido,DataResolucao\r\n";
+
+filteredData.forEach(insp => {
+// Apenas exporta itens com anotações
+const itemsWithNotes = (insp.resultados || []).filter(res => 
+res.nota && res.nota.trim() !== ''
+);
+
+if (itemsWithNotes.length > 0) {
+itemsWithNotes.forEach(res => {
+const nota = (res.nota || '').replace(/"/g, '""');
+const resolvido = res.resolvido ? 'true' : 'false';
+const dataResolucao = res.dataResolucao || '';
+const row = [
+insp.id, 
+insp.data, 
+insp.placa, 
+insp.motorista, 
+insp.status, 
+res.item, 
+`"${nota}"`, 
+resolvido,
+dataResolucao
+].join(",");
+csvContent += row + "\r\n";
+});
+} else {
+// Se não há problemas, exporta linha indicando vistoria OK
+const row = [insp.id, insp.data, insp.placa, insp.motorista, insp.status, 'SEM_PROBLEMAS', '', 'false', ''].join(",");
+csvContent += row + "\r\n";
+}
+});
+
+const encodedUri = encodeURI(csvContent);
+const link = document.createElement("a");
+link.setAttribute("href", encodedUri);
+link.setAttribute("download", `historico_vistorias_${new Date().toISOString().slice(0, 10)}.csv`);
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+}
+
+function parseCsvLine(line) {
+const result = [];
+let current = '';
+let inQuotes = false;
+
+for (let i = 0; i < line.length; i++) {
+const char = line[i];
+const nextChar = line[i + 1];
+
+if (char === '"' && inQuotes && nextChar === '"') {
+current += '"';
+i++;
+} else if (char === '"') {
+inQuotes = !inQuotes;
+} else if (char === ',' && !inQuotes) {
+result.push(current.trim());
+current = '';
+} else {
+current += char;
+}
+}
+result.push(current.trim());
+return result;
+}
+
+function importCsv(event) {
+const file = event.target.files[0];
+if (!file) return;
+
+const reader = new FileReader();
+reader.onload = function(e) {
+try {
+const text = e.target.result;
+const lines = text.split('\n');
+const newInspections = {};
+
+for (let i = 1; i < lines.length; i++) {
+const line = lines[i].trim();
+if (!line) continue;
+
+const fields = parseCsvLine(line);
+if (fields.length < 9) continue;
+
+const [id, data, placa, motorista, status, item, nota, resolvido, dataResolucao] = fields;
+
+if (!id || !data || !placa || !motorista) {
+console.warn('Linha inválida ignorada:', line);
+continue;
+}
+
+if (!newInspections[id]) {
+newInspections[id] = { 
+id, 
+data, 
+placa, 
+motorista, 
+status: status || 'CONCLUIDA', 
+resultados: [] 
+};
+}
+
+// IMPORTANTE: Só adiciona se tiver anotação OU se for marcador SEM_PROBLEMAS
+if (item && item.trim() !== '' && item !== 'SEM_PROBLEMAS') {
+newInspections[id].resultados.push({ 
+item: item.trim(), 
+nota: nota.trim(),
+resolvido: resolvido === 'true',
+dataResolucao: dataResolucao.trim() || null
+});
+}
+}
+
+const count = Object.keys(newInspections).length;
+if (count === 0) {
+alert('Nenhuma vistoria válida encontrada no arquivo.');
+return;
+}
+
+if (confirm(`Foram encontradas ${count} vistorias no arquivo. Deseja importá-las?\n\nVistorias com IDs existentes serão sobrescritas.`)) {
+Object.values(newInspections).forEach(newInsp => {
+inspections = inspections.filter(i => i.id !== newInsp.id);
+inspections.push(newInsp);
+});
+saveData();
+populateFilters();
+populateHistoryTable();
+alert('Importação concluída com sucesso!');
+}
+} catch (error) {
+alert('Erro ao processar arquivo: ' + error.message);
+console.error('Erro na importação:', error);
+}
+};
+reader.readAsText(file);
+csvFileInput.value = '';
+}
+
+function deleteAll() {
+if(confirm("ATENÇÃO!\n\nEsta ação irá apagar PERMANENTEMENTE TODAS as vistorias do sistema.\n\nDeseja continuar?")) {
+localStorage.removeItem('vistorias');
+loadData();
+populateFilters();
+populateHistoryTable();
+alert('Todos os dados de vistorias foram excluídos.');
+}
+}
+
+function deleteInspection(id) {
+if (confirm('Tem certeza? A ação não pode ser desfeita.')) {
+inspections = inspections.filter(i => i.id !== id);
+saveData();
+populateFilters();
+populateHistoryTable();
+alert('Vistoria excluída.');
+}
+}
+
+filterDate.addEventListener('change', populateHistoryTable);
+filterViatura.addEventListener('change', populateHistoryTable);
+filterMotorista.addEventListener('change', populateHistoryTable);
+filterSearch.addEventListener('input', populateHistoryTable);
+btnPdf.addEventListener('click', generatePdf);
+btnCsv.addEventListener('click', exportCsv);
+btnImport.addEventListener('click', () => csvFileInput.click());
+csvFileInput.addEventListener('change', importCsv);
+btnDeleteAll.addEventListener('click', deleteAll);
+
+(function initializeApp() {
+loadData();
+populateFilters();
+populateHistoryTable();
+})();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de QR Code - Sistema SOT5</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --success-green: #28a745;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --dark-gray: #333d47;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            color: var(--primary-blue);
+            font-size: 22px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .qr-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 30px;
+            background: var(--light-gray-bg);
+            border-radius: 15px;
+            border: 3px dashed var(--primary-blue);
+        }
+
+        #qrcode {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .qr-info {
+            text-align: center;
+            color: var(--dark-gray);
+        }
+
+        .qr-info h3 {
+            color: var(--primary-blue);
+            margin-bottom: 10px;
+        }
+
+        .data-preview {
+            background: var(--light-gray-bg);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .data-preview h3 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+        }
+
+        .data-item {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .data-item:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: bold;
+            color: var(--dark-gray);
+        }
+
+        .data-value {
+            color: #555;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 105, 189, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 20px;
+            }
+
+            .data-item {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+
+            .btn-container {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: 100%;
+            }
+        }
+
+        .tip-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .tip-box strong {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-qrcode"></i> Teste de QR Code - Sistema SOT5</h1>
+            <p>Página de teste para validar o leitor de QR Code sem necessidade de impressão</p>
+        </div>
+
+        <div class="content">
+            <!-- QR Code Display -->
+            <div class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-mobile-alt"></i>
+                    QR Code de Teste
+                </h2>
+                <div class="qr-display">
+                    <div id="qrcode"></div>
+                    <div class="qr-info">
+                        <h3>Use este QR Code para testar o scanner</h3>
+                        <p>Abra o scanner no SOT5 e aponte a câmera para este QR Code na tela</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Preview -->
+            <div class="section">
+                <h2 class="section-title">
+                    <i class="fas fa-database"></i>
+                    Dados no QR Code
+                </h2>
+                <div class="data-preview">
+                    <h3>Informações que serão preenchidas automaticamente:</h3>
+                    <div class="data-item">
+                        <span class="data-label">Data do Pedido:</span>
+                        <span class="data-value" id="preview-data">2024-11-07</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Hora do Pedido:</span>
+                        <span class="data-value" id="preview-hora">14:30</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Setor:</span>
+                        <span class="data-value">Emergência</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Ramal:</span>
+                        <span class="data-value">2345</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Cidade:</span>
+                        <span class="data-value">Rio de Janeiro</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Bairro:</span>
+                        <span class="data-value">Centro</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Objetivo:</span>
+                        <span class="data-value">Inter Hospitalar</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Nº Passageiros:</span>
+                        <span class="data-value">2</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Responsável:</span>
+                        <span class="data-value">Dr. José Santos</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Hospital:</span>
+                        <span class="data-value">Hospital Central</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+                <h3><i class="fas fa-info-circle"></i> Como Testar</h3>
+                <ol>
+                    <li><strong>Abra o arquivo Cadastrodesaidas8.html</strong> em outra aba ou janela do navegador</li>
+                    <li><strong>Selecione "Ambulância"</strong> no campo "Tipo de Saída"</li>
+                    <li><strong>Clique em "Iniciar Scanner"</strong> e permita o acesso à câmera</li>
+                    <li><strong>Aponte a câmera do seu dispositivo</strong> para o QR Code acima (na tela)</li>
+                    <li><strong>Aguarde a leitura automática</strong> - os campos serão preenchidos instantaneamente!</li>
+                </ol>
+
+                <div class="tip-box">
+                    <strong><i class="fas fa-lightbulb"></i> Dica:</strong> 
+                    Se estiver no mesmo dispositivo, você pode usar um segundo dispositivo (celular/tablet) para escanear o QR Code na tela do computador, ou vice-versa.
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-container">
+                <button class="btn btn-primary" onclick="regenerateQR()">
+                    <i class="fas fa-sync-alt"></i>
+                    Gerar Novo QR Code
+                </button>
+                <button class="btn btn-success" onclick="openSOT5()">
+                    <i class="fas fa-external-link-alt"></i>
+                    Abrir SOT5 para Testar
+                </button>
+            </div>
+
+            <div id="successAlert" class="alert alert-info">
+                <strong><i class="fas fa-check-circle"></i> Novo QR Code gerado!</strong>
+                Os dados foram atualizados com a data e hora atual.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados de exemplo para o QR Code (formato compacto)
+        function getTestData() {
+            const now = new Date();
+            const dataAtual = now.toISOString().split('T')[0];
+            const horaAtual = now.toTimeString().split(' ')[0].substring(0, 5);
+
+            return {
+                dt: dataAtual,
+                hr: horaAtual,
+                st: "Emergência",
+                rm: "2345",
+                cd: "Rio de Janeiro",
+                br: "Centro",
+                ob: "Inter Hospitalar",
+                ps: "2",
+                rs: "Dr. José Santos",
+                th: "Hospital Central"
+            };
+        }
+
+        // Gerar QR Code
+        function generateQRCode() {
+            const qrcodeContainer = document.getElementById('qrcode');
+            qrcodeContainer.innerHTML = ''; // Limpar QR Code anterior
+
+            const testData = getTestData();
+            const qrData = JSON.stringify(testData);
+
+            new QRCode(qrcodeContainer, {
+                text: qrData,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Atualizar preview
+            document.getElementById('preview-data').textContent = testData.dt;
+            document.getElementById('preview-hora').textContent = testData.hr;
+        }
+
+        // Regenerar QR Code
+        function regenerateQR() {
+            generateQRCode();
+            
+            const alert = document.getElementById('successAlert');
+            alert.classList.add('show');
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        // Abrir SOT5
+        function openSOT5() {
+            window.open('Cadastrodesaidas8.html', '_blank');
+        }
+
+        // Gerar QR Code ao carregar a página
+        window.addEventListener('DOMContentLoaded', generateQRCode);
+    </script>
+</body>
+</html>

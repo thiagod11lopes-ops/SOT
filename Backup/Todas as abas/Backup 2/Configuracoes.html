@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - CONFIGURAÇÕES</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="theme-listener.js"></script>
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --tab-border: 1px solid #dee2e6;
+            --success-green: #28a745;
+            --error-red: #dc3545;
+            --warning-orange: #ffc107;
+            --tab-text-color: var(--dark-gray);
+            --tab-text-color-active: var(--primary-blue);
+            --tab-text-color-hover: var(--tab-text-color);
+            --tab-bg-inactive: #e9e9e9;
+            --tab-bg-active: var(--white);
+            --tab-hover-bg: #dcdcdc;
+            --tab-border-color: #ccc;
+            --tab-border-color-active: var(--primary-blue);
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-gray-bg);
+            color: var(--dark-gray);
+            font-weight: 500;
+            min-height: 100vh;
+        }
+        
+        main {
+            margin: 20px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+            max-width: 900px;
+        }
+        
+        .config-section {
+            background-color: var(--white);
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid var(--tab-border);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            color: var(--primary-blue);
+            font-weight: bold;
+            margin: 0 0 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid var(--primary-blue);
+            padding-bottom: 10px;
+        }
+        
+        .config-group {
+            margin-bottom: 20px;
+        }
+        
+        .config-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .config-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--dark-gray);
+        }
+        
+        .config-group input[type="password"], 
+        .config-group input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--gray);
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .show-password-container {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            gap: 8px;
+        }
+        
+        .show-password-container input[type="checkbox"] {
+            width: auto;
+            margin: 0;
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+        
+        .show-password-container label {
+            margin: 0;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        
+        button {
+            background-color: var(--primary-blue);
+            color: var(--white);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            background-color: var(--secondary-blue);
+        }
+        
+        button.success {
+            background-color: var(--success-green);
+        }
+        
+        button.success:hover {
+            background-color: #218838;
+        }
+        
+        button.warning {
+            background-color: var(--warning-orange);
+        }
+        
+        button.warning:hover {
+            background-color: #e0a800;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+        }
+
+        .theme-card {
+            border: 2px solid transparent;
+            border-radius: 12px;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(74,105,189,0.08), rgba(108,136,201,0.12));
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            min-height: 150px;
+            color: inherit;
+            text-align: left;
+            outline: none;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(74,105,189,0.18);
+        }
+
+        .theme-card.is-active {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(74,105,189,0.15);
+        }
+
+        .theme-card:focus-visible {
+            box-shadow: 0 0 0 3px rgba(74,105,189,0.3);
+        }
+
+        .theme-preview {
+            height: 48px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4a69bd, #6c88c9);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+        }
+
+        .theme-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .theme-info strong {
+            font-size: 16px;
+            color: var(--primary-blue);
+        }
+
+        .theme-info span {
+            font-size: 13px;
+            color: var(--dark-gray);
+            line-height: 1.4;
+        }
+ 
+        .message {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            padding: 12px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .message.success {
+            color: #155724;
+            background-color: #d4edda;
+            border: 2px solid #c3e6cb;
+            display: block;
+        }
+        
+        .message.error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 2px solid #f5c6cb;
+            display: block;
+        }
+        
+        .info-box {
+            background-color: #d1ecf1;
+            border: 2px solid #bee5eb;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            color: #0c5460;
+        }
+        
+        .info-box i {
+            margin-right: 8px;
+        }
+        
+        .sub-tabs {
+            display: flex;
+            justify-content: flex-start;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .sub-tab-button {
+            background-color: #e9e9e9;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            padding: 10px 15px;
+            border-radius: 6px 6px 0 0;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 3px;
+        }
+        .sub-tab-button.active {
+            background-color: var(--white);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+        .sub-tab-content {
+            display: none;
+            padding: 10px 0;
+        }
+        .sub-tab-content.active {
+            display: block;
+        }
+        @media (max-width: 768px) {
+            main { margin: 20px 10px; }
+            .button-group {
+                flex-direction: column;
+            }
+            .button-group button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div id="configuracoesSection" class="tab-content active">
+            <div class="sub-tabs">
+                <button class="sub-tab-button active" data-sub-tab="configuracoesContent">Configurações</button>
+                <button class="sub-tab-button" data-sub-tab="disponibilidadeContent">Disponibilidade</button>
+            </div>
+            <div id="configuracoesContent" class="sub-tab-content active">
+        <!-- Seção de Senha -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <i class="fas fa-key"></i>
+                Segurança - Alterar Senha
+            </h2>
+            <div class="config-group">
+                <label for="oldPassword">Senha Atual:</label>
+                <input type="password" id="oldPassword" placeholder="Digite a senha atual">
+            </div>
+            <div class="config-group">
+                <label for="newPassword">Nova Senha:</label>
+                <input type="password" id="newPassword" placeholder="Digite a nova senha">
+            </div>
+            <div class="show-password-container">
+                <input type="checkbox" id="showPassword">
+                <label for="showPassword">Mostrar Senhas</label>
+            </div>
+            <button id="savePasswordBtn">
+                <i class="fas fa-save"></i> Salvar Senha
+            </button>
+            <div id="passwordMessage" class="message"></div>
+        </div>
+
+        <!-- Seção de Tema do Sistema -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <i class="fas fa-palette"></i>
+                Aparência - Tema do Sistema
+            </h2>
+            <div class="config-group">
+                <label>Escolha um tema para personalizar as cores do sistema:</label>
+                <div id="themeGrid" class="theme-grid"></div>
+            </div>
+            <div id="themeMessage" class="message"></div>
+        </div>
+
+        <!-- Seção de Gerenciamento de Dados -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <i class="fas fa-database"></i>
+                Gerenciamento de Dados
+            </h2>
+            
+            <div class="config-group">
+                <label><i class="fas fa-download"></i> Backup e Exportação</label>
+                <p style="margin: 10px 0; color: var(--dark-gray);">
+                    Faça backup dos seus dados ou exporte para transferir para outro computador.
+                </p>
+                <div class="button-group">
+                    <button id="backupNowBtn" class="success">
+                        <i class="fas fa-save"></i> Fazer Backup Agora
+                    </button>
+                    <button id="exportJsonBtn" class="success">
+                        <i class="fas fa-file-export"></i> Exportar Dados (JSON)
+                    </button>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <label><i class="fas fa-upload"></i> Importar Dados</label>
+                <p style="margin: 10px 0; color: var(--dark-gray);">
+                    Restaure um backup anterior ou importe dados de outro computador.
+                </p>
+                <button id="importJsonBtn" class="warning">
+                    <i class="fas fa-file-import"></i> Importar Dados (JSON)
+                </button>
+                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+            </div>
+            
+            <div class="config-group">
+                <label style="color: var(--error-red); font-size: 18px;">
+                    <i class="fas fa-exclamation-triangle"></i> Zona de Perigo
+                </label>
+                <p style="margin: 10px 0; color: var(--dark-gray);">
+                    Esta ação irá apagar <strong>TODOS os dados do sistema</strong> permanentemente, incluindo:
+                    saídas, viaturas, motoristas, vistorias, escala, avisos, configurações e senha.
+                </p>
+                <button id="clearAllDataBtn" style="background-color: var(--error-red); width: 100%;">
+                    <i class="fas fa-trash-alt"></i> Apagar Todos os Dados do Sistema
+                </button>
+            </div>
+            
+            <div class="info-box">
+                <i class="fas fa-lightbulb"></i>
+                <strong>Dica:</strong> Faça backups regularmente para garantir a segurança dos seus dados. 
+                Use "Fazer Backup Agora" para criar uma cópia completa antes de fazer alterações importantes.
+            </div>
+            
+            <div id="backupMessage" class="message"></div>
+        </div>
+            </div>
+            <div id="disponibilidadeContent" class="sub-tab-content">
+                <iframe src="DisponibilidadeAdmin.html" style="width: 100%; height: 800px; border: none;"></iframe>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        console.log('=== CONFIGURAÇÕES: Script iniciado ===');
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('=== CONFIGURAÇÕES: DOM carregado ===');
+            
+            // Notifica atividade do usuário
+            function notifyParentActivity() {
+                window.parent.postMessage({ type: 'user_activity' }, '*');
+            }
+
+            ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+                document.addEventListener(event, notifyParentActivity);
+            });
+
+            // Controle de sub-abas
+            const subTabButtons = document.querySelectorAll('.sub-tab-button');
+            subTabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTab = button.getAttribute('data-sub-tab');
+                    
+                    // Remove active de todos os botões e conteúdos
+                    subTabButtons.forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.sub-tab-content').forEach(content => content.classList.remove('active'));
+                    
+                    // Adiciona active ao botão e conteúdo clicados
+                    button.classList.add('active');
+                    const targetContent = document.getElementById(targetTab);
+                    if (targetContent) {
+                        targetContent.classList.add('active');
+                    }
+                });
+            });
+
+            const DEFAULT_PASSWORD = '1234';
+            
+            // Elementos de Senha
+            const oldPasswordInput = document.getElementById('oldPassword');
+            const newPasswordInput = document.getElementById('newPassword');
+            const savePasswordBtn = document.getElementById('savePasswordBtn');
+            const passwordMessage = document.getElementById('passwordMessage');
+            const showPasswordCheckbox = document.getElementById('showPassword');
+
+            // Elementos de Backup
+            const backupNowBtn = document.getElementById('backupNowBtn');
+            const exportJsonBtn = document.getElementById('exportJsonBtn');
+            const importJsonBtn = document.getElementById('importJsonBtn');
+            const importFileInput = document.getElementById('importFileInput');
+            const clearAllDataBtn = document.getElementById('clearAllDataBtn');
+            const backupMessage = document.getElementById('backupMessage');
+
+            console.log('Elementos encontrados:', {
+                oldPasswordInput,
+                newPasswordInput,
+                savePasswordBtn,
+                backupNowBtn,
+                exportJsonBtn,
+                importJsonBtn,
+                clearAllDataBtn
+            });
+
+            const themeGrid = document.getElementById('themeGrid');
+            const themeMessage = document.getElementById('themeMessage');
+            const THEME_ID_KEY = 'sot_theme_id';
+            const THEME_VARS_KEY = 'sot_theme_variables';
+            const DEFAULT_THEME_ID = 'light';
+
+            const themes = [
+                {
+                    id: 'light',
+                    name: 'Claro',
+                    description: 'Visual tradicional, equilibrado para uso diário.',
+                    preview: 'linear-gradient(135deg, #4a69bd 0%, #f5f7fb 100%)',
+                    properties: {
+                        '--primary-blue': '#4a69bd',
+                        '--secondary-blue': '#6c88c9',
+                        '--gray': '#dcdcdc',
+                        '--dark-gray': '#333d47',
+                        '--white': '#ffffff',
+                        '--light-gray-bg': '#f5f7fb',
+                        '--tab-border': '1px solid #dee2e6',
+                        '--success-green': '#28a745',
+                        '--warning-orange': '#ffc107',
+                        '--error-red': '#dc3545',
+                        '--tab-text-color': '#333d47',
+                        '--tab-text-color-active': '#4a69bd',
+                        '--tab-text-color-hover': '#1d2c48',
+                        '--tab-bg-inactive': '#e9e9e9',
+                        '--tab-bg-active': '#ffffff',
+                        '--tab-hover-bg': '#dcdcdc',
+                        '--tab-border-color': '#ccc',
+                        '--tab-border-color-active': '#4a69bd'
+                    }
+                },
+                {
+                    id: 'dark',
+                    name: 'Escuro',
+                    description: 'Contraste alto para ambientes com pouca luz.',
+                    preview: 'linear-gradient(135deg, #1f2933 0%, #111827 100%)',
+                    properties: {
+                        '--primary-blue': '#90caf9',
+                        '--secondary-blue': '#64b5f6',
+                        '--gray': '#4a5568',
+                        '--dark-gray': '#e2e8f0',
+                        '--white': '#1a202c',
+                        '--light-gray-bg': '#121826',
+                        '--tab-border': '1px solid #2d3748',
+                        '--success-green': '#4fd1c5',
+                        '--warning-orange': '#f6ad55',
+                        '--error-red': '#fc8181',
+                        '--tab-text-color': '#e2e8f0',
+                        '--tab-text-color-active': '#90caf9',
+                        '--tab-text-color-hover': '#cde6ff',
+                        '--tab-bg-inactive': '#1f2937',
+                        '--tab-bg-active': '#111827',
+                        '--tab-hover-bg': '#27364a',
+                        '--tab-border-color': '#2d3748',
+                        '--tab-border-color-active': '#90caf9'
+                    }
+                },
+                {
+                    id: 'ocean',
+                    name: 'Oceano',
+                    description: 'Azuis profundos com detalhes suaves.',
+                    preview: 'linear-gradient(135deg, #0f4c75 0%, #3282b8 100%)',
+                    properties: {
+                        '--primary-blue': '#0f4c75',
+                        '--secondary-blue': '#3282b8',
+                        '--gray': '#82a0bc',
+                        '--dark-gray': '#1b262c',
+                        '--white': '#f5f7fb',
+                        '--light-gray-bg': '#e3f2fd',
+                        '--tab-border': '1px solid #9bb7d7',
+                        '--success-green': '#2f9c95',
+                        '--warning-orange': '#f2a365',
+                        '--error-red': '#ef476f',
+                        '--tab-text-color': '#1b262c',
+                        '--tab-text-color-active': '#0f4c75',
+                        '--tab-text-color-hover': '#0c3a5a',
+                        '--tab-bg-inactive': '#dbe9f5',
+                        '--tab-bg-active': '#f0f7ff',
+                        '--tab-hover-bg': '#cde0f3',
+                        '--tab-border-color': '#9bb7d7',
+                        '--tab-border-color-active': '#0f4c75'
+                    }
+                },
+                {
+                    id: 'forest',
+                    name: 'Floresta',
+                    description: 'Verdes densos e tons terrosos.',
+                    preview: 'linear-gradient(135deg, #2b9348 0%, #55a630 100%)',
+                    properties: {
+                        '--primary-blue': '#2b9348',
+                        '--secondary-blue': '#55a630',
+                        '--gray': '#b7d3a8',
+                        '--dark-gray': '#1b4332',
+                        '--white': '#f6fff5',
+                        '--light-gray-bg': '#e8f5e9',
+                        '--tab-border': '1px solid #cde4c3',
+                        '--success-green': '#40916c',
+                        '--warning-orange': '#f77f00',
+                        '--error-red': '#ef6351',
+                        '--tab-text-color': '#1b4332',
+                        '--tab-text-color-active': '#215f3f',
+                        '--tab-text-color-hover': '#0f291d',
+                        '--tab-bg-inactive': '#dff4e5',
+                        '--tab-bg-active': '#f3fff6',
+                        '--tab-hover-bg': '#cfead9',
+                        '--tab-border-color': '#cde4c3',
+                        '--tab-border-color-active': '#2b9348'
+                    }
+                },
+                {
+                    id: 'sunset',
+                    name: 'Pôr do Sol',
+                    description: 'Laranjas e roxos vibrantes.',
+                    preview: 'linear-gradient(135deg, #ff7b54 0%, #845ec2 100%)',
+                    properties: {
+                        '--primary-blue': '#ff7b54',
+                        '--secondary-blue': '#ff9770',
+                        '--gray': '#ffd5c2',
+                        '--dark-gray': '#2d1b3d',
+                        '--white': '#fff5f0',
+                        '--light-gray-bg': '#fff1e6',
+                        '--tab-border': '1px solid #ffc4b3',
+                        '--success-green': '#06d6a0',
+                        '--warning-orange': '#ffb347',
+                        '--error-red': '#ef476f',
+                        '--tab-text-color': '#2d1b3d',
+                        '--tab-text-color-active': '#ff7b54',
+                        '--tab-text-color-hover': '#522f75',
+                        '--tab-bg-inactive': '#ffe5d9',
+                        '--tab-bg-active': '#fff5f0',
+                        '--tab-hover-bg': '#ffd9c7',
+                        '--tab-border-color': '#ffc4b3',
+                        '--tab-border-color-active': '#ff7b54'
+                    }
+                },
+                {
+                    id: 'lavender',
+                    name: 'Lavanda',
+                    description: 'Roxos suaves e clima calmo.',
+                    preview: 'linear-gradient(135deg, #9381ff 0%, #b8b8ff 100%)',
+                    properties: {
+                        '--primary-blue': '#9381ff',
+                        '--secondary-blue': '#b8b8ff',
+                        '--gray': '#d9dbf1',
+                        '--dark-gray': '#2e2a4d',
+                        '--white': '#f7f7ff',
+                        '--light-gray-bg': '#efefff',
+                        '--tab-border': '1px solid #d0d1f5',
+                        '--success-green': '#6bcfcf',
+                        '--warning-orange': '#f8c291',
+                        '--error-red': '#ff6b81',
+                        '--tab-text-color': '#2e2a4d',
+                        '--tab-text-color-active': '#6c5ce7',
+                        '--tab-text-color-hover': '#4b3fa2',
+                        '--tab-bg-inactive': '#ecebff',
+                        '--tab-bg-active': '#f7f7ff',
+                        '--tab-hover-bg': '#dedcff',
+                        '--tab-border-color': '#d0d1f5',
+                        '--tab-border-color-active': '#6c5ce7'
+                    }
+                },
+                {
+                    id: 'coral',
+                    name: 'Coral',
+                    description: 'Mistura energética de coral e turquesa.',
+                    preview: 'linear-gradient(135deg, #ff6f61 0%, #17a398 100%)',
+                    properties: {
+                        '--primary-blue': '#ff6f61',
+                        '--secondary-blue': '#17a398',
+                        '--gray': '#f3d1d1',
+                        '--dark-gray': '#2d3142',
+                        '--white': '#fff9f6',
+                        '--light-gray-bg': '#fef3f2',
+                        '--tab-border': '1px solid #f8cbc3',
+                        '--success-green': '#06d6a0',
+                        '--warning-orange': '#ffd166',
+                        '--error-red': '#ef476f',
+                        '--tab-text-color': '#2d3142',
+                        '--tab-text-color-active': '#ff6f61',
+                        '--tab-text-color-hover': '#1f3d56',
+                        '--tab-bg-inactive': '#ffe8e3',
+                        '--tab-bg-active': '#fff9f6',
+                        '--tab-hover-bg': '#ffd9d2',
+                        '--tab-border-color': '#f8cbc3',
+                        '--tab-border-color-active': '#ff6f61'
+                    }
+                },
+                {
+                    id: 'slate',
+                    name: 'Ardósia',
+                    description: 'Cinzas elegantes com detalhes em azul.',
+                    preview: 'linear-gradient(135deg, #2f3e46 0%, #52796f 100%)',
+                    properties: {
+                        '--primary-blue': '#2f3e46',
+                        '--secondary-blue': '#52796f',
+                        '--gray': '#cad2c5',
+                        '--dark-gray': '#1b2024',
+                        '--white': '#f0f4f3',
+                        '--light-gray-bg': '#e8f1ef',
+                        '--tab-border': '1px solid #b6c4bf',
+                        '--success-green': '#84a98c',
+                        '--warning-orange': '#f4a259',
+                        '--error-red': '#d1495b',
+                        '--tab-text-color': '#1b2024',
+                        '--tab-text-color-active': '#2f3e46',
+                        '--tab-text-color-hover': '#0f1820',
+                        '--tab-bg-inactive': '#d8e4df',
+                        '--tab-bg-active': '#f0f4f3',
+                        '--tab-hover-bg': '#c5d9d3',
+                        '--tab-border-color': '#b6c4bf',
+                        '--tab-border-color-active': '#2f3e46'
+                    }
+                },
+                {
+                    id: 'emerald',
+                    name: 'Esmeralda',
+                    description: 'Verde esmeralda com acentos sofisticados.',
+                    preview: 'linear-gradient(135deg, #0b8457 0%, #00c49a 100%)',
+                    properties: {
+                        '--primary-blue': '#0b8457',
+                        '--secondary-blue': '#00c49a',
+                        '--gray': '#abd1c6',
+                        '--dark-gray': '#174034',
+                        '--white': '#f1fcf6',
+                        '--light-gray-bg': '#e3fcec',
+                        '--tab-border': '1px solid #c1e3d6',
+                        '--success-green': '#1dd3b0',
+                        '--warning-orange': '#ffba08',
+                        '--error-red': '#ef476f',
+                        '--tab-text-color': '#174034',
+                        '--tab-text-color-active': '#0b8457',
+                        '--tab-text-color-hover': '#0f5c3d',
+                        '--tab-bg-inactive': '#d1f5e3',
+                        '--tab-bg-active': '#f1fcf6',
+                        '--tab-hover-bg': '#c1edd7',
+                        '--tab-border-color': '#c1e3d6',
+                        '--tab-border-color-active': '#0b8457'
+                    }
+                },
+                {
+                    id: 'amber',
+                    name: 'Âmbar',
+                    description: 'Âmbares quentes com contraste neutro.',
+                    preview: 'linear-gradient(135deg, #ffb703 0%, #fb8500 100%)',
+                    properties: {
+                        '--primary-blue': '#fb8500',
+                        '--secondary-blue': '#ffb703',
+                        '--gray': '#ffe5b4',
+                        '--dark-gray': '#2f2f2f',
+                        '--white': '#fff8ed',
+                        '--light-gray-bg': '#fff4e6',
+                        '--tab-border': '1px solid #ffd8a8',
+                        '--success-green': '#52b788',
+                        '--warning-orange': '#f8961e',
+                        '--error-red': '#d62828',
+                        '--tab-text-color': '#2f2f2f',
+                        '--tab-text-color-active': '#fb8500',
+                        '--tab-text-color-hover': '#613500',
+                        '--tab-bg-inactive': '#ffe5b4',
+                        '--tab-bg-active': '#fff8ed',
+                        '--tab-hover-bg': '#ffdba3',
+                        '--tab-border-color': '#ffd8a8',
+                        '--tab-border-color-active': '#fb8500'
+                    }
+                }
+            ];
+
+            function showThemeFeedback(message, type = 'success') {
+                if (!themeMessage) return;
+                themeMessage.textContent = message;
+                themeMessage.className = 'message ' + type;
+                setTimeout(() => {
+                    if (!themeMessage) return;
+                    themeMessage.textContent = '';
+                    themeMessage.className = 'message';
+                }, 4000);
+            }
+
+            function applyThemeVariables(vars) {
+                if (!vars) return;
+                Object.entries(vars).forEach(([key, value]) => {
+                    if (typeof key === 'string' && key.startsWith('--')) {
+                        document.documentElement.style.setProperty(key, value);
+                    }
+                });
+            }
+
+            function persistTheme(themeId, vars) {
+                if (themeId) {
+                    localStorage.setItem(THEME_ID_KEY, themeId);
+                }
+                if (vars) {
+                    localStorage.setItem(THEME_VARS_KEY, JSON.stringify(vars));
+                }
+            }
+
+            function updateActiveTheme(themeId) {
+                if (!themeGrid) return;
+                themeGrid.querySelectorAll('.theme-card').forEach(card => {
+                    const isActive = card.dataset.themeId === themeId;
+                    card.classList.toggle('is-active', isActive);
+                    card.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+                });
+            }
+
+            function renderThemes(selectedId) {
+                if (!themeGrid) return;
+                themeGrid.innerHTML = '';
+                themes.forEach(theme => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'theme-card';
+                    button.dataset.themeId = theme.id;
+                    button.setAttribute('aria-label', `Aplicar tema ${theme.name}`);
+                    button.setAttribute('aria-pressed', theme.id === selectedId ? 'true' : 'false');
+                    button.innerHTML = `
+                        <span class="theme-preview" style="background: ${theme.preview}"></span>
+                        <div class="theme-info">
+                            <strong>${theme.name}</strong>
+                            <span>${theme.description}</span>
+                        </div>
+                    `;
+                    if (theme.id === selectedId) {
+                        button.classList.add('is-active');
+                    }
+                    button.addEventListener('click', () => {
+                        handleThemeSelection(theme.id);
+                    });
+                    themeGrid.appendChild(button);
+                });
+            }
+
+            function handleThemeSelection(themeId) {
+                const theme = themes.find(item => item.id === themeId);
+                if (!theme) {
+                    console.warn('Tema não encontrado:', themeId);
+                    return;
+                }
+                applyThemeVariables(theme.properties);
+                document.body.dataset.theme = theme.id;
+                persistTheme(theme.id, theme.properties);
+                updateActiveTheme(theme.id);
+                showThemeFeedback(`Tema "${theme.name}" aplicado com sucesso.`, 'success');
+                notifyParentActivity();
+                window.parent.postMessage({ type: 'theme_changed', themeId: theme.id, themeVariables: theme.properties }, '*');
+            }
+
+            function initializeThemeSelector() {
+                if (!themeGrid) return;
+                const storedId = localStorage.getItem(THEME_ID_KEY);
+                let selectedTheme = themes.find(theme => theme.id === storedId);
+                let themeVars = null;
+
+                if (!selectedTheme) {
+                    const storedVarsRaw = localStorage.getItem(THEME_VARS_KEY);
+                    if (storedVarsRaw) {
+                        try {
+                            themeVars = JSON.parse(storedVarsRaw);
+                        } catch (error) {
+                            console.warn('Falha ao ler tema salvo:', error);
+                        }
+                    }
+                }
+
+                if (!selectedTheme) {
+                    selectedTheme = themes.find(theme => theme.id === DEFAULT_THEME_ID) || themes[0];
+                }
+
+                const activeId = selectedTheme ? selectedTheme.id : (storedId || DEFAULT_THEME_ID);
+                renderThemes(activeId);
+
+                if (selectedTheme) {
+                    applyThemeVariables(selectedTheme.properties);
+                    document.body.dataset.theme = selectedTheme.id;
+                    persistTheme(selectedTheme.id, selectedTheme.properties);
+                    updateActiveTheme(selectedTheme.id);
+                } else if (themeVars) {
+                    applyThemeVariables(themeVars);
+                    document.body.dataset.theme = storedId || '';
+                    updateActiveTheme(storedId || DEFAULT_THEME_ID);
+                }
+            }
+
+            initializeThemeSelector();
+
+            window.addEventListener('message', (event) => {
+                if (event.data?.type === 'apply_theme') {
+                    const vars = event.data.themeVariables;
+                    if (vars) {
+                        applyThemeVariables(vars);
+                    }
+                    if (event.data?.themeId) {
+                        document.body.dataset.theme = event.data.themeId;
+                        updateActiveTheme(event.data.themeId);
+                    }
+                }
+            });
+ 
+            // ==================== FUNÇÕES AUXILIARES ====================
+            
+            function getAllSystemData() {
+                const data = {};
+                // Lista de chaves importantes que devem ser sempre incluídas
+                const importantKeys = [
+                    'equipamentosSuprimentos',
+                    'equipamentosMovements',
+                    'equipamentosTabOrder',
+                    'cadastroItensPersonalizados'
+                ];
+                
+                // Coletar todas as chaves do localStorage
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key) {
+                        data[key] = localStorage.getItem(key);
+                    }
+                }
+                
+                // Garantir que as chaves importantes estejam incluídas (mesmo que vazias)
+                importantKeys.forEach(key => {
+                    if (!(key in data)) {
+                        // Se a chave não existe, adicionar como vazia para garantir que seja incluída
+                        const value = localStorage.getItem(key);
+                        data[key] = value !== null ? value : '';
+                    }
+                });
+                
+                // Log para debug
+                console.log('Dados coletados para backup:', {
+                    totalKeys: Object.keys(data).length,
+                    equipamentosSuprimentos: data.equipamentosSuprimentos ? 'presente' : 'ausente',
+                    equipamentosMovements: data.equipamentosMovements ? 'presente' : 'ausente',
+                    equipamentosTabOrder: data.equipamentosTabOrder ? 'presente' : 'ausente',
+                    cadastroItensPersonalizados: data.cadastroItensPersonalizados ? 'presente' : 'ausente'
+                });
+                
+                return data;
+            }
+
+            function showPasswordMessage(message, type) {
+                passwordMessage.textContent = message;
+                passwordMessage.className = 'message ' + type;
+                setTimeout(() => {
+                    passwordMessage.textContent = '';
+                    passwordMessage.className = 'message';
+                }, 5000);
+            }
+
+            function showBackupMessage(message, type) {
+                backupMessage.textContent = message;
+                backupMessage.className = 'message ' + type;
+                setTimeout(() => {
+                    backupMessage.textContent = '';
+                    backupMessage.className = 'message';
+                }, 5000);
+            }
+
+            // ==================== SENHA ====================
+            
+            if (showPasswordCheckbox) {
+                showPasswordCheckbox.addEventListener('change', function() {
+                    const inputType = this.checked ? 'text' : 'password';
+                    oldPasswordInput.type = inputType;
+                    newPasswordInput.type = inputType;
+                });
+            }
+
+            function getCurrentPassword() {
+                return localStorage.getItem('adminPassword') || DEFAULT_PASSWORD;
+            }
+
+            if (savePasswordBtn) {
+                savePasswordBtn.addEventListener('click', () => {
+                    console.log('Botão Salvar Senha clicado!');
+                    const currentPassword = getCurrentPassword();
+                    const oldPass = oldPasswordInput.value;
+                    const newPass = newPasswordInput.value;
+
+                    if (oldPass === currentPassword) {
+                        if (newPass.trim() === '') {
+                            showPasswordMessage('A nova senha não pode ser vazia.', 'error');
+                            return;
+                        }
+                        localStorage.setItem('adminPassword', newPass);
+                        showPasswordMessage('Senha alterada com sucesso!', 'success');
+                        oldPasswordInput.value = '';
+                        newPasswordInput.value = '';
+
+                        window.parent.postMessage({ type: 'password_changed' }, '*');
+                    } else {
+                        showPasswordMessage('Senha atual incorreta.', 'error');
+                        oldPasswordInput.value = '';
+                    }
+                });
+            }
+
+            // ==================== BACKUP E EXPORTAÇÃO ====================
+            
+            if (backupNowBtn) {
+                backupNowBtn.addEventListener('click', () => {
+                    console.log('Botão Fazer Backup clicado!');
+                    try {
+                        const data = getAllSystemData();
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                        const filename = `SOT_Backup_${timestamp}.json`;
+                        
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        
+                        showBackupMessage('Backup criado com sucesso!', 'success');
+                        console.log('Backup criado:', filename);
+                    } catch (error) {
+                        console.error('Erro ao fazer backup:', error);
+                        showBackupMessage('Erro ao criar backup!', 'error');
+                    }
+                });
+            }
+
+            if (exportJsonBtn) {
+                exportJsonBtn.addEventListener('click', () => {
+                    console.log('Botão Exportar clicado!');
+                    try {
+                        const data = getAllSystemData();
+                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                        const filename = `SOT_Export_${timestamp}.json`;
+                        
+                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        
+                        showBackupMessage('Dados exportados com sucesso!', 'success');
+                        console.log('Dados exportados:', filename);
+                    } catch (error) {
+                        console.error('Erro ao exportar:', error);
+                        showBackupMessage('Erro ao exportar dados!', 'error');
+                    }
+                });
+            }
+
+            // ==================== IMPORTAR ====================
+            
+            // Função para mesclar arrays, evitando duplicatas
+            function mergeArrays(existingArray, importedArray, idField = 'id') {
+                if (!Array.isArray(existingArray)) existingArray = [];
+                if (!Array.isArray(importedArray)) importedArray = [];
+                
+                const existingIds = new Set(existingArray.map(item => item[idField]).filter(Boolean));
+                const newItems = importedArray.filter(item => {
+                    const itemId = item[idField];
+                    return itemId && !existingIds.has(itemId);
+                });
+                
+                return [...existingArray, ...newItems];
+            }
+            
+            // Função para mesclar dados inteligentemente
+            function mergeSystemData(existingData, importedData) {
+                const merged = { ...existingData };
+                let stats = {
+                    added: 0,
+                    skipped: 0,
+                    updated: 0
+                };
+                
+                // Lista de chaves que contêm arrays que precisam ser mesclados
+                const arrayKeys = [
+                    'saidasAdministrativas',
+                    'saidasAmbulancias',
+                    'viaturasCadastradas',
+                    'motoristasCadastrados',
+                    'totaisManuaisCombustivel',
+                    'vistoriasRealizadas',
+                    'escalaData',
+                    'avisos',
+                    'lembretes_ativos',
+                    'saidasCadastradas'
+                ];
+                
+                // Chaves de objetos que devem ser substituídos completamente (não mesclados)
+                const objectKeys = [
+                    'equipamentosSuprimentos',
+                    'equipamentosMovements',
+                    'equipamentosTabOrder',
+                    'cadastroItensPersonalizados'
+                ];
+                
+                for (const key in importedData) {
+                    // Ignorar chaves de controle
+                    if (key.startsWith('_') || key === 'backupInfo' || key === '_backupInfo') {
+                        continue;
+                    }
+                    
+                    const existingValue = existingData[key];
+                    const importedValue = importedData[key];
+                    
+                    // Se a chave não existe, adicionar
+                    if (existingValue === null || existingValue === undefined) {
+                        merged[key] = importedValue;
+                        stats.added++;
+                        continue;
+                    }
+                    
+                    // Se for uma das chaves de objeto (equipamentos), substituir completamente
+                    if (objectKeys.includes(key)) {
+                        merged[key] = importedValue;
+                        stats.updated++;
+                        continue;
+                    }
+                    
+                    // Se for uma das chaves de array, mesclar arrays
+                    if (arrayKeys.includes(key)) {
+                        try {
+                            const existingArray = JSON.parse(existingValue);
+                            const importedArray = JSON.parse(importedValue);
+                            
+                            const mergedArray = mergeArrays(existingArray, importedArray);
+                            merged[key] = JSON.stringify(mergedArray);
+                            
+                            const newCount = mergedArray.length - existingArray.length;
+                            stats.added += newCount;
+                            stats.skipped += importedArray.length - newCount;
+                        } catch (e) {
+                            // Se não for JSON válido, manter o existente
+                            console.warn(`Erro ao mesclar ${key}:`, e);
+                            stats.skipped++;
+                        }
+                    } else {
+                        // Para outras chaves, manter o valor existente (não sobrescrever)
+                        stats.skipped++;
+                    }
+                }
+                
+                return { merged, stats };
+            }
+            
+            if (importJsonBtn && importFileInput) {
+                importJsonBtn.addEventListener('click', () => {
+                    console.log('Botão Importar clicado!');
+                    importFileInput.click();
+                });
+
+                importFileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const importedData = JSON.parse(event.target.result);
+                            
+                            // Coletar dados existentes
+                            const existingData = {};
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && !key.startsWith('_')) {
+                                    existingData[key] = localStorage.getItem(key);
+                                }
+                            }
+                            
+                            // Perguntar ao usuário qual modo de importação deseja
+                            const importMode = confirm(
+                                'Escolha o modo de importação:\n\n' +
+                                'OK = Mesclar dados (mantém existentes e adiciona apenas novos)\n' +
+                                'Cancelar = Substituir tudo (apaga dados existentes)'
+                            );
+                            
+                            if (importMode) {
+                                // Modo: Mesclar (padrão)
+                                const { merged, stats } = mergeSystemData(existingData, importedData);
+                                
+                                // Aplicar dados mesclados
+                                for (const key in merged) {
+                                    localStorage.setItem(key, merged[key]);
+                                }
+                                
+                                const message = `Dados mesclados com sucesso!\n\n` +
+                                              `✓ ${stats.added} novos itens adicionados\n` +
+                                              `↻ ${stats.updated} itens atualizados\n` +
+                                              `⊘ ${stats.skipped} itens já existentes mantidos\n\n` +
+                                              `Recarregando página...`;
+                                
+                                showBackupMessage(message, 'success');
+                                console.log('Estatísticas da importação:', stats);
+                                
+                                setTimeout(() => {
+                                    window.parent.postMessage({ type: 'reload_required' }, '*');
+                                }, 2000);
+                            } else {
+                                // Modo: Substituir (com confirmação adicional)
+                                if (confirm('ATENÇÃO: Isso irá SUBSTITUIR TODOS os dados atuais pelos dados importados.\n\nDeseja realmente continuar?')) {
+                                    localStorage.clear();
+                                    for (const key in importedData) {
+                                        if (!key.startsWith('_') && key !== 'backupInfo' && key !== '_backupInfo') {
+                                            localStorage.setItem(key, importedData[key]);
+                                        }
+                                    }
+                                    
+                                    // Garantir que as chaves de equipamentos e itens personalizados sejam incluídas
+                                    const importantKeys = [
+                                        'equipamentosSuprimentos', 
+                                        'equipamentosMovements', 
+                                        'equipamentosTabOrder',
+                                        'cadastroItensPersonalizados'
+                                    ];
+                                    importantKeys.forEach(key => {
+                                        if (importedData[key] !== undefined) {
+                                            localStorage.setItem(key, importedData[key]);
+                                        }
+                                    });
+                                    
+                                    showBackupMessage('Dados importados com sucesso! Recarregue a página.', 'success');
+                                    
+                                    setTimeout(() => {
+                                        window.parent.postMessage({ type: 'reload_required' }, '*');
+                                    }, 2000);
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Erro ao importar:', error);
+                            showBackupMessage('Erro ao importar dados. Arquivo inválido.', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                    importFileInput.value = '';
+                });
+            }
+
+            // ==================== APAGAR DADOS ====================
+            
+            if (clearAllDataBtn) {
+                clearAllDataBtn.addEventListener('click', () => {
+                    console.log('Botão Apagar Dados clicado!');
+                    const confirmText = 'ATENÇÃO: Esta ação irá apagar TODOS os dados do sistema permanentemente!\n\n' +
+                                      'Isso inclui:\n' +
+                                      '• Todas as saídas (administrativas, ambulâncias, cadastro)\n' +
+                                      '• Todas as viaturas cadastradas\n' +
+                                      '• Todos os motoristas cadastrados\n' +
+                                      '• Todos os abastecimentos e totais manuais\n' +
+                                      '• Todas as vistorias realizadas\n' +
+                                      '• Toda a escala de serviço\n' +
+                                      '• Todos os avisos\n' +
+                                      '• Todas as estatísticas\n' +
+                                      '• Todas as configurações e senha\n\n' +
+                                      'Esta ação é IRREVERSÍVEL!\n\n' +
+                                      'Deseja realmente continuar?';
+                    
+                    if (confirm(confirmText)) {
+                        if (confirm('ÚLTIMA CONFIRMAÇÃO: Tem CERTEZA ABSOLUTA que deseja apagar TUDO?')) {
+                            localStorage.clear();
+                            showBackupMessage('Todos os dados foram apagados! O sistema será recarregado...', 'success');
+                            
+                            setTimeout(() => {
+                                window.parent.location.reload();
+                            }, 2000);
+                        }
+                    }
+                });
+            }
+
+            console.log('=== CONFIGURAÇÕES: Todos os event listeners configurados ===');
+        });
+    </script>
+</body>
+</html>

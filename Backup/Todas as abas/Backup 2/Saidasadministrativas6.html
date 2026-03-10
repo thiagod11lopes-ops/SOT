@@ -4088,14 +4088,6 @@ await loadState();
 populateTables(); 
 populateDivisaoTransporteSelect(motoristasCadastrados); 
 }
-else if (event.data?.type === 'focus_saida_administrativa') {
-const { date, id } = event.data;
-if (date) {
-    filterDateAdmInput.value = date;
-}
-await loadState();
-populateTables();
-}
 else if (event.data?.type === 'new_saida_administrativa' || event.data?.type === 'save_saida_administrativa') {
 // Nova saída criada, salvar na API
 const saida = event.data.data;

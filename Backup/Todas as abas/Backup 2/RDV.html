@@ -1009,7 +1009,6 @@
                 <div class="table-footer-controls">
                     <button class="assinar-btn" id="assinarBtn"><i class="fas fa-signature"></i> Assinar</button>
                     <button class="save-btn" id="salvarBtn"><i class="fas fa-save"></i> Salvar</button>
-                    <button class="export-pdf-btn" id="gerarPdfBtn" title="Baixar PDF"><i class="fas fa-file-download"></i> Gerar PDF</button>
                     <button class="export-pdf-btn" id="imprimirBtn"><i class="fas fa-file-pdf"></i> Imprimir</button>
                 </div>
             </div>
@@ -1442,12 +1441,8 @@
         function carregarRDVDados(dataRDV, dadosSalvos, silencioso) {
             if (dadosSalvos) {
                 try {
-                    // Salva os dados atuais antes de carregar os novos (só persiste por data se já existia chave)
-                    if (dadosRelatorio.data && localStorage.getItem(STORAGE_KEY_RDV + '_' + dadosRelatorio.data)) {
-                        salvarDados(true);
-                    } else {
-                        salvarDados(false);
-                    }
+                    // Salva os dados atuais antes de carregar os novos
+                    salvarDados();
                     
                     // Carrega os dados da data selecionada
                     dadosRelatorio = JSON.parse(dadosSalvos);
@@ -1511,12 +1506,8 @@
         
         // Função para criar um novo RDV para uma data específica (silencioso = true suprime alerta)
         function criarNovoRDVParaData(dataRDV, silencioso) {
-            // Salva os dados atuais antes de criar um novo (só persiste por data se a data já tinha RDV salvo)
-            if (dadosRelatorio.data && localStorage.getItem(STORAGE_KEY_RDV + '_' + dadosRelatorio.data)) {
-                salvarDados(true);
-            } else {
-                salvarDados(false);
-            }
+            // Salva os dados atuais antes de criar um novo
+            salvarDados();
             
             // Usa apenas as partes da string (YYYY-MM-DD) para evitar qualquer erro de fuso: 05/02/2026 não vira 04/02/2025
             var cab = dataISOParaCabecalho(dataRDV);
@@ -1552,8 +1543,8 @@
             // Calcula totais do resumo
             calcularTotalResumo();
             
-            // Não grava chave por data aqui: o dia só fica azul quando o usuário clicar em Salvar ou Imprimir
-            salvarDados(false);
+            // Salva o novo RDV
+            salvarDados();
             
             if (!silencioso) {
                 alert(`Novo RDV para a data ${formatarDataParaExibicao(dataRDV)} criado com sucesso!`);
@@ -1876,9 +1867,6 @@
             
             // Configura o botão de impressão
             document.getElementById('imprimirBtn').addEventListener('click', imprimirDocumento);
-            // Configura o botão Gerar PDF (abre janela para salvar como PDF)
-            var gerarPdfBtn = document.getElementById('gerarPdfBtn');
-            if (gerarPdfBtn) gerarPdfBtn.addEventListener('click', gerarPdfDocumento);
             
             // Configura o botão de assinatura
             document.getElementById('assinarBtn').addEventListener('click', abrirModalAssinatura);
@@ -2077,14 +2065,13 @@
         }
         
         // Função para salvar dados
-        // persistirPorData: quando true, grava também a chave por data (sot_rdv_data_YYYY-MM-DD),
-        // fazendo o dia aparecer azul no calendário. Deve ser true apenas ao clicar em Salvar ou Imprimir.
-        function salvarDados(persistirPorData) {
+        function salvarDados() {
             // Salva os dados com a chave principal para uso atual
             localStorage.setItem(STORAGE_KEY_RDV, JSON.stringify(dadosRelatorio));
             
-            // Chave por data só é gravada ao Salvar/Imprimir, para o dia não ficar azul sem ação do usuário
-            if (persistirPorData && dadosRelatorio.data) {
+            // Se tiver data definida, salva também com uma chave específica para a data
+            // para permitir acesso histórico
+            if (dadosRelatorio.data) {
                 localStorage.setItem(`${STORAGE_KEY_RDV}_${dadosRelatorio.data}`, JSON.stringify(dadosRelatorio));
             }
             
@@ -2095,8 +2082,8 @@
         // Função para salvar os dados nas outras abas
         function salvarDadosNasOutrasAbas() {
             try {
-                // Primeiro, salva os dados localmente (com chave por data para o dia ficar azul no calendário)
-                salvarDados(true);
+                // Primeiro, salva os dados localmente
+                salvarDados();
                 
                 // Prepara os dados para compartilhar com outras abas
                 const dadosParaCompartilhar = {
@@ -2512,7 +2499,7 @@
         function imprimirDocumento() {
             try {
                 // Salva o RDV ao imprimir para que a data fique azul no calendário
-                salvarDados(true);
+                salvarDados();
                 console.log('Preparando para impressão...');
                 
                 // Ajusta larguras das colunas para melhor visualização na impressão
@@ -2622,42 +2609,6 @@
                 
                 // Restaura o estado original do body em caso de erro
                 document.body.classList.remove('pdf-mode');
-            }
-        }
-        
-        // Função para gerar PDF: abre janela com conteúdo imprimível para o usuário salvar como PDF
-        function gerarPdfDocumento() {
-            try {
-                salvarDados(true);
-                ajustarLargurasColunas();
-                var conteudo = document.getElementById('conteudo-pdf');
-                if (!conteudo) {
-                    alert('Conteúdo do RDV não encontrado.');
-                    return;
-                }
-                var estilos = Array.from(document.styleSheets).map(function(sheet) {
-                    try {
-                        return Array.from(sheet.cssRules || []).map(function(r) { return r.cssText; }).join('');
-                    } catch (e) { return ''; }
-                }).join('\n');
-                var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RDV - Salvar como PDF</title><style>body{margin:0;padding:10mm;font-family:Arial,sans-serif;font-size:9pt;} table{width:100%;border-collapse:collapse;} th,td{border:1px solid #000;padding:3px 5px;} th{background:#e2f0d9;font-weight:bold;} .cabecalho{text-align:center;margin-bottom:8px;} .rdv-titulo,.rdv-assinatura{text-align:center;}</style></head><body>' + conteudo.innerHTML + '</body></html>';
-                var win = window.open('', '_blank', 'width=900,height=700');
-                if (!win) {
-                    alert('Permita pop-ups para gerar o PDF em nova janela. Você pode usar o botão Imprimir e escolher "Salvar como PDF".');
-                    return;
-                }
-                win.document.write(html);
-                win.document.close();
-                win.focus();
-                win.onload = function() {
-                    setTimeout(function() {
-                        win.print();
-                        win.onafterprint = function() { win.close(); };
-                    }, 300);
-                };
-            } catch (error) {
-                console.error('Erro ao gerar PDF:', error);
-                alert('Erro ao gerar PDF: ' + error.message);
             }
         }
         

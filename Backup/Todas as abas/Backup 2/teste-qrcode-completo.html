@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Completo de QR Code - Sistema SOT5</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --success-green: #28a745;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --dark-gray: #333d47;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .header h1 {
+            color: var(--primary-blue);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--primary-blue);
+        }
+
+        .panel-header h2 {
+            color: var(--primary-blue);
+            font-size: 22px;
+        }
+
+        .panel-header .badge {
+            background: var(--primary-blue);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* QR Code Generator Panel */
+        .qr-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 30px;
+            background: var(--light-gray-bg);
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        #qrcode {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .qr-info {
+            text-align: center;
+            color: var(--dark-gray);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 105, 189, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success-green);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+        }
+
+        /* Scanner Panel */
+        .scanner-container {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .scanner-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .scanner-header h3 {
+            color: white;
+            margin: 0;
+        }
+
+        .scanner-header button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .scanner-header button:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        #qrReader {
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #28a745;
+            display: none;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* Form Fields */
+        .form-section {
+            margin-bottom: 20px;
+        }
+
+        .form-section h3 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--dark-gray);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        .form-group input.filled {
+            background-color: #e8f5e9;
+            border-color: var(--success-green);
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .instructions h3 {
+            color: #856404;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #856404;
+        }
+
+        .instructions li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .data-preview {
+            background: var(--light-gray-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .data-preview h4 {
+            color: var(--primary-blue);
+            margin-bottom: 10px;
+        }
+
+        .data-preview pre {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 11px;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .tip-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .tip-box strong {
+            color: #1976D2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-qrcode"></i> Teste Completo de QR Code - Sistema SOT5</h1>
+            <p>Teste o leitor de QR Code sem precisar de dois dispositivos - tudo em uma página!</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Painel Esquerdo: Gerador de QR Code -->
+            <div class="panel">
+                <div class="panel-header">
+                    <i class="fas fa-mobile-alt" style="font-size: 24px; color: var(--primary-blue);"></i>
+                    <h2>1. QR Code de Teste</h2>
+                    <span class="badge">GERADOR</span>
+                </div>
+
+                <div class="qr-display">
+                    <div id="qrcode"></div>
+                    <div class="qr-info">
+                        <p><strong>QR Code Gerado!</strong></p>
+                        <p style="font-size: 14px; color: #666;">Use a câmera do painel ao lado para escanear</p>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="regenerateQR()">
+                    <i class="fas fa-sync-alt"></i>
+                    Gerar Novo QR Code (Data/Hora Atual)
+                </button>
+
+                <div class="data-preview">
+                    <h4><i class="fas fa-database"></i> Dados no QR Code:</h4>
+                    <pre id="jsonPreview"></pre>
+                </div>
+
+                <div class="instructions">
+                    <h3><i class="fas fa-info-circle"></i> Como Usar</h3>
+                    <ol>
+                        <li>O QR Code já está gerado ao lado esquerdo</li>
+                        <li>No painel direito, clique em <strong>"Iniciar Scanner"</strong></li>
+                        <li>Permita o acesso à câmera</li>
+                        <li>Aponte a câmera para o QR Code na tela</li>
+                        <li>Os campos serão preenchidos automaticamente!</li>
+                    </ol>
+                    <div class="tip-box">
+                        <strong><i class="fas fa-lightbulb"></i> Dica:</strong> 
+                        Se a câmera não conseguir focar no QR Code da tela, tente usar um celular para escanear o QR Code do monitor, ou imprima esta página.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Painel Direito: Scanner e Formulário -->
+            <div class="panel">
+                <div class="panel-header">
+                    <i class="fas fa-camera" style="font-size: 24px; color: var(--primary-blue);"></i>
+                    <h2>2. Scanner e Formulário</h2>
+                    <span class="badge">LEITOR</span>
+                </div>
+
+                <!-- Scanner -->
+                <div class="scanner-container">
+                    <div class="scanner-header">
+                        <h3><i class="fas fa-qrcode"></i> Scanner de QR Code</h3>
+                        <button id="toggleQrScannerBtn" onclick="toggleScanner()">
+                            <i class="fas fa-camera"></i> Iniciar Scanner
+                        </button>
+                    </div>
+                    <div id="qrReader"></div>
+                    <div id="successMessage" class="success-message">
+                        <i class="fas fa-check-circle"></i> QR Code lido com sucesso! Dados preenchidos automaticamente.
+                    </div>
+                </div>
+
+                <!-- Formulário -->
+                <div class="form-section">
+                    <h3><i class="fas fa-clipboard-list"></i> Dados Preenchidos Automaticamente</h3>
+                    
+                    <div class="form-group">
+                        <label>Data do Pedido:</label>
+                        <input type="date" id="dataPedido" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hora do Pedido:</label>
+                        <input type="time" id="horaPedido" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Setor:</label>
+                        <input type="text" id="setor" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ramal:</label>
+                        <input type="text" id="ramal" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cidade:</label>
+                        <input type="text" id="cidade" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Bairro:</label>
+                        <input type="text" id="bairro" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Objetivo da Saída:</label>
+                        <input type="text" id="objetivo" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nº de Passageiros:</label>
+                        <input type="text" id="numPassageiros" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Responsável:</label>
+                        <input type="text" id="responsavel" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hospital:</label>
+                        <input type="text" id="hospital" readonly>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" onclick="limparFormulario()">
+                    <i class="fas fa-eraser"></i>
+                    Limpar Formulário
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let html5QrCode = null;
+        let isScanning = false;
+
+        // Dados de exemplo para o QR Code (formato ULTRA compacto - apenas 10 campos)
+        function getTestData() {
+            const now = new Date();
+            const dataAtual = now.toISOString().split('T')[0];
+            const horaAtual = now.toTimeString().split(' ')[0].substring(0, 5);
+
+            return {
+                dt: dataAtual,
+                hr: horaAtual,
+                st: "Emergência",
+                rm: "2345",
+                cd: "Rio de Janeiro",
+                br: "Centro",
+                ob: "Inter Hospitalar",
+                ps: "2",
+                rs: "Dr. José Santos",
+                th: "HNMD"
+            };
+        }
+
+        // Gerar QR Code
+        function generateQRCode() {
+            const qrcodeContainer = document.getElementById('qrcode');
+            qrcodeContainer.innerHTML = '';
+
+            const testData = getTestData();
+            const qrData = JSON.stringify(testData);
+
+            new QRCode(qrcodeContainer, {
+                text: qrData,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // Atualizar preview JSON
+            document.getElementById('jsonPreview').textContent = JSON.stringify(testData, null, 2);
+        }
+
+        // Regenerar QR Code
+        function regenerateQR() {
+            generateQRCode();
+            alert('Novo QR Code gerado com data e hora atual!');
+        }
+
+        // Toggle Scanner
+        async function toggleScanner() {
+            if (!isScanning) {
+                await startScanner();
+            } else {
+                await stopScanner();
+            }
+        }
+
+        // Iniciar Scanner
+        async function startScanner() {
+            try {
+                html5QrCode = new Html5Qrcode("qrReader");
+                
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    onScanSuccess,
+                    onScanFailure
+                );
+
+                isScanning = true;
+                document.getElementById('toggleQrScannerBtn').innerHTML = '<i class="fas fa-stop"></i> Parar Scanner';
+            } catch (err) {
+                console.error('Erro ao iniciar scanner:', err);
+                alert('Erro ao acessar a câmera. Verifique as permissões do navegador.');
+            }
+        }
+
+        // Parar Scanner
+        async function stopScanner() {
+            if (html5QrCode && isScanning) {
+                try {
+                    await html5QrCode.stop();
+                    html5QrCode.clear();
+                    isScanning = false;
+                    document.getElementById('toggleQrScannerBtn').innerHTML = '<i class="fas fa-camera"></i> Iniciar Scanner';
+                } catch (err) {
+                    console.error('Erro ao parar scanner:', err);
+                }
+            }
+        }
+
+        // Callback de sucesso
+        function onScanSuccess(decodedText, decodedResult) {
+            try {
+                const data = JSON.parse(decodedText);
+                preencherFormulario(data);
+                
+                // Mostrar mensagem de sucesso
+                const successMsg = document.getElementById('successMessage');
+                successMsg.classList.add('show');
+                setTimeout(() => {
+                    successMsg.classList.remove('show');
+                }, 5000);
+
+                // Parar scanner
+                stopScanner();
+            } catch (error) {
+                console.error('Erro ao processar QR Code:', error);
+                alert('QR Code inválido!');
+            }
+        }
+
+        // Callback de falha (silencioso)
+        function onScanFailure(error) {
+            // Não fazer nada
+        }
+
+        // Preencher formulário
+        function preencherFormulario(data) {
+            // Preencher campos
+            document.getElementById('dataPedido').value = data.dt || '';
+            document.getElementById('horaPedido').value = data.hr || '';
+            document.getElementById('setor').value = data.st || '';
+            document.getElementById('ramal').value = data.rm || '';
+            document.getElementById('cidade').value = data.cd || '';
+            document.getElementById('bairro').value = data.br || '';
+            document.getElementById('objetivo').value = data.ob || '';
+            document.getElementById('numPassageiros').value = data.ps || '';
+            document.getElementById('responsavel').value = data.rs || '';
+            document.getElementById('hospital').value = data.th || '';
+
+            // Adicionar classe 'filled' aos campos preenchidos
+            document.querySelectorAll('.form-group input').forEach(input => {
+                if (input.value) {
+                    input.classList.add('filled');
+                }
+            });
+
+            console.log('Formulário preenchido:', data);
+        }
+
+        // Limpar formulário
+        function limparFormulario() {
+            document.querySelectorAll('.form-group input').forEach(input => {
+                input.value = '';
+                input.classList.remove('filled');
+            });
+        }
+
+        // Inicializar ao carregar
+        window.addEventListener('DOMContentLoaded', generateQRCode);
+    </script>
+</body>
+</html>

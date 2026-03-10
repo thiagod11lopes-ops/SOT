@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conselho de Gestão - Aba Completa</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+}
+body {
+font-family: 'Arial', sans-serif;
+margin: 0;
+padding: 20px;
+background-color: var(--light-gray-bg);
+color: var(--dark-gray);
+}
+/* Dashboard Header */
+.dashboard-header {
+text-align: center;
+padding: 30px 20px;
+background: linear-gradient(135deg, #4a69bd 0%, #6c88c9 100%);
+color: white;
+border-radius: 12px;
+margin-bottom: 30px;
+box-shadow: 0 4px 15px rgba(74, 105, 189, 0.3);
+}
+.dashboard-header h1 {
+margin: 0 0 10px 0;
+font-size: 32px;
+font-weight: 700;
+}
+.dashboard-header p {
+margin: 0;
+font-size: 16px;
+opacity: 0.95;
+}
+/* KPI Cards */
+.kpi-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+gap: 20px;
+margin-bottom: 30px;
+}
+.kpi-card {
+background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+border: 2px solid #e9ecef;
+border-radius: 12px;
+padding: 25px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+transition: all 0.3s ease;
+position: relative;
+overflow: hidden;
+}
+.kpi-card::before {
+content: '';
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 4px;
+background: linear-gradient(90deg, #4a69bd, #6c88c9);
+}
+.kpi-card:hover {
+transform: translateY(-5px);
+box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+.kpi-card .icon {
+font-size: 36px;
+margin-bottom: 15px;
+color: #4a69bd;
+}
+.kpi-card .label {
+font-size: 14px;
+color: #6c757d;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+margin-bottom: 10px;
+font-weight: 600;
+}
+.kpi-card .value {
+font-size: 32px;
+font-weight: 700;
+color: #2c3e50;
+margin-bottom: 5px;
+}
+.kpi-card .subvalue {
+font-size: 14px;
+color: #6c757d;
+}
+/* Charts Grid */
+.charts-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+gap: 25px;
+margin-bottom: 30px;
+}
+.chart-card {
+background: white;
+border: 1px solid #e9ecef;
+border-radius: 12px;
+padding: 20px;
+box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.chart-card h3 {
+margin: 0 0 20px 0;
+font-size: 18px;
+color: #2c3e50;
+font-weight: 600;
+border-bottom: 2px solid #4a69bd;
+padding-bottom: 10px;
+}
+.chart-card .chart-container {
+height: 350px;
+position: relative;
+}
+/* Dashboard Sections */
+.dashboard-section {
+margin-bottom: 30px;
+}
+.dashboard-section-title {
+font-size: 24px;
+color: #2c3e50;
+font-weight: 700;
+margin-bottom: 20px;
+padding-bottom: 10px;
+border-bottom: 3px solid #4a69bd;
+}
+/* Mini Rankings */
+.mini-ranking-grid {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+gap: 20px;
+}
+.mini-ranking-card {
+background: white;
+border: 1px solid #e9ecef;
+border-radius: 10px;
+padding: 15px;
+box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.mini-ranking-card h4 {
+margin: 0 0 15px 0;
+font-size: 16px;
+color: #2c3e50;
+font-weight: 600;
+text-align: center;
+border-bottom: 2px solid #3498db;
+padding-bottom: 8px;
+}
+.mini-ranking-item {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 8px 10px;
+margin-bottom: 5px;
+border-radius: 6px;
+background: #f8f9fa;
+transition: background 0.2s ease;
+}
+.mini-ranking-item:hover {
+background: #e9ecef;
+}
+.mini-ranking-item.top-1 {
+background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+font-weight: bold;
+}
+.mini-ranking-item.top-2 {
+background: linear-gradient(135deg, #c0c0c0 0%, #ddd 100%);
+font-weight: bold;
+}
+.mini-ranking-item.top-3 {
+background: linear-gradient(135deg, #cd7f32 0%, #d4a574 100%);
+color: white;
+font-weight: bold;
+}
+/* Table */
+.table-container {
+overflow-x: auto;
+border: 1px solid #dcdcdc;
+border-radius: 8px;
+box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+background-color: white;
+margin: 20px 0;
+}
+table {
+width: 100%;
+border-collapse: collapse;
+}
+th, td {
+border: 1px solid #e9ecef;
+padding: 12px;
+text-align: left;
+}
+thead th {
+background-color: #4a69bd;
+color: white;
+font-weight: bold;
+text-transform: uppercase;
+font-size: 12px;
+}
+tbody tr:nth-child(even) {
+background-color: #f8f9fa;
+}
+@media (max-width: 768px) {
+.kpi-grid {
+grid-template-columns: 1fr;
+}
+.charts-grid {
+grid-template-columns: 1fr;
+}
+.mini-ranking-grid {
+grid-template-columns: 1fr;
+}
+.dashboard-header h1 {
+font-size: 24px;
+}
+}
+</style>
+</head>
+<body>
+
+<div id="managementBoardContent">
+<div class="dashboard-header">
+<h1><i class="fas fa-chart-line"></i> CONSELHO DE GESTÃO</h1>
+<p>Painel Executivo de Estatísticas e Indicadores de Transporte</p>
+</div>
+
+<div class="kpi-grid">
+<div class="kpi-card">
+<div class="icon"><i class="fas fa-car"></i></div>
+<div class="label">Total de Saídas</div>
+<div class="value" id="mgmt-total-saidas">0</div>
+<div class="subvalue" id="mgmt-saidas-breakdown">Adm: 0 | Amb: 0</div>
+</div>
+<div class="kpi-card">
+<div class="icon"><i class="fas fa-road"></i></div>
+<div class="label">KM Rodados</div>
+<div class="value" id="mgmt-total-km">0</div>
+<div class="subvalue">Quilômetros Totais</div>
+</div>
+<div class="kpi-card">
+<div class="icon"><i class="fas fa-gas-pump"></i></div>
+<div class="label">Combustível</div>
+<div class="value" id="mgmt-total-fuel">R$ 0,00</div>
+<div class="subvalue" id="mgmt-fuel-breakdown">Gasolina + Diesel</div>
+</div>
+<div class="kpi-card">
+<div class="icon"><i class="fas fa-chart-bar"></i></div>
+<div class="label">Média Diária</div>
+<div class="value" id="mgmt-daily-avg">0</div>
+<div class="subvalue">Saídas por Dia</div>
+</div>
+</div>
+
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-chart-pie"></i> Visão Geral de Dados</h2>
+<div class="charts-grid">
+<div class="chart-card">
+<h3>Saídas Mensais por Tipo</h3>
+<div class="chart-container"><canvas id="mgmt-monthly-chart"></canvas></div>
+</div>
+<div class="chart-card">
+<h3>Distribuição por Tipo de Veículo</h3>
+<div class="chart-container"><canvas id="mgmt-type-distribution"></canvas></div>
+</div>
+</div>
+</div>
+
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-trophy"></i> Rankings e Desempenho</h2>
+<div class="mini-ranking-grid">
+<div class="mini-ranking-card">
+<h4>🚗 Top Motoristas - Saídas</h4>
+<div id="mgmt-drivers-ranking"></div>
+</div>
+<div class="mini-ranking-card">
+<h4>🛣️ Top Motoristas - KM</h4>
+<div id="mgmt-drivers-km-ranking"></div>
+</div>
+<div class="mini-ranking-card">
+<h4>🚙 Top Viaturas Administrativas</h4>
+<div id="mgmt-vehicles-adm-ranking"></div>
+</div>
+<div class="mini-ranking-card">
+<h4>🚑 Top Ambulâncias</h4>
+<div id="mgmt-vehicles-amb-ranking"></div>
+</div>
+</div>
+</div>
+
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-map-marked-alt"></i> Análise de Destinos e Setores</h2>
+<div class="charts-grid">
+<div class="chart-card">
+<h3>Top 10 Destinos por KM</h3>
+<div class="chart-container"><canvas id="mgmt-destinations-chart"></canvas></div>
+</div>
+<div class="chart-card">
+<h3>Top 10 Setores por KM</h3>
+<div class="chart-container"><canvas id="mgmt-sectors-chart"></canvas></div>
+</div>
+</div>
+</div>
+
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-exclamation-triangle"></i> Saídas Programadas vs Não Programadas</h2>
+<div class="charts-grid">
+<div class="chart-card">
+<h3>Distribuição de Programação</h3>
+<div class="chart-container"><canvas id="mgmt-scheduled-chart"></canvas></div>
+</div>
+<div class="chart-card">
+<h3>Consumo de Combustível Mensal</h3>
+<div class="chart-container"><canvas id="mgmt-fuel-chart"></canvas></div>
+</div>
+</div>
+</div>
+
+<div class="dashboard-section">
+<h2 class="dashboard-section-title"><i class="fas fa-table"></i> Resumo Estatístico</h2>
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>Indicador</th>
+<th>Valor</th>
+<th>Detalhes</th>
+</tr>
+</thead>
+<tbody id="mgmt-summary-table">
+<tr><td>Total de Saídas</td><td id="summary-total">0</td><td>Administrativas + Ambulâncias</td></tr>
+<tr><td>KM Rodados</td><td id="summary-km">0 KM</td><td>Total acumulado</td></tr>
+<tr><td>Combustível Gasto</td><td id="summary-fuel">R$ 0,00</td><td>Gasolina + Diesel</td></tr>
+<tr><td>Média Diária</td><td id="summary-avg">0</td><td>Saídas por dia</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<script>
+// Dados de exemplo (substitua pelos dados reais do localStorage)
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Função para carregar dados do localStorage (adapte conforme necessário)
+function loadData() {
+const saidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+const saidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+const abastecimentos = JSON.parse(localStorage.getItem('abastecimentos')) || [];
+return {
+saidas: [...saidasAdm, ...saidasAmb],
+saidasAdm: saidasAdm,
+saidasAmb: saidasAmb,
+abastecimentos: abastecimentos
+};
+}
+
+// Dados de exemplo para demonstração
+const exampleData = {
+monthlyData: [45, 52, 48, 61, 55, 58, 62, 59, 54, 67, 63, 70],
+monthlyDataAmb: [23, 28, 25, 31, 29, 30, 33, 31, 28, 35, 33, 37],
+drivers: {'João Silva': 145, 'Maria Santos': 132, 'Pedro Costa': 128, 'Ana Lima': 115, 'Carlos Souza': 98},
+driversKm: {'João Silva': 12450, 'Maria Santos': 11230, 'Pedro Costa': 10890, 'Ana Lima': 9870, 'Carlos Souza': 8560},
+vehiclesAdm: {'Viatura 01': 89, 'Viatura 02': 76, 'Viatura 03': 65, 'Viatura 04': 54},
+vehiclesAmb: {'Ambulância 01': 112, 'Ambulância 02': 98, 'Ambulância 03': 87},
+destinations: {'Hospital Central': 8500, 'Posto de Saúde Norte': 6200, 'Clínica Sul': 5800, 'Hospital Regional': 5200, 'UPA Leste': 4800, 'Centro Médico': 4200, 'Laboratório': 3800, 'Farmácia Central': 3200, 'Posto Oeste': 2800, 'Clínica Norte': 2400},
+sectors: {'Saúde': 15200, 'Administração': 12800, 'Educação': 9600, 'Assistência Social': 7400, 'Obras': 6200, 'Transporte': 5800, 'Cultura': 4200, 'Esporte': 3600, 'Meio Ambiente': 2800, 'Segurança': 2200}
+};
+
+// Atualizar KPIs
+document.getElementById('mgmt-total-saidas').textContent = '1,248';
+document.getElementById('mgmt-saidas-breakdown').textContent = 'Adm: 678 | Amb: 570';
+document.getElementById('mgmt-total-km').textContent = '125,450';
+document.getElementById('mgmt-total-fuel').textContent = 'R$ 45.230,50';
+document.getElementById('mgmt-fuel-breakdown').textContent = 'Gas: R$ 28.450,00 | Diesel: R$ 16.780,50';
+document.getElementById('mgmt-daily-avg').textContent = '3,42';
+
+// Atualizar tabela resumo
+document.getElementById('summary-total').textContent = '1,248';
+document.getElementById('summary-km').textContent = '125,450 KM';
+document.getElementById('summary-fuel').textContent = 'R$ 45.230,50';
+document.getElementById('summary-avg').textContent = '3,42';
+
+// Gráfico Mensal
+new Chart(document.getElementById('mgmt-monthly-chart'), {
+type: 'bar',
+data: {
+labels: MONTHS,
+datasets: [{
+label: 'Administrativas',
+data: exampleData.monthlyData,
+backgroundColor: 'rgba(74, 105, 189, 0.7)',
+borderColor: 'rgba(74, 105, 189, 1)',
+borderWidth: 1
+}, {
+label: 'Ambulâncias',
+data: exampleData.monthlyDataAmb,
+backgroundColor: 'rgba(232, 67, 14, 0.7)',
+borderColor: 'rgba(232, 67, 14, 1)',
+borderWidth: 1
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { position: 'top' } },
+scales: { y: { beginAtZero: true } }
+}
+});
+
+// Gráfico de Distribuição
+new Chart(document.getElementById('mgmt-type-distribution'), {
+type: 'doughnut',
+data: {
+labels: ['Administrativas', 'Ambulâncias'],
+datasets: [{
+data: [678, 570],
+backgroundColor: ['rgba(74, 105, 189, 0.8)', 'rgba(232, 67, 14, 0.8)'],
+borderColor: ['rgba(74, 105, 189, 1)', 'rgba(232, 67, 14, 1)'],
+borderWidth: 2
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { position: 'bottom' } }
+}
+});
+
+// Rankings
+function renderRanking(data, elementId, isKm = false) {
+const sorted = Object.entries(data).slice(0, 5);
+const html = sorted.map(([key, value], index) => {
+const className = index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : '';
+const displayValue = isKm ? `${value.toLocaleString('pt-BR')} KM` : value.toLocaleString('pt-BR');
+return `<div class="mini-ranking-item ${className}"><span>${key}</span><span>${displayValue}</span></div>`;
+}).join('');
+document.getElementById(elementId).innerHTML = html;
+}
+
+renderRanking(exampleData.drivers, 'mgmt-drivers-ranking');
+renderRanking(exampleData.driversKm, 'mgmt-drivers-km-ranking', true);
+renderRanking(exampleData.vehiclesAdm, 'mgmt-vehicles-adm-ranking');
+renderRanking(exampleData.vehiclesAmb, 'mgmt-vehicles-amb-ranking');
+
+// Gráfico de Destinos
+new Chart(document.getElementById('mgmt-destinations-chart'), {
+type: 'bar',
+data: {
+labels: Object.keys(exampleData.destinations),
+datasets: [{
+label: 'KM Rodados',
+data: Object.values(exampleData.destinations),
+backgroundColor: 'rgba(39, 174, 96, 0.7)',
+borderColor: 'rgba(39, 174, 96, 1)',
+borderWidth: 1
+}]
+},
+options: {
+indexAxis: 'y',
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { display: false } },
+scales: { x: { beginAtZero: true } }
+}
+});
+
+// Gráfico de Setores
+new Chart(document.getElementById('mgmt-sectors-chart'), {
+type: 'bar',
+data: {
+labels: Object.keys(exampleData.sectors),
+datasets: [{
+label: 'KM Rodados',
+data: Object.values(exampleData.sectors),
+backgroundColor: 'rgba(155, 89, 182, 0.7)',
+borderColor: 'rgba(155, 89, 182, 1)',
+borderWidth: 1
+}]
+},
+options: {
+indexAxis: 'y',
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { display: false } },
+scales: { x: { beginAtZero: true } }
+}
+});
+
+// Gráfico Programadas vs Não Programadas
+new Chart(document.getElementById('mgmt-scheduled-chart'), {
+type: 'doughnut',
+data: {
+labels: ['Programadas', 'Não Programadas'],
+datasets: [{
+data: [856, 392],
+backgroundColor: ['#4a69bd', '#e84118'],
+borderColor: ['#4a69bd', '#e84118'],
+borderWidth: 2
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { position: 'bottom' } }
+}
+});
+
+// Gráfico de Combustível
+new Chart(document.getElementById('mgmt-fuel-chart'), {
+type: 'bar',
+data: {
+labels: MONTHS,
+datasets: [{
+label: 'Gasolina (R$)',
+data: [2100, 2300, 2150, 2400, 2250, 2350, 2500, 2450, 2300, 2600, 2550, 2700],
+backgroundColor: 'rgba(243, 156, 18, 0.8)',
+borderColor: 'rgba(243, 156, 18, 1)',
+borderWidth: 1
+}, {
+label: 'Diesel (R$)',
+data: [1200, 1350, 1280, 1450, 1380, 1420, 1500, 1480, 1400, 1550, 1520, 1600],
+backgroundColor: 'rgba(127, 140, 141, 0.8)',
+borderColor: 'rgba(127, 140, 141, 1)',
+borderWidth: 1
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { position: 'top' } },
+scales: { y: { beginAtZero: true } }
+}
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vistoria e RDV</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --tab-inactive-bg: #e9ecef;
+            --tab-active-bg: #ffffff;
+            --tab-border: 1px solid #dee2e6;
+            --dark-gray: #333d47;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; color: var(--dark-gray); }
+        .wrapper { display: flex; flex-direction: column; height: 100vh; }
+        .sub-tabs { display: flex; border-bottom: 2px solid var(--primary-blue); background: var(--tab-active-bg); padding: 0 10px; gap: 4px; flex-shrink: 0; }
+        .sub-tab-button {
+            background: var(--tab-inactive-bg);
+            border: var(--tab-border);
+            border-bottom: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--dark-gray);
+            border-radius: 8px 8px 0 0;
+            margin-bottom: -2px;
+            transition: background 0.2s, color 0.2s;
+        }
+        .sub-tab-button:hover { background: #dee2e6; }
+        .sub-tab-button.active {
+            background: var(--primary-blue);
+            color: #fff;
+            border-color: var(--primary-blue);
+        }
+        .sub-tab-content { display: none; flex: 1; min-height: 0; }
+        .sub-tab-content.active { display: block; }
+        .sub-tab-content iframe { width: 100%; height: 100%; border: none; display: block; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="sub-tabs">
+            <button type="button" class="sub-tab-button active" data-sub="vistoria" aria-pressed="true"><i class="fas fa-clipboard-check"></i> Vistoria</button>
+            <button type="button" class="sub-tab-button" data-sub="rdv" aria-pressed="false"><i class="fas fa-file-alt"></i> RDV</button>
+        </div>
+        <div id="vistoria" class="sub-tab-content active">
+            <iframe src="vistoriar.html" title="Vistoria"></iframe>
+        </div>
+        <div id="rdv" class="sub-tab-content">
+            <iframe src="RDV.html" title="RDV"></iframe>
+        </div>
+    </div>
+    <script>
+        document.querySelectorAll('.sub-tab-button').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var sub = this.getAttribute('data-sub');
+                document.querySelectorAll('.sub-tab-button').forEach(function(b) { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+                document.querySelectorAll('.sub-tab-content').forEach(function(c) { c.classList.remove('active'); });
+                this.classList.add('active');
+                this.setAttribute('aria-pressed', 'true');
+                var panel = document.getElementById(sub);
+                if (panel) panel.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

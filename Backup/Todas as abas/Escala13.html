@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - ESCALA</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root {
+--primary-blue: #4a69bd;
+--secondary-blue: #6c88c9;
+--gray: #dcdcdc;
+--dark-gray: #333d47;
+--white: #ffffff;
+--light-gray-bg: #f9f9f9;
+--tab-border: 1px solid #dee2e6;
+--alert-red: #ff4d4d;
+--weekend-bg: #e0e0e0;
+--header-bg: #e0e0e0;
+--vacation-bg: #ccc;
+--calendar-selected: #a9c6f2;
+--vacation-button-bg: #1e88e5;
+--download-blue: #007bff;
+}
+body {
+font-family: 'Arial', sans-serif;
+margin: 0;
+padding: 0;
+background-color: var(--light-gray-bg);
+color: var(--dark-gray);
+font-weight: 500;
+min-height: 100vh;
+}
+main {
+margin: 20px 10px;
+padding: 0;
+box-sizing: border-box;
+position: relative;
+}
+.tab-content {
+display: block;
+background-color: var(--white);
+padding: 20px;
+border-radius: 8px;
+border: 1px solid var(--tab-border);
+box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+.table-title {
+font-size: 22px;
+color: var(--primary-blue);
+font-weight: bold;
+margin: 0 0 10px 0;
+text-align: center;
+text-shadow: 0 2px 4px rgba(0,0,0,0.35), 0 4px 14px rgba(0,0,0,0.22), 0 4px 16px rgba(74,105,189,0.4);
+}
+.filter-container {
+display: flex;
+align-items: center;
+gap: 15px;
+justify-content: center;
+margin-bottom: 20px;
+}
+.header-container {
+text-align: center;
+margin-bottom: 20px;
+font-weight: bold;
+color: var(--dark-gray);
+}
+.header-container p {
+margin: 5px 0;
+line-height: 1.2;
+}
+.header-container .title1 {
+font-size: 20px;
+text-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 3px 8px rgba(0,0,0,0.2);
+}
+.header-container .title2 {
+font-size: 18px;
+text-shadow: 0 2px 4px rgba(0,0,0,0.28), 0 3px 8px rgba(0,0,0,0.18);
+}
+.header-container .title3 {
+font-size: 16px;
+text-shadow: 0 2px 4px rgba(0,0,0,0.25);
+}
+.header-container .title4 {
+font-size: 16px;
+color: var(--primary-blue);
+text-shadow: 0 2px 4px rgba(0,0,0,0.25), 0 3px 10px rgba(74,105,189,0.4);
+}
+.tab-buttons {
+display: flex;
+justify-content: center;
+border-bottom: 2px solid #ccc;
+margin-bottom: 20px;
+}
+.tab-button {
+background-color: #e9e9e9;
+color: var(--dark-gray);
+border: 1px solid #ccc;
+border-bottom: none;
+padding: 10px 15px;
+border-radius: 6px 6px 0 0;
+cursor: pointer;
+font-size: 14px;
+font-weight: bold;
+margin-right: 3px;
+transition: background-color 0.3s ease;
+text-shadow: 0 2px 4px rgba(0,0,0,0.22);
+}
+.tab-button:hover {
+background-color: #dcdcdc;
+text-shadow: 0 2px 6px rgba(0,0,0,0.28);
+}
+.tab-button.active {
+background-color: var(--white);
+border-color: var(--primary-blue);
+border-bottom: none;
+position: relative;
+top: 1px;
+color: var(--primary-blue);
+text-shadow: 0 2px 4px rgba(0,0,0,0.3), 0 4px 12px rgba(74,105,189,0.45);
+}
+.action-button {
+display: flex;
+align-items: center;
+gap: 10px;
+color: var(--white);
+padding: 10px 20px;
+border-radius: 5px;
+cursor: pointer;
+font-weight: bold;
+border: none;
+transition: background-color 0.3s ease;
+}
+.create-button-container {
+background-color: var(--primary-blue);
+}
+.create-button-container:hover {
+background-color: var(--secondary-blue);
+}
+.delete-button-container {
+background-color: var(--alert-red);
+}
+.delete-button-container:hover {
+background-color: #d32f2f;
+}
+.download-button-wrapper {
+text-align: right;
+margin-bottom: 15px;
+}
+.download-button-container {
+background-color: var(--download-blue);
+}
+.download-button-container:hover {
+background-color: #0069d9;
+}
+.escala-container {
+width: 100%;
+min-height: 600px;
+display: flex;
+justify-content: center;
+align-items: flex-start;
+background-color: #e9ecef;
+padding: 20px;
+box-sizing: border-box;
+border-radius: 8px;
+box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+overflow-x: auto;
+}
+.escala-content {
+display: flex;
+flex-direction: column;
+width: 100%;
+}
+.escala-content table {
+width: 100%;
+border-collapse: collapse;
+background-color: var(--white);
+border: 1px solid black;
+}
+.escala-content table.dnt-table {
+margin-top: 25px;
+width: auto;
+min-width: 50%;
+}
+.escala-content table.tabela-ferias {
+width: auto;
+}
+.escala-content th,
+.escala-content td {
+border: 1px solid black;
+padding: 8px;
+text-align: center;
+white-space: nowrap;
+font-size: 14px;
+}
+.escala-content th {
+background-color: var(--header-bg);
+color: var(--dark-gray);
+font-weight: bold;
+}
+.escala-content .weekday-row th {
+font-size: 12px;
+padding: 4px 8px;
+text-transform: uppercase;
+}
+.escala-content td {
+cursor: pointer;
+}
+.escala-content td[contenteditable="true"]:focus {
+outline: 2px solid var(--primary-blue);
+}
+.escala-content td.weekend,
+.escala-content th.weekend {
+background-color: var(--weekend-bg);
+}
+.escala-content td.gray-column,
+.escala-content th.gray-column {
+background-color: var(--weekend-bg) !important;
+}
+/* Estilos temporários para aumentar a fonte apenas no PDF */
+.pdf-export-mode .escala-content th,
+.pdf-export-mode .escala-content td {
+font-size: 22px;
+padding: 12px;
+}
+.pdf-export-mode .table-title {
+font-size: 36px;
+}
+.pdf-export-mode .header-container .title1 {
+font-size: 34px;
+}
+.pdf-export-mode .header-container .title2 {
+font-size: 32px;
+}
+.pdf-export-mode .header-container .title3,
+.pdf-export-mode .header-container .title4 {
+font-size: 30px;
+}
+.escala-content td.vacation {
+background-color: var(--vacation-bg) !important;
+color: var(--dark-gray);
+font-weight: bold;
+text-decoration: none;
+}
+.escala-content td:hover {
+background-color: #f0f0f0;
+}
+/* Células com S, S1, S2 sempre em negrito */
+.escala-content td.cell-servico {
+font-weight: bold;
+}
+.escala-content td.marked-x {
+position: relative;
+}
+.escala-content td.marked-x::after {
+content: 'X';
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+color: red;
+font-size: 24px;
+font-weight: bold;
+pointer-events: none;
+z-index: 1;
+}
+.message-box {
+font-weight: bold;
+color: var(--dark-gray);
+font-size: 18px;
+text-align: center;
+padding: 20px;
+}
+@keyframes blink-red {
+0% { background-color: transparent; }
+50% { background-color: var(--alert-red); }
+100% { background-color: transparent; }
+}
+.blink-red {
+animation: blink-red 1s linear 3;
+}
+.context-menu {
+display: none;
+position: absolute;
+z-index: 10;
+background-color: var(--white);
+border: 1px solid #ccc;
+box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+border-radius: 5px;
+overflow: hidden;
+flex-direction: column;
+min-width: 150px;
+}
+.context-menu a {
+padding: 10px 15px;
+text-decoration: none;
+color: var(--dark-gray);
+display: flex;
+align-items: center;
+gap: 10px;
+transition: background-color 0.2s ease;
+}
+.context-menu a:hover {
+background-color: #f0f0f0;
+}
+.create-form-container, .delete-form-container {
+display: none;
+flex-direction: column;
+align-items: center;
+gap: 20px;
+padding: 40px;
+}
+.create-form-container.active, .delete-form-container.active {
+display: flex;
+}
+.create-form-container h3, .delete-form-container h3 {
+margin-top: 0;
+color: var(--primary-blue);
+font-size: 24px;
+}
+.action-bar {
+margin-top: 15px;
+display: flex;
+gap: 10px;
+justify-content: flex-start;
+}
+.legend-container {
+margin: 20px 0 10px 0;
+padding-left: 5px;
+text-align: left;
+font-size: 14px;
+color: var(--dark-gray);
+}
+.legend-container p {
+margin: 4px 0;
+}
+.signature-container {
+display: flex;
+justify-content: space-around;
+align-items: center;
+margin-top: 200px;
+padding: 0 20px;
+}
+.signature-field {
+width: 30%;
+text-align: center;
+}
+.signature-field hr {
+border: none;
+border-top: 1px solid var(--dark-gray);
+}
+.signature-field p {
+margin-top: 8px;
+font-weight: bold;
+}
+.escala-content td.grad-nome-cell {
+padding: 0;
+}
+.escala-content td.grad-nome-cell select {
+width: 100%;
+height: 100%;
+padding: 8px;
+border: none;
+background-color: transparent;
+font-size: 14px;
+font-family: 'Arial', sans-serif;
+text-align: center;
+}
+.escala-content td.grad-nome-cell select:focus {
+outline: none;
+background-color: #f0f0f0;
+}
+/* 160 horas = laranja (no limite) */
+.escala-content td.carga-horaria-limite {
+background-color: #ff9800 !important;
+color: var(--white) !important;
+font-weight: bold;
+}
+/* Acima de 160 horas = vermelho (excedido) */
+.escala-content td.carga-horaria-excedida {
+background-color: #ff4d4d !important;
+color: var(--white) !important;
+font-weight: bold;
+}
+.modal-overlay {
+display: none;
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: rgba(0, 0, 0, 0.5);
+z-index: 1000;
+justify-content: center;
+align-items: center;
+}
+.modal-overlay.active {
+display: flex;
+}
+.modal-content {
+background-color: var(--white);
+padding: 30px;
+border-radius: 10px;
+box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+max-width: 500px;
+width: 90%;
+text-align: center;
+}
+.modal-content h3 {
+color: var(--alert-red);
+margin-top: 0;
+font-size: 24px;
+}
+.modal-content p {
+color: var(--dark-gray);
+font-size: 16px;
+line-height: 1.6;
+margin: 15px 0;
+}
+.modal-content .modal-button {
+background-color: var(--primary-blue);
+color: var(--white);
+border: none;
+padding: 12px 30px;
+border-radius: 5px;
+cursor: pointer;
+font-size: 16px;
+font-weight: bold;
+margin-top: 20px;
+transition: background-color 0.3s ease;
+}
+.modal-content .modal-button:hover {
+background-color: var(--secondary-blue);
+}
+/* Modo Escuro */
+body[data-theme="dark"],
+body[data-theme="dark"] * {
+transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+body[data-theme="dark"] {
+background-color: #1a1a1a !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] main {
+background-color: #1a1a1a;
+color: #e0e0e0;
+}
+body[data-theme="dark"] .tab-content {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #444 !important;
+}
+body[data-theme="dark"] .table-title {
+color: #6c88c9 !important;
+}
+body[data-theme="dark"] .header-container {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .header-container .title1,
+body[data-theme="dark"] .header-container .title2,
+body[data-theme="dark"] .header-container .title3 {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .header-container .title4 {
+color: #6c88c9 !important;
+}
+body[data-theme="dark"] .tab-button {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #444 !important;
+}
+body[data-theme="dark"] .tab-button:hover {
+background-color: #3d3d3d !important;
+color: #6c88c9 !important;
+}
+body[data-theme="dark"] .tab-button.active {
+background-color: #2d2d2d !important;
+color: #6c88c9 !important;
+border-color: #6c88c9 !important;
+}
+body[data-theme="dark"] .escala-container {
+background-color: #2d2d2d !important;
+}
+body[data-theme="dark"] .escala-content table {
+background-color: #2d2d2d !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .escala-content th {
+background-color: #3d3d3d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .escala-content td {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .escala-content td:hover {
+background-color: #3d3d3d !important;
+}
+body[data-theme="dark"] .escala-content td.weekend,
+body[data-theme="dark"] .escala-content th.weekend {
+background-color: #3d3d3d !important;
+}
+body[data-theme="dark"] .escala-content td.gray-column,
+body[data-theme="dark"] .escala-content th.gray-column {
+background-color: #3d3d3d !important;
+}
+body[data-theme="dark"] .escala-content td.vacation {
+background-color: #4d4d4d !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .escala-content td.grad-nome-cell select {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .escala-content td.grad-nome-cell select:focus {
+background-color: #3d3d3d !important;
+}
+body[data-theme="dark"] .filter-container label {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .filter-container select {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .legend-container {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .legend-container p {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .message-box {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .signature-field {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .signature-field hr {
+border-color: #555 !important;
+}
+body[data-theme="dark"] .signature-field p {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .context-menu {
+background-color: #2d2d2d !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .context-menu a {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .context-menu a:hover {
+background-color: #3d3d3d !important;
+}
+body[data-theme="dark"] .modal-overlay {
+background-color: rgba(0, 0, 0, 0.8) !important;
+}
+body[data-theme="dark"] .modal-content {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .modal-content h3 {
+color: #ff4d4d !important;
+}
+body[data-theme="dark"] .modal-content p {
+color: #e0e0e0 !important;
+}
+body[data-theme="dark"] .dnt-table {
+background-color: #2d2d2d !important;
+}
+body[data-theme="dark"] .dnt-table th,
+body[data-theme="dark"] .dnt-table td {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .tabela-ferias {
+background-color: #2d2d2d !important;
+}
+body[data-theme="dark"] .tabela-ferias th,
+body[data-theme="dark"] .tabela-ferias td {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+border-color: #555 !important;
+}
+body[data-theme="dark"] .tabela-ferias td.vacation-editable {
+background-color: #2d2d2d !important;
+color: #e0e0e0 !important;
+}
+</style>
+</head>
+<body>
+<main>
+<div id="escalaSection" class="tab-content active">
+<div class="download-button-wrapper">
+<button id="downloadPdfBtn" class="action-button download-button-container">
+<i class="fas fa-file-pdf"></i>
+<span>BAIXAR</span>
+</button>
+</div>
+<h2 class="table-title">Escala de Serviço</h2>
+<div class="filter-container">
+<label for="filterMonth">Mês:</label>
+<select id="filterMonth"></select>
+<label for="filterYear">Ano:</label>
+<select id="filterYear"></select>
+</div>
+<div class="tab-buttons">
+<button id="novaEscalaBtn" class="tab-button">
+<i class="fas fa-plus"></i>
+<span>Nova Escala</span>
+</button>
+<button id="deleteScaleBtn" class="tab-button">
+<i class="fas fa-trash-alt"></i>
+<span>Excluir Escala</span>
+</button>
+<button id="editScaleBtn" class="tab-button">
+<i class="fas fa-pen"></i>
+<span>Editar Escala</span>
+</button>
+<button id="vacationModeBtn" class="tab-button">
+<i class="fas fa-umbrella-beach"></i>
+<span>Férias</span>
+</button>
+</div>
+<div id="createFormContainer" class="create-form-container">
+<h3>Criar Escala para:</h3>
+<div class="form-controls">
+<select id="createModalMonth"></select>
+<select id="createModalYear"></select>
+</div>
+<div class="modal-buttons">
+<button id="cancelCreateBtn" class="action-button cancel-button-container">Cancelar</button>
+<button id="confirmCreateBtn" class="action-button create-button-container">OK</button>
+</div>
+</div>
+<div id="deleteFormContainer" class="delete-form-container">
+<h3>Excluir Escala de:</h3>
+<div class="form-controls">
+<select id="deleteModalMonth"></select>
+<select id="deleteModalYear"></select>
+</div>
+<div class="modal-buttons">
+<button id="cancelDeleteFormBtn" class="action-button cancel-button-container">Cancelar</button>
+<button id="confirmDeleteFormBtn" class="action-button delete-button-container">Excluir</button>
+</div>
+</div>
+<div id="escalaViewContainer">
+<div id="escalaHeader" class="header-container">
+<p class="title1">MARINHA DO BRASIL</p>
+<p class="title2">HOSPITAL NAVAL MARCÍLIO DIAS</p>
+<p class="title3">DETALHE DE SERVIÇO DE MOTORISTA</p>
+<p class="title4"><span id="escalaMonthYear"></span></p>
+</div>
+<div class="escala-container">
+<div id="escalaContent" class="escala-content message-box">
+Selecione o mês e ano para visualizar a escala.
+</div>
+</div>
+<div class="action-bar">
+<button id="importCsvBtn" class="action-button download-button-container">
+<i class="fas fa-file-import"></i>
+<span>Importar Escala</span>
+</button>
+<input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+<button id="exportCsvBtn" class="action-button download-button-container">
+<i class="fas fa-file-csv"></i>
+<span>Exportar Escala</span>
+</button>
+</div>
+<div id="signatureContainer" class="signature-container">
+<div class="signature-field">
+<hr>
+<p>DP Civil</p>
+<p>Recebido: _____/_____/_____</p>
+</div>
+<div class="signature-field">
+<hr>
+<p>DP Militar</p>
+<p>Recebido: _____/_____/_____</p>
+</div>
+<div class="signature-field">
+<hr>
+<p>Encarregado</p>
+</div>
+</div>
+</div>
+</div>
+<div id="contextMenu" class="context-menu">
+<a href="#" id="addRowAbove">
+<i class="fas fa-arrow-up"></i>
+<span>Adicionar Linha Acima</span>
+</a>
+<a href="#" id="addRowBelow">
+<i class="fas fa-arrow-down"></i>
+<span>Adicionar Linha Abaixo</span>
+</a>
+<a href="#" id="deleteRow">
+<i class="fas fa-trash-alt"></i>
+<span>Excluir Linha</span>
+</a>
+<a href="#" id="colorColumnGray">
+<i class="fas fa-paint-brush"></i>
+<span>Colorir Coluna Cinza</span>
+</a>
+</div>
+<div id="cargaHorariaModal" class="modal-overlay">
+<div class="modal-content">
+<h3><i class="fas fa-exclamation-triangle"></i> Atenção!</h3>
+<p id="modalMessage"></p>
+<button class="modal-button" id="closeModalBtn">Entendi</button>
+</div>
+</div>
+</main>
+
+<script src="theme-listener.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+const escalaContent = document.getElementById('escalaContent');
+const escalaViewContainer = document.getElementById('escalaViewContainer');
+const createFormContainer = document.getElementById('createFormContainer');
+const deleteFormContainer = document.getElementById('deleteFormContainer');
+const filterMonth = document.getElementById('filterMonth');
+const filterYear = document.getElementById('filterYear');
+const novaEscalaBtn = document.getElementById('novaEscalaBtn');
+const deleteScaleBtn = document.getElementById('deleteScaleBtn');
+const editScaleBtn = document.getElementById('editScaleBtn');
+const escalaMonthYear = document.getElementById('escalaMonthYear');
+const vacationModeBtn = document.getElementById('vacationModeBtn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+const importCsvBtn = document.getElementById('importCsvBtn');
+const csvFileInput = document.getElementById('csvFileInput');
+const createModalMonth = document.getElementById('createModalMonth');
+const createModalYear = document.getElementById('createModalYear');
+const confirmCreateBtn = document.getElementById('confirmCreateBtn');
+const cancelCreateBtn = document.getElementById('cancelCreateBtn');
+const deleteModalMonth = document.getElementById('deleteModalMonth');
+const deleteModalYear = document.getElementById('deleteModalYear');
+const confirmDeleteFormBtn = document.getElementById('confirmDeleteFormBtn');
+const cancelDeleteFormBtn = document.getElementById('cancelDeleteFormBtn');
+const contextMenu = document.getElementById('contextMenu');
+const addRowAboveBtn = document.getElementById('addRowAbove');
+const addRowBelowBtn = document.getElementById('addRowBelow');
+const deleteRowBtn = document.getElementById('deleteRow');
+const colorColumnGrayBtn = document.getElementById('colorColumnGray');
+const tabButtons = document.querySelectorAll('.tab-buttons .tab-button');
+let currentRightClickedRow = null;
+let currentRightClickedCell = null;
+let isEditing = false;
+let isVacationMode = false;
+const NUM_LINHAS_VAZIAS = 16;
+let registeredDrivers = [];
+function loadDrivers() {
+try {
+const storedDrivers = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+registeredDrivers = storedDrivers.filter(d => d.nome && d.nome.trim() !== '');
+} catch (e) {
+console.error("Erro ao carregar motoristas do localStorage", e);
+registeredDrivers = [];
+}
+}
+function getMonthName(monthNumber) {
+const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+return months[(parseInt(monthNumber, 10) - 1)];
+}
+function populateFilters(targetMonthSelect, targetYearSelect, showAll = false) {
+const dataAtual = new Date();
+const anoAtual = dataAtual.getFullYear().toString();
+const mesAtual = String(dataAtual.getMonth() + 1).padStart(2, '0');
+const years = new Set();
+const months = new Set();
+const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
+years.add(anoAtual);
+months.add(mesAtual);
+if (existingKeys.length === 0 || showAll) {
+for (let i = dataAtual.getFullYear() - 2; i <= dataAtual.getFullYear() + 2; i++) years.add(i.toString());
+for (let i = 1; i <= 12; i++) months.add(String(i).padStart(2, '0'));
+} else {
+existingKeys.forEach(key => {
+const [year, month] = key.split('-');
+years.add(year);
+months.add(month);
+});
+}
+const sortedYears = Array.from(years).sort((a, b) => b - a);
+const sortedMonths = Array.from(months).sort();
+targetYearSelect.innerHTML = sortedYears.map(year => `<option value="${year}">${year}</option>`).join('');
+targetMonthSelect.innerHTML = sortedMonths.map(month => `<option value="${month}" ${month === mesAtual ? 'selected' : ''}>${getMonthName(month)}</option>`).join('');
+}
+function createDriverSelect(selectedValue) {
+const select = document.createElement('select');
+select.innerHTML = '<option value="">Selecione...</option>';
+registeredDrivers.forEach(driver => {
+const option = document.createElement('option');
+option.value = driver.nome;
+option.textContent = driver.nome;
+if (driver.nome === selectedValue) {
+option.selected = true;
+}
+select.appendChild(option);
+});
+return select;
+}
+function getVacationText(name) {
+const vacations = JSON.parse(localStorage.getItem('vacations')) || {};
+return vacations[`${name}-text`] || '';
+}
+function setVacationText(name, text) {
+let vacations = JSON.parse(localStorage.getItem('vacations')) || {};
+vacations = { ...vacations, [`${name}-text`]: text };
+localStorage.setItem('vacations', JSON.stringify(vacations));
+}
+function parseVacationPeriod(text) {
+const periods = [];
+const regex = /(\d{1,2})\/(\d{1,2})\/(\d{4})\s*até\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/g;
+let match;
+while ((match = regex.exec(text)) !== null) {
+const startDate = new Date(parseInt(match[3], 10), parseInt(match[2], 10) - 1, parseInt(match[1], 10));
+const endDate = new Date(parseInt(match[6], 10), parseInt(match[5], 10) - 1, parseInt(match[4], 10));
+if (endDate < startDate) {
+alert(`Erro de data: A data final é anterior à inicial.`);
+return [];
+}
+periods.push({ start: startDate, end: endDate });
+}
+return periods;
+}
+function isDateInVacation(dateToCheck, vacationPeriods) {
+if (!vacationPeriods || vacationPeriods.length === 0) return false;
+const checkDate = new Date(dateToCheck.getFullYear(), dateToCheck.getMonth(), dateToCheck.getDate());
+for (const period of vacationPeriods) {
+if (period && period.start && period.end) {
+const startDate = new Date(period.start.getFullYear(), period.start.getMonth(), period.start.getDate());
+const endDate = new Date(period.end.getFullYear(), period.end.getMonth(), period.end.getDate());
+if (checkDate >= startDate && checkDate <= endDate) return true;
+}
+}
+return false;
+}
+function synchronizeDntTable(escalaData, numDays, month, year) {
+if (!escalaData || !escalaData.members) return;
+// Calcular mês anterior (dias não trabalhados referem-se ao mês anterior)
+let prevMonth = parseInt(month, 10) - 1;
+let prevYear = parseInt(year, 10);
+if (prevMonth < 1) {
+prevMonth = 12;
+prevYear--;
+}
+prevMonth = String(prevMonth).padStart(2, '0');
+prevYear = String(prevYear);
+const prevDataKey = `${prevYear}-${prevMonth}`;
+const prevEscalaData = JSON.parse(localStorage.getItem(prevDataKey));
+const prevNumDays = new Date(prevYear, prevMonth, 0).getDate();
+const newDntMembers = [];
+escalaData.members.forEach(member => {
+if (member[0] && member[0].toUpperCase().includes('FC')) {
+const nonWorkedDays = [];
+let prevMember = null;
+if (prevEscalaData && prevEscalaData.members) {
+prevMember = prevEscalaData.members.find(m => m[0] === member[0]);
+}
+if (prevMember) {
+for (let day = 1; day <= prevNumDays; day++) {
+const cellValue = prevMember[day];
+const isWorked = cellValue && (
+cellValue.trim().toUpperCase() === 'S' ||
+cellValue.trim().toUpperCase() === 'S1' ||
+cellValue.trim().toUpperCase() === 'S2' ||
+cellValue.trim().toUpperCase() === 'RO'
+);
+if (!isWorked) {
+nonWorkedDays.push(day);
+}
+}
+}
+if (nonWorkedDays.length > 0) {
+newDntMembers.push([member[0], nonWorkedDays.join(', ')]);
+}
+}
+});
+escalaData.dntMembers = newDntMembers;
+}
+// --- LÓGICA DE FÉRIAS ---
+function exportVacationsCsv() {
+const vacations = JSON.parse(localStorage.getItem('vacations')) || {};
+if (Object.keys(vacations).length === 0) {
+alert("Não há dados de férias para exportar.");
+return;
+}
+let csvContent = "data:text/csv;charset=utf-8,";
+csvContent += "Motorista,Periodo de Ferias\r\n";
+for (const key in vacations) {
+if (key.endsWith('-text')) {
+const driverName = key.replace('-text', '');
+const period = vacations[key];
+csvContent += `"${driverName}","${period}"\r\n`;
+}
+}
+const encodedUri = encodeURI(csvContent);
+const link = document.createElement("a");
+link.setAttribute("href", encodedUri);
+link.setAttribute("download", `ferias_${new Date().toISOString().slice(0, 10)}.csv`);
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+}
+function importVacationsCsv(event) {
+const file = event.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = function(e) {
+const text = e.target.result;
+const rows = text.split('\n').slice(1);
+const newVacations = {};
+rows.forEach(rowStr => {
+if (!rowStr.trim()) return;
+const [driver, period] = rowStr.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+if (driver && period !== undefined) {
+newVacations[`${driver}-text`] = period;
+}
+});
+if (confirm(`Foram encontrados ${Object.keys(newVacations).length} registros de férias. Deseja substituir TODOS os dados de férias atuais por estes?`)) {
+localStorage.setItem('vacations', JSON.stringify(newVacations));
+alert('Dados de férias importados com sucesso!');
+renderEscala(filterMonth.value, filterYear.value);
+}
+};
+reader.readAsText(file);
+event.target.value = '';
+}
+function deleteAllVacations() {
+if (confirm("ATENÇÃO!\n\nEsta ação irá apagar PERMANENTEMENTE TODOS os registros de férias de TODOS os motoristas.\n\nDeseja continuar?")) {
+localStorage.removeItem('vacations');
+alert('Todos os registros de férias foram excluídos.');
+renderEscala(filterMonth.value, filterYear.value);
+}
+}
+function createTable(data, month, year) {
+const container = document.createElement('div');
+const numDays = new Date(year, month, 0).getDate();
+if (isVacationMode) {
+const vacationTable = document.createElement('table');
+vacationTable.classList.add('tabela-ferias');
+const thead = vacationTable.createTHead();
+const tbody = vacationTable.createTBody();
+const headerRow = thead.insertRow();
+headerRow.innerHTML = `<th>GRAD/NOME</th><th>Período de Férias (ex: 01/01/2025 até 15/01/2025)</th>`;
+data.members.forEach(member => {
+if (!member[0]) return;
+const row = tbody.insertRow();
+const nameCell = row.insertCell();
+nameCell.textContent = member[0];
+row.insertCell().textContent = getVacationText(member[0]);
+row.cells[1].contentEditable = "true";
+row.cells[1].dataset.memberName = member[0];
+row.cells[1].classList.add('vacation-editable');
+});
+container.appendChild(vacationTable);
+const vacationActionBar = document.createElement('div');
+vacationActionBar.className = 'action-bar';
+const exportBtn = document.createElement('button');
+exportBtn.className = 'action-button download-button-container';
+exportBtn.innerHTML = `<i class="fas fa-file-csv"></i><span>Extrair Férias (CSV)</span>`;
+exportBtn.onclick = exportVacationsCsv;
+const importBtn = document.createElement('button');
+importBtn.className = 'action-button download-button-container';
+importBtn.innerHTML = `<i class="fas fa-file-import"></i><span>Importar Férias (CSV)</span>`;
+const importInput = document.createElement('input');
+importInput.type = 'file';
+importInput.accept = '.csv';
+importInput.style.display = 'none';
+importInput.onchange = importVacationsCsv;
+importBtn.onclick = () => importInput.click();
+const deleteBtn = document.createElement('button');
+deleteBtn.className = 'action-button delete-button-container';
+deleteBtn.innerHTML = `<i class="fas fa-trash-alt"></i><span>Excluir Todas as Férias</span>`;
+deleteBtn.onclick = deleteAllVacations;
+vacationActionBar.appendChild(exportBtn);
+vacationActionBar.appendChild(importBtn);
+vacationActionBar.appendChild(deleteBtn);
+container.appendChild(importInput);
+container.appendChild(vacationActionBar);
+} else {
+const mainTable = document.createElement('table');
+const mainThead = mainTable.createTHead();
+const mainTbody = mainTable.createTBody();
+const weekdays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const weekdayRow = mainThead.insertRow();
+const firstDay = new Date(year, parseInt(month, 10) - 1, 1).getDay();
+const gradNameHeader = document.createElement('th');
+gradNameHeader.textContent = "GRAD/NOME";
+gradNameHeader.rowSpan = 2;
+weekdayRow.appendChild(gradNameHeader);
+for (let i = 1; i <= numDays; i++) {
+const dayOfWeek = (firstDay + i - 1) % 7;
+const th = document.createElement('th');
+th.textContent = weekdays[dayOfWeek];
+if (dayOfWeek === 0 || dayOfWeek === 6) th.classList.add('weekend');
+if (data.grayColumns && data.grayColumns.includes(i.toString())) {
+th.classList.add('gray-column');
+}
+weekdayRow.appendChild(th);
+}
+if (isEditing) {
+["Carga Horária", "Nº de Serviços", "Nº de Rotinas"].forEach(text => {
+const th = document.createElement('th');
+th.textContent = text;
+th.rowSpan = 2;
+weekdayRow.appendChild(th);
+});
+}
+const dayNumberRow = mainThead.insertRow();
+for (let i = 1; i <= numDays; i++) {
+const dayOfWeek = (firstDay + i - 1) % 7;
+const th = document.createElement('th');
+th.textContent = i;
+if (dayOfWeek === 0 || dayOfWeek === 6) th.classList.add('weekend');
+if (data.grayColumns && data.grayColumns.includes(i.toString())) {
+th.classList.add('gray-column');
+}
+dayNumberRow.appendChild(th);
+}
+data.members.forEach((member, memberIndex) => {
+const row = mainTbody.insertRow();
+const nameCell = row.insertCell();
+nameCell.classList.add('grad-nome-cell');
+if (isEditing) {
+const select = createDriverSelect(member[0]);
+select.dataset.memberIndex = memberIndex;
+select.addEventListener('change', (e) => handleDriverSelectChange(e, memberIndex));
+nameCell.appendChild(select);
+} else {
+nameCell.textContent = member[0] || '';
+}
+nameCell.dataset.memberIndex = memberIndex;
+nameCell.dataset.dayIndex = 0;
+const vacationPeriods = parseVacationPeriod(getVacationText(member[0]));
+let i = 1;
+while (i <= numDays) {
+const currentDate = new Date(year, parseInt(month, 10) - 1, i);
+let vacationPeriod = vacationPeriods.find(p => isDateEqual(p.start, currentDate));
+const cell = row.insertCell();
+cell.contentEditable = isEditing;
+cell.dataset.memberIndex = memberIndex;
+cell.dataset.dayIndex = i;
+if (data.grayColumns && data.grayColumns.includes(i.toString())) {
+cell.classList.add('gray-column');
+}
+if (vacationPeriod && isDateEqual(vacationPeriod.start, currentDate)) {
+const duration = Math.round((vacationPeriod.end - vacationPeriod.start) / (1000 * 60 * 60 * 24)) + 1;
+cell.textContent = "FÉRIAS";
+cell.colSpan = duration;
+cell.classList.add('vacation');
+cell.contentEditable = false;
+i += duration;
+} else {
+const dayOfWeek = (firstDay + i - 1) % 7;
+const cellVal = (member[i] || '').trim().toUpperCase();
+cell.textContent = cellVal;
+if (cellVal === 'S' || cellVal === 'S1' || cellVal === 'S2') cell.classList.add('cell-servico');
+if (dayOfWeek === 0 || dayOfWeek === 6) cell.classList.add('weekend');
+i++;
+}
+}
+if (isEditing) {
+const cargaHorariaCell = row.insertCell();
+const cargaHoraria = member[numDays + 1] || '';
+cargaHorariaCell.textContent = cargaHoraria;
+cargaHorariaCell.contentEditable = false;
+cargaHorariaCell.dataset.memberIndex = memberIndex;
+cargaHorariaCell.classList.add('carga-horaria-cell');
+// Verifica se deve aplicar estilo: 160h = laranja, >160h = vermelho
+const gradName = member[0] || '';
+if (gradName.toUpperCase().includes('RM1') && cargaHoraria !== 'INFINITA') {
+const cargaHorariaNum = parseInt(cargaHoraria, 10);
+if (!isNaN(cargaHorariaNum)) {
+if (cargaHorariaNum === 160) {
+cargaHorariaCell.classList.add('carga-horaria-limite');
+} else if (cargaHorariaNum > 160) {
+cargaHorariaCell.classList.add('carga-horaria-excedida');
+}
+}
+}
+row.insertCell().textContent = member[numDays + 2] || '';
+row.cells[row.cells.length - 1].contentEditable = false;
+const rotinasCell = row.insertCell();
+rotinasCell.contentEditable = false;
+rotinasCell.textContent = (member[numDays + 1] === 'INFINITA') ? 'INFINITA' : (member[numDays + 3] || '');
+}
+});
+container.appendChild(mainTable);
+const legendContainer = document.createElement('div');
+legendContainer.className = 'legend-container';
+legendContainer.innerHTML = `
+<p><strong>S</strong> (Serviço 24h) Troca somente com autorização de Encarregado</p>
+<p><strong>S1</strong> (1 Serviço) Troca somente com autorização de Encarregado</p>
+<p><strong>S2</strong> (Serviço 12h) Troca somente com autorização de Encarregado</p>
+<p><strong>RO</strong> (Rotina) Troca somente com autorização do Escritório</p>
+`;
+container.appendChild(legendContainer);
+const dntWrapper = document.createElement('div');
+dntWrapper.id = 'dnt-table-wrapper';
+if (data.dntMembers && data.dntMembers.length > 0) {
+const dntTable = document.createElement('table');
+dntTable.classList.add('dnt-table');
+const dntThead = dntTable.createTHead();
+const dntTbody = dntTable.createTBody();
+const headerRow = dntThead.insertRow();
+const titleHeader = document.createElement('th');
+let prevM = parseInt(month, 10) - 1;
+let prevY = parseInt(year, 10);
+if (prevM < 1) { prevM = 12; prevY--; }
+titleHeader.textContent = `DIAS NÃO TRABALHADOS ${getMonthName(String(prevM).padStart(2, '0')).toUpperCase()}`;
+titleHeader.colSpan = 2;
+headerRow.appendChild(titleHeader);
+data.dntMembers.forEach(dntMember => {
+const row = dntTbody.insertRow();
+const nameCell = row.insertCell();
+nameCell.textContent = dntMember[0];
+nameCell.style.textAlign = 'left';
+nameCell.style.fontWeight = 'bold';
+nameCell.style.width = '30%';
+const daysCell = row.insertCell();
+daysCell.textContent = dntMember[1];
+daysCell.style.textAlign = 'left';
+});
+dntWrapper.appendChild(dntTable);
+}
+container.appendChild(dntWrapper);
+}
+return container;
+}
+function handleDriverSelectChange(event, memberIndex) {
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (escalaData && escalaData.members[memberIndex]) {
+escalaData.members[memberIndex][0] = event.target.value;
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+}
+}
+function isDateEqual(date1, date2) {
+return date1.getFullYear() === date2.getFullYear() &&
+date1.getMonth() === date2.getMonth() &&
+date1.getDate() === date2.getDate();
+}
+function calculateCargaHoraria(memberData, numDays) {
+const gradName = memberData[0];
+if (!gradName || (!gradName.toUpperCase().includes('RM1') && !gradName.toUpperCase().includes('FC'))) {
+return 'INFINITA';
+}
+let totalHours = 0;
+for (let i = 1; i <= numDays; i++) {
+const cellValue = memberData[i];
+if (cellValue) {
+const upperValue = cellValue.trim().toUpperCase();
+if (upperValue === 'S') {
+totalHours += 24;
+} else if (upperValue === 'S2') {
+totalHours += 12;
+} else if (upperValue === 'S1') {
+totalHours += 1; // 1 serviço
+} else if (upperValue === 'RO') {
+totalHours += 8;
+}
+}
+}
+return totalHours;
+}
+function checkColumnSCount() {
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (!escalaData) return;
+const table = escalaContent.querySelector('table');
+if (!table) return;
+table.querySelectorAll('td.blink-red').forEach(cell => cell.classList.remove('blink-red'));
+const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
+for (let i = 1; i <= numDays; i++) {
+let sCount = 0;
+escalaData.members.forEach(member => {
+if (member[i]) {
+const upperValue = member[i].toUpperCase();
+if (upperValue === 'S' || upperValue === 'S1' || upperValue === 'S2') {
+sCount++;
+}
+}
+});
+if (sCount < 2) {
+table.querySelectorAll(`td[data-day-index="${i}"]`).forEach(cell => cell.classList.add('blink-red'));
+}
+}
+}
+function updateAllCargaHoraria(escalaData) {
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
+if (escalaData) {
+escalaData.members.forEach(member => {
+member[numDays + 1] = calculateCargaHoraria(member, numDays);
+let serviceCount = 0;
+let routineCount = 0;
+for (let i = 1; i <= numDays; i++) {
+const cellVal = member[i] || '';
+const upperValue = cellVal.toUpperCase();
+if (upperValue === 'S' || upperValue === 'S1' || upperValue === 'S2') {
+serviceCount++;
+}
+if (upperValue === 'RO') {
+routineCount++;
+}
+}
+member[numDays + 2] = serviceCount;
+if (member[numDays + 1] !== 'INFINITA') {
+member[numDays + 3] = routineCount;
+} else {
+member[numDays + 3] = 'INFINITA';
+}
+});
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+}
+}
+function updateDntTableInDOM(dntMembers) {
+const wrapper = document.getElementById('dnt-table-wrapper');
+if (!wrapper) return;
+wrapper.innerHTML = '';
+if (dntMembers && dntMembers.length > 0) {
+const dntTable = document.createElement('table');
+dntTable.classList.add('dnt-table');
+const dntThead = dntTable.createTHead();
+const dntTbody = dntTable.createTBody();
+const headerRow = dntThead.insertRow();
+const titleHeader = document.createElement('th');
+let prevM = parseInt(filterMonth.value, 10) - 1;
+let prevY = parseInt(filterYear.value, 10);
+if (prevM < 1) { prevM = 12; prevY--; }
+titleHeader.textContent = `DIAS NÃO TRABALHADOS ${getMonthName(String(prevM).padStart(2, '0')).toUpperCase()}`;
+titleHeader.colSpan = 2;
+headerRow.appendChild(titleHeader);
+dntMembers.forEach(dntMember => {
+const row = dntTbody.insertRow();
+const nameCell = row.insertCell();
+nameCell.textContent = dntMember[0];
+nameCell.style.textAlign = 'left';
+nameCell.style.fontWeight = 'bold';
+nameCell.style.width = '30%';
+const daysCell = row.insertCell();
+daysCell.textContent = dntMember[1];
+daysCell.style.textAlign = 'left';
+});
+wrapper.appendChild(dntTable);
+}
+}
+function renderEscala(month, year) {
+loadDrivers();
+const dataKey = `${year}-${month}`;
+let escalaData = JSON.parse(localStorage.getItem(dataKey));
+showContentContainer('escalaViewContainer');
+escalaContent.innerHTML = '';
+escalaContent.classList.remove('message-box');
+const actionBar = document.querySelector('.action-bar');
+if (actionBar) {
+actionBar.style.display = (isEditing && !isVacationMode) ? 'flex' : 'none';
+}
+const legend = document.getElementById('legendContainer');
+if (legend) legend.style.display = 'none';
+if (escalaData) {
+const numDays = new Date(year, month, 0).getDate();
+synchronizeDntTable(escalaData, numDays, month, year);
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+const tablesContainer = createTable(escalaData, month, year);
+escalaContent.appendChild(tablesContainer);
+escalaMonthYear.textContent = `${getMonthName(month).toUpperCase()} DE ${year}`;
+if (isVacationMode) {
+escalaContent.querySelectorAll('td.vacation-editable').forEach(cell => cell.addEventListener('blur', handleVacationEdit));
+} else if (isEditing) {
+escalaContent.querySelectorAll('td[data-member-index][contenteditable="true"]').forEach(cell => {
+cell.addEventListener('input', handleCellEdit);
+cell.addEventListener('keydown', handleKeyDown);
+});
+}
+const mainTable = escalaContent.querySelector('table');
+if (mainTable) mainTable.addEventListener('contextmenu', handleContextMenu);
+if (!isEditing) checkColumnSCount();
+// Verifica carga horária de componentes RM1 após renderização
+if (escalaData && isEditing) {
+const numDays = new Date(year, month, 0).getDate();
+escalaData.members.forEach((member, memberIndex) => {
+checkCargaHorariaRM1(escalaData, memberIndex, numDays);
+});
+}
+
+// Adiciona event listener de duplo clique para marcar/desmarcar X vermelho
+escalaContent.querySelectorAll('td[data-member-index][data-day-index]').forEach(cell => {
+const dayIndex = parseInt(cell.dataset.dayIndex);
+if (dayIndex > 0) { // Ignora a célula de nome (dayIndex = 0)
+cell.addEventListener('dblclick', handleDoubleClickMark);
+// Carrega marcações existentes
+loadCellMarks(cell, month, year);
+}
+});
+} else {
+escalaContent.innerHTML = `Nenhuma escala de serviço encontrada para ${getMonthName(month)} de ${year}.`;
+escalaContent.classList.add('message-box');
+escalaMonthYear.textContent = '';
+}
+}
+function handleVacationEdit(event) {
+const cell = event.target;
+setVacationText(cell.dataset.memberName, cell.textContent.trim());
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (escalaData) {
+updateAllCargaHoraria(escalaData);
+}
+renderEscala(filterMonth.value, filterYear.value);
+}
+function handleContextMenu(event) {
+if (!isEditing) return;
+event.preventDefault();
+const targetCell = event.target.closest('td');
+if (targetCell) {
+currentRightClickedCell = targetCell;
+currentRightClickedRow = targetCell.parentElement;
+contextMenu.style.top = `${event.clientY}px`;
+contextMenu.style.left = `${event.clientX}px`;
+contextMenu.style.display = 'flex';
+}
+}
+function showContentContainer(containerId) {
+[escalaViewContainer, createFormContainer, deleteFormContainer].forEach(container => {
+container.style.display = 'none';
+});
+document.getElementById(containerId).style.display = 'block';
+}
+function setActiveTab(buttonId) {
+tabButtons.forEach(button => {
+button.classList.remove('active');
+if (button.id === buttonId) button.classList.add('active');
+});
+}
+function updateEditButtonText() {
+const span = editScaleBtn.querySelector('span');
+const icon = editScaleBtn.querySelector('i');
+if (isEditing) {
+span.textContent = 'Salvar Edição';
+icon.classList.replace('fa-pen', 'fa-save');
+} else {
+span.textContent = 'Editar Escala';
+icon.classList.replace('fa-save', 'fa-pen');
+}
+}
+function downloadAsPDF() {
+const contentToDownload = document.getElementById('escalaViewContainer');
+const actionBar = contentToDownload.querySelector('.action-bar');
+const originalDisplay = actionBar ? actionBar.style.display : 'none';
+if (actionBar) actionBar.style.display = 'none';
+const vacationActionBar = escalaContent.querySelector('.action-bar');
+if (vacationActionBar) vacationActionBar.style.display = 'none';
+document.body.classList.add('pdf-export-mode');
+html2canvas(contentToDownload, {
+scale: 2,
+useCORS: true,
+onclone: (doc) => {
+const clonedContainer = doc.querySelector('.escala-container');
+if (clonedContainer) {
+clonedContainer.style.backgroundColor = 'white';
+clonedContainer.style.boxShadow = 'none';
+clonedContainer.style.border = 'none';
+clonedContainer.style.padding = '0';
+}
+}
+}).then(canvas => {
+document.body.classList.remove('pdf-export-mode');
+if (actionBar) actionBar.style.display = originalDisplay;
+if (vacationActionBar) vacationActionBar.style.display = 'flex';
+const imgData = canvas.toDataURL('image/png');
+const { jsPDF } = window.jspdf;
+const pdf = new jsPDF('l', 'mm', 'a4');
+const pdfWidth = pdf.internal.pageSize.getWidth();
+const pxToMm = 0.264583;
+const topMargin = 50 * pxToMm;
+const sideMargin = 50 * pxToMm;
+const availableWidth = pdfWidth - (2 * sideMargin);
+const canvasAspectRatio = canvas.width / canvas.height;
+const finalCanvasWidth = availableWidth;
+const finalCanvasHeight = finalCanvasWidth / canvasAspectRatio;
+const xOffset = sideMargin;
+const yOffset = topMargin;
+pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalCanvasWidth, finalCanvasHeight);
+pdf.save(`escala-${filterMonth.value}-${filterYear.value}.pdf`);
+}).catch(err => {
+document.body.classList.remove('pdf-export-mode');
+if (actionBar) actionBar.style.display = originalDisplay;
+if (vacationActionBar) vacationActionBar.style.display = 'flex';
+console.error("Erro ao gerar PDF:", err);
+});
+}
+function exportToCSV() {
+const mainTable = escalaContent.querySelector('table:not(.dnt-table):not(.tabela-ferias)');
+if (!mainTable) {
+alert("Nenhuma tabela de escala encontrada para exportar.");
+return;
+}
+let csv = [];
+const rows = mainTable.querySelectorAll("tr");
+for (const row of rows) {
+const rowData = [];
+const cols = row.querySelectorAll("td, th");
+for (const col of cols) {
+let data = "";
+if (col.querySelector('select')) {
+data = col.querySelector('select').value;
+} else {
+data = col.innerText;
+}
+data = data.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""').trim();
+rowData.push(`"${data}"`);
+}
+csv.push(rowData.join(";"));
+}
+const csvContent = csv.join("\n");
+const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+const link = document.createElement("a");
+const url = URL.createObjectURL(blob);
+link.setAttribute("href", url);
+link.setAttribute("download", `escala-${filterMonth.value}-${filterYear.value}.csv`);
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+URL.revokeObjectURL(url);
+}
+function handleFileImport(event) {
+const file = event.target.files[0];
+if (!file) return;
+const reader = new FileReader();
+reader.onload = function(e) {
+const text = e.target.result;
+const rows = text.split('\n').filter(row => row.trim() !== '');
+if (!rows[0] || !rows[0].includes("GRAD/NOME")) {
+alert("Arquivo CSV inválido ou não corresponde ao formato da escala.");
+return;
+}
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+let escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (!escalaData) {
+alert("Não há uma escala criada para este mês. Crie uma escala antes de importar dados.");
+return;
+}
+const newMembersData = rows.slice(2).map(row => {
+const regex = /"([^"]*)"/g;
+let match;
+const cells = [];
+while(match = regex.exec(row)) {
+cells.push(match[1]);
+}
+return cells;
+});
+if (newMembersData.length === 0) {
+alert("O arquivo CSV não contém dados de membros.");
+return;
+}
+escalaData.members = newMembersData;
+const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
+synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+renderEscala(filterMonth.value, filterYear.value);
+alert("Dados importados com sucesso!");
+};
+reader.readAsText(file);
+event.target.value = '';
+}
+function handleColorColumnGray() {
+if (!currentRightClickedCell) return;
+const dayIndex = currentRightClickedCell.dataset.dayIndex;
+if (!dayIndex || dayIndex === "0") {
+return;
+}
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+let escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (!escalaData) return;
+escalaData.grayColumns = escalaData.grayColumns || [];
+const dayIndexStr = dayIndex.toString();
+const indexInArray = escalaData.grayColumns.indexOf(dayIndexStr);
+if (indexInArray > -1) {
+escalaData.grayColumns.splice(indexInArray, 1);
+} else {
+escalaData.grayColumns.push(dayIndexStr);
+}
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+if (contextMenu) contextMenu.style.display = 'none';
+renderEscala(filterMonth.value, filterYear.value);
+}
+let lastModalShown = null;
+let modalTimeout = null;
+function checkCargaHorariaRM1(escalaData, memberIndex, numDays) {
+if (!escalaData || !escalaData.members[memberIndex]) return;
+const member = escalaData.members[memberIndex];
+const gradName = member[0] || '';
+if (!gradName.toUpperCase().includes('RM1')) return;
+const cargaHoraria = member[numDays + 1];
+if (cargaHoraria === 'INFINITA') return;
+const cargaHorariaNum = parseInt(cargaHoraria, 10);
+if (!isNaN(cargaHorariaNum) && cargaHorariaNum > 160) {
+const modalKey = `${gradName}-${cargaHorariaNum}`;
+// Evita mostrar múltiplos modais ao mesmo tempo
+if (modalTimeout) {
+clearTimeout(modalTimeout);
+}
+modalTimeout = setTimeout(() => {
+if (lastModalShown !== modalKey) {
+showCargaHorariaModal(gradName, cargaHorariaNum);
+lastModalShown = modalKey;
+}
+}, 300);
+}
+}
+function showCargaHorariaModal(gradName, cargaHoraria) {
+const modal = document.getElementById('cargaHorariaModal');
+const modalMessage = document.getElementById('modalMessage');
+modalMessage.innerHTML = `O componente <strong>${gradName}</strong> atingiu <strong>${cargaHoraria} horas</strong> de carga horária.<br><br>O limite de 160 horas foi excedido!`;
+modal.classList.add('active');
+}
+function closeCargaHorariaModal() {
+const modal = document.getElementById('cargaHorariaModal');
+modal.classList.remove('active');
+}
+
+// Função para lidar com duplo clique para marcar/desmarcar X vermelho
+function handleDoubleClickMark(event) {
+const cell = event.target;
+const cellValue = cell.textContent.trim().toUpperCase();
+
+// Só permite marcar células com "RO" ou "S" (incluindo S1 e S2)
+if (cellValue === 'RO' || cellValue === 'S' || cellValue === 'S1' || cellValue === 'S2') {
+const memberIndex = cell.dataset.memberIndex;
+const dayIndex = cell.dataset.dayIndex;
+const month = filterMonth.value;
+const year = filterYear.value;
+
+// Alterna a marcação
+if (cell.classList.contains('marked-x')) {
+cell.classList.remove('marked-x');
+removeCellMark(memberIndex, dayIndex, month, year);
+} else {
+cell.classList.add('marked-x');
+saveCellMark(memberIndex, dayIndex, month, year);
+}
+}
+}
+
+// Chave canônica única para cellMarks (igual ao SOT5): ano-mês(2 dígitos)-memberIndex-dayIndex
+function cellMarkCanonicalKey(year, month, memberIndex, dayIndex) {
+  const y = String(year || '').replace(/\D/g, '');
+  const yr = (y.length === 4) ? y : String(new Date().getFullYear());
+  const m = String(parseInt(month, 10) || 0).padStart(2, '0');
+  return `${yr}-${m}-${memberIndex}-${dayIndex}`;
+}
+
+// Salva a marcação no localStorage (só chave canônica; reflete na escala do overlay)
+function saveCellMark(memberIndex, dayIndex, month, year) {
+  const markKey = 'cellMarks';
+  const marks = JSON.parse(localStorage.getItem(markKey)) || {};
+  marks[cellMarkCanonicalKey(year, month, memberIndex, dayIndex)] = true;
+  localStorage.setItem(markKey, JSON.stringify(marks));
+  try { window.top.postMessage({ type: 'escala_cell_marks_updated' }, '*'); } catch (e) {}
+}
+
+// Remove a marcação do localStorage só no duplo clique (chave canônica)
+function removeCellMark(memberIndex, dayIndex, month, year) {
+  const markKey = 'cellMarks';
+  const marks = JSON.parse(localStorage.getItem(markKey)) || {};
+  delete marks[cellMarkCanonicalKey(year, month, memberIndex, dayIndex)];
+  localStorage.setItem(markKey, JSON.stringify(marks));
+  try { window.top.postMessage({ type: 'escala_cell_marks_updated' }, '*'); } catch (e) {}
+}
+
+// Carrega as marcações existentes para uma célula (mesma chave canônica do SOT5)
+function loadCellMarks(cell, month, year) {
+  const memberIndex = cell.dataset.memberIndex;
+  const dayIndex = cell.dataset.dayIndex;
+  if (!dayIndex || dayIndex === '0') return;
+  const marks = JSON.parse(localStorage.getItem('cellMarks') || '{}');
+  const key = cellMarkCanonicalKey(year, month, memberIndex, dayIndex);
+  if (marks[key]) cell.classList.add('marked-x');
+  else cell.classList.remove('marked-x');
+}
+
+// Atualizar marcações quando alteradas na Escala do botão (Saídas Administrativas)
+window.addEventListener('message', function(e) {
+if (e.data && e.data.type === 'escala_cell_marks_updated') {
+const month = filterMonth.value, year = filterYear.value;
+if (!month || !year) return;
+escalaContent.querySelectorAll('td[data-member-index][data-day-index]').forEach(function(cell) {
+const dayIndex = parseInt(cell.dataset.dayIndex, 10);
+if (dayIndex > 0) {
+cell.classList.remove('marked-x');
+loadCellMarks(cell, month, year);
+}
+});
+}
+if (e.data && e.data.type === 'escala_data_updated') {
+var y = e.data.year, mo = e.data.month;
+if (filterYear && filterYear.value === y && filterMonth && filterMonth.value === mo) {
+renderEscala(filterMonth.value, filterYear.value);
+}
+}
+});
+
+// --- Event Listeners ---
+novaEscalaBtn.addEventListener('click', () => {
+setActiveTab('novaEscalaBtn');
+isEditing = false; isVacationMode = false;
+showContentContainer('createFormContainer');
+populateFilters(createModalMonth, createModalYear, true);
+updateEditButtonText();
+});
+cancelCreateBtn.addEventListener('click', () => {
+setActiveTab('editScaleBtn');
+renderEscala(filterMonth.value, filterYear.value);
+});
+confirmCreateBtn.addEventListener('click', () => {
+const month = createModalMonth.value, year = createModalYear.value;
+const dataKey = `${year}-${month}`;
+if (localStorage.getItem(dataKey)) {
+alert('Já existe uma escala para o mês e ano selecionados.');
+return;
+}
+const numDays = new Date(year, month, 0).getDate();
+const prevDate = new Date(year, parseInt(month, 10) - 1, 1);
+prevDate.setMonth(prevDate.getMonth() - 1);
+const prevDataKey = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+const prevEscalaData = JSON.parse(localStorage.getItem(prevDataKey));
+let newMembers;
+if (prevEscalaData && prevEscalaData.members) {
+newMembers = prevEscalaData.members.map(member => [member[0], ...Array(numDays + 3).fill('')]);
+} else {
+newMembers = Array.from({ length: NUM_LINHAS_VAZIAS }, () => Array(numDays + 4).fill(""));
+}
+const newEscala = { members: newMembers, dntMembers: [], grayColumns: [] };
+synchronizeDntTable(newEscala, numDays, createModalMonth.value, createModalYear.value);
+localStorage.setItem(dataKey, JSON.stringify(newEscala));
+populateFilters(filterMonth, filterYear);
+filterMonth.value = month; filterYear.value = year;
+isEditing = true; isVacationMode = false;
+setActiveTab('editScaleBtn');
+renderEscala(month, year);
+updateEditButtonText();
+});
+deleteScaleBtn.addEventListener('click', () => {
+setActiveTab('deleteScaleBtn');
+isEditing = false; isVacationMode = false;
+showContentContainer('deleteFormContainer');
+populateFilters(deleteModalMonth, deleteModalYear);
+updateEditButtonText();
+});
+cancelDeleteFormBtn.addEventListener('click', () => {
+setActiveTab('editScaleBtn');
+renderEscala(filterMonth.value, filterYear.value);
+});
+confirmDeleteFormBtn.addEventListener('click', () => {
+const month = deleteModalMonth.value, year = deleteModalYear.value;
+const dataKey = `${year}-${month}`;
+if (localStorage.getItem(dataKey) && confirm(`Tem certeza que deseja excluir a escala de ${getMonthName(month)} de ${year}?`)) {
+localStorage.removeItem(dataKey);
+alert('Escala excluída com sucesso!');
+populateFilters(filterMonth, filterYear);
+renderEscala(filterMonth.value, filterYear.value);
+} else {
+alert('Nenhuma escala encontrada para o mês e ano selecionados.');
+}
+});
+editScaleBtn.addEventListener('click', () => {
+isEditing = !isEditing; isVacationMode = false;
+setActiveTab('editScaleBtn');
+renderEscala(filterMonth.value, filterYear.value);
+updateEditButtonText();
+});
+vacationModeBtn.addEventListener('click', () => {
+isEditing = false; isVacationMode = !isVacationMode;
+setActiveTab('vacationModeBtn');
+renderEscala(filterMonth.value, filterYear.value);
+updateEditButtonText();
+});
+function handleAddRow(position) {
+if (!currentRightClickedRow) return;
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (!escalaData) return;
+const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
+const newMember = Array(numDays + 4).fill("");
+const rowIndex = Array.from(currentRightClickedRow.parentNode.children).indexOf(currentRightClickedRow);
+const insertIndex = position === 'above' ? rowIndex : rowIndex + 1;
+escalaData.members.splice(insertIndex, 0, newMember);
+synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+if (contextMenu) contextMenu.style.display = 'none';
+renderEscala(filterMonth.value, filterYear.value);
+}
+function handleDeleteRow() {
+if (!currentRightClickedRow) return;
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (!escalaData) return;
+const firstCell = currentRightClickedRow.querySelector('td[data-member-index]');
+if (firstCell) {
+escalaData.members.splice(parseInt(firstCell.dataset.memberIndex, 10), 1);
+const numDaysDel = new Date(filterYear.value, filterMonth.value, 0).getDate();
+synchronizeDntTable(escalaData, numDaysDel, filterMonth.value, filterYear.value);
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+if (contextMenu) contextMenu.style.display = 'none';
+renderEscala(filterMonth.value, filterYear.value);
+}
+}
+downloadPdfBtn.addEventListener('click', downloadAsPDF);
+exportCsvBtn.addEventListener('click', exportToCSV);
+importCsvBtn.addEventListener('click', () => csvFileInput.click());
+csvFileInput.addEventListener('change', handleFileImport);
+if (addRowAboveBtn) addRowAboveBtn.addEventListener('click', (e) => { e.preventDefault(); handleAddRow('above'); });
+if (addRowBelowBtn) addRowBelowBtn.addEventListener('click', (e) => { e.preventDefault(); handleAddRow('below'); });
+if (deleteRowBtn) deleteRowBtn.addEventListener('click', (e) => { e.preventDefault(); handleDeleteRow(); });
+if (colorColumnGrayBtn) colorColumnGrayBtn.addEventListener('click', (e) => { e.preventDefault(); handleColorColumnGray(); });
+// Fecha o menu de contexto ao clicar fora dele
+if (contextMenu) {
+document.addEventListener('click', (e) => {
+if (contextMenu && !contextMenu.contains(e.target) && contextMenu.style.display !== 'none') {
+contextMenu.style.display = 'none';
+}
+});
+}
+function handleCellEdit(event) {
+const cell = event.target;
+const dataKey = `${filterYear.value}-${filterMonth.value}`;
+const memberIndex = cell.dataset.memberIndex;
+const dayIndex = cell.dataset.dayIndex;
+if (memberIndex === undefined || dayIndex === undefined) return;
+const value = (cell.textContent || '').trim().toUpperCase();
+cell.textContent = value;
+cell.classList.toggle('cell-servico', value === 'S' || value === 'S1' || value === 'S2');
+const escalaData = JSON.parse(localStorage.getItem(dataKey));
+if (escalaData && escalaData.members[memberIndex]) {
+escalaData.members[memberIndex][dayIndex] = value;
+const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
+escalaData.members[memberIndex][numDays + 1] = calculateCargaHoraria(escalaData.members[memberIndex], numDays);
+let serviceCount = 0, routineCount = 0;
+for (let i = 1; i <= numDays; i++) {
+const cellVal = escalaData.members[memberIndex][i] || '';
+const upperValue = cellVal.toUpperCase();
+if (upperValue === 'S' || upperValue === 'S1' || upperValue === 'S2') serviceCount++;
+if (upperValue === 'RO') routineCount++;
+}
+escalaData.members[memberIndex][numDays + 2] = serviceCount;
+escalaData.members[memberIndex][numDays + 3] = escalaData.members[memberIndex][numDays + 1] === 'INFINITA' ? 'INFINITA' : routineCount;
+synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
+localStorage.setItem(dataKey, JSON.stringify(escalaData));
+const row = cell.closest('tr');
+if(row && isEditing) {
+const chCell = row.cells[row.cells.length - 3];
+if (chCell) {
+const cargaHoraria = escalaData.members[memberIndex][numDays + 1] || '';
+chCell.textContent = cargaHoraria;
+// Aplica ou remove estilo: 160h = laranja, >160h = vermelho (e modal)
+const gradName = escalaData.members[memberIndex][0] || '';
+chCell.classList.remove('carga-horaria-excedida', 'carga-horaria-limite');
+if (gradName.toUpperCase().includes('RM1') && cargaHoraria !== 'INFINITA') {
+const cargaHorariaNum = parseInt(cargaHoraria, 10);
+if (!isNaN(cargaHorariaNum)) {
+if (cargaHorariaNum === 160) {
+chCell.classList.add('carga-horaria-limite');
+} else if (cargaHorariaNum > 160) {
+chCell.classList.add('carga-horaria-excedida');
+checkCargaHorariaRM1(escalaData, memberIndex, numDays);
+}
+}
+}
+}
+const servicosCell = row.cells[row.cells.length - 2];
+if (servicosCell) servicosCell.textContent = escalaData.members[memberIndex][numDays + 2] || '0';
+const rotinasCell = row.cells[row.cells.length - 1];
+if(rotinasCell) rotinasCell.textContent = escalaData.members[memberIndex][numDays + 3] || '0';
+}
+updateDntTableInDOM(escalaData.dntMembers);
+}
+}
+function handleKeyDown(event) {
+const allowedKeys = ['Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+if (!allowedKeys.includes(event.key)) return;
+event.preventDefault();
+const cell = event.target;
+const row = cell.closest('tr');
+if (!row) return;
+const cellsInRow = Array.from(row.querySelectorAll('td[contenteditable="true"]'));
+const currentCellIndexInRow = cellsInRow.indexOf(cell);
+const currentCellDOMIndex = cell.cellIndex;
+switch (event.key) {
+case 'Enter':
+case 'ArrowRight':
+if (currentCellIndexInRow < cellsInRow.length - 1) {
+cellsInRow[currentCellIndexInRow + 1].focus();
+} else {
+const nextRow = row.nextElementSibling;
+if (nextRow) {
+nextRow.querySelector('td[contenteditable="true"]')?.focus();
+}
+}
+break;
+case 'ArrowLeft':
+if (currentCellIndexInRow > 0) {
+cellsInRow[currentCellIndexInRow - 1].focus();
+}
+break;
+case 'ArrowDown':
+const nextRow = row.nextElementSibling;
+if (nextRow && nextRow.cells[currentCellDOMIndex]) {
+const targetCell = nextRow.cells[currentCellDOMIndex];
+if (targetCell && targetCell.isContentEditable) {
+targetCell.focus();
+}
+}
+break;
+case 'ArrowUp':
+const prevRow = row.previousElementSibling;
+if (prevRow && prevRow.parentElement.tagName.toLowerCase() === 'tbody' && prevRow.cells[currentCellDOMIndex]) {
+const targetCell = prevRow.cells[currentCellDOMIndex];
+if (targetCell && targetCell.isContentEditable) {
+targetCell.focus();
+}
+}
+break;
+}
+}
+// Inicialização
+loadDrivers();
+populateFilters(filterMonth, filterYear);
+const dataAtual = new Date();
+filterYear.value = dataAtual.getFullYear();
+filterMonth.value = String(dataAtual.getMonth() + 1).padStart(2, '0');
+renderEscala(filterMonth.value, filterYear.value);
+setActiveTab('editScaleBtn');
+updateEditButtonText();
+filterMonth.addEventListener('change', () => {
+isEditing = false; isVacationMode = false;
+renderEscala(filterMonth.value, filterYear.value);
+setActiveTab('editScaleBtn'); updateEditButtonText();
+});
+filterYear.addEventListener('change', () => {
+isEditing = false; isVacationMode = false;
+renderEscala(filterMonth.value, filterYear.value);
+setActiveTab('editScaleBtn'); updateEditButtonText();
+});
+// Fecha modal ao clicar fora dele ou no botão
+const cargaHorariaModal = document.getElementById('cargaHorariaModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+if (cargaHorariaModal) {
+cargaHorariaModal.addEventListener('click', (e) => {
+if (e.target === cargaHorariaModal) {
+closeCargaHorariaModal();
+}
+});
+}
+if (closeModalBtn) {
+closeModalBtn.addEventListener('click', () => {
+closeCargaHorariaModal();
+});
+}
+});
+</script>
+<script>
+const userActivityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+function notifyParentOfActivity() {
+window.parent.postMessage({ type: 'user_activity' }, '*');
+}
+userActivityEvents.forEach(eventName => {
+document.addEventListener(eventName, notifyParentOfActivity, { passive: true });
+});
+</script>
+</body>
+</html>

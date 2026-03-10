@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<!-- SOT5 - versão atualizada -->
 <html lang="pt-br">
 <head>
 <meta charset="UTF-8">
@@ -1424,7 +1423,7 @@ margin: 20px 0;
 <div id="cadastro-saidas" class="tab-content"><iframe id="iframe-cadastro-saidas" src="Cadastrodesaidas8.html"></iframe></div>
 <div id="saidas-administrativas" class="tab-content active"><iframe id="iframe-saidas-administrativas" src="Saidasadministrativas6.html"></iframe></div>
 <div id="saidas-ambulancias" class="tab-content"><iframe id="iframe-saidas-ambulancias" src="Saidasdeambulâncias2.html"></iframe></div>
-<div id="vistoria" class="tab-content"><iframe src="VistoriaRDV.html" title="Vistoria e RDV"></iframe></div>
+<div id="vistoria" class="tab-content"><iframe src="vistoriar.html"></iframe></div>
 <div id="frota-pessoal" class="tab-content"><iframe id="iframe-frota-pessoal" src="Frotaepessoal3.html"></iframe></div>
 <div id="estatistica" class="tab-content"><iframe src="Estatistica4.html"></iframe></div>
 <div id="avisos" class="tab-content"><iframe src="Avisos.html"></iframe></div>
@@ -1986,6 +1985,7 @@ function requestFullscreenSafe() {
 const docEl = document.documentElement;
 const request = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
 if (!request) {
+console.warn('API de tela cheia não suportada neste navegador.');
 return Promise.resolve();
 }
 return request.call(docEl).catch(err => {
@@ -2238,26 +2238,6 @@ resetInactivityTimer();
 }
 if (event.data?.type === 'escala_pao_updated') {
 updateEscalaPaoAmanha();
-}
-// Foco em Saídas Administrativas após edição via Cadastro de Saídas
-if (event.data?.type === 'saida_administrativa_atualizada') {
-const { dataSaida, id } = event.data;
-// Ativar aba "Saídas Administrativas"
-document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
-const tabContent = document.getElementById('saidas-administrativas');
-if (tabContent) tabContent.classList.add('active');
-const tabButton = document.querySelector('.tab-button[data-tab-id="saidas-administrativas"]');
-if (tabButton) tabButton.classList.add('active');
-// Enviar mensagem para o iframe com a data/id da saída atualizada
-const iframeSaidas = document.getElementById('iframe-saidas-administrativas');
-if (iframeSaidas && iframeSaidas.contentWindow && dataSaida) {
-    iframeSaidas.contentWindow.postMessage({
-        type: 'focus_saida_administrativa',
-        date: dataSaida,
-        id: id
-    }, '*');
-}
 }
 // Localizar saída
 if (event.data?.type === 'locate_saida') {
@@ -3480,6 +3460,7 @@ const request = document.documentElement.requestFullscreen
 if (request) {
 await request.call(document.documentElement);
 } else {
+console.warn('API de tela cheia não suportada neste navegador.');
 alert('Seu navegador não suporta a função de maximizar.');
 }
 } else {
@@ -3522,18 +3503,6 @@ updateMaximizeState();
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="controle-voz.js"></script>
-<script>
-(function() {
- window.addEventListener('message', function(e) {
-  if (!e.data || e.data.type !== 'speak' || !e.data.text) return;
-  var iframe = document.getElementById('iframe-cadastro-saidas');
-  if (iframe && e.source !== iframe.contentWindow) return;
-  if (window.voiceController && typeof window.voiceController.speak === 'function') {
-   window.voiceController.speak(e.data.text);
-  }
- });
-})();
-</script>
 
 <!-- Modal PSO - Próximo Integrante (no contexto principal) -->
 <div id="psoProximoModalMain" class="pso-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100vw; height: 100vh; overflow: auto; background-color: rgba(0,0,0,0.6); justify-content: center; align-items: flex-start; padding-top: 180px;">

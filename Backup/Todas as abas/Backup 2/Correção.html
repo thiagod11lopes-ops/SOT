@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Correção de Recursos - Solução Completa</title>
+    
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-success { background: #28a745; }
+        .btn-danger { background: #dc3545; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        
+        .fallback-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            display: inline-block;
+        }
+        
+        .hidden { display: none !important; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        .demo-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sistema de Correção de Recursos - Solução Completa</h1>
+        <p><strong>Esta página demonstra como corrigir problemas de ícones Font Awesome e geração de PDF que falham com o tempo.</strong></p>
+        
+        <div id="status" class="status warning">
+            Inicializando sistema de correção...
+        </div>
+    </div>
+
+    <div class="container demo-section">
+        <h2>Demonstração - Botões com Ícones</h2>
+        <p>Estes botões usam Font Awesome com fallback automático:</p>
+        
+        <button class="btn btn-success" data-fallback="edit">
+            <i class="fas fa-edit"></i> Editar
+        </button>
+        
+        <button class="btn btn-danger" data-fallback="delete">
+            <i class="fas fa-trash"></i> Excluir
+        </button>
+        
+        <button class="btn btn-warning" data-fallback="comment">
+            <i class="fas fa-comment"></i> Comentar
+        </button>
+        
+        <button class="btn" data-fallback="pdf" onclick="gerarPDF()">
+            <i class="fas fa-file-pdf"></i> Gerar PDF
+        </button>
+        
+        <button class="btn" onclick="simularFalha()">
+            <i class="fas fa-bug"></i> Simular Falha de CDN
+        </button>
+    </div>
+
+    <div class="container demo-section">
+        <h2>Tabela de Exemplo</h2>
+        <table id="tabelaExemplo">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Data</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>João Silva</td>
+                    <td>2024-01-15</td>
+                    <td>
+                        <button class="btn btn-success" data-fallback="edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger" data-fallback="delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Maria Santos</td>
+                    <td>2024-01-16</td>
+                    <td>
+                        <button class="btn btn-success" data-fallback="edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-danger" data-fallback="delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>Como Implementar em Seus Arquivos</h2>
+        <ol>
+            <li><strong>Copie todo o JavaScript</strong> da seção &lt;script&gt; abaixo</li>
+            <li><strong>Cole no final</strong> de cada arquivo HTML, antes do &lt;/body&gt;</li>
+            <li><strong>Adicione data-fallback="tipo"</strong> aos botões com ícones</li>
+            <li><strong>Use window.resourceManager.generatePDF()</strong> para gerar PDFs</li>
+        </ol>
+    </div>
+
+    <!-- SISTEMA DE CORREÇÃO DE RECURSOS - COPIE DAQUI PARA BAIXO -->
+    <script>
+        // Sistema Completo de Correção de Recursos
+        class ResourceManager {
+            constructor() {
+                this.retryAttempts = {};
+                this.maxRetries = 3;
+                this.retryDelay = 2000;
+                this.checkInterval = 30000;
+                this.fallbackIcons = {
+                    edit: `<svg class="fallback-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`,
+                    delete: `<svg class="fallback-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
+                    comment: `<svg class="fallback-icon" viewBox="0 0 24 24"><path d="M21.99 4c0-1.1-.89-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4-.01-18z"/></svg>`,
+                    pdf: `<svg class="fallback-icon" viewBox="0 0 24 24"><path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8.5 7.5c0 .83-.67 1.5-1.5 1.5H9v2H7.5V7H10c.83 0 1.5.67 1.5 1.5v1zm5 2c0 .83-.67 1.5-1.5 1.5h-2.5V7H15c.83 0 1.5.67 1.5 1.5v3zm4-3H19v1h1.5V11H19v1h-1.5V7h3v1.5zM9 9.5h1v-1H9v1z"/></svg>`,
+                    bug: `<svg class="fallback-icon" viewBox="0 0 24 24"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.42.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8z"/></svg>`
+                };
+                
+                this.init();
+            }
+
+            init() {
+                this.updateStatus('Inicializando sistema...', 'warning');
+                
+                // Aguarda o DOM estar pronto
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => this.startMonitoring());
+                } else {
+                    this.startMonitoring();
+                }
+            }
+
+            startMonitoring() {
+                this.checkResources();
+                
+                // Monitora mudanças de visibilidade da página
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) {
+                        this.checkResources();
+                    }
+                });
+                
+                // Verifica recursos periodicamente
+                setInterval(() => this.checkResources(), this.checkInterval);
+                
+                this.updateStatus('Sistema ativo - Monitorando recursos', 'success');
+            }
+
+            checkResources() {
+                this.checkFontAwesome();
+                this.checkJsPDF();
+            }
+
+            checkFontAwesome() {
+                const testElement = document.createElement('i');
+                testElement.className = 'fas fa-check';
+                testElement.style.position = 'absolute';
+                testElement.style.left = '-9999px';
+                document.body.appendChild(testElement);
+
+                const computedStyle = window.getComputedStyle(testElement, '::before');
+                const content = computedStyle.getPropertyValue('content');
+                
+                document.body.removeChild(testElement);
+
+                if (!content || content === 'none' || content === '""') {
+                    this.handleFontAwesomeFailure();
+                } else {
+                    this.restoreOriginalIcons();
+                }
+            }
+
+            checkJsPDF() {
+                const jsPDFAvailable = (typeof window.jsPDF !== 'undefined') && 
+                                     (typeof window.jsPDF === 'function' || 
+                                      (typeof window.jsPDF === 'object' && typeof window.jsPDF.jsPDF === 'function'));
+                
+                if (!jsPDFAvailable) {
+                    this.handleJsPDFFailure();
+                } else {
+                    if (this.retryAttempts['jspdf'] > 0) {
+                        this.updateStatus('jsPDF restaurado com sucesso', 'success');
+                        this.retryAttempts['jspdf'] = 0;
+                    }
+                }
+            }
+
+            handleFontAwesomeFailure() {
+                console.log('[ResourceManager] Font Awesome falhou, aplicando fallbacks...');
+                this.updateStatus('Font Awesome indisponível - Usando ícones de backup', 'warning');
+                
+                document.querySelectorAll('[data-fallback]').forEach(element => {
+                    const fallbackType = element.getAttribute('data-fallback');
+                    const iconElement = element.querySelector('i[class*="fa"]');
+                    
+                    if (iconElement && this.fallbackIcons[fallbackType]) {
+                        iconElement.style.display = 'none';
+                        
+                        let fallbackElement = element.querySelector('.fallback-icon');
+                        if (!fallbackElement) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = this.fallbackIcons[fallbackType];
+                            fallbackElement = tempDiv.firstChild;
+                            iconElement.parentNode.insertBefore(fallbackElement, iconElement);
+                        }
+                        fallbackElement.style.display = 'inline-block';
+                    }
+                });
+
+                this.retryResource('fontawesome', () => {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css?t=${Date.now()}`;
+                    link.onload = () => {
+                        setTimeout(() => this.checkFontAwesome(), 1000);
+                    };
+                    document.head.appendChild(link);
+                });
+            }
+
+            handleJsPDFFailure() {
+                console.log('[ResourceManager] jsPDF falhou, tentando recarregar...');
+                this.updateStatus('jsPDF indisponível - Tentando reconectar...', 'error');
+                
+                this.retryResource('jspdf', () => {
+                    const script = document.createElement('script');
+                    script.src = `https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js?t=${Date.now()}`;
+                    script.onload = () => {
+                        setTimeout(() => {
+                            this.checkJsPDF();
+                        }, 2000);
+                    };
+                    script.onerror = () => {
+                        this.updateStatus('Falha ao restaurar jsPDF - Tentando novamente...', 'error');
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+
+            restoreOriginalIcons() {
+                document.querySelectorAll('[data-fallback]').forEach(element => {
+                    const iconElement = element.querySelector('i[class*="fa"]');
+                    const fallbackElement = element.querySelector('.fallback-icon');
+                    
+                    if (iconElement && fallbackElement) {
+                        iconElement.style.display = '';
+                        fallbackElement.style.display = 'none';
+                    }
+                });
+            }
+
+            retryResource(resourceName, retryFunction) {
+                if (!this.retryAttempts[resourceName]) {
+                    this.retryAttempts[resourceName] = 0;
+                }
+
+                if (this.retryAttempts[resourceName] < this.maxRetries) {
+                    this.retryAttempts[resourceName]++;
+                    
+                    setTimeout(() => {
+                        console.log(`[ResourceManager] Tentativa ${this.retryAttempts[resourceName]} de recarregar ${resourceName}`);
+                        retryFunction();
+                    }, this.retryDelay * this.retryAttempts[resourceName]);
+                }
+            }
+
+            generatePDF(title = 'Documento', content = null) {
+                const jsPDFLib = window.jsPDF?.jsPDF || window.jsPDF;
+                
+                if (!jsPDFLib || typeof jsPDFLib !== 'function') {
+                    alert('Sistema de PDF temporariamente indisponível. Tente novamente em alguns segundos.');
+                    this.checkJsPDF();
+                    return;
+                }
+
+                try {
+                    const doc = new jsPDFLib();
+                    
+                    // Cabeçalho
+                    doc.setFontSize(16);
+                    doc.text(title, 20, 20);
+                    
+                    // Data atual
+                    doc.setFontSize(10);
+                    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 20, 30);
+                    
+                    // Conteúdo
+                    if (content) {
+                        doc.setFontSize(12);
+                        const lines = doc.splitTextToSize(content, 170);
+                        doc.text(lines, 20, 50);
+                    } else {
+                        // Exemplo de tabela
+                        doc.setFontSize(12);
+                        doc.text('Exemplo de Relatório:', 20, 50);
+                        
+                        const tableData = [
+                            ['ID', 'Nome', 'Data'],
+                            ['1', 'João Silva', '2024-01-15'],
+                            ['2', 'Maria Santos', '2024-01-16']
+                        ];
+                        
+                        let y = 70;
+                        tableData.forEach((row, index) => {
+                            if (index === 0) {
+                                doc.setFont(undefined, 'bold');
+                            } else {
+                                doc.setFont(undefined, 'normal');
+                            }
+                            
+                            doc.text(row[0], 20, y);
+                            doc.text(row[1], 60, y);
+                            doc.text(row[2], 120, y);
+                            y += 10;
+                        });
+                    }
+                    
+                    // Download
+                    doc.save(`${title.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
+                    this.updateStatus('PDF gerado com sucesso!', 'success');
+                    
+                } catch (error) {
+                    console.error('[ResourceManager] Erro ao gerar PDF:', error);
+                    alert('Erro ao gerar PDF. Tente novamente.');
+                    this.updateStatus('Erro ao gerar PDF', 'error');
+                }
+            }
+
+            updateStatus(message, type) {
+                const statusElement = document.getElementById('status');
+                if (statusElement) {
+                    statusElement.textContent = message;
+                    statusElement.className = `status ${type}`;
+                }
+                console.log(`[ResourceManager] ${message}`);
+            }
+        }
+
+        // Inicializa o sistema
+        window.resourceManager = new ResourceManager();
+
+        // Funções de demonstração
+        function gerarPDF() {
+            window.resourceManager.generatePDF('Relatório de Demonstração');
+        }
+
+        function simularFalha() {
+            // Remove Font Awesome temporariamente para demonstrar o fallback
+            const faLinks = document.querySelectorAll('link[href*="font-awesome"]');
+            faLinks.forEach(link => link.remove());
+            
+            // Remove jsPDF temporariamente
+            if (window.jsPDF) {
+                delete window.jsPDF;
+            }
+            
+            window.resourceManager.updateStatus('Simulando falha de CDN...', 'error');
+            
+            // Verifica recursos após remoção
+            setTimeout(() => {
+                window.resourceManager.checkResources();
+            }, 1000);
+        }
+
+        // Adiciona eventos aos botões de exemplo
+        document.addEventListener('DOMContentLoaded', function() {
+            // Adiciona eventos de clique aos botões da tabela
+            document.querySelectorAll('button[data-fallback="edit"]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    alert('Função de editar executada!');
+                });
+            });
+            
+            document.querySelectorAll('button[data-fallback="delete"]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (confirm('Tem certeza que deseja excluir?')) {
+                        alert('Item excluído!');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

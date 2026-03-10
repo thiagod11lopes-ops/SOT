@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsabilidades - Sistema Integrado</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd;
+            --secondary-blue: #6c88c9;
+            --gray: #dcdcdc;
+            --dark-gray: #333d47;
+            --white: #ffffff;
+            --light-gray-bg: #f9f9f9;
+            --tab-inactive-bg: #e9ecef;
+            --tab-active-bg: var(--white);
+            --tab-border: 1px solid #dee2e6;
+            --delete-red: #dc3545;
+            --success-green: #28a745;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); color: var(--dark-gray); font-weight: 500; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .tabs { display: flex; border-bottom: 2px solid var(--primary-blue); margin-bottom: 20px; background-color: var(--white); border-radius: 8px 8px 0 0; overflow: hidden; }
+        .tabs a { text-decoration: none; color: inherit; flex: 1; display: flex; }
+        .tab-button { background-color: var(--tab-inactive-bg); color: var(--dark-gray); border: none; padding: 15px 25px; cursor: pointer; font-size: 16px; font-weight: bold; transition: all 0.3s ease; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+        .tab-button:hover:not(.active) { background-color: #e2e6ea; }
+        .tab-button.active { background-color: var(--primary-blue); color: var(--white); }
+        .tab-content { display: none; background-color: var(--white); padding: 30px; border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .tab-content.active { display: block; }
+        .page-title { font-size: 28px; color: var(--primary-blue); text-align: center; font-weight: bold; margin: 0 0 30px 0; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .table-container { overflow-x: auto; border: 2px solid var(--primary-blue); border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); background-color: var(--white); margin-top: 20px; }
+        .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .data-table th, .data-table td { border: 1px solid var(--tab-border); padding: 15px; white-space: nowrap; }
+        .data-table th { background-color: var(--primary-blue); color: var(--white); font-weight: bold; text-transform: uppercase; font-size: 12px; position: sticky; top: 0; }
+        .data-table tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        .action-buttons button { background-color: transparent; border: none; cursor: pointer; font-size: 16px; padding: 8px; border-radius: 4px; margin: 0 2px; }
+        .delete-btn { color: var(--delete-red); }
+        .btn { background-color: var(--primary-blue); color: var(--white); border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-danger { background-color: var(--delete-red); }
+        .btn-success { background-color: var(--success-green); }
+        .hidden { display: none !important; }
+        .cadastro-form { background-color: var(--light-blue-bg); border: 2px solid var(--primary-blue); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+        .cadastro-form .form-group { display: flex; flex-direction: column; }
+        .cadastro-form label { font-weight: bold; color: var(--dark-gray); margin-bottom: 5px; }
+        input[type="text"], select { padding: 12px; border: 2px solid var(--gray); border-radius: 8px; font-size: 16px; width: 100%; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234a69bd"><path d="M7 10l5 5 5-5z"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; }
+        .global-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); justify-content: center; align-items: center; }
+        .modal.show { display: flex; }
+        .modal-content { background-color: var(--white); padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); width: 90%; max-width: 720px; animation: modalSlideIn 0.3s ease; }
+        @keyframes modalSlideIn { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-content h3 { color: var(--primary-blue); margin-bottom: 20px; font-size: 20px; text-align: center; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+        .report-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .report-results { margin-top: 20px; max-height: 320px; overflow-y: auto; border: 1px solid var(--tab-border); border-radius: 8px; }
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table th, .report-table td { padding: 10px; border-bottom: 1px solid var(--tab-border); text-align: left; font-size: 14px; }
+        .report-table th { background-color: var(--primary-blue); color: var(--white); position: sticky; top: 0; }
+        .report-summary { margin-top: 10px; font-size: 14px; color: var(--dark-gray); }
+        @media (max-width: 600px) {
+            .report-filters { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tabs">
+            <a href="vistoriar.html"><button class="tab-button"><i class="fas fa-car"></i> Vistoriar Viatura</button></a>
+            <a href="historico.html"><button class="tab-button"><i class="fas fa-history"></i> Histórico</button></a>
+            <a href="situacao.html"><button class="tab-button"><i class="fas fa-info-circle"></i> Situação</button></a>
+            <a href="responsabilidades.html"><button class="tab-button active"><i class="fas fa-users"></i> Responsabilidades</button></a>
+            <a href="vtr-oficina.html"><button class="tab-button"><i class="fas fa-tools"></i> Registro de Manutenções</button></a>
+        </div>
+        <div id="drivers" class="tab-content active">
+            <h1 class="page-title"><i class="fas fa-users"></i> Cadastro de Responsabilidades</h1>
+            <p style="text-align: center; margin-top: -20px; margin-bottom: 20px;">Associe viaturas a cada motorista, definindo suas responsabilidades.</p>
+
+            <div class="global-actions">
+                <button id="showAddDriverFormBtn" class="btn"><i class="fas fa-user-plus"></i> Cadastrar Associação</button>
+                <button id="btnReport" class="btn"><i class="fas fa-file-alt"></i> Gerar Relatório</button>
+                <button id="btnCsv" class="btn"><i class="fas fa-file-csv"></i> Extrair CSV</button>
+                <button id="btnImport" class="btn btn-success"><i class="fas fa-upload"></i> Importar CSV</button>
+                <button id="btnDeleteAll" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
+                <input type="file" id="csvFileInput" class="hidden" accept=".csv">
+            </div>
+
+            <div class="cadastro-form hidden" id="addDriverForm">
+                <div class="form-group">
+                    <label for="driverSelectInput">Motorista (puxado da Escala):</label>
+                    <select id="driverSelectInput"></select>
+                    <input type="text" id="driverNameInput" placeholder="Ou digite o nome de um novo motorista" style="margin-top: 10px;">
+                </div>
+                <div class="form-group"><label for="driverVehicle1Select">Viatura 1:</label><select id="driverVehicle1Select"></select></div>
+                <div class="form-group"><label for="driverVehicle2Select">Viatura 2 (Opcional):</label><select id="driverVehicle2Select"></select></div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button id="addDriverBtn" class="btn"><i class="fas fa-save"></i> Salvar</button>
+                    <button id="hideAddDriverFormBtn" class="btn btn-danger"><i class="fas fa-times"></i> Ocultar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table" id="driversTable">
+                    <thead><tr><th>Nome do Motorista</th><th>Viatura 1</th><th>Viatura 2</th><th>Ações</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-file-alt"></i> Relatório de Motoristas sem Vistoria</h3>
+            <div class="report-filters">
+                <div class="form-group">
+                    <label for="reportStartDate">Data início</label>
+                    <input type="date" id="reportStartDate">
+                </div>
+                <div class="form-group">
+                    <label for="reportEndDate">Data fim</label>
+                    <input type="date" id="reportEndDate">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="generateReportBtn" class="btn"><i class="fas fa-search"></i> Gerar</button>
+                <button id="exportReportCsvBtn" class="btn btn-success hidden"><i class="fas fa-file-csv"></i> CSV</button>
+                <button id="closeReportModal" class="btn btn-danger"><i class="fas fa-times"></i> Fechar</button>
+            </div>
+            <div id="reportResults" class="report-results hidden"></div>
+            <div id="reportSummary" class="report-summary hidden"></div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let registeredVehicles = [], inspectionDrivers = [], inspections = [];
+            
+            // Elementos da UI
+            const driversTableBody = document.querySelector('#driversTable tbody');
+            const showAddDriverFormBtn = document.getElementById('showAddDriverFormBtn');
+            const addDriverForm = document.getElementById('addDriverForm');
+            const hideAddDriverFormBtn = document.getElementById('hideAddDriverFormBtn');
+            const driverNameInput = document.getElementById('driverNameInput');
+            const driverSelectInput = document.getElementById('driverSelectInput');
+            const driverVehicle1Select = document.getElementById('driverVehicle1Select');
+            const driverVehicle2Select = document.getElementById('driverVehicle2Select');
+            const addDriverBtn = document.getElementById('addDriverBtn');
+
+            // NOVOS Elementos
+            const btnCsv = document.getElementById('btnCsv');
+            const btnImport = document.getElementById('btnImport');
+            const btnDeleteAll = document.getElementById('btnDeleteAll');
+            const csvFileInput = document.getElementById('csvFileInput');
+            const btnReport = document.getElementById('btnReport');
+            const reportModal = document.getElementById('reportModal');
+            const reportStartDate = document.getElementById('reportStartDate');
+            const reportEndDate = document.getElementById('reportEndDate');
+            const generateReportBtn = document.getElementById('generateReportBtn');
+            const closeReportModal = document.getElementById('closeReportModal');
+            const reportResults = document.getElementById('reportResults');
+            const reportSummary = document.getElementById('reportSummary');
+            const exportReportCsvBtn = document.getElementById('exportReportCsvBtn');
+            let lastReportData = [];
+
+            function loadData() {
+                registeredVehicles = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+                inspectionDrivers = JSON.parse(localStorage.getItem('motoristasVistoria') || '[]');
+                inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+            }
+            function saveData() { localStorage.setItem('motoristasVistoria', JSON.stringify(inspectionDrivers)); }
+
+            function loadAllDriversFromEscalas() {
+                const driverNames = new Set();
+                const escalaKeys = Object.keys(localStorage).filter(key => /^\d{4}-\d{2}$/.test(key));
+
+                escalaKeys.forEach(key => {
+                    try {
+                        const escalaData = JSON.parse(localStorage.getItem(key));
+                        if (escalaData && Array.isArray(escalaData.members)) {
+                            escalaData.members.forEach(member => {
+                                if (member && member[0] && member[0].trim() !== '') {
+                                    driverNames.add(member[0].trim());
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        console.error(`Erro ao processar a escala para a chave ${key}`, e);
+                    }
+                });
+                return Array.from(driverNames).sort((a, b) => a.localeCompare(b));
+            }
+
+            function populateDriverSelect(drivers) {
+                driverSelectInput.innerHTML = '<option value="">Selecione um motorista existente...</option>';
+                drivers.forEach(name => {
+                    driverSelectInput.innerHTML += `<option value="${name}">${name}</option>`;
+                });
+            }
+
+            function populateDriversTable() {
+                driversTableBody.innerHTML = '';
+                if (inspectionDrivers.length === 0) {
+                    driversTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhuma associação cadastrada.</td></tr>';
+                    return;
+                }
+                inspectionDrivers.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(driver => {
+                    driversTableBody.innerHTML += `<tr><td>${driver.nome}</td><td>${driver.viaturas?.[0] || '---'}</td><td>${driver.viaturas?.[1] || '---'}</td><td><div class="action-buttons"><button class="delete-btn" onclick="deleteInspectionDriver('${driver.id}')" title="Excluir"><i class="fas fa-trash-alt"></i></button></div></td></tr>`;
+                });
+            }
+
+            function updateVehicleSelectOptions() {
+                [driverVehicle1Select, driverVehicle2Select].forEach(select => {
+                    if (!select) return;
+                    select.innerHTML = '<option value="">Nenhuma</option>';
+                    registeredVehicles.filter(v => v.placa && v.placa.trim() !== '').forEach(v => select.innerHTML += `<option value="${v.placa}">${v.placa}</option>`);
+                });
+            }
+
+            function getDriversOnDutyForDate(date) {
+                const [year, month, day] = date.split('-'), escalaKey = `${year}-${month}`, dayOfMonth = parseInt(day, 10);
+                try {
+                    const escalaData = JSON.parse(localStorage.getItem(escalaKey) || '{}');
+                    if (!escalaData.members) return [];
+                    const driversOnDutyNames = [];
+                    escalaData.members.forEach(memberRow => {
+                        if (memberRow[dayOfMonth] && memberRow[dayOfMonth].toUpperCase() === 'S') driversOnDutyNames.push(memberRow[0]);
+                    });
+                    return inspectionDrivers.filter(driver => driversOnDutyNames.includes(driver.nome));
+                } catch (e) { console.error("Erro na escala:", e); return []; }
+            }
+
+            function formatDatePtBr(dateString) {
+                const [year, month, day] = dateString.split('-');
+                return `${day}/${month}/${year}`;
+            }
+
+            function buildUninspectedReport(startDate, endDate) {
+                const results = [];
+                const currentDate = new Date(startDate);
+                const finalDate = new Date(endDate);
+
+                while (currentDate <= finalDate) {
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    const driversOnDuty = getDriversOnDutyForDate(dateString);
+
+                    if (driversOnDuty.length > 0) {
+                        driversOnDuty.forEach(driver => {
+                            if (driver.viaturas && driver.viaturas.length > 0) {
+                                driver.viaturas.forEach(placa => {
+                                    const wasInspected = inspections.some(insp => insp.placa === placa && insp.data === dateString);
+                                    if (!wasInspected) {
+                                        results.push({ data: dateString, motorista: driver.nome, placa });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                return results;
+            }
+            
+            // --- NOVAS FUNÇÕES ---
+
+            function exportCsv() {
+                if (inspectionDrivers.length === 0) {
+                    alert("Não há dados para exportar.");
+                    return;
+                }
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "ID,Nome,Viatura1,Viatura2\r\n";
+
+                inspectionDrivers.forEach(driver => {
+                    const row = [driver.id, driver.nome, driver.viaturas?.[0] || '', driver.viaturas?.[1] || ''].join(",");
+                    csvContent += row + "\r\n";
+                });
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `responsabilidades_${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function importCsv(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const rows = text.split('\n').slice(1); // Ignora o cabeçalho
+                    const newDrivers = [];
+
+                    rows.forEach(rowStr => {
+                        if (!rowStr.trim()) return;
+                        const [id, nome, viatura1, viatura2] = rowStr.split(',');
+                        if (id && nome) {
+                            newDrivers.push({
+                                id: id.trim(),
+                                nome: nome.trim(),
+                                viaturas: [viatura1?.trim(), viatura2?.trim()].filter(Boolean)
+                            });
+                        }
+                    });
+                    
+                    if (confirm(`Foram encontradas ${newDrivers.length} associações no arquivo. Deseja substituir os dados atuais por estes?`)) {
+                         inspectionDrivers = newDrivers;
+                         saveData();
+                         alert('Importação concluída com sucesso!');
+                         location.reload();
+                    }
+                };
+                reader.readAsText(file);
+                csvFileInput.value = ''; // Reseta o input para permitir o mesmo arquivo novamente
+            }
+
+            function deleteAll() {
+                if(confirm("ATENÇÃO!\n\nEsta ação irá apagar PERMANENTEMENTE TODAS as associações de responsabilidade.\n\nDeseja continuar?")) {
+                    inspectionDrivers = [];
+                    saveData();
+                    populateDriversTable();
+                    alert('Todos os dados foram excluídos.');
+                }
+            }
+
+            // --- Lógica de Ações ---
+            
+            window.deleteInspectionDriver = (id) => {
+                if (confirm('Deseja excluir esta associação?')) {
+                    inspectionDrivers = inspectionDrivers.filter(d => d.id !== id);
+                    saveData();
+                    populateDriversTable();
+                    alert('Associação excluída.');
+                }
+            };
+
+            showAddDriverFormBtn.addEventListener('click', () => {
+                addDriverForm.classList.remove('hidden');
+                showAddDriverFormBtn.classList.add('hidden');
+                
+                const allDriversFromEscalas = loadAllDriversFromEscalas();
+                populateDriverSelect(allDriversFromEscalas);
+
+                driverSelectInput.value = '';
+                driverNameInput.value = '';
+                driverNameInput.style.display = 'block';
+                driverVehicle1Select.value = '';
+                driverVehicle2Select.value = '';
+            });
+
+            hideAddDriverFormBtn.addEventListener('click', () => {
+                addDriverForm.classList.add('hidden');
+                showAddDriverFormBtn.classList.remove('hidden');
+            });
+
+            driverSelectInput.addEventListener('change', () => {
+                const selectedName = driverSelectInput.value;
+                if (selectedName) {
+                    driverNameInput.value = selectedName;
+                    driverNameInput.style.display = 'none';
+                } else {
+                    driverNameInput.value = '';
+                    driverNameInput.style.display = 'block';
+                }
+            });
+
+            addDriverBtn.addEventListener('click', function() {
+                const name = driverNameInput.value.trim(), vehicle1 = driverVehicle1Select.value, vehicle2 = driverVehicle2Select.value;
+                if (!name) return alert('O nome do motorista é obrigatório.');
+                if (vehicle1 && vehicle1 === vehicle2) return alert('As viaturas não podem ser a mesma.');
+                const existingDriver = inspectionDrivers.find(d => d.nome.toLowerCase() === name.toLowerCase());
+                if (existingDriver) {
+                    if (confirm(`O motorista "${name}" já existe. Deseja atualizar suas viaturas?`)) {
+                       existingDriver.viaturas = [vehicle1, vehicle2].filter(Boolean);
+                    } else {
+                        return;
+                    }
+                } else {
+                    inspectionDrivers.push({ id: `iv_${Date.now()}`, nome: name, viaturas: [vehicle1, vehicle2].filter(Boolean) });
+                }
+                saveData();
+                populateDriversTable();
+                addDriverForm.classList.add('hidden');
+                showAddDriverFormBtn.classList.remove('hidden');
+                alert('Associação salva!');
+            });
+            
+            // --- NOVOS Event Listeners ---
+            btnCsv.addEventListener('click', exportCsv);
+            btnImport.addEventListener('click', () => csvFileInput.click());
+            csvFileInput.addEventListener('change', importCsv);
+            btnDeleteAll.addEventListener('click', deleteAll);
+
+            btnReport.addEventListener('click', () => {
+                const today = new Date().toISOString().split('T')[0];
+                reportStartDate.value = today;
+                reportEndDate.value = today;
+                reportResults.classList.add('hidden');
+                reportSummary.classList.add('hidden');
+                reportResults.innerHTML = '';
+                reportSummary.innerHTML = '';
+                exportReportCsvBtn.classList.add('hidden');
+                lastReportData = [];
+                reportModal.classList.add('show');
+            });
+
+            closeReportModal.addEventListener('click', () => reportModal.classList.remove('show'));
+
+            generateReportBtn.addEventListener('click', () => {
+                const startDate = reportStartDate.value;
+                const endDate = reportEndDate.value;
+                if (!startDate || !endDate) {
+                    alert('Por favor, selecione as datas inicial e final.');
+                    return;
+                }
+                if (new Date(startDate) > new Date(endDate)) {
+                    alert('A data inicial não pode ser posterior à data final.');
+                    return;
+                }
+
+                const reportData = buildUninspectedReport(startDate, endDate);
+                lastReportData = reportData;
+                reportResults.innerHTML = '';
+                reportSummary.innerHTML = '';
+
+                if (reportData.length === 0) {
+                    reportResults.classList.add('hidden');
+                    reportSummary.classList.remove('hidden');
+                    reportSummary.textContent = 'Nenhum motorista sem vistoria no período selecionado.';
+                    exportReportCsvBtn.classList.add('hidden');
+                    return;
+                }
+
+                const uniqueDrivers = new Set(reportData.map(item => item.motorista)).size;
+                reportSummary.classList.remove('hidden');
+                reportSummary.textContent = `Total de pendências: ${reportData.length} | Motoristas: ${uniqueDrivers}`;
+                exportReportCsvBtn.classList.remove('hidden');
+
+                const table = document.createElement('table');
+                table.className = 'report-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Motorista</th>
+                            <th>Viatura</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reportData.map(item => `
+                            <tr>
+                                <td>${formatDatePtBr(item.data)}</td>
+                                <td>${item.motorista}</td>
+                                <td>${item.placa}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                `;
+                reportResults.appendChild(table);
+                reportResults.classList.remove('hidden');
+            });
+
+            exportReportCsvBtn.addEventListener('click', () => {
+                if (!lastReportData.length) {
+                    alert('Gere o relatório antes de exportar o CSV.');
+                    return;
+                }
+                let csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Data,Motorista,Viatura\r\n";
+                lastReportData.forEach(item => {
+                    const row = [item.data, item.motorista, item.placa].join(",");
+                    csvContent += row + "\r\n";
+                });
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `relatorio_motoristas_sem_vistoria_${new Date().toISOString().slice(0, 10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            // --- Inicialização ---
+            (function initializeApp() {
+                loadData();
+                populateDriversTable();
+                updateVehicleSelectOptions();
+            })();
+        });
+    </script>
+</body>
+</html>

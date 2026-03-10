@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - LEMBRETES</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-blue: #4a69bd; --secondary-blue: #6c88c9; --gray: #dcdcdc;
+            --dark-gray: #333d47; --white: #ffffff; --light-gray-bg: #f9f9f9;
+            --delete-red: #dc3545; --edit-green: #28a745;
+        }
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; background-color: var(--light-gray-bg); font-weight: 500; }
+        .container { max-width: 800px; margin: 0 auto; background-color: var(--white); padding: 25px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { color: var(--primary-blue); border-bottom: 2px solid var(--primary-blue); padding-bottom: 10px; margin-top: 0; }
+        .form-lembrete { display: grid; grid-template-columns: 1fr auto auto auto; gap: 15px; align-items: end; margin-bottom: 10px; }
+        .form-lembrete input { padding: 10px; border: 1px solid var(--gray); border-radius: 5px; font-size: 16px; font-weight: bold; }
+        .form-lembrete label { font-weight: bold; margin-bottom: 5px; display: block; }
+        .form-lembrete button { background-color: var(--primary-blue); color: var(--white); border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.3s; }
+        .form-lembrete button:hover { background-color: var(--secondary-blue); }
+        .form-lembrete button.edit-mode { background-color: var(--edit-green); }
+
+        #datasSelecionadasContainer { 
+            display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; 
+            border: 1px solid var(--gray); border-radius: 5px; 
+            margin-bottom: 20px; min-height: 24px;
+        }
+        .data-tag {
+            background-color: #e9ecef; color: var(--dark-gray);
+            padding: 5px 10px; border-radius: 15px;
+            font-size: 14px; display: flex; align-items: center;
+        }
+        .data-tag .remove-date {
+            margin-left: 8px; cursor: pointer; font-weight: bold;
+            color: #888;
+        }
+        .data-tag .remove-date:hover { color: #000; }
+
+        .lista-lembretes ul { list-style: none; padding: 0; }
+        .lista-lembretes li { background-color: #f1f3f5; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        .lista-lembretes .info { flex-grow: 1; }
+        .lista-lembretes .data-hora { font-size: 0.9em; color: #555; margin-right: 20px; }
+        .lista-lembretes .action-buttons button { border: none; width: 35px; height: 35px; border-radius: 5px; cursor: pointer; color: var(--white); margin-left: 5px;}
+        .lista-lembretes .delete-btn { background-color: var(--delete-red); }
+        .lista-lembretes .edit-btn { background-color: var(--edit-green); }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Criar / Editar Lembrete</h2>
+        <div class="form-lembrete">
+            <div>
+                <label for="lembreteTexto">Lembrete:</label>
+                <input type="text" id="lembreteTexto" placeholder="Descrição do lembrete...">
+            </div>
+            <div>
+                <label for="lembreteData">Data(s):</label>
+                <input type="date" id="lembreteData">
+            </div>
+            <div>
+                <label for="lembreteHora">Hora:</label>
+                <input type="time" id="lembreteHora">
+            </div>
+            <button id="addLembreteBtn"><i class="fas fa-plus"></i> Adicionar</button>
+        </div>
+        
+        <div id="datasSelecionadasContainer">
+        </div>
+
+        <div class="lista-lembretes">
+            <h2>Lembretes Ativos</h2>
+            <ul id="lembretesLista">
+            </ul>
+        </div>
+    </div>
+
+    <script src="theme-listener.js"></script>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+    const lembreteTextoInput = document.getElementById('lembreteTexto');
+    const lembreteDataInput = document.getElementById('lembreteData');
+    const lembreteHoraInput = document.getElementById('lembreteHora');
+    const addLembreteBtn = document.getElementById('addLembreteBtn');
+    const lembretesLista = document.getElementById('lembretesLista');
+    const datasSelecionadasContainer = document.getElementById('datasSelecionadasContainer');
+
+    let lembretes = [];
+    let selectedDates = [];
+    let editingId = null;
+
+    function loadLembretes() {
+        const allLembretes = JSON.parse(localStorage.getItem('lembretes_ativos')) || [];
+        lembretes = allLembretes.filter(l => !l.completed);
+        renderLembretes();
+        broadcastUpdate();
+    }
+
+    function saveLembretes() {
+        const completedLembretes = (JSON.parse(localStorage.getItem('lembretes_ativos')) || []).filter(l => l.completed);
+        const allLembretes = [...completedLembretes, ...lembretes];
+        localStorage.setItem('lembretes_ativos', JSON.stringify(allLembretes));
+        renderLembretes();
+        broadcastUpdate();
+    }
+
+    function broadcastUpdate() {
+        window.parent.postMessage({ type: 'lembretes_update', data: lembretes }, '*');
+    }
+    
+    function formatDate(dateString) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+
+    function renderSelectedDates() {
+        datasSelecionadasContainer.innerHTML = '';
+        selectedDates.forEach(date => {
+            const tag = document.createElement('div');
+            tag.className = 'data-tag';
+            tag.innerHTML = `
+                <span>${formatDate(date)}</span>
+                <span class="remove-date" data-date="${date}">&times;</span>
+            `;
+            datasSelecionadasContainer.appendChild(tag);
+        });
+    }
+
+    function renderLembretes() {
+        lembretesLista.innerHTML = '';
+        if (lembretes.length === 0) {
+            lembretesLista.innerHTML = '<li>Nenhum lembrete ativo no momento.</li>';
+            return;
+        }
+        
+        lembretes.sort((a,b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+        lembretes.forEach(lembrete => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="info">
+                    <span class="data-hora">${formatDate(lembrete.date)} às ${lembrete.time}</span>
+                    <span>${lembrete.text}</span>
+                </div>
+                <div class="action-buttons">
+                    <button class="edit-btn" data-id="${lembrete.id}" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn" data-id="${lembrete.id}" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            `;
+            lembretesLista.appendChild(li);
+        });
+    }
+
+    function clearForm() {
+        lembreteTextoInput.value = '';
+        lembreteDataInput.value = '';
+        lembreteHoraInput.value = '';
+        selectedDates = [];
+        renderSelectedDates();
+    }
+    
+    function exitEditMode() {
+        editingId = null;
+        addLembreteBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+        addLembreteBtn.classList.remove('edit-mode');
+        datasSelecionadasContainer.style.display = 'flex';
+        clearForm();
+    }
+
+    lembreteDataInput.addEventListener('change', () => {
+        if (editingId) return;
+        
+        const newDate = lembreteDataInput.value;
+        if (newDate && !selectedDates.includes(newDate)) {
+            selectedDates.push(newDate);
+            selectedDates.sort();
+            renderSelectedDates();
+        }
+        lembreteDataInput.value = '';
+    });
+
+    datasSelecionadasContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-date')) {
+            const dateToRemove = e.target.dataset.date;
+            selectedDates = selectedDates.filter(d => d !== dateToRemove);
+            renderSelectedDates();
+        }
+    });
+
+    addLembreteBtn.addEventListener('click', () => {
+        const text = lembreteTextoInput.value.trim();
+        const time = lembreteHoraInput.value;
+
+        if (!text || !time) {
+            alert('Por favor, preencha a descrição e a hora do lembrete.');
+            return;
+        }
+
+        if (editingId) {
+            const date = lembreteDataInput.value;
+            if (!date) {
+                alert('Por favor, selecione uma data para o lembrete.');
+                return;
+            }
+            const index = lembretes.findIndex(l => l.id === editingId);
+            if (index !== -1) {
+                lembretes[index].text = text;
+                lembretes[index].date = date;
+                lembretes[index].time = time;
+            }
+            exitEditMode();
+        } else {
+            if (selectedDates.length === 0) {
+                alert('Por favor, selecione pelo menos uma data no calendário.');
+                return;
+            }
+            selectedDates.forEach((date, index) => {
+                const newLembrete = {
+                    id: 'lembrete_' + Date.now() + '_' + index,
+                    text,
+                    date,
+                    time,
+                    completed: false
+                };
+                lembretes.push(newLembrete);
+            });
+            clearForm();
+        }
+        
+        saveLembretes();
+    });
+
+    lembretesLista.addEventListener('click', (e) => {
+        const targetButton = e.target.closest('button');
+        if (!targetButton) return;
+        
+        const id = targetButton.dataset.id;
+
+        if (targetButton.classList.contains('delete-btn')) {
+            if (confirm('Tem certeza que deseja excluir este lembrete?')) {
+                lembretes = lembretes.filter(l => l.id !== id);
+                saveLembretes();
+                if (id === editingId) {
+                    exitEditMode();
+                }
+            }
+        } else if (targetButton.classList.contains('edit-btn')) {
+            const lembreteToEdit = lembretes.find(l => l.id === id);
+            if (lembreteToEdit) {
+                lembreteTextoInput.value = lembreteToEdit.text;
+                lembreteDataInput.value = lembreteToEdit.date;
+                lembreteHoraInput.value = lembreteToEdit.time;
+                
+                editingId = id;
+                addLembreteBtn.innerHTML = '<i class="fas fa-save"></i> Salvar';
+                addLembreteBtn.classList.add('edit-mode');
+                
+                selectedDates = [];
+                renderSelectedDates();
+                datasSelecionadasContainer.style.display = 'none';
+            }
+        }
+    });
+
+    // Listener para mensagens do iframe pai (quando o checkbox é marcado em Saídas Administrativas)
+    window.addEventListener('message', (event) => {
+        if (event.data?.type === 'lembrete_completed') {
+            const id = event.data.id;
+            
+            // Remove da lista de lembretes ativos
+            lembretes = lembretes.filter(l => l.id !== id);
+            
+            // Marca como concluído no localStorage
+            const allLembretes = JSON.parse(localStorage.getItem('lembretes_ativos')) || [];
+            const lembreteIndex = allLembretes.findIndex(l => l.id === id);
+            if (lembreteIndex !== -1) {
+                allLembretes[lembreteIndex].completed = true;
+            }
+            localStorage.setItem('lembretes_ativos', JSON.stringify(allLembretes));
+            
+            // Atualiza a interface
+            renderLembretes();
+            broadcastUpdate();
+        }
+    });
+    
+    ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+        document.addEventListener(event, () => window.parent.postMessage({ type: 'user_activity' }, '*'));
+    });
+
+    loadLembretes();
+});
+</script>
+
+</body>
+</html>

@@ -129,6 +129,7 @@
     <main>
         <div id="frotaPessoalSection" class="tab-content active">
             <div class="sub-tabs">
+                <button class="sub-tab-button" data-sub-tab="rdvContent">RDV</button>
                 <button class="sub-tab-button active" data-sub-tab="frotaContent">Cadastro de Viaturas</button>
                 <button class="sub-tab-button" data-sub-tab="pessoalContent">Cadastro de Motoristas</button>
                 <button class="sub-tab-button" data-sub-tab="kmAtualContent">KM Atual</button>
@@ -137,6 +138,9 @@
                 <button class="sub-tab-button" data-sub-tab="abastecimentoContent">Abastecimento</button>
                 <button class="sub-tab-button" data-sub-tab="escalaPaoContent">Escala de Pão</button>
             </div>                        
+            <div id="rdvContent" class="sub-tab-content">
+                <iframe src="RDV.html" id="rdvIframe" style="width: 100%; min-height: calc(100vh - 120px); height: calc(100vh - 120px); border: none;"></iframe>
+            </div>
             <div id="frotaContent" class="sub-tab-content active">
                 <div class="table-controls">
                     <h2 class="table-title">CADASTRO DE VIATURAS</h2>
