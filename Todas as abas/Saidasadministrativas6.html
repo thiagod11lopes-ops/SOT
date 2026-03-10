@@ -3145,7 +3145,18 @@ async function desagruparSaida_OLD_DISABLED(saidaJuntada, indice, setor, destino
 
 function handleEditRow(event) {
 event.stopPropagation();
-const ids = event.target.closest('tr').dataset.id.split(',');
+const row = event.target.closest('tr');
+if (!row) return;
+const ids = row.dataset.id.split(',');
+// Garantir viatura e motorista a partir da linha (mesmo que o objeto não os tenha)
+function payloadComViaturaMotoristaDaLinha(data) {
+    if (!data || !row) return data;
+    const viaturaCell = row.querySelector('td[data-placa]');
+    const motoristaCell = row.querySelector('td.motorista-cell[data-original-value]');
+    const viatura = (viaturaCell && viaturaCell.getAttribute('data-placa')) || data.viatura || data.viatura_id || '';
+    const motorista = (motoristaCell && motoristaCell.getAttribute('data-original-value')) || data.motorista || data.motorista_id || '';
+    return { ...data, viatura: viatura || data.viatura, motorista: motorista || data.motorista };
+}
 if (ids.length > 1) {
 choiceModalTitle.textContent = "Escolha a Saída para Editar";
 choiceModalContent.innerHTML = '';
@@ -3168,6 +3179,8 @@ setTimeout(() => {
 } else {
 const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
 if (saidaData) {
+    // Enriquecer com viatura/motorista da linha para o formulário de edição manter os valores
+    const saidaEnviar = payloadComViaturaMotoristaDaLinha(saidaData);
     // Verificar se é uma saída juntada
     if (saidaData.juntada && (saidaData.setores_multiplos || saidaData.destinos_multiplos)) {
         // Abrir modal para selecionar qual saída individual editar
@@ -3263,7 +3276,6 @@ if (saidaData) {
                 // Buscar a saída individual desagrupada atualizada
                 const saidaAtualizada = saidasAdministrativas.find(s => s.id === saidaIndividual.id);
                 const saidaParaEditar = saidaAtualizada || saidaIndividual;
-                
                 window.parent.postMessage({ type: 'edit_saida', data: saidaParaEditar }, '*'); 
                 choiceModal.style.display = 'none'; 
             };
@@ -3278,8 +3290,8 @@ if (saidaData) {
             choiceModal.scrollTop = 0;
         }, 0);
     } else {
-        // Saída normal, não juntada
-window.parent.postMessage({ type: 'edit_saida', data: saidaData }, '*');
+        // Saída normal, não juntada — enviar com viatura/motorista da linha para o formulário manter os valores
+        window.parent.postMessage({ type: 'edit_saida', data: saidaEnviar }, '*');
     }
 }
 }

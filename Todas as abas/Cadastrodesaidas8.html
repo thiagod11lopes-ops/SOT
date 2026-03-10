@@ -1860,45 +1860,50 @@ function populateFormForEdit(saidaData) {
         if (el('registerObjetivo')) el('registerObjetivo').value = saidaData.objetivo || saidaData.motivo || '';
     }
 
-    // 4) Um único setTimeout: repopular selects e visibilidade, depois preencher viatura, motorista, cidade/bairro e demais; não chamar adjustRegisterFormFields de novo
+    // 4) Um único setTimeout: popular selects UMA VEZ, preencher viatura/motorista e só então ajustar visibilidade (SEM repopular de novo)
     setTimeout(function() {
-        if (typeof adjustRegisterFormFields === 'function') {
-            adjustRegisterFormFields();
+        // 4.1) Popular opções de viatura e motorista uma única vez
+        if (typeof populateRegisterSaidaSelects === 'function') {
+            populateRegisterSaidaSelects();
         }
 
-        // Viatura: garantir opção e selecionar
+        // 4.2) Definir viatura e motorista e garantir que a opção exista
         if (registerViaturaSelect && viaturaValue) {
             var hasViatura = Array.prototype.some.call(registerViaturaSelect.options, function(o) { return o.value === viaturaValue; });
             if (!hasViatura) registerViaturaSelect.appendChild(new Option(viaturaValue + ' (não cadastrado)', viaturaValue));
             registerViaturaSelect.value = viaturaValue;
         }
-        // Motorista: garantir opção e selecionar
         if (registerMotoristaSelect && motoristaValue) {
             var hasMotorista = Array.prototype.some.call(registerMotoristaSelect.options, function(o) { return o.value === motoristaValue; });
             if (!hasMotorista) registerMotoristaSelect.appendChild(new Option(motoristaValue + ' (não cadastrado)', motoristaValue));
             registerMotoristaSelect.value = motoristaValue;
         }
 
-        // Cidade e Bairro
+        // 4.3) Ajustar apenas visibilidade (mostrar/ocultar grupos) e updateFormFields — SEM repopular viatura/motorista
+        if (typeof adjustRegisterFormFields === 'function') {
+            adjustRegisterFormFields(true);
+        }
+
+        // 4.4) Cidade e Bairro
+        var cidadeVal = saidaData.cidade || saidaData.endereco_cidade || '';
+        var bairroVal = saidaData.bairro || saidaData.endereco_bairro || '';
         var cidadeEl = el('registerCidade');
         var bairroEl = el('registerBairro');
-        var cidadeValue = saidaData.cidade || saidaData.endereco_cidade || '';
-        var bairroValue = saidaData.bairro || saidaData.endereco_bairro || '';
         if (cidadeEl) {
-            cidadeEl.value = cidadeValue;
-            if (cidadeValue) cidadeEl.dispatchEvent(new Event('change', { bubbles: true }));
+            cidadeEl.value = cidadeVal;
+            if (cidadeVal) cidadeEl.dispatchEvent(new Event('change', { bubbles: true }));
         }
         setTimeout(function() {
-            if (bairroEl) bairroEl.value = bairroValue;
+            if (bairroEl) bairroEl.value = bairroVal;
         }, 180);
 
-        // Hospital, KM e Chegada (ambulância)
+        // 4.5) Hospital, KM e Chegada (ambulância)
         if (el('registerHospital')) el('registerHospital').value = saidaData.hospital || '';
         if (el('registerKmSaida')) el('registerKmSaida').value = formatKm(saidaData.kmSaida || '');
         if (el('registerKmChegada')) el('registerKmChegada').value = formatKm(saidaData.kmChegada || '');
         if (el('registerChegada')) el('registerChegada').value = saidaData.chegada || '';
 
-        // Reativar o listener do tipo para edições manuais futuras
+        // 4.6) Reativar o listener do tipo para edições manuais futuras
         if (registerTipoSaidaSelect) {
             registerTipoSaidaSelect.addEventListener('change', adjustRegisterFormFields);
         }
@@ -2032,29 +2037,30 @@ function updateKmSaidaAuto() {
     }
 }
 
-function adjustRegisterFormFields() {
-    // Guardar seleção atual de viatura e motorista para não perder ao repopular os selects
-    const currentViatura = registerViaturaSelect ? registerViaturaSelect.value : '';
-    const currentMotorista = registerMotoristaSelect ? registerMotoristaSelect.value : '';
+function adjustRegisterFormFields(skipRepopulateSelects) {
+    if (!skipRepopulateSelects) {
+        // Guardar seleção atual de viatura e motorista para não perder ao repopular os selects
+        const currentViatura = registerViaturaSelect ? registerViaturaSelect.value : '';
+        const currentMotorista = registerMotoristaSelect ? registerMotoristaSelect.value : '';
 
-    populateRegisterSaidaSelects();
+        populateRegisterSaidaSelects();
 
-    // Restaurar seleção (se ainda existir nas opções)
-    if (registerViaturaSelect && currentViatura) {
-        registerViaturaSelect.value = currentViatura;
-        // Se, após repopular, o valor não existir mais nas opções, criar uma opção avulsa para edição
-        if (!registerViaturaSelect.value) {
-            const opt = new Option(currentViatura + ' (não cadastrado)', currentViatura);
-            registerViaturaSelect.appendChild(opt);
+        // Restaurar seleção (se ainda existir nas opções)
+        if (registerViaturaSelect && currentViatura) {
             registerViaturaSelect.value = currentViatura;
+            if (!registerViaturaSelect.value) {
+                const opt = new Option(currentViatura + ' (não cadastrado)', currentViatura);
+                registerViaturaSelect.appendChild(opt);
+                registerViaturaSelect.value = currentViatura;
+            }
         }
-    }
-    if (registerMotoristaSelect && currentMotorista) {
-        registerMotoristaSelect.value = currentMotorista;
-        if (!registerMotoristaSelect.value) {
-            const optMot = new Option(currentMotorista + ' (não cadastrado)', currentMotorista);
-            registerMotoristaSelect.appendChild(optMot);
+        if (registerMotoristaSelect && currentMotorista) {
             registerMotoristaSelect.value = currentMotorista;
+            if (!registerMotoristaSelect.value) {
+                const optMot = new Option(currentMotorista + ' (não cadastrado)', currentMotorista);
+                registerMotoristaSelect.appendChild(optMot);
+                registerMotoristaSelect.value = currentMotorista;
+            }
         }
     }
 
@@ -3157,7 +3163,8 @@ window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 window.addEventListener('message', function(event) {
 const { type, data, id } = event.data || {};
 if (type === 'populate_form_for_edit' || type === 'edit_saida') {
-populateFormForEdit(data);
+// Atrasar para evitar que o setTimeout(200) de ajuste do formulário (ao carregar a aba) limpe viatura/motorista depois do preenchimento
+setTimeout(function() { populateFormForEdit(data); }, 250);
 } else if (type === 'locate_saida') {
 locateAndHighlightButton(id);
 } else if (type === 'refresh_data' || type === 'refresh_all_data') {
