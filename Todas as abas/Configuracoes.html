@@ -306,6 +306,24 @@
                 <button class="sub-tab-button" data-sub-tab="usuariosContent">Usuários</button>
             </div>
             <div id="configuracoesContent" class="sub-tab-content active">
+        <!-- Seção Salvar no Firebase (no topo para ficar visível) -->
+        <div class="config-section" style="border: 2px solid var(--success-green); background: linear-gradient(135deg, rgba(40,167,69,0.08), rgba(40,167,69,0.04));">
+            <h2 class="section-title">
+                <i class="fas fa-cloud-upload-alt"></i>
+                Sincronizar com Firebase
+            </h2>
+            <p style="margin: 10px 0; color: var(--dark-gray);">
+                Salve todos os dados do SOT (saídas, viaturas, motoristas, avisos, etc.) no Firebase. 
+                Assim, ao acessar o sistema em <strong>https://thiagod11lopes-ops.github.io/SOT/Todas%20as%20abas/index.html</strong> ou no Quadro de Saídas no celular, os dados estarão disponíveis.
+            </p>
+            <div class="button-group">
+                <button id="saveAllToFirebaseBtn" class="success" title="Envia todos os dados atuais para o Firestore" style="padding: 14px 24px; font-size: 16px;">
+                    <i class="fas fa-cloud-upload-alt"></i> Salvar todos os dados no Firebase
+                </button>
+            </div>
+            <div id="firebaseSyncMessage" class="message"></div>
+        </div>
+
         <!-- Seção de Senha -->
         <div class="config-section">
             <h2 class="section-title">
@@ -341,24 +359,6 @@
                 <div id="themeGrid" class="theme-grid"></div>
             </div>
             <div id="themeMessage" class="message"></div>
-        </div>
-
-        <!-- Seção Salvar no Firebase -->
-        <div class="config-section">
-            <h2 class="section-title">
-                <i class="fas fa-cloud-upload-alt"></i>
-                Sincronizar com Firebase
-            </h2>
-            <p style="margin: 10px 0; color: var(--dark-gray);">
-                Salve todos os dados do SOT (saídas, viaturas, motoristas, avisos, etc.) no Firebase. 
-                Assim, ao acessar o sistema em <strong>https://thiagod11lopes-ops.github.io/SOT/Todas%20as%20abas/index.html</strong> ou no Quadro de Saídas no celular, os dados estarão disponíveis.
-            </p>
-            <div class="button-group">
-                <button id="saveAllToFirebaseBtn" class="success" title="Envia todos os dados atuais para o Firestore">
-                    <i class="fas fa-cloud-upload-alt"></i> Salvar todos os dados no Firebase
-                </button>
-            </div>
-            <div id="firebaseSyncMessage" class="message"></div>
         </div>
 
         <!-- Seção de Gerenciamento de Dados -->
