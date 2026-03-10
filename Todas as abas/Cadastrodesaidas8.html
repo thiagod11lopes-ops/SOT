@@ -1823,131 +1823,86 @@ window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
 }
 function populateFormForEdit(saidaData) {
-if (saidaData) {
-showSubTab('registerFormContent');
-formTitle.textContent = 'EDITAR SAÍDA';
-submitNewSaidaBtn.textContent = 'Atualizar Saída';
-saidaIdHiddenInput.value = saidaData.id;
+    if (!saidaData) return;
 
-// Preencher todos os campos com os dados da saída
-// Tipo de Saída
-if (document.getElementById('registerTipoSaida')) {
-    document.getElementById('registerTipoSaida').value = saidaData.tipo || 'Administrativa';
-}
-
-// Data e Hora do Pedido
-if (document.getElementById('registerDataPedido')) {
-    document.getElementById('registerDataPedido').value = saidaData.dataPedido || saidaData.data || '';
-}
-if (document.getElementById('registerHoraPedido')) {
-    document.getElementById('registerHoraPedido').value = saidaData.horaPedido || saidaData.hora || '';
-}
-
-// Data e Hora da Saída
-if (document.getElementById('registerDataSaida')) {
-    document.getElementById('registerDataSaida').value = saidaData.dataSaida || saidaData.data || '';
-}
-if (document.getElementById('registerHoraSaida')) {
-    document.getElementById('registerHoraSaida').value = saidaData.horaSaida || saidaData.saida || saidaData.horario || saidaData.hora || '';
-}
-
-// Setor e Ramal
-if (document.getElementById('registerSetor')) {
-    document.getElementById('registerSetor').value = saidaData.setor || '';
-}
-if (document.getElementById('registerRamal')) {
-    document.getElementById('registerRamal').value = saidaData.ramal || '';
-}
-
-// Cidade e Bairro
-if (document.getElementById('registerCidade')) {
-    const cidadeValue = saidaData.cidade || saidaData.endereco_cidade || '';
-    document.getElementById('registerCidade').value = cidadeValue;
-    if (cidadeValue) {
-        document.getElementById('registerCidade').dispatchEvent(new Event('change'));
-    }
-}
-if (document.getElementById('registerBairro')) {
-    const bairroValue = saidaData.bairro || saidaData.endereco_bairro || '';
-    // Aguardar um pouco para que o evento change da cidade processe
-    setTimeout(() => {
-        if (document.getElementById('registerBairro')) {
-            document.getElementById('registerBairro').value = bairroValue;
-        }
-    }, 200);
-}
-
-// Objetivo/Motivo
-if (saidaData.tipo === 'Ambulância') {
-    if (document.getElementById('registerObjetivoSelect')) {
-        document.getElementById('registerObjetivoSelect').value = saidaData.objetivo || saidaData.motivo || '';
-    }
-} else {
-    if (document.getElementById('registerObjetivo')) {
-        document.getElementById('registerObjetivo').value = saidaData.objetivo || saidaData.motivo || '';
-    }
-}
-
-// Número de Passageiros
-if (document.getElementById('registerNumPassageiros')) {
-    document.getElementById('registerNumPassageiros').value = saidaData.numPassageiros || '';
-}
-
-// Responsável pelo Pedido
-if (document.getElementById('registerResponsavelPedido')) {
-    document.getElementById('registerResponsavelPedido').value = saidaData.responsavelPedido || '';
-}
-
-// OM
-if (document.getElementById('registerOM')) {
-    document.getElementById('registerOM').value = saidaData.om || '';
-}
-
-// Preencher campos que dependem de selects: primeiro repopular selects, depois setar viatura/motorista (sem nova chamada que os limpe)
-setTimeout(() => {
-    var viaturaEl = document.getElementById('registerViatura');
-    var motoristaEl = document.getElementById('registerMotorista');
+    var tipo = saidaData.tipo || 'Administrativa';
     var viaturaValue = saidaData.viatura || saidaData.viatura_id || '';
     var motoristaValue = saidaData.motorista || saidaData.motorista_id || '';
 
-    // 1) Repopular selects e ajustar visibilidade dos grupos (só uma vez)
-    if (typeof adjustRegisterFormFields === 'function') {
-        adjustRegisterFormFields();
+    // 1) Abrir a subaba Cadastrar nova saída e configurar título/botão
+    showSubTab('registerFormContent');
+    formTitle.textContent = 'EDITAR SAÍDA';
+    submitNewSaidaBtn.textContent = 'Atualizar Saída';
+    saidaIdHiddenInput.value = saidaData.id;
+
+    // 2) Evitar que o "change" do tipo dispare adjustRegisterFormFields no meio do preenchimento
+    if (registerTipoSaidaSelect) {
+        registerTipoSaidaSelect.removeEventListener('change', adjustRegisterFormFields);
     }
 
-    // 2) Definir viatura: garantir que a opção exista e então selecionar
-    if (viaturaEl && viaturaValue) {
-        var hasViatura = Array.prototype.some.call(viaturaEl.options, function(o) { return o.value === viaturaValue; });
-        if (!hasViatura) {
-            viaturaEl.appendChild(new Option(viaturaValue + ' (não cadastrado)', viaturaValue));
+    // 3) Preencher todos os campos em uma única sequência, sem disparar eventos que repopulem os selects
+    var el = function(id) { return document.getElementById(id); };
+
+    if (registerTipoSaidaSelect) registerTipoSaidaSelect.value = tipo;
+    if (el('registerDataPedido')) el('registerDataPedido').value = saidaData.dataPedido || saidaData.data || '';
+    if (el('registerHoraPedido')) el('registerHoraPedido').value = saidaData.horaPedido || saidaData.hora || '';
+    if (el('registerDataSaida')) el('registerDataSaida').value = saidaData.dataSaida || saidaData.data || '';
+    if (el('registerHoraSaida')) el('registerHoraSaida').value = saidaData.horaSaida || saidaData.saida || saidaData.horario || saidaData.hora || '';
+    if (el('registerSetor')) el('registerSetor').value = saidaData.setor || '';
+    if (el('registerRamal')) el('registerRamal').value = saidaData.ramal || '';
+    if (el('registerNumPassageiros')) el('registerNumPassageiros').value = saidaData.numPassageiros || '';
+    if (el('registerResponsavelPedido')) el('registerResponsavelPedido').value = saidaData.responsavelPedido || '';
+    if (el('registerOM')) el('registerOM').value = saidaData.om || '';
+
+    if (tipo === 'Ambulância') {
+        if (el('registerObjetivoSelect')) el('registerObjetivoSelect').value = saidaData.objetivo || saidaData.motivo || '';
+    } else {
+        if (el('registerObjetivo')) el('registerObjetivo').value = saidaData.objetivo || saidaData.motivo || '';
+    }
+
+    // 4) Um único setTimeout: repopular selects e visibilidade, depois preencher viatura, motorista, cidade/bairro e demais; não chamar adjustRegisterFormFields de novo
+    setTimeout(function() {
+        if (typeof adjustRegisterFormFields === 'function') {
+            adjustRegisterFormFields();
         }
-        viaturaEl.value = viaturaValue;
-    }
 
-    // 3) Definir motorista: garantir que a opção exista e então selecionar
-    if (motoristaEl && motoristaValue) {
-        var hasMotorista = Array.prototype.some.call(motoristaEl.options, function(o) { return o.value === motoristaValue; });
-        if (!hasMotorista) {
-            motoristaEl.appendChild(new Option(motoristaValue + ' (não cadastrado)', motoristaValue));
+        // Viatura: garantir opção e selecionar
+        if (registerViaturaSelect && viaturaValue) {
+            var hasViatura = Array.prototype.some.call(registerViaturaSelect.options, function(o) { return o.value === viaturaValue; });
+            if (!hasViatura) registerViaturaSelect.appendChild(new Option(viaturaValue + ' (não cadastrado)', viaturaValue));
+            registerViaturaSelect.value = viaturaValue;
         }
-        motoristaEl.value = motoristaValue;
-    }
+        // Motorista: garantir opção e selecionar
+        if (registerMotoristaSelect && motoristaValue) {
+            var hasMotorista = Array.prototype.some.call(registerMotoristaSelect.options, function(o) { return o.value === motoristaValue; });
+            if (!hasMotorista) registerMotoristaSelect.appendChild(new Option(motoristaValue + ' (não cadastrado)', motoristaValue));
+            registerMotoristaSelect.value = motoristaValue;
+        }
 
-    // 4) Demais campos
-    if (document.getElementById('registerHospital')) {
-        document.getElementById('registerHospital').value = saidaData.hospital || '';
-    }
-    if (document.getElementById('registerKmSaida')) {
-        document.getElementById('registerKmSaida').value = formatKm(saidaData.kmSaida || '');
-    }
-    if (document.getElementById('registerKmChegada')) {
-        document.getElementById('registerKmChegada').value = formatKm(saidaData.kmChegada || '');
-    }
-    if (document.getElementById('registerChegada')) {
-        document.getElementById('registerChegada').value = saidaData.chegada || '';
-    }
-}, 300);
-}
+        // Cidade e Bairro
+        var cidadeEl = el('registerCidade');
+        var bairroEl = el('registerBairro');
+        var cidadeValue = saidaData.cidade || saidaData.endereco_cidade || '';
+        var bairroValue = saidaData.bairro || saidaData.endereco_bairro || '';
+        if (cidadeEl) {
+            cidadeEl.value = cidadeValue;
+            if (cidadeValue) cidadeEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        setTimeout(function() {
+            if (bairroEl) bairroEl.value = bairroValue;
+        }, 180);
+
+        // Hospital, KM e Chegada (ambulância)
+        if (el('registerHospital')) el('registerHospital').value = saidaData.hospital || '';
+        if (el('registerKmSaida')) el('registerKmSaida').value = formatKm(saidaData.kmSaida || '');
+        if (el('registerKmChegada')) el('registerKmChegada').value = formatKm(saidaData.kmChegada || '');
+        if (el('registerChegada')) el('registerChegada').value = saidaData.chegada || '';
+
+        // Reativar o listener do tipo para edições manuais futuras
+        if (registerTipoSaidaSelect) {
+            registerTipoSaidaSelect.addEventListener('change', adjustRegisterFormFields);
+        }
+    }, 350);
 }
 function handleEditRow(event) {
 const row = event.target.closest('tr');
@@ -2301,8 +2256,8 @@ targetArray.push(newSaida);
 }
 localStorage.setItem(targetArrayName, JSON.stringify(targetArray));
 if (typeof dataService !== 'undefined') {
-    if (targetArrayName === 'saidasAdministrativas') dataService.setSaidasAdministrativas(targetArray);
-    else if (targetArrayName === 'saidasAmbulancias') dataService.setSaidasAmbulancias(targetArray);
+    if (targetArrayName === 'saidasAdministrativas') await dataService.setSaidasAdministrativas(targetArray);
+    else if (targetArrayName === 'saidasAmbulancias') await dataService.setSaidasAmbulancias(targetArray);
 }
 
 // Verificar se há saídas para juntar (para novas saídas administrativas ou após edição)
