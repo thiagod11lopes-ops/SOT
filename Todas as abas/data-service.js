@@ -15,16 +15,20 @@ class DataService {
         setTimeout(() => this.checkAPI(), 100);
     }
 
-    /** Se true, as leituras priorizam o localStorage deste computador em vez do Firebase (útil ao acessar pelo GitHub) */
+    /**
+     * Só prioriza localStorage quando o usuário clicou em "Usar dados deste computador" nesta sessão.
+     * Usamos sessionStorage para que, ao abrir em outro computador, o Firebase seja sempre usado (sem conflito).
+     */
     _preferLocalStorage() {
-        return typeof localStorage !== 'undefined' && localStorage.getItem(SOT_PREFER_LOCAL_KEY) === 'true';
+        return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SOT_PREFER_LOCAL_KEY) === 'true';
     }
 
-    /** Ativa ou desativa o uso prioritário dos dados do armazenamento local (deste computador) */
+    /** Ativa ou desativa o uso prioritário dos dados do armazenamento local (deste computador) — só na sessão atual */
     setPreferLocalStorage(value) {
-        if (typeof localStorage === 'undefined') return;
-        if (value) localStorage.setItem(SOT_PREFER_LOCAL_KEY, 'true');
-        else localStorage.removeItem(SOT_PREFER_LOCAL_KEY);
+        if (typeof sessionStorage === 'undefined') return;
+        if (value) sessionStorage.setItem(SOT_PREFER_LOCAL_KEY, 'true');
+        else sessionStorage.removeItem(SOT_PREFER_LOCAL_KEY);
+        if (typeof localStorage !== 'undefined' && !value) localStorage.removeItem(SOT_PREFER_LOCAL_KEY);
     }
 
     _checkFirebase() {

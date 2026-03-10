@@ -1903,9 +1903,6 @@ if (document.getElementById('registerOM')) {
     document.getElementById('registerOM').value = saidaData.om || '';
 }
 
-// Ajustar campos do formulário baseado no tipo
-adjustRegisterFormFields();
-
 // Preencher campos que dependem de selects carregados (aguardar um pouco)
 setTimeout(() => {
     // Viatura
@@ -1936,6 +1933,10 @@ setTimeout(() => {
     }
     if (document.getElementById('registerChegada')) {
         document.getElementById('registerChegada').value = saidaData.chegada || '';
+    }
+    // Após preencher todos os campos, ajustar o formulário (mostra/esconde grupos, repopula selects preservando seleção)
+    if (typeof adjustRegisterFormFields === 'function') {
+        adjustRegisterFormFields();
     }
 }, 300);
 }
@@ -2069,9 +2070,34 @@ function updateKmSaidaAuto() {
 }
 
 function adjustRegisterFormFields() {
-populateRegisterSaidaSelects();
-updateFormFields(); // Atualizar campos com itens personalizados
-const tipoSaida = registerTipoSaidaSelect ? registerTipoSaidaSelect.value : '';
+    // Guardar seleção atual de viatura e motorista para não perder ao repopular os selects
+    const currentViatura = registerViaturaSelect ? registerViaturaSelect.value : '';
+    const currentMotorista = registerMotoristaSelect ? registerMotoristaSelect.value : '';
+
+    populateRegisterSaidaSelects();
+
+    // Restaurar seleção (se ainda existir nas opções)
+    if (registerViaturaSelect && currentViatura) {
+        registerViaturaSelect.value = currentViatura;
+        // Se, após repopular, o valor não existir mais nas opções, criar uma opção avulsa para edição
+        if (!registerViaturaSelect.value) {
+            const opt = new Option(currentViatura + ' (não cadastrado)', currentViatura);
+            registerViaturaSelect.appendChild(opt);
+            registerViaturaSelect.value = currentViatura;
+        }
+    }
+    if (registerMotoristaSelect && currentMotorista) {
+        registerMotoristaSelect.value = currentMotorista;
+        if (!registerMotoristaSelect.value) {
+            const optMot = new Option(currentMotorista + ' (não cadastrado)', currentMotorista);
+            registerMotoristaSelect.appendChild(optMot);
+            registerMotoristaSelect.value = currentMotorista;
+        }
+    }
+
+    updateFormFields(); // Atualizar campos com itens personalizados
+
+    const tipoSaida = registerTipoSaidaSelect ? registerTipoSaidaSelect.value : '';
 const hospitalGroup = document.getElementById('registerHospitalGroup');
 const kmSaidaGroup = document.getElementById('registerKmSaidaGroup');
 const kmChegadaGroup = document.getElementById('registerKmChegadaGroup');
