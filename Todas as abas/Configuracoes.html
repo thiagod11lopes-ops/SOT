@@ -320,7 +320,14 @@
                 <button id="saveAllToFirebaseBtn" class="success" title="Envia todos os dados atuais para o Firestore" style="padding: 14px 24px; font-size: 16px;">
                     <i class="fas fa-cloud-upload-alt"></i> Salvar todos os dados no Firebase
                 </button>
+                <button id="loadJsonForFirebaseBtn" class="warning" title="Carrega um arquivo JSON com dados salvos neste computador para depois enviar ao Firebase" style="padding: 14px 24px; font-size: 16px;">
+                    <i class="fas fa-file-import"></i> Carregar dados JSON
+                </button>
             </div>
+            <p style="margin: 8px 0; color: var(--dark-gray); font-size: 13px;">
+                Use primeiro o botão <strong>Carregar dados JSON</strong> para carregar um backup salvo neste computador. 
+                Em seguida, clique em <strong>Salvar todos os dados no Firebase</strong> para enviar essas informações para a nuvem.
+            </p>
             <div id="firebaseSyncMessage" class="message"></div>
         </div>
 
@@ -476,6 +483,9 @@
             const clearAllDataBtn = document.getElementById('clearAllDataBtn');
             const backupMessage = document.getElementById('backupMessage');
 
+            // Botão extra ao lado do "Salvar no Firebase" para carregar JSON
+            const loadJsonForFirebaseBtn = document.getElementById('loadJsonForFirebaseBtn');
+
             console.log('Elementos encontrados:', {
                 oldPasswordInput,
                 newPasswordInput,
@@ -483,7 +493,8 @@
                 backupNowBtn,
                 exportJsonBtn,
                 importJsonBtn,
-                clearAllDataBtn
+                clearAllDataBtn,
+                loadJsonForFirebaseBtn
             });
 
             const themeGrid = document.getElementById('themeGrid');
@@ -981,6 +992,13 @@
                         showPasswordMessage('Senha atual incorreta.', 'error');
                         oldPasswordInput.value = '';
                     }
+                });
+            }
+
+            // Se o botão "Carregar dados JSON" existir, reutiliza o mesmo fluxo do botão "Importar Dados (JSON)"
+            if (loadJsonForFirebaseBtn && importJsonBtn) {
+                loadJsonForFirebaseBtn.addEventListener('click', () => {
+                    importJsonBtn.click();
                 });
             }
 
