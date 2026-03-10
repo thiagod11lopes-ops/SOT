@@ -2239,7 +2239,7 @@ resetInactivityTimer();
 if (event.data?.type === 'escala_pao_updated') {
 updateEscalaPaoAmanha();
 }
-// Foco em Saídas Administrativas após edição via Cadastro de Saídas
+// Foco em Saídas Administrativas após edição via Cadastro de Saídas — atualização imediata da aba
 if (event.data?.type === 'saida_administrativa_atualizada') {
 const { dataSaida, id } = event.data;
 // Ativar aba "Saídas Administrativas"
@@ -2249,14 +2249,15 @@ const tabContent = document.getElementById('saidas-administrativas');
 if (tabContent) tabContent.classList.add('active');
 const tabButton = document.querySelector('.tab-button[data-tab-id="saidas-administrativas"]');
 if (tabButton) tabButton.classList.add('active');
-// Enviar mensagem para o iframe com a data/id da saída atualizada
+// Enviar mensagem para o iframe após a troca de aba (garante que a aba já está visível e atualiza os dados na hora)
 const iframeSaidas = document.getElementById('iframe-saidas-administrativas');
-if (iframeSaidas && iframeSaidas.contentWindow && dataSaida) {
-    iframeSaidas.contentWindow.postMessage({
-        type: 'focus_saida_administrativa',
-        date: dataSaida,
-        id: id
-    }, '*');
+if (iframeSaidas && iframeSaidas.contentWindow) {
+    var payload = { type: 'focus_saida_administrativa', date: dataSaida || '', id: id || '' };
+    setTimeout(function() {
+        try {
+            iframeSaidas.contentWindow.postMessage(payload, '*');
+        } catch (e) { console.warn('postMessage focus_saida_administrativa:', e); }
+    }, 80);
 }
 }
 // Localizar saída
