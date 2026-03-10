@@ -11,6 +11,10 @@
 <!-- Biblioteca Tesseract.js para OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 <script src="theme-listener.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sot-service.js"></script>
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="junta-saidas-service.js"></script>
@@ -1717,7 +1721,7 @@ function importCsvData(event) {
 const file = event.target.files[0];
 if (!file) return;
 const reader = new FileReader();
-reader.onload = function(e) {
+reader.onload = async function(e) {
 const text = e.target.result;
 const lines = text.split(/[\r\n]+/).filter(line => line.trim() !== '');
 if (lines.length <= 1) return alert("Arquivo CSV vazio ou inválido.");
@@ -1784,9 +1788,9 @@ saidasAdministrativas.push(saida);
 saidasAmbulancias.push(saida);
 }
 });
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
-localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
-loadDataAndPopulateTables();
+if (typeof dataService !== 'undefined' && dataService.setSaidasAdministrativas) await dataService.setSaidasAdministrativas(saidasAdministrativas); else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && dataService.setSaidasAmbulancias) await dataService.setSaidasAmbulancias(saidasAmbulancias); else localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+await loadDataAndPopulateTables();
 alert(`Importação concluída! ${newSaidas.length} registros foram adicionados.`);
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 };
@@ -1809,10 +1813,10 @@ const tipoSaida = row.dataset.tipo;
 if (confirm('Tem certeza que deseja excluir esta saída?')) {
 if (tipoSaida === 'Administrativa') {
 saidasAdministrativas = saidasAdministrativas.filter(i => i.id !== idToDelete);
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && dataService.setSaidasAdministrativas) dataService.setSaidasAdministrativas(saidasAdministrativas); else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
 } else if (tipoSaida === 'Ambulância') {
 saidasAmbulancias = saidasAmbulancias.filter(i => i.id !== idToDelete);
-localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+if (typeof dataService !== 'undefined' && dataService.setSaidasAmbulancias) dataService.setSaidasAmbulancias(saidasAmbulancias); else localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
 }
 loadDataAndPopulateTables();
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
@@ -2262,6 +2266,10 @@ motivo: formData.objetivo
 targetArray.push(newSaida);
 }
 localStorage.setItem(targetArrayName, JSON.stringify(targetArray));
+if (typeof dataService !== 'undefined') {
+    if (targetArrayName === 'saidasAdministrativas') dataService.setSaidasAdministrativas(targetArray);
+    else if (targetArrayName === 'saidasAmbulancias') dataService.setSaidasAmbulancias(targetArray);
+}
 
 // Verificar se há saídas para juntar (para novas saídas administrativas ou após edição)
 if (formData.tipo === 'Administrativa' && typeof juntaSaidasService !== 'undefined' && juntaSaidasService) {
@@ -2929,11 +2937,25 @@ if (responsavelInput) {
     });
 }
 }
-function loadDataAndPopulateTables() {
+async function loadDataAndPopulateTables() {
+if (typeof dataService !== 'undefined') {
+    try {
+        saidasAdministrativas = await dataService.getSaidasAdministrativas();
+        saidasAmbulancias = (await dataService.getSaidasAmbulancias()) || [];
+        viaturasCadastradas = await dataService.getViaturas();
+        motoristasCadastrados = await dataService.getMotoristas();
+    } catch (e) {
+        saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+        saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+        viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+    }
+} else {
 saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
 saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
 viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
 motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+}
 loadItensData(); // Carregar itens personalizados
 populateAllYearFilters();
 populateCidadeFilter();

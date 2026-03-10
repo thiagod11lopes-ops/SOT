@@ -421,7 +421,11 @@
         </div>
     </div>
 
-    <!-- Reutiliza serviços do SOT para ler os mesmos dados -->
+    <!-- Firebase + serviços do SOT para dados sincronizados -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="Todas%20as%20abas/firebase-config.js"></script>
+    <script src="Todas%20as%20abas/firebase-sot-service.js"></script>
     <script src="Todas%20as%20abas/api-service.js"></script>
     <script src="Todas%20as%20abas/data-service.js"></script>
     <script>
@@ -461,12 +465,20 @@
             dateInput.value = todayISO;
             dateLabel.textContent = formatDateLabel(todayISO);
 
-            async function loadSaidasForSelectedDate() {
-                if (!window.dataService) {
-                    console.warn('dataService não disponível; verifique se data-service.js foi carregado.');
-                    return;
-                }
+            /** Obtém a lista de saídas: primeiro tenta o JSON no repositório (igual no celular e no PC), depois localStorage/API */
+            async function getAllSaidas() {
+                try {
+                    const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data)) return data;
+                    }
+                } catch (e) { /* ignora */ }
+                if (window.dataService) return await window.dataService.getSaidasAdministrativas();
+                return [];
+            }
 
+            async function loadSaidasForSelectedDate() {
                 const selectedDate = dateInput.value;
                 dateLabel.textContent = formatDateLabel(selectedDate);
                 cardsContainer.innerHTML = '';
@@ -474,8 +486,8 @@
                 loading.style.display = 'block';
 
                 try {
-                    const allSaidas = await window.dataService.getSaidasAdministrativas();
-                    const filtered = (allSaidas || []).filter(s => s.dataSaida === selectedDate);
+                    const allSaidas = await getAllSaidas();
+                    const filtered = (allSaidas || []).filter(s => (s.dataSaida || s.data) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
 
                     counterValue.textContent = filtered.length;

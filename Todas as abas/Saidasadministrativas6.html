@@ -8,6 +8,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js" defer></script>
 <script src="theme-listener.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sot-service.js"></script>
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="junta-saidas-service.js"></script>
@@ -605,6 +609,7 @@ body[data-theme="dark"] .counter-badge {
 <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
 <button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
 <button type="button" id="toggleSignaturesBtn" class="btn-action btn-sign" title="Exibir assinaturas"><i class="fas fa-signature"></i> Assinar</button>
+<button type="button" id="exportarCelularBtn" class="btn-action btn-pdf" title="Exportar agenda para o Quadro de Saídas (celular)"><i class="fas fa-mobile-alt"></i> Celular</button>
 <div class="counter-badge counter" id="saidasCounter">Número de Saídas: 0</div>
 </div>
 </div>
@@ -1311,17 +1316,19 @@ async function loadState() {
 
 async function saveState() {
     try {
-        // Sempre manter localStorage como backup
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
-        
-        // Salvar na API se disponível
-        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
-            // A API será atualizada quando uma saída individual for salva
-            // Aqui apenas sincronizamos
+        // Sincronizar com Firebase (e localStorage) quando dataService disponível
+        if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
+            await dataService.setSaidasAdministrativas(saidasAdministrativas);
+        } else {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
         }
     } catch (error) {
         console.error('Erro ao salvar estado:', error);
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        try {
+            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+        } catch (e) {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        }
     }
 }
 function getLastKmChegadaAdm(placa) {
@@ -2585,7 +2592,7 @@ ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 atualizarEstiloDaLinha(row);
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
@@ -2642,7 +2649,7 @@ ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos
@@ -2697,7 +2704,7 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
                 const index = saidasAdministrativas.findIndex(item => item.id === id);
                 if (index !== -1) saidasAdministrativas[index].chegada = currentTime;
             });
-            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
             atualizarEstiloDaLinha(row);
         }
     }
@@ -2751,7 +2758,7 @@ saidasAdministrativas[index].motorista = newValue;
 }
 });
             
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
             
 // Remove o event listener
@@ -3299,7 +3306,7 @@ window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 } catch (error) {
 console.error('Erro ao deletar saída:', error);
 saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 populateTables();
 }
 }
@@ -4054,6 +4061,16 @@ printModal.addEventListener('click', (e) => {
     }
 });
 
+document.getElementById('exportarCelularBtn').addEventListener('click', () => {
+    const json = JSON.stringify(saidasAdministrativas || [], null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'saidas-administrativas.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+});
+
 document.getElementById('toggleSignaturesBtn').addEventListener('click', () => {
 document.querySelector('.assinatura-container-geral').style.display = document.querySelector('.assinatura-container-geral').style.display === 'none' ? 'flex' : 'none';
 });
@@ -4139,7 +4156,7 @@ populateTables();
 } catch (error) {
 console.error('Erro ao salvar nova saída:', error);
 saidasAdministrativas.push(saida);
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 populateTables();
 }
 }
@@ -4223,7 +4240,7 @@ function clearKmChegada() {
         });
         
         // Salvar os dados
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
         atualizarEstiloDaLinha(kmAlertRow);
         window.parent.postMessage({ type: 'refresh_all_data' }, '*');
     }
