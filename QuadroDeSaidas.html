@@ -465,8 +465,16 @@
             dateInput.value = todayISO;
             dateLabel.textContent = formatDateLabel(todayISO);
 
-            /** Obtém a lista de saídas: primeiro tenta o JSON no repositório (igual no celular e no PC), depois localStorage/API */
+            /** Obtém a lista de saídas: prioriza Firebase (dataService), depois JSON no repositório, depois localStorage */
             async function getAllSaidas() {
+                if (window.dataService) {
+                    try {
+                        const fromFirebase = await window.dataService.getSaidasAdministrativas();
+                        if (Array.isArray(fromFirebase) && fromFirebase.length > 0) return fromFirebase;
+                        if (Array.isArray(fromFirebase)) { /* Firebase vazio, tentar JSON abaixo */ }
+                        else return fromFirebase || [];
+                    } catch (e) { /* segue para JSON */ }
+                }
                 try {
                     const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
                     if (res.ok) {
