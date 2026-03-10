@@ -2277,22 +2277,19 @@ id: saidaId
 }, 100);
 }
 }
-// Editar saída: ir para Cadastro de Saídas → Saídas cadastradas (só a linha) e destacar botão Editar
+// Editar saída: abrir aba Cadastro de Saídas com formulário preenchido (título "EDITAR SAÍDA", botão "Atualizar Saída")
 if (event.data?.type === 'edit_saida') {
 var saidaData = event.data.data;
-var saidaId = saidaData && (saidaData.id !== undefined && saidaData.id !== null) ? saidaData.id : null;
+if (!saidaData) return;
 var cadastroTabButton = document.querySelector('.tab-button[data-tab-id="cadastro-saidas"]');
 var cadastroIframe = document.getElementById('iframe-cadastro-saidas');
 if (cadastroTabButton && !cadastroTabButton.classList.contains('active')) {
 changeTab({ currentTarget: cadastroTabButton }, 'cadastro-saidas');
 }
 if (cadastroIframe && cadastroIframe.contentWindow) {
-var msg = saidaId
-? { type: 'locate_saida', id: saidaId }
-: { type: 'populate_form_for_edit', data: saidaData };
 var sendMsg = function() {
 try {
-cadastroIframe.contentWindow.postMessage(msg, '*');
+cadastroIframe.contentWindow.postMessage({ type: 'populate_form_for_edit', data: saidaData }, '*');
 } catch (e) { console.warn('Erro postMessage Cadastro:', e); }
 };
 if (cadastroIframe.contentDocument && cadastroIframe.contentDocument.readyState === 'complete') {
