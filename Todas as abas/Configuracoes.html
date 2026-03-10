@@ -6,6 +6,12 @@
     <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - CONFIGURAÇÕES</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="theme-listener.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firebase-sot-service.js"></script>
+    <script src="api-service.js"></script>
+    <script src="data-service.js"></script>
     <style>
         :root {
             --primary-blue: #4a69bd;
@@ -335,6 +341,24 @@
                 <div id="themeGrid" class="theme-grid"></div>
             </div>
             <div id="themeMessage" class="message"></div>
+        </div>
+
+        <!-- Seção Salvar no Firebase -->
+        <div class="config-section">
+            <h2 class="section-title">
+                <i class="fas fa-cloud-upload-alt"></i>
+                Sincronizar com Firebase
+            </h2>
+            <p style="margin: 10px 0; color: var(--dark-gray);">
+                Salve todos os dados do SOT (saídas, viaturas, motoristas, avisos, etc.) no Firebase. 
+                Assim, ao acessar o sistema em <strong>https://thiagod11lopes-ops.github.io/SOT/Todas%20as%20abas/index.html</strong> ou no Quadro de Saídas no celular, os dados estarão disponíveis.
+            </p>
+            <div class="button-group">
+                <button id="saveAllToFirebaseBtn" class="success" title="Envia todos os dados atuais para o Firestore">
+                    <i class="fas fa-cloud-upload-alt"></i> Salvar todos os dados no Firebase
+                </button>
+            </div>
+            <div id="firebaseSyncMessage" class="message"></div>
         </div>
 
         <!-- Seção de Gerenciamento de Dados -->
@@ -956,6 +980,59 @@
                     } else {
                         showPasswordMessage('Senha atual incorreta.', 'error');
                         oldPasswordInput.value = '';
+                    }
+                });
+            }
+
+            // ==================== SALVAR TUDO NO FIREBASE ====================
+            const saveAllToFirebaseBtn = document.getElementById('saveAllToFirebaseBtn');
+            const firebaseSyncMessage = document.getElementById('firebaseSyncMessage');
+            function showFirebaseSyncMessage(msg, type) {
+                if (!firebaseSyncMessage) return;
+                firebaseSyncMessage.textContent = msg;
+                firebaseSyncMessage.className = 'message ' + (type === 'success' ? 'success' : 'error');
+                firebaseSyncMessage.style.display = 'block';
+                setTimeout(() => { firebaseSyncMessage.style.display = 'none'; firebaseSyncMessage.textContent = ''; }, 8000);
+            }
+            if (saveAllToFirebaseBtn) {
+                saveAllToFirebaseBtn.addEventListener('click', async () => {
+                    if (typeof dataService === 'undefined') {
+                        showFirebaseSyncMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
+                        return;
+                    }
+                    await dataService.waitForAPICheck();
+                    if (!dataService.useFirebase) {
+                        showFirebaseSyncMessage('Firebase não está configurado. Verifique firebase-config.js e as Regras do Firestore.', 'error');
+                        return;
+                    }
+                    saveAllToFirebaseBtn.disabled = true;
+                    saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+                    try {
+                        const get = (key, def) => {
+                            try {
+                                const v = localStorage.getItem(key);
+                                return v ? JSON.parse(v) : def;
+                            } catch (e) { return def; }
+                        };
+                        await dataService.setSaidasAdministrativas(get('saidasAdministrativas', []));
+                        await dataService.setSaidasAmbulancias(get('saidasAmbulancias', []));
+                        await dataService.saveViaturas(get('viaturasCadastradas', []));
+                        await dataService.saveMotoristas(get('motoristasCadastrados', []));
+                        if (window.firebaseSot && window.firebaseSot.set) {
+                            await window.firebaseSot.set('vistoriasRealizadas', get('vistoriasRealizadas', []));
+                            await window.firebaseSot.set('abastecimentos', get('abastecimentos', []));
+                            await window.firebaseSot.set('escalaData', get('escalaData', {}));
+                            await window.firebaseSot.set('avisos', get('avisos', []));
+                            await window.firebaseSot.set('lembretes_ativos', get('lembretes_ativos', []));
+                        }
+                        showFirebaseSyncMessage('Todos os dados foram salvos no Firebase. Ao acessar o SOT pelo link do GitHub ou no Quadro de Saídas no celular, os dados estarão disponíveis.', 'success');
+                        if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+                    } catch (err) {
+                        console.error('Erro ao salvar no Firebase:', err);
+                        showFirebaseSyncMessage('Erro ao salvar no Firebase: ' + (err.message || err), 'error');
+                    } finally {
+                        saveAllToFirebaseBtn.disabled = false;
+                        saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Salvar todos os dados no Firebase';
                     }
                 });
             }
