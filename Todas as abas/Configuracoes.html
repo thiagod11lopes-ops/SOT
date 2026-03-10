@@ -938,6 +938,93 @@
                 return data;
             }
 
+            // Monta os dados de backup incluindo, quando possível, o que está no Firebase/API
+            async function buildFullBackupData() {
+                // Começa com tudo que já está no localStorage
+                const data = getAllSystemData();
+
+                // Se o dataService não estiver disponível, fica só com o localStorage
+                if (typeof dataService === 'undefined') {
+                    return data;
+                }
+
+                try {
+                    // Garante que já verificou API/Firebase
+                    await dataService.waitForAPICheck();
+
+                    // Buscar principais coleções via dataService (API/Firebase) e sobrescrever no backup
+                    try {
+                        const saidasAdm = await dataService.getSaidasAdministrativas();
+                        if (Array.isArray(saidasAdm)) {
+                            data['saidasAdministrativas'] = JSON.stringify(saidasAdm);
+                        }
+                    } catch (e) { console.warn('Falha ao obter saidasAdministrativas para backup:', e); }
+
+                    try {
+                        const saidasAmb = await dataService.getSaidasAmbulancias();
+                        if (Array.isArray(saidasAmb)) {
+                            data['saidasAmbulancias'] = JSON.stringify(saidasAmb);
+                        }
+                    } catch (e) { console.warn('Falha ao obter saidasAmbulancias para backup:', e); }
+
+                    try {
+                        const viaturas = await dataService.getViaturas();
+                        if (Array.isArray(viaturas)) {
+                            data['viaturasCadastradas'] = JSON.stringify(viaturas);
+                        }
+                    } catch (e) { console.warn('Falha ao obter viaturas para backup:', e); }
+
+                    try {
+                        const motoristas = await dataService.getMotoristas();
+                        if (Array.isArray(motoristas)) {
+                            data['motoristasCadastrados'] = JSON.stringify(motoristas);
+                        }
+                    } catch (e) { console.warn('Falha ao obter motoristas para backup:', e); }
+
+                    // Demais coleções que ficam diretamente no firebaseSot
+                    if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                        try {
+                            const vistorias = await window.firebaseSot.get('vistoriasRealizadas');
+                            if (Array.isArray(vistorias)) {
+                                data['vistoriasRealizadas'] = JSON.stringify(vistorias);
+                            }
+                        } catch (e) { console.warn('Falha ao obter vistoriasRealizadas para backup:', e); }
+
+                        try {
+                            const abastecimentos = await window.firebaseSot.get('abastecimentos');
+                            if (Array.isArray(abastecimentos)) {
+                                data['abastecimentos'] = JSON.stringify(abastecimentos);
+                            }
+                        } catch (e) { console.warn('Falha ao obter abastecimentos para backup:', e); }
+
+                        try {
+                            const escalaData = await window.firebaseSot.get('escalaData');
+                            if (escalaData && typeof escalaData === 'object') {
+                                data['escalaData'] = JSON.stringify(escalaData);
+                            }
+                        } catch (e) { console.warn('Falha ao obter escalaData para backup:', e); }
+
+                        try {
+                            const avisos = await window.firebaseSot.get('avisos');
+                            if (Array.isArray(avisos)) {
+                                data['avisos'] = JSON.stringify(avisos);
+                            }
+                        } catch (e) { console.warn('Falha ao obter avisos para backup:', e); }
+
+                        try {
+                            const lembretes = await window.firebaseSot.get('lembretes_ativos');
+                            if (Array.isArray(lembretes)) {
+                                data['lembretes_ativos'] = JSON.stringify(lembretes);
+                            }
+                        } catch (e) { console.warn('Falha ao obter lembretes_ativos para backup:', e); }
+                    }
+                } catch (e) {
+                    console.warn('Falha geral ao montar backup completo (usando apenas localStorage):', e);
+                }
+
+                return data;
+            }
+
             function showPasswordMessage(message, type) {
                 passwordMessage.textContent = message;
                 passwordMessage.className = 'message ' + type;
@@ -1058,10 +1145,10 @@
             // ==================== BACKUP E EXPORTAÇÃO ====================
             
             if (backupNowBtn) {
-                backupNowBtn.addEventListener('click', () => {
+                backupNowBtn.addEventListener('click', async () => {
                     console.log('Botão Fazer Backup clicado!');
                     try {
-                        const data = getAllSystemData();
+                        const data = await buildFullBackupData();
                         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                         const filename = `SOT_Backup_${timestamp}.json`;
                         
@@ -1083,10 +1170,10 @@
             }
 
             if (exportJsonBtn) {
-                exportJsonBtn.addEventListener('click', () => {
+                exportJsonBtn.addEventListener('click', async () => {
                     console.log('Botão Exportar clicado!');
                     try {
-                        const data = getAllSystemData();
+                        const data = await buildFullBackupData();
                         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                         const filename = `SOT_Export_${timestamp}.json`;
                         
