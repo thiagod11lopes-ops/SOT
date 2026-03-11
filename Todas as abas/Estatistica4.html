@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - ESTATÍSTICAS</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sot-service.js"></script>
+<script src="data-service.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -840,7 +845,25 @@ background-color: #6c88c9 !important;
 </main>
 <script src="theme-listener.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+let saidasAdministrativas, saidasAmbulancias, abastecimentosData;
+try {
+if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+await dataService.waitForAPICheck();
+if (dataService.useFirebase || dataService.apiAvailable) {
+saidasAdministrativas = await dataService.getSaidasAdministrativas();
+saidasAmbulancias = await dataService.getSaidasAmbulancias();
+abastecimentosData = await dataService.getAbastecimentos();
+if (Array.isArray(saidasAdministrativas)) localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (Array.isArray(saidasAmbulancias)) localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+if (Array.isArray(abastecimentosData)) localStorage.setItem('abastecimentos', JSON.stringify(abastecimentosData));
+}
+}
+} catch (e) { console.warn('Estatística: falha ao carregar do Firebase', e); }
+if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+if (!Array.isArray(abastecimentosData)) abastecimentosData = JSON.parse(localStorage.getItem('abastecimentos')) || [];
+
 function parseKmValue(kmString) {
 if (kmString === null || kmString === undefined || kmString === '') return 0;
 let str = String(kmString);
@@ -940,10 +963,7 @@ ctx.restore();
 }
 };
 Chart.register(barChartDataLabelsPlugin);
-const saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-const saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
 const allSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
-const abastecimentosData = JSON.parse(localStorage.getItem('abastecimentos')) || [];
 let currentPage = 1;
 const rowsPerPage = 25;
 let monthlyExitsChart, destinationKmChart, sectorKmChart, unscheduledExitsChart, fuelChart;
