@@ -4,13 +4,56 @@
  * Facilita migração gradual do sistema
  */
 
+const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
+
 class DataService {
     constructor() {
         this.useAPI = false;
         this.apiAvailable = false;
         this.apiCheckPromise = null;
-        // Aguardar um pouco para garantir que api-service.js foi carregado
+        this.useFirebase = false;
         setTimeout(() => this.checkAPI(), 100);
+    }
+
+    /**
+     * Só prioriza localStorage quando o usuário clicou em "Usar dados deste computador" nesta sessão.
+     * Usamos sessionStorage para que, ao abrir em outro computador, o Firebase seja sempre usado (sem conflito).
+     */
+    _preferLocalStorage() {
+        return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SOT_PREFER_LOCAL_KEY) === 'true';
+    }
+
+    /** Ativa ou desativa o uso prioritário dos dados do armazenamento local (deste computador) — só na sessão atual */
+    setPreferLocalStorage(value) {
+        if (typeof sessionStorage === 'undefined') return;
+        if (value) sessionStorage.setItem(SOT_PREFER_LOCAL_KEY, 'true');
+        else sessionStorage.removeItem(SOT_PREFER_LOCAL_KEY);
+        if (typeof localStorage !== 'undefined' && !value) localStorage.removeItem(SOT_PREFER_LOCAL_KEY);
+    }
+
+    _checkFirebase() {
+        this.useFirebase = !!(window.firebaseSot && typeof window.firebaseSot.isAvailable === 'function' && window.firebaseSot.isAvailable());
+        return this.useFirebase;
+    }
+
+    async _getFromFirebase(key) {
+        if (!this.useFirebase || !window.firebaseSot || !window.firebaseSot.get) return null;
+        try {
+            return await window.firebaseSot.get(key);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async _setToFirebase(key, value) {
+        if (!this.useFirebase || !window.firebaseSot || !window.firebaseSot.set) return false;
+        try {
+            const ok = await window.firebaseSot.set(key, value);
+            if (ok && typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(value));
+            return ok;
+        } catch (e) {
+            return false;
+        }
     }
 
     /**
@@ -57,26 +100,30 @@ class DataService {
         if (!this.apiCheckPromise) {
             this.apiCheckPromise = this.checkAPI();
         }
-        return await this.apiCheckPromise;
+        await this.apiCheckPromise;
+        this._checkFirebase();
+        if (this.useFirebase) console.log('✅ Firebase SOT disponível - dados sincronizados na nuvem');
+        return this.apiCheckPromise;
     }
 
     /**
      * Obter viaturas
      */
     async getViaturas() {
-        // Garantir que a verificação da API foi feita
         await this.waitForAPICheck();
-        
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getViaturas();
             } catch (error) {
-                console.warn('Erro ao buscar viaturas da API, usando localStorage:', error);
-                // Se a API falhar, desabilitar uso da API temporariamente
+                console.warn('Erro ao buscar viaturas da API:', error);
                 this.apiAvailable = false;
                 this.useAPI = false;
-                return this.getFromLocalStorage('viaturasCadastradas', []);
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('viaturasCadastradas', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('viaturasCadastradas');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('viaturasCadastradas', []);
     }
@@ -87,24 +134,18 @@ class DataService {
     async saveViaturas(viaturas) {
         if (this.useAPI && this.apiAvailable) {
             try {
-                // Sincronizar todas as viaturas com a API
                 for (const viatura of viaturas) {
-                    if (viatura.id) {
-                        await api.updateViatura(viatura.id, viatura);
-                    } else {
-                        await api.createViatura(viatura);
-                    }
+                    if (viatura.id) await api.updateViatura(viatura.id, viatura);
+                    else await api.createViatura(viatura);
                 }
-                // Também salvar no localStorage como backup
                 localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturas));
                 return true;
             } catch (error) {
-                console.warn('Erro ao salvar viaturas na API, usando localStorage:', error);
-                localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturas));
-                return true;
+                console.warn('Erro ao salvar viaturas na API:', error);
             }
         }
-        localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturas));
+        if (this.useFirebase) await this._setToFirebase('viaturasCadastradas', viaturas);
+        else localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturas));
         return true;
     }
 
@@ -112,13 +153,20 @@ class DataService {
      * Obter motoristas
      */
     async getMotoristas() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getMotoristas();
             } catch (error) {
-                console.warn('Erro ao buscar motoristas da API, usando localStorage:', error);
-                return this.getFromLocalStorage('motoristasCadastrados', []);
+                console.warn('Erro ao buscar motoristas da API:', error);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('motoristasCadastrados', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('motoristasCadastrados');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('motoristasCadastrados', []);
     }
@@ -130,21 +178,17 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 for (const motorista of motoristas) {
-                    if (motorista.id) {
-                        await api.updateMotorista(motorista.id, motorista);
-                    } else {
-                        await api.createMotorista(motorista);
-                    }
+                    if (motorista.id) await api.updateMotorista(motorista.id, motorista);
+                    else await api.createMotorista(motorista);
                 }
                 localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristas));
                 return true;
             } catch (error) {
-                console.warn('Erro ao salvar motoristas na API, usando localStorage:', error);
-                localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristas));
-                return true;
+                console.warn('Erro ao salvar motoristas na API:', error);
             }
         }
-        localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristas));
+        if (this.useFirebase) await this._setToFirebase('motoristasCadastrados', motoristas);
+        else localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristas));
         return true;
     }
 
@@ -152,12 +196,19 @@ class DataService {
      * Obter saídas administrativas
      */
     async getSaidasAdministrativas() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getSaidasAdministrativas();
             } catch (error) {
-                return this.getFromLocalStorage('saidasAdministrativas', []);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAdministrativas', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('saidasAdministrativas');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('saidasAdministrativas', []);
     }
@@ -169,35 +220,78 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 const result = await api.createSaidaAdministrativa(saida);
-                // Também atualizar localStorage
-                const saidas = this.getFromLocalStorage('saidasAdministrativas', []);
+                const saidas = await this.getSaidasAdministrativas();
                 saidas.push({ ...saida, id: result.data?.id || saida.id });
-                localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+                if (this.useFirebase) await this._setToFirebase('saidasAdministrativas', saidas);
+                else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
                 return result.data || saida;
             } catch (error) {
-                console.warn('Erro ao salvar na API, usando localStorage:', error);
-                const saidas = this.getFromLocalStorage('saidasAdministrativas', []);
-                saidas.push(saida);
-                localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
-                return saida;
+                console.warn('Erro ao salvar na API:', error);
             }
         }
-        const saidas = this.getFromLocalStorage('saidasAdministrativas', []);
+        const saidas = await this.getSaidasAdministrativas();
         saidas.push(saida);
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+        if (this.useFirebase) await this._setToFirebase('saidasAdministrativas', saidas);
+        else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
         return saida;
+    }
+
+    /**
+     * Substituir lista completa de saídas administrativas (para edição/exclusão em lote e sync Firebase)
+     */
+    async setSaidasAdministrativas(lista) {
+        if (this.useFirebase) await this._setToFirebase('saidasAdministrativas', lista);
+        localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+        return true;
+    }
+
+    /**
+     * Obter saídas de ambulâncias (também em Firebase quando configurado)
+     */
+    async getSaidasAmbulancias() {
+        await this.waitForAPICheck();
+        if (this.useAPI && this.apiAvailable) {
+            try {
+                return await api.getSaidasAmbulancias();
+            } catch (error) {
+                this.apiAvailable = false;
+                this.useAPI = false;
+            }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAmbulancias', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('saidasAmbulancias');
+            if (Array.isArray(data)) return data;
+        }
+        return this.getFromLocalStorage('saidasAmbulancias', []);
+    }
+
+    /**
+     * Salvar lista completa de saídas de ambulâncias (para sincronizar com Firebase)
+     */
+    async setSaidasAmbulancias(lista) {
+        if (this.useFirebase) await this._setToFirebase('saidasAmbulancias', lista);
+        localStorage.setItem('saidasAmbulancias', JSON.stringify(lista));
+        return true;
     }
 
     /**
      * Obter vistorias
      */
     async getVistorias() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getVistorias();
             } catch (error) {
-                return this.getFromLocalStorage('vistoriasRealizadas', []);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('vistoriasRealizadas', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('vistoriasRealizadas');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('vistoriasRealizadas', []);
     }
@@ -209,20 +303,19 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 const result = await api.createVistoria(vistoria);
-                const vistorias = this.getFromLocalStorage('vistoriasRealizadas', []);
+                const vistorias = await this.getVistorias();
                 vistorias.push({ ...vistoria, id: result.data?.id || vistoria.id });
-                localStorage.setItem('vistoriasRealizadas', JSON.stringify(vistorias));
+                if (this.useFirebase) await this._setToFirebase('vistoriasRealizadas', vistorias);
+                else localStorage.setItem('vistoriasRealizadas', JSON.stringify(vistorias));
                 return result.data || vistoria;
             } catch (error) {
-                const vistorias = this.getFromLocalStorage('vistoriasRealizadas', []);
-                vistorias.push(vistoria);
-                localStorage.setItem('vistoriasRealizadas', JSON.stringify(vistorias));
-                return vistoria;
+                console.warn('Erro ao salvar vistoria na API:', error);
             }
         }
-        const vistorias = this.getFromLocalStorage('vistoriasRealizadas', []);
+        const vistorias = await this.getVistorias();
         vistorias.push(vistoria);
-        localStorage.setItem('vistoriasRealizadas', JSON.stringify(vistorias));
+        if (this.useFirebase) await this._setToFirebase('vistoriasRealizadas', vistorias);
+        else localStorage.setItem('vistoriasRealizadas', JSON.stringify(vistorias));
         return vistoria;
     }
 
@@ -230,12 +323,19 @@ class DataService {
      * Obter abastecimentos
      */
     async getAbastecimentos() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getAbastecimentos();
             } catch (error) {
-                return this.getFromLocalStorage('abastecimentos', []);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('abastecimentos', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('abastecimentos');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('abastecimentos', []);
     }
@@ -247,20 +347,19 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 const result = await api.createAbastecimento(abastecimento);
-                const abastecimentos = this.getFromLocalStorage('abastecimentos', []);
+                const abastecimentos = await this.getAbastecimentos();
                 abastecimentos.push({ ...abastecimento, id: result.data?.id || abastecimento.id });
-                localStorage.setItem('abastecimentos', JSON.stringify(abastecimentos));
+                if (this.useFirebase) await this._setToFirebase('abastecimentos', abastecimentos);
+                else localStorage.setItem('abastecimentos', JSON.stringify(abastecimentos));
                 return result.data || abastecimento;
             } catch (error) {
-                const abastecimentos = this.getFromLocalStorage('abastecimentos', []);
-                abastecimentos.push(abastecimento);
-                localStorage.setItem('abastecimentos', JSON.stringify(abastecimentos));
-                return abastecimento;
+                console.warn('Erro ao salvar abastecimento na API:', error);
             }
         }
-        const abastecimentos = this.getFromLocalStorage('abastecimentos', []);
+        const abastecimentos = await this.getAbastecimentos();
         abastecimentos.push(abastecimento);
-        localStorage.setItem('abastecimentos', JSON.stringify(abastecimentos));
+        if (this.useFirebase) await this._setToFirebase('abastecimentos', abastecimentos);
+        else localStorage.setItem('abastecimentos', JSON.stringify(abastecimentos));
         return abastecimento;
     }
 
@@ -268,12 +367,19 @@ class DataService {
      * Obter escala
      */
     async getEscala() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getEscala();
             } catch (error) {
-                return this.getFromLocalStorage('escalaData', {});
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('escalaData', {});
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('escalaData');
+            if (data && typeof data === 'object') return data;
         }
         return this.getFromLocalStorage('escalaData', {});
     }
@@ -285,23 +391,15 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 await api.saveEscala(item);
-                const escala = this.getFromLocalStorage('escalaData', {});
-                const key = `${item.ano}-${item.mes}-${item.dia}-${item.motorista_id}`;
-                escala[key] = item;
-                localStorage.setItem('escalaData', JSON.stringify(escala));
-                return item;
             } catch (error) {
-                const escala = this.getFromLocalStorage('escalaData', {});
-                const key = `${item.ano}-${item.mes}-${item.dia}-${item.motorista_id}`;
-                escala[key] = item;
-                localStorage.setItem('escalaData', JSON.stringify(escala));
-                return item;
+                console.warn('Erro ao salvar escala na API:', error);
             }
         }
-        const escala = this.getFromLocalStorage('escalaData', {});
+        const escala = await this.getEscala();
         const key = `${item.ano}-${item.mes}-${item.dia}-${item.motorista_id}`;
         escala[key] = item;
-        localStorage.setItem('escalaData', JSON.stringify(escala));
+        if (this.useFirebase) await this._setToFirebase('escalaData', escala);
+        else localStorage.setItem('escalaData', JSON.stringify(escala));
         return item;
     }
 
@@ -309,12 +407,19 @@ class DataService {
      * Obter avisos
      */
     async getAvisos() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getAvisos({ ativo: 1 });
             } catch (error) {
-                return this.getFromLocalStorage('avisos', []);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('avisos', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('avisos');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('avisos', []);
     }
@@ -326,20 +431,19 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 const result = await api.createAviso(aviso);
-                const avisos = this.getFromLocalStorage('avisos', []);
+                const avisos = await this.getAvisos();
                 avisos.push({ ...aviso, id: result.data?.id || aviso.id });
-                localStorage.setItem('avisos', JSON.stringify(avisos));
+                if (this.useFirebase) await this._setToFirebase('avisos', avisos);
+                else localStorage.setItem('avisos', JSON.stringify(avisos));
                 return result.data || aviso;
             } catch (error) {
-                const avisos = this.getFromLocalStorage('avisos', []);
-                avisos.push(aviso);
-                localStorage.setItem('avisos', JSON.stringify(avisos));
-                return aviso;
+                console.warn('Erro ao salvar aviso na API:', error);
             }
         }
-        const avisos = this.getFromLocalStorage('avisos', []);
+        const avisos = await this.getAvisos();
         avisos.push(aviso);
-        localStorage.setItem('avisos', JSON.stringify(avisos));
+        if (this.useFirebase) await this._setToFirebase('avisos', avisos);
+        else localStorage.setItem('avisos', JSON.stringify(avisos));
         return aviso;
     }
 
@@ -347,12 +451,19 @@ class DataService {
      * Obter lembretes
      */
     async getLembretes() {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 return await api.getLembretes({ ativo: 1, concluido: 0 });
             } catch (error) {
-                return this.getFromLocalStorage('lembretes_ativos', []);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('lembretes_ativos', []);
+        if (this.useFirebase) {
+            const data = await this._getFromFirebase('lembretes_ativos');
+            if (Array.isArray(data)) return data;
         }
         return this.getFromLocalStorage('lembretes_ativos', []);
     }
@@ -361,13 +472,22 @@ class DataService {
      * Obter configurações
      */
     async getConfiguracao(chave) {
+        await this.waitForAPICheck();
         if (this.useAPI && this.apiAvailable) {
             try {
                 const configs = await api.getConfiguracao();
                 return configs[chave]?.valor || null;
             } catch (error) {
-                return localStorage.getItem(chave);
+                this.apiAvailable = false;
+                this.useAPI = false;
             }
+        }
+        if (this._preferLocalStorage() && typeof localStorage !== 'undefined') return localStorage.getItem(chave);
+        if (this.useFirebase && window.firebaseSot && window.firebaseSot.getConfig) {
+            try {
+                const v = await window.firebaseSot.getConfig(chave);
+                if (v !== null && v !== undefined) return v;
+            } catch (e) {}
         }
         return localStorage.getItem(chave);
     }
@@ -379,14 +499,18 @@ class DataService {
         if (this.useAPI && this.apiAvailable) {
             try {
                 await api.saveConfiguracao(chave, valor, tipo);
-                localStorage.setItem(chave, valor);
-                return true;
             } catch (error) {
-                localStorage.setItem(chave, valor);
-                return true;
+                console.warn('Erro ao salvar config na API:', error);
             }
         }
-        localStorage.setItem(chave, valor);
+        if (this.useFirebase && window.firebaseSot && window.firebaseSot.setConfig) {
+            try {
+                await window.firebaseSot.setConfig(chave, valor);
+            } catch (e) {}
+        }
+        try {
+            localStorage.setItem(chave, valor);
+        } catch (e) {}
         return true;
     }
 

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SOT - Quadro de Saídas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="theme-color" content="#1a365d">
+    <style>
+        :root {
+            --primary: #1a365d;
+            --primary-light: #2b4c7e;
+            --accent: #38bdf8;
+            --bg: #0f172a;
+            --bg-elevated: rgba(15, 23, 42, 0.92);
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --danger: #f97373;
+            --card-border: rgba(148, 163, 184, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #1e293b 0, #020617 55%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px 12px calc(env(safe-area-inset-bottom, 16px) + 12px);
+            gap: 12px;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(15,23,42,0.9), rgba(17,24,39,0.96));
+            border: 1px solid rgba(148,163,184,0.4);
+            box-shadow:
+                0 18px 45px rgba(15,23,42,0.9),
+                0 0 0 1px rgba(15,23,42,0.8);
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title span {
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.45);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+        }
+
+        .sot-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: radial-gradient(circle at top left, #38bdf8 0, #0f172a 38%);
+            color: #e5f0ff;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .sot-badge i {
+            font-size: 13px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .filter-card {
+            margin-top: 2px;
+            padding: 10px 10px 12px;
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(51, 65, 85, 0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-label i {
+            color: var(--accent);
+        }
+
+        .date-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .date-input-wrapper input[type="date"] {
+            width: 100%;
+            padding: 10px 34px 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.7);
+            background: rgba(15, 23, 42, 0.92);
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .date-input-wrapper input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+        .date-input-wrapper i {
+            position: absolute;
+            right: 10px;
+            color: var(--accent);
+            pointer-events: none;
+        }
+
+        .counter-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .counter-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            font-size: 12px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        .counter-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.22);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .list-container {
+            flex: 1;
+            padding: 6px 2px 0;
+            overflow-y: auto;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 16px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .empty-state i {
+            font-size: 30px;
+            margin-bottom: 12px;
+            color: rgba(148, 163, 184, 0.9);
+        }
+
+        .card {
+            border-radius: 16px;
+            padding: 10px 12px 10px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--card-border);
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.85);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .time-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 9px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.96);
+            border: 1px solid rgba(148, 163, 184, 0.65);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .time-pill i {
+            color: var(--accent);
+        }
+
+        .tag {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.11em;
+            color: var(--muted);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .chip-viatura {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.7);
+        }
+
+        .chip-motorista {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(56, 189, 248, 0.7);
+        }
+
+        .chip span.label {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-size: 10px;
+        }
+
+        .chip span.value {
+            color: var(--text);
+        }
+
+        .card-body {
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .row span.label {
+            color: rgba(148, 163, 184, 0.9);
+        }
+
+        .row span.value {
+            color: var(--text);
+            font-weight: 500;
+            text-align: right;
+        }
+
+        .destino {
+            font-size: 13px;
+            color: #e5e7eb;
+        }
+
+        .destino strong {
+            color: #e5e7eb;
+        }
+
+        .footer-info {
+            margin-top: 2px;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: rgba(148, 163, 184, 0.9);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            padding: 8px 0 2px;
+        }
+
+        .loading span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .loading-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--accent);
+            animation: pulse 1.1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(0.7); opacity: 0.4; }
+        }
+
+        @media (min-width: 500px) {
+            .app {
+                padding-top: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <div class="header-top">
+                <div class="title">
+                    <i class="fas fa-route"></i>
+                    QUADRO DE SAÍDAS
+                    <span>MÓVEL</span>
+                </div>
+                <div class="sot-badge">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>SOT</span>
+                </div>
+            </div>
+            <div class="subtitle">
+                Visualização apenas — <strong>Saídas Administrativas</strong> do dia selecionado.
+            </div>
+            <div class="filter-card">
+                <div class="filter-label">
+                    <i class="fas fa-calendar-day"></i>
+                    <span>Escolha a data para consultar a agenda:</span>
+                </div>
+                <div class="date-input-wrapper">
+                    <input type="date" id="filterDateMobile" inputmode="numeric">
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="counter-row">
+                    <div id="counter" class="counter-pill">
+                        <span class="counter-dot"></span>
+                        <span><span id="counterValue">0</span> saída(s)</span>
+                    </div>
+                    <span id="dateLabel" class="tag"></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="content">
+            <div id="loading" class="loading">
+                <span><span class="loading-dot"></span> Carregando saídas...</span>
+            </div>
+            <div id="listContainer" class="list-container">
+                <div id="emptyState" class="empty-state">
+                    <i class="far fa-calendar-times"></i>
+                    <div>Nenhuma saída administrativa encontrada para a data selecionada.</div>
+                </div>
+                <div id="cardsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase + serviços do SOT para dados sincronizados -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="Todas%20as%20abas/firebase-config.js"></script>
+    <script src="Todas%20as%20abas/firebase-sot-service.js"></script>
+    <script src="Todas%20as%20abas/api-service.js"></script>
+    <script src="Todas%20as%20abas/data-service.js"></script>
+    <script>
+        function formatDateLabel(isoDate) {
+            if (!isoDate) return '';
+            const [y, m, d] = isoDate.split('-');
+            const date = new Date(Number(y), Number(m) - 1, Number(d));
+            const formatter = new Intl.DateTimeFormat('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+            return formatter.format(date).replace('.', '');
+        }
+
+        function getHoraSaida(saida) {
+            return saida.horaSaida || saida.saida || saida.horario || saida.hora || '';
+        }
+
+        function getDestino(saida) {
+            if (saida.destino) return saida.destino;
+            const partes = [];
+            if (saida.cidade) partes.push(saida.cidade);
+            if (saida.bairro) partes.push(saida.bairro);
+            return partes.join(' - ') || '—';
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const dateInput = document.getElementById('filterDateMobile');
+            const cardsContainer = document.getElementById('cardsContainer');
+            const emptyState = document.getElementById('emptyState');
+            const counterValue = document.getElementById('counterValue');
+            const dateLabel = document.getElementById('dateLabel');
+            const loading = document.getElementById('loading');
+
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayISO = `${yyyy}-${mm}-${dd}`;
+            dateInput.value = todayISO;
+            dateLabel.textContent = formatDateLabel(todayISO);
+
+            /** Obtém a lista de saídas: prioriza Firebase (dataService), depois JSON no repositório, depois localStorage */
+            async function getAllSaidas() {
+                if (window.dataService) {
+                    try {
+                        const fromFirebase = await window.dataService.getSaidasAdministrativas();
+                        if (Array.isArray(fromFirebase) && fromFirebase.length > 0) return fromFirebase;
+                        if (Array.isArray(fromFirebase)) { /* Firebase vazio, tentar JSON abaixo */ }
+                        else return fromFirebase || [];
+                    } catch (e) { /* segue para JSON */ }
+                }
+                try {
+                    const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (Array.isArray(data)) return data;
+                    }
+                } catch (e) { /* ignora */ }
+                if (window.dataService) return await window.dataService.getSaidasAdministrativas();
+                return [];
+            }
+
+            async function loadSaidasForSelectedDate() {
+                const selectedDate = dateInput.value;
+                dateLabel.textContent = formatDateLabel(selectedDate);
+                cardsContainer.innerHTML = '';
+                emptyState.style.display = 'none';
+                loading.style.display = 'block';
+
+                try {
+                    const allSaidas = await getAllSaidas();
+                    const filtered = (allSaidas || []).filter(s => (s.dataSaida || s.data) === selectedDate);
+                    filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
+
+                    counterValue.textContent = filtered.length;
+
+                    if (!filtered.length) {
+                        emptyState.style.display = 'block';
+                        return;
+                    }
+
+                    filtered.forEach(saida => {
+                        const hora = getHoraSaida(saida) || '—';
+                        const viatura = saida.viatura || '—';
+                        const motorista = saida.motorista || '—';
+                        const setor = saida.setor || '—';
+                        const destino = getDestino(saida);
+                        const om = saida.om || '—';
+
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+                            <div class="card-header">
+                                <div class="time-pill">
+                                    <i class="far fa-clock"></i>
+                                    <span>${hora}</span>
+                                </div>
+                                <span class="tag">Saída Administrativa</span>
+                            </div>
+                            <div class="card-title">
+                                <div class="chip chip-viatura">
+                                    <span class="label">Viatura</span>
+                                    <span class="value">${viatura}</span>
+                                </div>
+                                <div class="chip chip-motorista">
+                                    <span class="label">Motorista</span>
+                                    <span class="value">${motorista}</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="destino">
+                                    <strong>Destino: </strong>${destino}
+                                </div>
+                                <div class="row">
+                                    <span class="label">Setor</span>
+                                    <span class="value">${setor}</span>
+                                </div>
+                                <div class="row">
+                                    <span class="label">OM</span>
+                                    <span class="value">${om}</span>
+                                </div>
+                            </div>
+                        `;
+                        cardsContainer.appendChild(card);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar saídas administrativas:', error);
+                    emptyState.style.display = 'block';
+                } finally {
+                    loading.style.display = 'none';
+                }
+            }
+
+            dateInput.addEventListener('change', loadSaidasForSelectedDate);
+            await loadSaidasForSelectedDate();
+        });
+    </script>
+</body>
+</html>
+

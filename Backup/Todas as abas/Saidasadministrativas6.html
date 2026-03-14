@@ -8,6 +8,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js" defer></script>
 <script src="theme-listener.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sot-service.js"></script>
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="junta-saidas-service.js"></script>
@@ -129,24 +133,6 @@ main { margin: 20px 10px; }
 .date-filter-container { display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid var(--gray); border-radius: 8px; background-color: var(--light-gray-bg); flex-wrap: wrap; justify-content: space-between; }
 .date-filter-container label { font-weight: bold; }
 .date-filter-container input[type="date"] { padding: 8px 12px; border: 1px solid #ced4da; border-radius: 5px; font-size: 16px; font-weight: bold; max-width: 180px; }
-.limite-saidas-alerta {
-  text-align: center;
-  margin: 12px 0;
-  padding: 12px 20px;
-  font-weight: bold;
-  font-size: 16px;
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 8px;
-}
-.limite-saidas-alerta.piscar {
-  animation: limiteAlertaPiscar 0.5s ease-in-out 10 forwards;
-}
-@keyframes limiteAlertaPiscar {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
 .table-container { overflow-x: auto; border: 1px solid var(--gray); border-radius: 8px; }
 table { width: 100%; border-collapse: collapse; min-width: 1000px; }
 th, td { border: 1px solid #e9ecef; padding: 10px; text-align: left; font-size: 14px; }
@@ -234,41 +220,6 @@ textarea#obsTextarea { width: 100%; height: 150px; box-sizing: border-box; }
 .saida-realizada { background-color: #dbe4ff !important; }
 @keyframes piscarVermelho { 0% { background-color: inherit; } 50% { background-color: rgba(250, 0, 0, 0.2); } 100% { background-color: inherit; } }
 .alarme-oleo-piscando { animation: piscarVermelho 1.5s infinite; }
-@keyframes piscarAmarelo { 0% { background-color: inherit; } 50% { background-color: rgba(250, 250, 0, 0.3); } 100% { background-color: inherit; } }
-.alarme-hora-saida-piscando {
-animation: piscarAmarelo 1s infinite;
-cursor: pointer;
-}
-.alarme-hora-saida-piscando:hover::after {
-content: "Clique para cancelar o alarme";
-position: absolute;
-background: rgba(0,0,0,0.8);
-color: white;
-padding: 5px 10px;
-border-radius: 4px;
-font-size: 12px;
-z-index: 1000;
-pointer-events: none;
-margin-top: -30px;
-margin-left: 10px;
-}
-@keyframes piscarAzul { 0% { background-color: inherit; } 50% { background-color: rgba(0, 100, 250, 0.2); } 100% { background-color: inherit; } }
-.alarme-pre-saida-piscando {
-animation: piscarAzul 1.2s infinite;
-}
-.alarme-pre-saida-piscando:hover::after {
-content: "Alarme de pré-saída ativo";
-position: absolute;
-background: rgba(0,0,0,0.8);
-color: white;
-padding: 5px 10px;
-border-radius: 4px;
-font-size: 12px;
-z-index: 1000;
-pointer-events: none;
-margin-top: -30px;
-margin-left: 10px;
-}
 .quadro-e-lembretes-wrapper {
 position: relative;
 margin-top: 25px;
@@ -605,6 +556,7 @@ body[data-theme="dark"] .counter-badge {
 <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
 <button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
 <button type="button" id="toggleSignaturesBtn" class="btn-action btn-sign" title="Exibir assinaturas"><i class="fas fa-signature"></i> Assinar</button>
+<button type="button" id="exportarCelularBtn" class="btn-action btn-pdf" title="Exportar agenda para o Quadro de Saídas (celular)"><i class="fas fa-mobile-alt"></i> Celular</button>
 <div class="counter-badge counter" id="saidasCounter">Número de Saídas: 0</div>
 </div>
 </div>
@@ -612,7 +564,6 @@ body[data-theme="dark"] .counter-badge {
 <label for="filterDateAdm">Filtrar por Data:</label>
 <input type="date" id="filterDateAdm">
 </div>
-<div id="limiteSaidasAlerta" class="limite-saidas-alerta" style="display: none;">Atenção para o limite de saídas</div>
 <div class="table-container">
 <table id="saidasTable">
 <thead>
@@ -789,7 +740,6 @@ manha: { green: 1, orange: 2 },
 tarde: { green: 1, orange: 2 }
 };
 let viaturasComProblemas = {};
-let limiteAlertaJaMostradoNestaVisibilidade = false;
 
 const saidasTableBody = document.querySelector('#saidasTable tbody');
 const filterDateAdmInput = document.getElementById('filterDateAdm');
@@ -830,9 +780,6 @@ cacheFemaleVoice();
 }
 let isSpeaking = false;
 let alertedVehiclesOil = new Set();
-let alertedHoraSaida = new Set();
-let alertedPreSaida = new Set();
-const preSaidaAlarmsActive = new Map();
 const lembretesContainer = document.getElementById('lembretesFlutuanteContainer');
 const lembretesBody = document.getElementById('lembretesBody');
 const lembretesHeader = document.getElementById('lembretesHeader');
@@ -1245,33 +1192,7 @@ utterance.onstart = () => isSpeaking = true;
 utterance.onend = () => { isSpeaking = false; if (onEndCallback) onEndCallback(); };
 speechSynthesizer.speak(utterance);
 }
-function getMotoristaPrefixo(motorista) {
-if (!motorista || typeof motorista !== 'string') return '';
-const nomeTrimmed = motorista.trim();
-const nomeUpper = nomeTrimmed.toUpperCase();
-if (nomeUpper.startsWith('SO RM1') || /^SO\s+RM1\s+/i.test(nomeTrimmed)) return 'Suboficial ';
-if (nomeUpper.startsWith('SO ') || /^SO\s+/i.test(nomeTrimmed)) return 'Suboficial ';
-if (nomeUpper.startsWith('SG ') || /^SG\s+/i.test(nomeTrimmed)) return 'Sargento ';
-if (nomeUpper.startsWith('FC ') || /^FC\s+/i.test(nomeTrimmed)) return 'Funcionário Civil ';
-return '';
-}
-function getNomeSemPrefixo(motorista) {
-if (!motorista || typeof motorista !== 'string') return motorista;
-const nomeTrimmed = motorista.trim();
-return nomeTrimmed.replace(/^(SO\s+RM1|SG|SO|FC)\s+/i, '').trim();
-}
 function playOilChangeAlert(viatura) { playVoiceAlert(`Atenção, troca de óleo necessária da viatura ${viatura}.`); }
-function playHoraSaidaAlert(motorista, viatura, destino) {
-const prefixo = getMotoristaPrefixo(motorista);
-const nomeMotorista = getNomeSemPrefixo(motorista);
-const destinoTexto = destino ? ` com destino a ${destino}` : '';
-playVoiceAlert(`Atenção ${prefixo}${nomeMotorista}, hora da sua saída com a viatura ${viatura}${destinoTexto}.`);
-}
-function playPreSaidaAlert(motorista, viatura) {
-const prefixo = getMotoristaPrefixo(motorista);
-const nomeMotorista = getNomeSemPrefixo(motorista);
-playVoiceAlert(`${prefixo}${nomeMotorista} faltam poucos minutos para sua saída, verifique a viatura com a placa ${viatura}`);
-}
 function setDateToToday() {
 const today = new Date();
 const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -1311,17 +1232,19 @@ async function loadState() {
 
 async function saveState() {
     try {
-        // Sempre manter localStorage como backup
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
-        
-        // Salvar na API se disponível
-        if (typeof dataService !== 'undefined' && dataService.apiAvailable) {
-            // A API será atualizada quando uma saída individual for salva
-            // Aqui apenas sincronizamos
+        // Sincronizar com Firebase (e localStorage) quando dataService disponível
+        if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
+            await dataService.setSaidasAdministrativas(saidasAdministrativas);
+        } else {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
         }
     } catch (error) {
         console.error('Erro ao salvar estado:', error);
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        try {
+            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+        } catch (e) {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        }
     }
 }
 function getLastKmChegadaAdm(placa) {
@@ -1467,24 +1390,6 @@ dotElement.classList.add('red');
 };
 setDotColor(statusManhaDot, manhaCount, thresholds.manha);
 setDotColor(statusTardeDot, tardeCount, thresholds.tarde);
-const isRed = (statusManhaDot && statusManhaDot.classList.contains('red')) || (statusTardeDot && statusTardeDot.classList.contains('red'));
-const alertEl = document.getElementById('limiteSaidasAlerta');
-if (alertEl) {
-if (!isRed) {
-alertEl.style.display = 'none';
-alertEl.classList.remove('piscar');
-} else if (!limiteAlertaJaMostradoNestaVisibilidade) {
-alertEl.style.display = 'block';
-alertEl.classList.remove('piscar');
-alertEl.offsetHeight;
-alertEl.classList.add('piscar');
-setTimeout(function() {
-alertEl.classList.remove('piscar');
-alertEl.style.display = 'none';
-limiteAlertaJaMostradoNestaVisibilidade = true;
-}, 5000);
-}
-}
 }
 function populateTables() {
 alertedVehiclesOil.clear();
@@ -2538,29 +2443,6 @@ showProblemasModal(placa);
 });
 }
 
-row.addEventListener('click', (e) => {
-if (row.classList.contains('alarme-pre-saida-piscando') || row.classList.contains('alarme-hora-saida-piscando')) {
-e.preventDefault();
-e.stopPropagation();
-const ids = row.dataset.id.split(',');
-const today = new Date().toISOString().split('T')[0];
-ids.forEach(id => {
-const saidaIndex = saidasAdministrativas.findIndex(s => s.id === id);
-if (saidaIndex !== -1) {
-if (row.classList.contains('alarme-pre-saida-piscando')) {
-saidasAdministrativas[saidaIndex].preSaidaAlarmDismissed = true;
-localStorage.setItem(`preSaidaAlarmDismissed_${id}_${today}`, 'true');
-}
-if (row.classList.contains('alarme-hora-saida-piscando')) {
-saidasAdministrativas[saidaIndex].saidaAlarmDismissed = true;
-localStorage.setItem(`saidaAlarmDismissed_${id}_${today}`, 'true');
-}
-}
-});
-row.classList.remove('alarme-pre-saida-piscando', 'alarme-hora-saida-piscando');
-saveState();
-}
-});
 row.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
 cell.addEventListener('blur', handleCellEdit);
 });
@@ -2585,7 +2467,7 @@ ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 atualizarEstiloDaLinha(row);
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
@@ -2642,7 +2524,7 @@ ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos
@@ -2697,7 +2579,7 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
                 const index = saidasAdministrativas.findIndex(item => item.id === id);
                 if (index !== -1) saidasAdministrativas[index].chegada = currentTime;
             });
-            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
             atualizarEstiloDaLinha(row);
         }
     }
@@ -2751,7 +2633,7 @@ saidasAdministrativas[index].motorista = newValue;
 }
 });
             
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
             
 // Remove o event listener
@@ -3138,7 +3020,18 @@ async function desagruparSaida_OLD_DISABLED(saidaJuntada, indice, setor, destino
 
 function handleEditRow(event) {
 event.stopPropagation();
-const ids = event.target.closest('tr').dataset.id.split(',');
+const row = event.target.closest('tr');
+if (!row) return;
+const ids = row.dataset.id.split(',');
+// Garantir viatura e motorista a partir da linha (mesmo que o objeto não os tenha)
+function payloadComViaturaMotoristaDaLinha(data) {
+    if (!data || !row) return data;
+    const viaturaCell = row.querySelector('td[data-placa]');
+    const motoristaCell = row.querySelector('td.motorista-cell[data-original-value]');
+    const viatura = (viaturaCell && viaturaCell.getAttribute('data-placa')) || data.viatura || data.viatura_id || '';
+    const motorista = (motoristaCell && motoristaCell.getAttribute('data-original-value')) || data.motorista || data.motorista_id || '';
+    return { ...data, viatura: viatura || data.viatura, motorista: motorista || data.motorista };
+}
 if (ids.length > 1) {
 choiceModalTitle.textContent = "Escolha a Saída para Editar";
 choiceModalContent.innerHTML = '';
@@ -3161,6 +3054,8 @@ setTimeout(() => {
 } else {
 const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
 if (saidaData) {
+    // Enriquecer com viatura/motorista da linha para o formulário de edição manter os valores
+    const saidaEnviar = payloadComViaturaMotoristaDaLinha(saidaData);
     // Verificar se é uma saída juntada
     if (saidaData.juntada && (saidaData.setores_multiplos || saidaData.destinos_multiplos)) {
         // Abrir modal para selecionar qual saída individual editar
@@ -3256,7 +3151,6 @@ if (saidaData) {
                 // Buscar a saída individual desagrupada atualizada
                 const saidaAtualizada = saidasAdministrativas.find(s => s.id === saidaIndividual.id);
                 const saidaParaEditar = saidaAtualizada || saidaIndividual;
-                
                 window.parent.postMessage({ type: 'edit_saida', data: saidaParaEditar }, '*'); 
                 choiceModal.style.display = 'none'; 
             };
@@ -3271,8 +3165,8 @@ if (saidaData) {
             choiceModal.scrollTop = 0;
         }, 0);
     } else {
-        // Saída normal, não juntada
-window.parent.postMessage({ type: 'edit_saida', data: saidaData }, '*');
+        // Saída normal, não juntada — enviar com viatura/motorista da linha para o formulário manter os valores
+        window.parent.postMessage({ type: 'edit_saida', data: saidaEnviar }, '*');
     }
 }
 }
@@ -3299,7 +3193,7 @@ window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 } catch (error) {
 console.error('Erro ao deletar saída:', error);
 saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 populateTables();
 }
 }
@@ -3411,85 +3305,6 @@ doc.text('Divisão de Transporte', doc.internal.pageSize.getWidth() / 2, finalY 
 doc.save(`Relatorio_Saidas_Administrativas_${filterDateAdmInput.value || 'Geral'}.pdf`);
 }
 
-function checkAlarms() {
-const now = new Date();
-const todayStr = now.toISOString().split('T')[0];
-const saidasDoDia = saidasAdministrativas.filter(s => s.dataSaida === todayStr);
-saidasDoDia.forEach(saida => {
-if (!saida.saida || saida.chegada || !saida.id) {
-return;
-}
-const preSaidaAlarmDismissed = localStorage.getItem(`preSaidaAlarmDismissed_${saida.id}_${todayStr}`) === 'true';
-const saidaAlarmDismissed = localStorage.getItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`) === 'true';
-const preSaidaAlarmPlayed = localStorage.getItem(`preSaidaAlarmPlayed_${saida.id}_${todayStr}`) === 'true';
-const saidaAlarmPlayed = localStorage.getItem(`saidaAlarmPlayed_${saida.id}_${todayStr}`) === 'true';
-const [saidaHours, saidaMinutes] = saida.saida.split(':').map(Number);
-const saidaDT = new Date(now.getFullYear(), now.getMonth(), now.getDate(), saidaHours, saidaMinutes, 0, 0);
-const preSaidaDT = new Date(saidaDT.getTime() - 10 * 60 * 1000);
-const row = document.querySelector(`tr[data-id*="${saida.id}"]`);
-if (!row) return;
-const hasSaidaAlarm = row.classList.contains('alarme-hora-saida-piscando');
-if (now >= preSaidaDT && now < saidaDT) {
-if (!preSaidaAlarmDismissed && !preSaidaAlarmPlayed) {
-row.classList.add('alarme-pre-saida-piscando');
-playPreSaidaAlert(saida.motorista, saida.viatura);
-localStorage.setItem(`preSaidaAlarmPlayed_${saida.id}_${todayStr}`, 'true');
-alertedPreSaida.add(saida.id);
-setTimeout(() => {
-row.classList.remove('alarme-pre-saida-piscando');
-localStorage.setItem(`preSaidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
-}, 10000);
-}
-} else if (now >= saidaDT) {
-if (!saidaAlarmDismissed) {
-const alarmStartTime = localStorage.getItem(`saidaAlarmStartTime_${saida.id}_${todayStr}`);
-let shouldShowAlarm = false;
-let remainingTime = 0;
-if (alarmStartTime) {
-const elapsed = now.getTime() - parseInt(alarmStartTime);
-if (elapsed < 10 * 60 * 1000) {
-shouldShowAlarm = true;
-remainingTime = 10 * 60 * 1000 - elapsed;
-} else {
-localStorage.setItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
-}
-} else {
-shouldShowAlarm = true;
-localStorage.setItem(`saidaAlarmStartTime_${saida.id}_${todayStr}`, now.getTime().toString());
-remainingTime = 10 * 60 * 1000;
-}
-if (shouldShowAlarm) {
-if (!hasSaidaAlarm) {
-row.classList.remove('alarme-pre-saida-piscando');
-row.classList.add('alarme-hora-saida-piscando');
-}
-if (!saidaAlarmPlayed) {
-const destinoAlarme = saida.destino || (Array.isArray(saida.destinos) ? saida.destinos.join(' e ') : '');
-playHoraSaidaAlert(saida.motorista, saida.viatura, destinoAlarme);
-localStorage.setItem(`saidaAlarmPlayed_${saida.id}_${todayStr}`, 'true');
-alertedHoraSaida.add(saida.id);
-}
-if (remainingTime > 0) {
-setTimeout(() => {
-if (!localStorage.getItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`)) {
-const currentRow = document.querySelector(`tr[data-id*="${saida.id}"]`);
-if (currentRow) {
-currentRow.classList.remove('alarme-hora-saida-piscando');
-localStorage.setItem(`saidaAlarmDismissed_${saida.id}_${todayStr}`, 'true');
-}
-}
-}, remainingTime);
-}
-} else if (hasSaidaAlarm) {
-row.classList.remove('alarme-hora-saida-piscando');
-}
-}
-} else {
-row.classList.remove('alarme-pre-saida-piscando');
-row.classList.remove('alarme-hora-saida-piscando');
-}
-});
-}
 function renderLembretesFlutuante(lembretes) {
 lembretesContainer.style.removeProperty('height');
 const todayString = new Date().toISOString().split('T')[0];
@@ -3609,12 +3424,6 @@ problemasModal.querySelector('.close-button').addEventListener('click', closePro
 
 filterDateAdmInput.addEventListener('change', populateTables);
 showSvcRoBtn.addEventListener('click', toggleSvcRoDisplay);
-
-document.addEventListener('visibilitychange', function() {
-if (document.visibilityState === 'hidden') {
-limiteAlertaJaMostradoNestaVisibilidade = false;
-}
-});
 
 // Função para exibir o nome do próximo integrante do PSO
 const showPsoProximo = () => {
@@ -4054,6 +3863,16 @@ printModal.addEventListener('click', (e) => {
     }
 });
 
+document.getElementById('exportarCelularBtn').addEventListener('click', () => {
+    const json = JSON.stringify(saidasAdministrativas || [], null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'saidas-administrativas.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+});
+
 document.getElementById('toggleSignaturesBtn').addEventListener('click', () => {
 document.querySelector('.assinatura-container-geral').style.display = document.querySelector('.assinatura-container-geral').style.display === 'none' ? 'flex' : 'none';
 });
@@ -4139,7 +3958,7 @@ populateTables();
 } catch (error) {
 console.error('Erro ao salvar nova saída:', error);
 saidasAdministrativas.push(saida);
-localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
 populateTables();
 }
 }
@@ -4165,12 +3984,13 @@ localStorage.removeItem(key);
 }
 loadStatusThresholds();
 setDateToToday();
-loadState();
+(async function initTable() {
+await loadState();
 populateTables();
 populateDivisaoTransporteSelect(motoristasCadastrados);
+})();
 populateNotices();
 clearDailyAlarmStates();
-setInterval(checkAlarms, 20000);
 setInterval(checkLembretesAlarms, 5000);
 window.parent.postMessage({ type: 'request_lembretes_data' }, '*');
 ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(e => document.addEventListener(e, () => window.parent.postMessage({ type: 'user_activity' }, '*')));
@@ -4223,7 +4043,7 @@ function clearKmChegada() {
         });
         
         // Salvar os dados
-        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
         atualizarEstiloDaLinha(kmAlertRow);
         window.parent.postMessage({ type: 'refresh_all_data' }, '*');
     }

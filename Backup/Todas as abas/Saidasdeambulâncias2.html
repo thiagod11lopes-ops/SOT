@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - SAÍDAS DE AMBULÂNCIAS</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sot-service.js"></script>
+<script src="data-service.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -500,14 +505,31 @@ const day = String(today.getDate()).padStart(2, '0');
 const todayFormatted = `${year}-${month}-${day}`;
 filterDateAmbInput.value = todayFormatted;
 }
-function loadAllData() {
+async function loadAllData() {
 try {
+if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+await dataService.waitForAPICheck();
+if (dataService.useFirebase || dataService.apiAvailable) {
+const s = await dataService.getSaidasAmbulancias();
+const v = await dataService.getViaturas();
+const m = await dataService.getMotoristas();
+if (Array.isArray(s)) { saidasAmbulancias = s; localStorage.setItem('saidasAmbulancias', JSON.stringify(s)); }
+if (Array.isArray(v)) { frotaData = v; localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); }
+if (Array.isArray(m)) { motoristasCadastrados = m; localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); }
+}
+}
+if (!Array.isArray(saidasAmbulancias) || saidasAmbulancias.length === 0) {
 const storedSaidas = localStorage.getItem('saidasAmbulancias');
-const storedFrota = localStorage.getItem('viaturasCadastradas');
-const storedMotoristas = localStorage.getItem('motoristasCadastrados');
 saidasAmbulancias = storedSaidas ? JSON.parse(storedSaidas) : [];
+}
+if (!Array.isArray(frotaData) || frotaData.length === 0) {
+const storedFrota = localStorage.getItem('viaturasCadastradas');
 frotaData = storedFrota ? JSON.parse(storedFrota) : [];
+}
+if (!Array.isArray(motoristasCadastrados) || motoristasCadastrados.length === 0) {
+const storedMotoristas = localStorage.getItem('motoristasCadastrados');
 motoristasCadastrados = storedMotoristas ? JSON.parse(storedMotoristas) : [];
+}
 if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = [];
 if (!Array.isArray(frotaData)) frotaData = [];
 if (!Array.isArray(motoristasCadastrados)) motoristasCadastrados = [];
@@ -515,14 +537,15 @@ loadViaturasComProblemas();
 console.log('Dados carregados:', { saidasAmbulancias: saidasAmbulancias.length, frotaData: frotaData.length, motoristasCadastrados: motoristasCadastrados.length });
 } catch (error) {
 console.error('Erro ao carregar dados:', error);
-saidasAmbulancias = [];
-frotaData = [];
-motoristasCadastrados = [];
+saidasAmbulancias = saidasAmbulancias || [];
+frotaData = frotaData || [];
+motoristasCadastrados = motoristasCadastrados || [];
 }
 }
-function saveData() {
+async function saveData() {
 try {
 localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') await dataService.setSaidasAmbulancias(saidasAmbulancias);
 return true;
 } catch (error) {
 console.error('Erro ao salvar dados:', error);

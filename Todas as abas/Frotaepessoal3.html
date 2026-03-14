@@ -367,6 +367,7 @@
     <script src="theme-listener.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
+            // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
             let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
             let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
             let psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
@@ -387,6 +388,28 @@
             const frotaTableBody = document.querySelector('#frotaTable tbody');
             const pessoalTableBody = document.querySelector('#pessoalTable tbody');
             
+            // ========== UTILITÁRIOS DE VALIDAÇÃO ==========
+            var ValidacaoFrota = {
+                sanitizePlaca: function (v) {
+                    if (v == null) return '';
+                    return String(v).trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+                },
+                sanitizeNome: function (v) {
+                    if (v == null) return '';
+                    return String(v).replace(/\s+/g, ' ').trim().slice(0, 200);
+                },
+                validateAno: function (v) {
+                    if (v == null || String(v).trim() === '') return true;
+                    var n = parseInt(String(v).trim(), 10);
+                    return !isNaN(n) && n >= 1900 && n <= 2100;
+                },
+                validateKm: function (v) {
+                    if (v == null || String(v).trim() === '') return true;
+                    var n = parseFloat(String(v).replace(',', '.'));
+                    return !isNaN(n) && n >= 0 && n < 10000000;
+                }
+            };
+
             const saveData = async (key, data) => {
                 localStorage.setItem(key, JSON.stringify(data));
                 try {
@@ -413,11 +436,21 @@
                 const key = cell.dataset.key;
                 if (!key) return;
                 const index = viaturasCadastradas.findIndex(item => item.id === rowId);
-                if (index !== -1) {
-                    const valueToSave = cell.textContent.trim();
-                    viaturasCadastradas[index][key] = valueToSave;
-                    saveData('viaturasCadastradas', viaturasCadastradas);
+                if (index === -1) return;
+                var raw = cell.textContent.trim();
+                var valueToSave = raw;
+                if (key === 'placa') {
+                    valueToSave = ValidacaoFrota.sanitizePlaca(raw);
+                    cell.textContent = valueToSave;
+                } else if (key === 'ano' && raw !== '') {
+                    if (!ValidacaoFrota.validateAno(raw)) return;
+                    valueToSave = raw;
+                } else if ((key === 'trocaOleoKm' || key === 'proxTrocaKm' || key === 'correiaDentadaKm') && raw !== '') {
+                    if (!ValidacaoFrota.validateKm(raw)) return;
+                    valueToSave = raw;
                 }
+                viaturasCadastradas[index][key] = valueToSave;
+                saveData('viaturasCadastradas', viaturasCadastradas);
             };
 
             const handleFrotaCheckboxChange = (event) => {
@@ -510,7 +543,9 @@
                      `;
                      
                      row.querySelector('td[contenteditable="true"]').addEventListener('blur', () => {
-                        handleUpdate(membro.id, 'nome', row.cells[0].textContent, 'motorista');
+                        var nomeVal = ValidacaoFrota.sanitizeNome(row.cells[0].textContent);
+                        row.cells[0].textContent = nomeVal;
+                        handleUpdate(membro.id, 'nome', nomeVal, 'motorista');
                      });
 
                      row.querySelector('.delete-row-btn').addEventListener('click', () => {
@@ -568,6 +603,13 @@
                             let value = values[index] ? values[index].trim() : '';
                             if (value === 'true') value = true;
                             if (value === 'false') value = false;
+                            if (dataType === 'viatura') {
+                                if (header === 'placa') value = ValidacaoFrota.sanitizePlaca(value);
+                                else if (header === 'ano' && value !== '' && !ValidacaoFrota.validateAno(value)) value = '';
+                                else if ((header === 'trocaOleoKm' || header === 'proxTrocaKm' || header === 'correiaDentadaKm') && value !== '' && !ValidacaoFrota.validateKm(value)) value = '';
+                            } else if (dataType === 'motorista' && header === 'nome') {
+                                value = ValidacaoFrota.sanitizeNome(value);
+                            }
                             obj[header] = value;
                         });
                         if (!obj.id) {
@@ -591,6 +633,7 @@
                 reader.readAsText(file, 'UTF-8');
             }
 
+            // ========== EVENT LISTENERS ==========
             document.getElementById('exportViaturaBtn').addEventListener('click', () => {
                 const headers = ['id', 'placa', 'tipo', 'ano', 'trocaOleoKm', 'confirma', 'proxTrocaKm', 'operante', 'inoperante', 'correiaDentadaKm'];
                 exportToCSV(viaturasCadastradas, 'viaturas.csv', headers);
@@ -1101,8 +1144,22 @@
             
             // Escutar mensagens de atualização
             window.addEventListener('message', function(e) {
-                if (e.data && e.data.type === 'refresh_all_data') {
+                if (e.data && (e.data.type === 'refresh_all_data' || e.data.type === 'refresh_data')) {
                     populateKmAtualTable();
+                    if (typeof integrantesEscalaPao !== 'undefined') {
+                        integrantesEscalaPao = JSON.parse(localStorage.getItem('integrantesEscalaPao') || '[]');
+                        feriadosEscalaPao = JSON.parse(localStorage.getItem('feriadosEscalaPao') || '[]');
+                        historicoEscalaPao = JSON.parse(localStorage.getItem('historicoEscalaPao') || '[]');
+                        ultimoIndiceEscala = parseInt(localStorage.getItem('ultimoIndiceEscala'), 10) || 0;
+                        puladosEscalaPao = JSON.parse(localStorage.getItem('puladosEscalaPao') || '{}');
+                        escalaPaoInsercoes = JSON.parse(localStorage.getItem('escalaPaoInsercoes') || '[]');
+                        diasExcluidosEscalaPao = JSON.parse(localStorage.getItem('diasExcluidosEscalaPao') || '[]');
+                        var escalaPaoEl = document.getElementById('escalaPaoContent');
+                        if (escalaPaoEl && escalaPaoEl.classList.contains('active') && typeof atualizarCalendarios === 'function') {
+                            atualizarCalendarios();
+                            if (typeof atualizarHistorico === 'function') atualizarHistorico();
+                        }
+                    }
                 }
                 if (e.data && e.data.type === 'escala_cell_marks_updated') {
                     var escalaIframe = document.querySelector('#escalaContent iframe');

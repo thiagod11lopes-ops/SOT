@@ -1,6 +1,9 @@
-# Configurar Firebase para o SOT (Usuários do Agendamento)
+# Configurar Firebase para o SOT
 
-Siga estes passos para usar o Firebase de verdade e que a aba **Usuários** e o **login do Agendamento** funcionem na nuvem.
+Siga estes passos para usar o Firebase no SOT. Com o Firebase configurado:
+
+- **Usuários do Agendamento** e **login do Agendamento** funcionam na nuvem.
+- **Saídas administrativas**, **saídas de ambulâncias**, **viaturas**, **motoristas**, **avisos**, **lembretes**, etc. ficam sincronizados em qualquer computador ou celular (SOT, Agendamento e Quadro de Saídas).
 
 ---
 
@@ -45,6 +48,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /sot_agendamento_usuarios/{document=**} {
+      allow read, write: if true;
+    }
+    match /sot_data/{document=**} {
       allow read, write: if true;
     }
   }
@@ -134,4 +140,4 @@ var firebaseConfig = {
 | Configurações do projeto → Seus apps | Copiar `apiKey`, `projectId`, etc. |
 | Arquivo `firebase-config.js` | Colar os valores no lugar dos placeholders |
 
-Depois disso, o SOT estará usando o Firebase de verdade para usuários do Agendamento.
+Depois disso, o SOT estará usando o Firebase para usuários do Agendamento e para todos os dados do sistema (saídas, viaturas, motoristas, etc.), de forma que qualquer acesso (outro computador, celular no Quadro de Saídas) veja os mesmos dados atualizados.

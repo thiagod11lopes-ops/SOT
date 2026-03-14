@@ -731,6 +731,7 @@ body[data-theme="dark"] .counter-badge {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+// ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
 let saidasAdministrativas = [];
 let motoristasCadastrados = [];
 let frotaData = [];
@@ -802,6 +803,19 @@ const svcRoList = document.getElementById('svcRoList');
 // ===== ESCALA: helpers e renderização =====
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
+// ========== UTILITÁRIOS: VALIDAÇÃO E DEBOUNCE ==========
+function debounce(fn, ms) {
+  var t;
+  return function () { clearTimeout(t); t = setTimeout(function () { fn.apply(this, arguments); }, ms); };
+}
+var ValidacaoSaidasAdm = {
+  sanitizeObs: function (str) {
+    if (str == null) return '';
+    return String(str).replace(/\s+/g, ' ').trim().slice(0, 2000);
+  }
+};
+
+// ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
 function populateMonthYearFilters() {
     const now = new Date();
     const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
@@ -3392,10 +3406,10 @@ if (!isHidden) {
 lembretesHeader.classList.remove('header-piscando');
 }
 });
-obsModal.querySelector('#saveObsBtn').onclick = () => {
+obsModal.querySelector('#saveObsBtn').onclick = function () {
 if (currentObsContext && currentObsContext.ids.length > 0) {
-const newObs = obsTextarea.value.trim();
-currentObsContext.ids.forEach(id => {
+var newObs = ValidacaoSaidasAdm.sanitizeObs(obsTextarea.value);
+currentObsContext.ids.forEach(function (id) {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) {
 saidasAdministrativas[index].observacoes = newObs;
@@ -3422,7 +3436,7 @@ closeBtn.onclick = () => closeViewSaidaModal();
 closeProblemasBtn.addEventListener('click', closeProblemasModal);
 problemasModal.querySelector('.close-button').addEventListener('click', closeProblemasModal);
 
-filterDateAdmInput.addEventListener('change', populateTables);
+filterDateAdmInput.addEventListener('change', debounce(populateTables, 120));
 showSvcRoBtn.addEventListener('click', toggleSvcRoDisplay);
 
 // Função para exibir o nome do próximo integrante do PSO

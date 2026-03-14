@@ -1607,6 +1607,13 @@ if (filterYear && filterYear.value === y && filterMonth && filterMonth.value ===
 renderEscala(filterMonth.value, filterYear.value);
 }
 }
+// Ao receber refresh (ex.: após sincronização online), recarregar escala do localStorage
+if (e.data && (e.data.type === 'refresh_all_data' || e.data.type === 'refresh_data')) {
+if (filterYear && filterMonth && filterYear.value && filterMonth.value) {
+populateFilters(filterMonth, filterYear);
+renderEscala(filterMonth.value, filterYear.value);
+}
+}
 });
 
 // --- Event Listeners ---

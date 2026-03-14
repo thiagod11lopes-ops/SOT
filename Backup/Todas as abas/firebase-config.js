@@ -11,12 +11,12 @@
 (function() {
     if (typeof firebase === 'undefined') return;
     var firebaseConfig = {
-        apiKey: "COLE_SUA_API_KEY_AQUI",
-        authDomain: "SEU_PROJETO_ID.firebaseapp.com",
-        projectId: "SEU_PROJETO_ID",
-        storageBucket: "SEU_PROJETO_ID.appspot.com",
-        messagingSenderId: "COLE_SEU_SENDER_ID",
-        appId: "COLE_SEU_APP_ID"
+        apiKey: "AIzaSyCJkB0sDzoz8kuchiM-A9lycQk011H6Pmw",
+        authDomain: "sot-c77cb.firebaseapp.com",
+        projectId: "sot-c77cb",
+        storageBucket: "sot-c77cb.firebasestorage.app",
+        messagingSenderId: "608364494039",
+        appId: "1:608364494039:web:018231f1db30be94c7c492"
     };
     try {
         window.firebaseApp = firebase.app();

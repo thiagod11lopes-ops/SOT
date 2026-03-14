@@ -6,6 +6,13 @@
     <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - CONFIGURAÇÕES</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="theme-listener.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firebase-sot-service.js"></script>
+    <script src="api-service.js"></script>
+    <script src="data-service.js"></script>
+    <script src="sot-sync.js"></script>
     <style>
         :root {
             --primary-blue: #4a69bd;
@@ -343,53 +350,46 @@
                 <i class="fas fa-database"></i>
                 Gerenciamento de Dados
             </h2>
-            
-            <div class="config-group">
-                <label><i class="fas fa-download"></i> Backup e Exportação</label>
-                <p style="margin: 10px 0; color: var(--dark-gray);">
-                    Faça backup dos seus dados ou exporte para transferir para outro computador.
-                </p>
-                <div class="button-group">
-                    <button id="backupNowBtn" class="success">
-                        <i class="fas fa-save"></i> Fazer Backup Agora
-                    </button>
-                    <button id="exportJsonBtn" class="success">
-                        <i class="fas fa-file-export"></i> Exportar Dados (JSON)
-                    </button>
-                </div>
-            </div>
-
-            <div class="config-group">
-                <label><i class="fas fa-upload"></i> Importar Dados</label>
-                <p style="margin: 10px 0; color: var(--dark-gray);">
-                    Restaure um backup anterior ou importe dados de outro computador.
-                </p>
-                <button id="importJsonBtn" class="warning">
-                    <i class="fas fa-file-import"></i> Importar Dados (JSON)
+            <p style="margin: 0 0 16px; color: var(--dark-gray);">
+                Carregue um backup em JSON (os dados são <strong>mesclados</strong> com o que já existe), baixe todos os dados do sistema ou envie tudo para o Firebase.
+            </p>
+            <div class="button-group" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                <button id="carregarDadosBtn" class="warning" title="Carrega um arquivo JSON e mescla com os dados atuais (não substitui)">
+                    <i class="fas fa-file-import"></i> Carregar Dados
                 </button>
-                <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                <button id="salvarDownloadBtn" class="success" title="Gera um arquivo JSON com todos os dados e faz o download">
+                    <i class="fas fa-download"></i> Salvar e fazer download
+                </button>
+                <button id="saveAllToFirebaseBtn" class="primary" title="Sincroniza dados: mescla localStorage e Firebase nos dois sentidos (não apaga o que já existe)">
+                    <i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)
+                </button>
+                <button id="usarDadosLocalBtn" class="info" title="Quando acessar pelo GitHub, use os dados salvos neste computador (localStorage) em vez do Firebase">
+                    <i class="fas fa-desktop"></i> Usar dados deste computador
+                </button>
+                <button id="usarDadosFirebaseBtn" class="primary" title="Voltar a usar os dados do Firebase (nuvem)">
+                    <i class="fas fa-cloud"></i> Usar dados do Firebase
+                </button>
             </div>
-            
-            <div class="config-group">
+            <p style="margin: 8px 0 0; font-size: 13px; color: var(--dark-gray);">
+                <strong>Usar dados deste computador:</strong> ao abrir o SOT pelo GitHub em um computador que já tem dados no navegador, clique aqui para exibir esses dados em vez do Firebase. <strong>Usar dados do Firebase:</strong> volta a exibir os dados da nuvem.
+            </p>
+            <input type="file" id="carregarDadosFileInput" accept=".json" style="display: none;">
+            <div id="gerenciamentoMessage" class="message" style="margin-top: 12px;"></div>
+
+            <div class="config-group" style="margin-top: 24px;">
                 <label style="color: var(--error-red); font-size: 18px;">
                     <i class="fas fa-exclamation-triangle"></i> Zona de Perigo
                 </label>
                 <p style="margin: 10px 0; color: var(--dark-gray);">
-                    Esta ação irá apagar <strong>TODOS os dados do sistema</strong> permanentemente, incluindo:
-                    saídas, viaturas, motoristas, vistorias, escala, avisos, configurações e senha.
+                    Esta ação irá apagar <strong>TODOS os dados do sistema</strong> (local e Firebase) permanentemente.
                 </p>
                 <button id="clearAllDataBtn" style="background-color: var(--error-red); width: 100%;">
                     <i class="fas fa-trash-alt"></i> Apagar Todos os Dados do Sistema
                 </button>
+                <p id="ultimaSincronizacaoInfo" style="margin: 14px 0 0; font-size: 13px; color: var(--dark-gray); padding: 8px; background: #f0f4f8; border-radius: 6px;">
+                    <i class="fas fa-sync-alt"></i> Última sincronização (local ↔ Firebase): <strong id="ultimaSincronizacaoTexto">—</strong>
+                </p>
             </div>
-            
-            <div class="info-box">
-                <i class="fas fa-lightbulb"></i>
-                <strong>Dica:</strong> Faça backups regularmente para garantir a segurança dos seus dados. 
-                Use "Fazer Backup Agora" para criar uma cópia completa antes de fazer alterações importantes.
-            </div>
-            
-            <div id="backupMessage" class="message"></div>
         </div>
             </div>
             <div id="disponibilidadeContent" class="sub-tab-content">
@@ -444,21 +444,19 @@
             const passwordMessage = document.getElementById('passwordMessage');
             const showPasswordCheckbox = document.getElementById('showPassword');
 
-            // Elementos de Backup
-            const backupNowBtn = document.getElementById('backupNowBtn');
-            const exportJsonBtn = document.getElementById('exportJsonBtn');
-            const importJsonBtn = document.getElementById('importJsonBtn');
-            const importFileInput = document.getElementById('importFileInput');
+            // Elementos de Gerenciamento de Dados
+            const carregarDadosBtn = document.getElementById('carregarDadosBtn');
+            const carregarDadosFileInput = document.getElementById('carregarDadosFileInput');
+            const salvarDownloadBtn = document.getElementById('salvarDownloadBtn');
             const clearAllDataBtn = document.getElementById('clearAllDataBtn');
-            const backupMessage = document.getElementById('backupMessage');
+            const gerenciamentoMessage = document.getElementById('gerenciamentoMessage');
 
             console.log('Elementos encontrados:', {
                 oldPasswordInput,
                 newPasswordInput,
                 savePasswordBtn,
-                backupNowBtn,
-                exportJsonBtn,
-                importJsonBtn,
+                carregarDadosBtn,
+                salvarDownloadBtn,
                 clearAllDataBtn
             });
 
@@ -903,6 +901,93 @@
                 return data;
             }
 
+            // Monta os dados de backup incluindo, quando possível, o que está no Firebase/API
+            async function buildFullBackupData() {
+                // Começa com tudo que já está no localStorage
+                const data = getAllSystemData();
+
+                // Se o dataService não estiver disponível, fica só com o localStorage
+                if (typeof dataService === 'undefined') {
+                    return data;
+                }
+
+                try {
+                    // Garante que já verificou API/Firebase
+                    await dataService.waitForAPICheck();
+
+                    // Buscar principais coleções via dataService (API/Firebase) e sobrescrever no backup
+                    try {
+                        const saidasAdm = await dataService.getSaidasAdministrativas();
+                        if (Array.isArray(saidasAdm)) {
+                            data['saidasAdministrativas'] = JSON.stringify(saidasAdm);
+                        }
+                    } catch (e) { console.warn('Falha ao obter saidasAdministrativas para backup:', e); }
+
+                    try {
+                        const saidasAmb = await dataService.getSaidasAmbulancias();
+                        if (Array.isArray(saidasAmb)) {
+                            data['saidasAmbulancias'] = JSON.stringify(saidasAmb);
+                        }
+                    } catch (e) { console.warn('Falha ao obter saidasAmbulancias para backup:', e); }
+
+                    try {
+                        const viaturas = await dataService.getViaturas();
+                        if (Array.isArray(viaturas)) {
+                            data['viaturasCadastradas'] = JSON.stringify(viaturas);
+                        }
+                    } catch (e) { console.warn('Falha ao obter viaturas para backup:', e); }
+
+                    try {
+                        const motoristas = await dataService.getMotoristas();
+                        if (Array.isArray(motoristas)) {
+                            data['motoristasCadastrados'] = JSON.stringify(motoristas);
+                        }
+                    } catch (e) { console.warn('Falha ao obter motoristas para backup:', e); }
+
+                    // Demais coleções que ficam diretamente no firebaseSot
+                    if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                        try {
+                            const vistorias = await window.firebaseSot.get('vistoriasRealizadas');
+                            if (Array.isArray(vistorias)) {
+                                data['vistoriasRealizadas'] = JSON.stringify(vistorias);
+                            }
+                        } catch (e) { console.warn('Falha ao obter vistoriasRealizadas para backup:', e); }
+
+                        try {
+                            const abastecimentos = await window.firebaseSot.get('abastecimentos');
+                            if (Array.isArray(abastecimentos)) {
+                                data['abastecimentos'] = JSON.stringify(abastecimentos);
+                            }
+                        } catch (e) { console.warn('Falha ao obter abastecimentos para backup:', e); }
+
+                        try {
+                            const escalaData = await window.firebaseSot.get('escalaData');
+                            if (escalaData && typeof escalaData === 'object') {
+                                data['escalaData'] = JSON.stringify(escalaData);
+                            }
+                        } catch (e) { console.warn('Falha ao obter escalaData para backup:', e); }
+
+                        try {
+                            const avisos = await window.firebaseSot.get('avisos');
+                            if (Array.isArray(avisos)) {
+                                data['avisos'] = JSON.stringify(avisos);
+                            }
+                        } catch (e) { console.warn('Falha ao obter avisos para backup:', e); }
+
+                        try {
+                            const lembretes = await window.firebaseSot.get('lembretes_ativos');
+                            if (Array.isArray(lembretes)) {
+                                data['lembretes_ativos'] = JSON.stringify(lembretes);
+                            }
+                        } catch (e) { console.warn('Falha ao obter lembretes_ativos para backup:', e); }
+                    }
+                } catch (e) {
+                    console.warn('Falha geral ao montar backup completo (usando apenas localStorage):', e);
+                }
+
+                return data;
+            }
+
             function showPasswordMessage(message, type) {
                 passwordMessage.textContent = message;
                 passwordMessage.className = 'message ' + type;
@@ -912,13 +997,15 @@
                 }, 5000);
             }
 
-            function showBackupMessage(message, type) {
-                backupMessage.textContent = message;
-                backupMessage.className = 'message ' + type;
+            function showGerenciamentoMessage(message, type) {
+                if (!gerenciamentoMessage) return;
+                gerenciamentoMessage.textContent = message;
+                gerenciamentoMessage.className = 'message ' + (type || '');
+                gerenciamentoMessage.style.display = 'block';
                 setTimeout(() => {
-                    backupMessage.textContent = '';
-                    backupMessage.className = 'message';
-                }, 5000);
+                    gerenciamentoMessage.textContent = '';
+                    gerenciamentoMessage.className = 'message';
+                }, 6000);
             }
 
             // ==================== SENHA ====================
@@ -960,16 +1047,53 @@
                 });
             }
 
-            // ==================== BACKUP E EXPORTAÇÃO ====================
-            
-            if (backupNowBtn) {
-                backupNowBtn.addEventListener('click', () => {
-                    console.log('Botão Fazer Backup clicado!');
+            // ==================== GERENCIAMENTO DE DADOS ====================
+
+            // 1) Carregar Dados — carrega JSON e mescla com o que já existe (não substitui)
+            if (carregarDadosBtn && carregarDadosFileInput) {
+                carregarDadosBtn.addEventListener('click', () => carregarDadosFileInput.click());
+                carregarDadosFileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const importedData = JSON.parse(event.target.result);
+                            const existingData = {};
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && !key.startsWith('_')) {
+                                    existingData[key] = localStorage.getItem(key);
+                                }
+                            }
+                            const { merged, stats } = mergeSystemData(existingData, importedData);
+                            for (const key in merged) {
+                                localStorage.setItem(key, merged[key]);
+                            }
+                            showGerenciamentoMessage(
+                                'Dados carregados e mesclados com sucesso. Recarregue a página para ver tudo nas abas.',
+                                'success'
+                            );
+                            if (window.parent && window.parent.postMessage) {
+                                window.parent.postMessage({ type: 'reload_required' }, '*');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao carregar JSON:', error);
+                            showGerenciamentoMessage('Erro ao carregar arquivo. Verifique se é um JSON válido do SOT.', 'error');
+                        }
+                        carregarDadosFileInput.value = '';
+                    };
+                    reader.readAsText(file);
+                });
+            }
+
+            // 2) Salvar e fazer download — monta todos os dados (local + Firebase) e baixa o JSON
+            if (salvarDownloadBtn) {
+                salvarDownloadBtn.addEventListener('click', async () => {
                     try {
-                        const data = getAllSystemData();
+                        const data = await buildFullBackupData();
                         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                        const filename = `SOT_Backup_${timestamp}.json`;
-                        
+                        const filename = `SOT_Export_${timestamp}.json`;
                         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
@@ -977,38 +1101,81 @@
                         a.download = filename;
                         a.click();
                         URL.revokeObjectURL(url);
-                        
-                        showBackupMessage('Backup criado com sucesso!', 'success');
-                        console.log('Backup criado:', filename);
+                        showGerenciamentoMessage('Download concluído: ' + filename, 'success');
                     } catch (error) {
-                        console.error('Erro ao fazer backup:', error);
-                        showBackupMessage('Erro ao criar backup!', 'error');
+                        console.error('Erro ao gerar download:', error);
+                        showGerenciamentoMessage('Erro ao gerar arquivo de backup.', 'error');
                     }
                 });
             }
 
-            if (exportJsonBtn) {
-                exportJsonBtn.addEventListener('click', () => {
-                    console.log('Botão Exportar clicado!');
-                    try {
-                        const data = getAllSystemData();
-                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                        const filename = `SOT_Export_${timestamp}.json`;
-                        
-                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = filename;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        
-                        showBackupMessage('Dados exportados com sucesso!', 'success');
-                        console.log('Dados exportados:', filename);
-                    } catch (error) {
-                        console.error('Erro ao exportar:', error);
-                        showBackupMessage('Erro ao exportar dados!', 'error');
+            /** Atualiza o texto da última sincronização na tela (usa sot-sync.js). */
+            function updateUltimaSincronizacaoDisplay() {
+                const el = document.getElementById('ultimaSincronizacaoTexto');
+                if (el && window.SOTSync && typeof window.SOTSync.getLastSyncDisplay === 'function') el.textContent = window.SOTSync.getLastSyncDisplay();
+            }
+
+            // 3) Sincronizar (local ↔ Firebase) — botão usa sot-sync.js
+            const saveAllToFirebaseBtn = document.getElementById('saveAllToFirebaseBtn');
+            if (saveAllToFirebaseBtn) {
+                saveAllToFirebaseBtn.addEventListener('click', async () => {
+                    saveAllToFirebaseBtn.disabled = true;
+                    saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+                    if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
+                        await window.SOTSync.sync(false, {
+                            onSuccess: () => showGerenciamentoMessage('Sincronização concluída: local e Firebase atualizados (dados mesclados, nada apagado).', 'success'),
+                            onError: (err) => showGerenciamentoMessage('Erro ao sincronizar: ' + (err && err.message ? err.message : err), 'error'),
+                            afterSync: updateUltimaSincronizacaoDisplay
+                        });
                     }
+                    saveAllToFirebaseBtn.disabled = false;
+                    saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)';
+                });
+            }
+
+            // Exibir última sincronização ao carregar a aba
+            updateUltimaSincronizacaoDisplay();
+
+            // Ao abrir Configurações, sincronizar em background (além da verificação automática do SOT5)
+            (async function autoSyncWhenOpenConfig() {
+                try {
+                    if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
+                    if (typeof dataService === 'undefined') return;
+                    await dataService.waitForAPICheck();
+                    if (!dataService.useFirebase || !navigator.onLine) return;
+                    await window.SOTSync.sync(true, { afterSync: updateUltimaSincronizacaoDisplay });
+                } catch (e) { console.warn('Auto-sync ao abrir Configurações:', e); }
+            })();
+
+            // 4) Usar dados deste computador — prioriza localStorage (para quando abrir pelo GitHub)
+            const usarDadosLocalBtn = document.getElementById('usarDadosLocalBtn');
+            if (usarDadosLocalBtn) {
+                usarDadosLocalBtn.addEventListener('click', () => {
+                    if (typeof dataService === 'undefined') {
+                        showGerenciamentoMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
+                        return;
+                    }
+                    dataService.setPreferLocalStorage(true);
+                    showGerenciamentoMessage('Agora o sistema usa os dados salvos neste computador. A página será recarregada.', 'success');
+                    setTimeout(() => {
+                        if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'reload_required' }, '*');
+                    }, 1500);
+                });
+            }
+
+            // 5) Usar dados do Firebase — desativa a preferência pelo localStorage
+            const usarDadosFirebaseBtn = document.getElementById('usarDadosFirebaseBtn');
+            if (usarDadosFirebaseBtn) {
+                usarDadosFirebaseBtn.addEventListener('click', () => {
+                    if (typeof dataService === 'undefined') {
+                        showGerenciamentoMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
+                        return;
+                    }
+                    dataService.setPreferLocalStorage(false);
+                    showGerenciamentoMessage('Agora o sistema usa os dados do Firebase. A página será recarregada.', 'success');
+                    setTimeout(() => {
+                        if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'reload_required' }, '*');
+                    }, 1500);
                 });
             }
 
@@ -1028,7 +1195,7 @@
                 return [...existingArray, ...newItems];
             }
             
-            // Função para mesclar dados inteligentemente
+            // Função para mesclar dados inteligentemente (aceita valores em string OU objeto/array)
             function mergeSystemData(existingData, importedData) {
                 const merged = { ...existingData };
                 let stats = {
@@ -1070,14 +1237,22 @@
                     
                     // Se a chave não existe, adicionar
                     if (existingValue === null || existingValue === undefined) {
-                        merged[key] = importedValue;
+                        // Para novas chaves:
+                        // - se vier string (caso típico do SOT_Export), mantemos a string
+                        // - se vier objeto/array, salvamos como string JSON
+                        if ((arrayKeys.includes(key) || objectKeys.includes(key)) && typeof importedValue !== 'string') {
+                            merged[key] = JSON.stringify(importedValue);
+                        } else {
+                            merged[key] = importedValue;
+                        }
                         stats.added++;
                         continue;
                     }
                     
                     // Se for uma das chaves de objeto (equipamentos), substituir completamente
                     if (objectKeys.includes(key)) {
-                        merged[key] = importedValue;
+                        // Objetos são sempre substituídos
+                        merged[key] = typeof importedValue === 'string' ? importedValue : JSON.stringify(importedValue);
                         stats.updated++;
                         continue;
                     }
@@ -1085,8 +1260,8 @@
                     // Se for uma das chaves de array, mesclar arrays
                     if (arrayKeys.includes(key)) {
                         try {
-                            const existingArray = JSON.parse(existingValue);
-                            const importedArray = JSON.parse(importedValue);
+                            const existingArray = typeof existingValue === 'string' ? JSON.parse(existingValue) : existingValue;
+                            const importedArray = typeof importedValue === 'string' ? JSON.parse(importedValue) : importedValue;
                             
                             const mergedArray = mergeArrays(existingArray, importedArray);
                             merged[key] = JSON.stringify(mergedArray);
@@ -1095,9 +1270,14 @@
                             stats.added += newCount;
                             stats.skipped += importedArray.length - newCount;
                         } catch (e) {
-                            // Se não for JSON válido, manter o existente
+                            // Se não for JSON válido, como fallback tenta substituir tudo
                             console.warn(`Erro ao mesclar ${key}:`, e);
-                            stats.skipped++;
+                            try {
+                                merged[key] = typeof importedValue === 'string' ? importedValue : JSON.stringify(importedValue);
+                                stats.updated++;
+                            } catch (e2) {
+                                stats.skipped++;
+                            }
                         }
                     } else {
                         // Para outras chaves, manter o valor existente (não sobrescrever)
@@ -1108,102 +1288,10 @@
                 return { merged, stats };
             }
             
-            if (importJsonBtn && importFileInput) {
-                importJsonBtn.addEventListener('click', () => {
-                    console.log('Botão Importar clicado!');
-                    importFileInput.click();
-                });
-
-                importFileInput.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        try {
-                            const importedData = JSON.parse(event.target.result);
-                            
-                            // Coletar dados existentes
-                            const existingData = {};
-                            for (let i = 0; i < localStorage.length; i++) {
-                                const key = localStorage.key(i);
-                                if (key && !key.startsWith('_')) {
-                                    existingData[key] = localStorage.getItem(key);
-                                }
-                            }
-                            
-                            // Perguntar ao usuário qual modo de importação deseja
-                            const importMode = confirm(
-                                'Escolha o modo de importação:\n\n' +
-                                'OK = Mesclar dados (mantém existentes e adiciona apenas novos)\n' +
-                                'Cancelar = Substituir tudo (apaga dados existentes)'
-                            );
-                            
-                            if (importMode) {
-                                // Modo: Mesclar (padrão)
-                                const { merged, stats } = mergeSystemData(existingData, importedData);
-                                
-                                // Aplicar dados mesclados
-                                for (const key in merged) {
-                                    localStorage.setItem(key, merged[key]);
-                                }
-                                
-                                const message = `Dados mesclados com sucesso!\n\n` +
-                                              `✓ ${stats.added} novos itens adicionados\n` +
-                                              `↻ ${stats.updated} itens atualizados\n` +
-                                              `⊘ ${stats.skipped} itens já existentes mantidos\n\n` +
-                                              `Recarregando página...`;
-                                
-                                showBackupMessage(message, 'success');
-                                console.log('Estatísticas da importação:', stats);
-                                
-                                setTimeout(() => {
-                                    window.parent.postMessage({ type: 'reload_required' }, '*');
-                                }, 2000);
-                            } else {
-                                // Modo: Substituir (com confirmação adicional)
-                                if (confirm('ATENÇÃO: Isso irá SUBSTITUIR TODOS os dados atuais pelos dados importados.\n\nDeseja realmente continuar?')) {
-                                    localStorage.clear();
-                                    for (const key in importedData) {
-                                        if (!key.startsWith('_') && key !== 'backupInfo' && key !== '_backupInfo') {
-                                            localStorage.setItem(key, importedData[key]);
-                                        }
-                                    }
-                                    
-                                    // Garantir que as chaves de equipamentos e itens personalizados sejam incluídas
-                                    const importantKeys = [
-                                        'equipamentosSuprimentos', 
-                                        'equipamentosMovements', 
-                                        'equipamentosTabOrder',
-                                        'cadastroItensPersonalizados'
-                                    ];
-                                    importantKeys.forEach(key => {
-                                        if (importedData[key] !== undefined) {
-                                            localStorage.setItem(key, importedData[key]);
-                                        }
-                                    });
-                                    
-                                    showBackupMessage('Dados importados com sucesso! Recarregue a página.', 'success');
-                                    
-                                    setTimeout(() => {
-                                        window.parent.postMessage({ type: 'reload_required' }, '*');
-                                    }, 2000);
-                                }
-                            }
-                        } catch (error) {
-                            console.error('Erro ao importar:', error);
-                            showBackupMessage('Erro ao importar dados. Arquivo inválido.', 'error');
-                        }
-                    };
-                    reader.readAsText(file);
-                    importFileInput.value = '';
-                });
-            }
-
             // ==================== APAGAR DADOS ====================
-            
+
             if (clearAllDataBtn) {
-                clearAllDataBtn.addEventListener('click', () => {
+                clearAllDataBtn.addEventListener('click', async () => {
                     console.log('Botão Apagar Dados clicado!');
                     const confirmText = 'ATENÇÃO: Esta ação irá apagar TODOS os dados do sistema permanentemente!\n\n' +
                                       'Isso inclui:\n' +
@@ -1218,17 +1306,47 @@
                                       '• Todas as configurações e senha\n\n' +
                                       'Esta ação é IRREVERSÍVEL!\n\n' +
                                       'Deseja realmente continuar?';
-                    
-                    if (confirm(confirmText)) {
-                        if (confirm('ÚLTIMA CONFIRMAÇÃO: Tem CERTEZA ABSOLUTA que deseja apagar TUDO?')) {
-                            localStorage.clear();
-                            showBackupMessage('Todos os dados foram apagados! O sistema será recarregado...', 'success');
-                            
-                            setTimeout(() => {
-                                window.parent.location.reload();
-                            }, 2000);
+
+                    if (!confirm(confirmText)) return;
+                    if (!confirm('ÚLTIMA CONFIRMAÇÃO: Tem CERTEZA ABSOLUTA que deseja apagar TUDO (incluindo o que está no Firebase)?')) return;
+
+                    try {
+                        // Apagar dados locais (clear remove tudo; depois recarregamos a página)
+                        localStorage.clear();
+                        if (document.getElementById('ultimaSincronizacaoTexto')) document.getElementById('ultimaSincronizacaoTexto').textContent = 'nunca';
+
+                        // Se Firebase estiver disponível, limpar também os dados na nuvem
+                        if (typeof dataService !== 'undefined') {
+                            try {
+                                await dataService.waitForAPICheck();
+                            } catch (e) {
+                                console.warn('Erro ao verificar API/Firebase antes de limpar:', e);
+                            }
+
+                            // Limpar coleções principais via dataService/Firebase
+                            try { await dataService.setSaidasAdministrativas([]); } catch (e) { console.warn('Falha ao limpar saidasAdministrativas:', e); }
+                            try { await dataService.setSaidasAmbulancias([]); } catch (e) { console.warn('Falha ao limpar saidasAmbulancias:', e); }
+                            try { await dataService.saveViaturas([]); } catch (e) { console.warn('Falha ao limpar viaturas:', e); }
+                            try { await dataService.saveMotoristas([]); } catch (e) { console.warn('Falha ao limpar motoristas:', e); }
                         }
+
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            try { await window.firebaseSot.set('vistoriasRealizadas', []); } catch (e) { console.warn('Falha ao limpar vistoriasRealizadas:', e); }
+                            try { await window.firebaseSot.set('abastecimentos', []); } catch (e) { console.warn('Falha ao limpar abastecimentos:', e); }
+                            try { await window.firebaseSot.set('escalaData', {}); } catch (e) { console.warn('Falha ao limpar escalaData:', e); }
+                            try { await window.firebaseSot.set('avisos', []); } catch (e) { console.warn('Falha ao limpar avisos:', e); }
+                            try { await window.firebaseSot.set('lembretes_ativos', []); } catch (e) { console.warn('Falha ao limpar lembretes_ativos:', e); }
+                        }
+
+                        showGerenciamentoMessage('Todos os dados locais e do Firebase foram apagados! O sistema será recarregado...', 'success');
+                    } catch (error) {
+                        console.error('Erro ao apagar todos os dados:', error);
+                        showGerenciamentoMessage('Erro ao apagar todos os dados. Verifique o console para detalhes.', 'error');
                     }
+
+                    setTimeout(() => {
+                        window.parent.location.reload();
+                    }, 2000);
                 });
             }
 

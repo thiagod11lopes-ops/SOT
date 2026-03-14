@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - FROTA E PESSOAL</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firebase-sot-service.js"></script>
+    <script src="data-service.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -361,18 +366,35 @@
 
     <script src="theme-listener.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
             let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
             let psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
+            try {
+                if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+                    await dataService.waitForAPICheck();
+                    if (dataService.useFirebase || dataService.apiAvailable) {
+                        const v = await dataService.getViaturas();
+                        const m = await dataService.getMotoristas();
+                        if (Array.isArray(v)) { viaturasCadastradas = v; localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); }
+                        if (Array.isArray(m)) { motoristasCadastrados = m; localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); }
+                    }
+                }
+            } catch (e) { console.warn('Frota e Pessoal: falha ao carregar do Firebase', e); }
             
             const subTabButtons = document.querySelectorAll('.sub-tab-button');
             const subTabContents = document.querySelectorAll('.sub-tab-content');
             const frotaTableBody = document.querySelector('#frotaTable tbody');
             const pessoalTableBody = document.querySelector('#pessoalTable tbody');
             
-            const saveData = (key, data) => {
+            const saveData = async (key, data) => {
                 localStorage.setItem(key, JSON.stringify(data));
+                try {
+                    if (typeof dataService !== 'undefined') {
+                        if (key === 'viaturasCadastradas' && dataService.saveViaturas) await dataService.saveViaturas(data);
+                        else if (key === 'motoristasCadastrados' && dataService.saveMotoristas) await dataService.saveMotoristas(data);
+                    }
+                } catch (e) { console.warn('Frota e Pessoal: falha ao salvar no Firebase', e); }
                 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
             };
 

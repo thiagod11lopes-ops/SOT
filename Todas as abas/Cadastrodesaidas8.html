@@ -1612,35 +1612,7 @@ body[data-theme="dark"] button[class*="btn"]:hover {
 </div>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-// Carregar itens personalizados primeiro
-loadItensData();
-// Atualizar campos do formulário com os itens carregados (com pequeno delay para garantir que o DOM está pronto)
-setTimeout(() => {
-    updateFormFields();
-    
-    // Preencher automaticamente data e hora do pedido com valores atuais
-    const dataPedidoInput = document.getElementById('registerDataPedido');
-    const horaPedidoInput = document.getElementById('registerHoraPedido');
-    
-    if (dataPedidoInput && !dataPedidoInput.value) {
-        const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const dia = String(hoje.getDate()).padStart(2, '0');
-        dataPedidoInput.value = `${ano}-${mes}-${dia}`;
-    }
-    
-    if (horaPedidoInput && !horaPedidoInput.value) {
-        const agora = new Date();
-        const horas = String(agora.getHours()).padStart(2, '0');
-        const minutos = String(agora.getMinutes()).padStart(2, '0');
-        horaPedidoInput.value = `${horas}:${minutos}`;
-    }
-    
-    // Garantir que o botão de carregar documento apareça se tipo for Ambulância
-    adjustRegisterFormFields();
-}, 100);
-
+// ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
 let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
 let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
 let saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
@@ -1688,6 +1660,49 @@ const cancelSerialRegisterBtn = document.getElementById('cancelSerialRegisterBtn
 let calendarDate = new Date();
 let selectedDates = new Set();
 let showingOnlyIncomplete = false;
+
+// ========== UTILITÁRIOS: VALIDAÇÃO E DEBOUNCE ==========
+function debounce(fn, ms) {
+  var t;
+  return function () {
+    var a = arguments;
+    clearTimeout(t);
+    t = setTimeout(function () { fn.apply(this, a); }, ms);
+  };
+}
+var ValidacaoCadastro = {
+  sanitize: function (str) {
+    if (str == null) return '';
+    return String(str).trim().replace(/\s+/g, ' ').slice(0, 500);
+  },
+  validateKm: function (val) {
+    if (val == null || String(val).trim() === '') return true;
+    var n = parseFloat(String(val).replace(',', '.'));
+    return !isNaN(n) && n >= 0 && n < 10000000;
+  },
+  validateRequired: function (el) {
+    if (!el) return false;
+    return el.value != null && String(el.value).trim() !== '';
+  }
+};
+
+// ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
+loadItensData();
+setTimeout(function () {
+  updateFormFields();
+  var dataPedidoInput = document.getElementById('registerDataPedido');
+  var horaPedidoInput = document.getElementById('registerHoraPedido');
+  if (dataPedidoInput && !dataPedidoInput.value) {
+    var hoje = new Date();
+    dataPedidoInput.value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+  }
+  if (horaPedidoInput && !horaPedidoInput.value) {
+    var agora = new Date();
+    horaPedidoInput.value = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+  }
+  adjustRegisterFormFields();
+}, 100);
+
 function downloadPdfTable(tableId, filename, titleText, dateInfo) {
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'landscape' });
@@ -2188,30 +2203,42 @@ if (omValue) {
     }
 }
 
-const objetivoValue = tipoSaida === 'Ambulância' 
-? document.getElementById('registerObjetivoSelect').value 
-: document.getElementById('registerObjetivo').value;
+var objetivoValue = tipoSaida === 'Ambulância'
+  ? document.getElementById('registerObjetivoSelect').value
+  : document.getElementById('registerObjetivo').value;
+var kmSaidaEl = document.getElementById('registerKmSaida');
+var kmChegadaEl = document.getElementById('registerKmChegada');
+var kmSaidaVal = kmSaidaEl ? kmSaidaEl.value : '';
+var kmChegadaVal = kmChegadaEl ? kmChegadaEl.value : '';
+if (kmSaidaVal && !ValidacaoCadastro.validateKm(kmSaidaVal)) {
+  displayMessage('KM de saída inválido. Use um número positivo.', 'error');
+  return null;
+}
+if (kmChegadaVal && !ValidacaoCadastro.validateKm(kmChegadaVal)) {
+  displayMessage('KM de chegada inválido. Use um número positivo.', 'error');
+  return null;
+}
 return {
 tipo: tipoSaida,
 dataPedido: document.getElementById('registerDataPedido').value,
 horaPedido: document.getElementById('registerHoraPedido').value,
 dataSaida: document.getElementById('registerDataSaida').value,
 horaSaida: document.getElementById('registerHoraSaida').value,
-setor: document.getElementById('registerSetor').value,
-ramal: document.getElementById('registerRamal').value,
-cidade: document.getElementById('registerCidade').value,
-bairro: document.getElementById('registerBairro').value,
-destino: document.getElementById('registerBairro').value,
+setor: ValidacaoCadastro.sanitize(document.getElementById('registerSetor').value),
+ramal: ValidacaoCadastro.sanitize(document.getElementById('registerRamal').value),
+cidade: ValidacaoCadastro.sanitize(document.getElementById('registerCidade').value),
+bairro: ValidacaoCadastro.sanitize(document.getElementById('registerBairro').value),
+destino: ValidacaoCadastro.sanitize(document.getElementById('registerBairro').value),
 objetivo: objetivoValue,
-numPassageiros: document.getElementById('registerNumPassageiros').value,
-responsavelPedido: document.getElementById('registerResponsavelPedido').value,
-om: document.getElementById('registerOM').value,
+numPassageiros: ValidacaoCadastro.sanitize(document.getElementById('registerNumPassageiros').value),
+responsavelPedido: ValidacaoCadastro.sanitize(document.getElementById('registerResponsavelPedido').value),
+om: ValidacaoCadastro.sanitize(document.getElementById('registerOM').value),
 viatura: registerViaturaSelect.value,
 motorista: registerMotoristaSelect.value,
-hospital: document.getElementById('registerHospital').value,
-kmSaida: document.getElementById('registerKmSaida') ? document.getElementById('registerKmSaida').value : '',
-kmChegada: document.getElementById('registerKmChegada') ? document.getElementById('registerKmChegada').value : '',
-chegada: document.getElementById('registerChegada') ? document.getElementById('registerChegada').value : ''
+hospital: ValidacaoCadastro.sanitize(document.getElementById('registerHospital').value),
+kmSaida: kmSaidaVal ? String(kmSaidaVal).trim() : '',
+kmChegada: kmChegadaVal ? String(kmChegadaVal).trim() : '',
+chegada: document.getElementById('registerChegada') ? ValidacaoCadastro.sanitize(document.getElementById('registerChegada').value) : ''
 };
 }
 async function saveNewSaida(formData, dateToUse = formData.dataSaida, forceCreate = false) {
@@ -2764,6 +2791,7 @@ if (futurasSaidasCounter) {
 futurasSaidasCounter.textContent = `Saídas Futuras: ${futureCount}`;
 }
 }
+var filterTodasSaidasTableDebounced = debounce(filterTodasSaidasTable, 150);
 function updateUnplannedExitsTable() {
 unplannedExitsTableBody.innerHTML = '';
 const filterMonth = filterUnplannedMonthSelect.value;
@@ -2990,6 +3018,7 @@ function showSubTab(tabIdToShow) {
 subTabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.subTab === tabIdToShow));
 subTabContents.forEach(content => content.classList.toggle('active', content.id === tabIdToShow));
 }
+// ========== EVENT LISTENERS ==========
 subTabButtons.forEach(button => {
 button.addEventListener('click', () => {
 const tabId = button.dataset.subTab;
@@ -3018,9 +3047,11 @@ setTimeout(() => {
 });
 const filterTodasSaidasOM = document.getElementById('filterTodasSaidasOM');
 const filterTodasSaidasHospital = document.getElementById('filterTodasSaidasHospital');
-[filterTodasSaidasDateInput, filterTodasSaidasMonthSelect, filterTodasSaidasYearSelect, filterTodasSaidasCidade, filterTodasSaidasBairro, filterTodasSaidasMotorista, filterTodasSaidasViatura, filterTypeAdmCheckbox, filterTypeAmbCheckbox].forEach(el => el && el.addEventListener('change', filterTodasSaidasTable));
-if (filterTodasSaidasOM) filterTodasSaidasOM.addEventListener('change', filterTodasSaidasTable);
-if (filterTodasSaidasHospital) filterTodasSaidasHospital.addEventListener('change', filterTodasSaidasTable);
+[filterTodasSaidasDateInput, filterTodasSaidasMonthSelect, filterTodasSaidasYearSelect, filterTodasSaidasCidade, filterTodasSaidasBairro, filterTodasSaidasMotorista, filterTodasSaidasViatura, filterTypeAdmCheckbox, filterTypeAmbCheckbox].forEach(function (el) {
+  if (el) el.addEventListener('change', filterTodasSaidasTableDebounced);
+});
+if (filterTodasSaidasOM) filterTodasSaidasOM.addEventListener('change', filterTodasSaidasTableDebounced);
+if (filterTodasSaidasHospital) filterTodasSaidasHospital.addEventListener('change', filterTodasSaidasTableDebounced);
 [filterUnplannedMonthSelect, filterUnplannedYearSelect].forEach(el => el.addEventListener('change', updateUnplannedExitsTable));
 registerTipoSaidaSelect.addEventListener('change', adjustRegisterFormFields);
 // Garantir que o botão apareça na inicialização se tipo for Ambulância

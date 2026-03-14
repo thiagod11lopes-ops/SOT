@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - LEMBRETES</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="firebase-sot-service.js"></script>
+    <script src="data-service.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
@@ -91,17 +96,29 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedDates = [];
     let editingId = null;
 
-    function loadLembretes() {
-        const allLembretes = JSON.parse(localStorage.getItem('lembretes_ativos')) || [];
+    async function loadLembretes() {
+        let allLembretes = JSON.parse(localStorage.getItem('lembretes_ativos')) || [];
+        try {
+            if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+                await dataService.waitForAPICheck();
+                if (dataService.useFirebase && window.firebaseSot && window.firebaseSot.get) {
+                    const data = await window.firebaseSot.get('lembretes_ativos');
+                    if (Array.isArray(data)) { allLembretes = data; localStorage.setItem('lembretes_ativos', JSON.stringify(data)); }
+                }
+            }
+        } catch (e) { console.warn('Lembretes: falha ao carregar do Firebase', e); }
         lembretes = allLembretes.filter(l => !l.completed);
         renderLembretes();
         broadcastUpdate();
     }
 
-    function saveLembretes() {
+    async function saveLembretes() {
         const completedLembretes = (JSON.parse(localStorage.getItem('lembretes_ativos')) || []).filter(l => l.completed);
         const allLembretes = [...completedLembretes, ...lembretes];
         localStorage.setItem('lembretes_ativos', JSON.stringify(allLembretes));
+        try {
+            if (window.firebaseSot && typeof window.firebaseSot.set === 'function') await window.firebaseSot.set('lembretes_ativos', allLembretes);
+        } catch (e) { console.warn('Lembretes: falha ao sincronizar com Firebase', e); }
         renderLembretes();
         broadcastUpdate();
     }
