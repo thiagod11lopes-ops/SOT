@@ -3521,7 +3521,7 @@ updateMaximizeState();
 <script src="sot-sync.js"></script>
 <script src="controle-voz.js"></script>
 <script>
-// Verificação automática: sincroniza localStorage ↔ Firebase ao carregar e a cada 10 min quando online
+// Verificação automática: sincroniza localStorage ↔ Firebase ao carregar, ao voltar online e a cada 10 min
 (function() {
   function run() {
     if (window.SOTSync && typeof window.SOTSync.runAutoSync === 'function') window.SOTSync.runAutoSync();
@@ -3529,6 +3529,9 @@ updateMaximizeState();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(run, 2000); });
   else setTimeout(run, 2000);
   setInterval(run, window.SOTSync && window.SOTSync.AUTO_SYNC_INTERVAL_MS ? window.SOTSync.AUTO_SYNC_INTERVAL_MS : 600000);
+  window.addEventListener('online', function() {
+    setTimeout(run, 1500);
+  });
 })();
 </script>
 <script>
