@@ -1,6 +1,6 @@
 /**
- * Sincronização bidirecional localStorage ↔ Firebase (merge, não apaga).
- * Usado por Configuracoes.html (botão + exibição) e por SOT5.html (verificação automática quando online).
+ * Sincronização bidirecional localStorage ↔ Firebase.
+ * Regra: Firebase NUNCA perde dados. Sempre usamos UNIÃO (local + Firebase): o Firebase mantém o que tem e só recebe dados novos do localStorage. Se o localStorage for apagado, o sync repõe o local a partir do Firebase.
  */
 (function() {
     'use strict';
@@ -90,14 +90,15 @@
         };
 
         try {
-            var pairs = [
+            // União em todas as coleções: Firebase nunca perde dados; só recebe novos do local. Se o local estiver vazio, repõe a partir do Firebase.
+            var pairsDataService = [
                 ['saidasAdministrativas', dataService.getSaidasAdministrativas.bind(dataService), dataService.setSaidasAdministrativas.bind(dataService), get('saidasAdministrativas', [])],
                 ['saidasAmbulancias', dataService.getSaidasAmbulancias.bind(dataService), dataService.setSaidasAmbulancias.bind(dataService), get('saidasAmbulancias', [])],
                 ['viaturasCadastradas', dataService.getViaturas.bind(dataService), function(v) { return dataService.saveViaturas(v); }, get('viaturasCadastradas', [])],
                 ['motoristasCadastrados', dataService.getMotoristas.bind(dataService), function(m) { return dataService.saveMotoristas(m); }, get('motoristasCadastrados', [])]
             ];
-            for (var i = 0; i < pairs.length; i++) {
-                var p = pairs[i];
+            for (var i = 0; i < pairsDataService.length; i++) {
+                var p = pairsDataService[i];
                 var key = p[0], getFb = p[1], setFb = p[2], localArr = p[3];
                 var fbArr = await getFb();
                 var merged = mergeArraysById(localArr, Array.isArray(fbArr) ? fbArr : [], 'id');
@@ -131,9 +132,11 @@
                     await window.firebaseSot.set(fbKey, merged2);
                 }
 
+                // Escala: união de chaves (meses) — Firebase mantém o que tem; local pode ser reposto
                 var fbEscala = await window.firebaseSot.get('escalaData');
                 var localEscala = getLocalEscalaObject();
-                var mergedEscala = Object.assign({}, (fbEscala && typeof fbEscala === 'object' ? fbEscala : {}), localEscala);
+                fbEscala = fbEscala && typeof fbEscala === 'object' ? fbEscala : {};
+                var mergedEscala = Object.assign({}, fbEscala, localEscala);
                 setLocalEscalaFromObject(mergedEscala);
                 await window.firebaseSot.set('escalaData', mergedEscala);
             }
