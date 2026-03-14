@@ -1295,6 +1295,7 @@
                 localStorage.setItem('escalaPaoInsercoes', JSON.stringify(escalaPaoInsercoes));
                 localStorage.setItem('diasExcluidosEscalaPao', JSON.stringify(diasExcluidosEscalaPao));
                 try { window.parent.postMessage({ type: 'escala_pao_updated' }, '*'); } catch (err) {}
+                try { window.parent.postMessage({ type: 'request_sync' }, '*'); } catch (err) {}
             };
             
             // Função para normalizar data (apenas dia, mês, ano, sem hora)

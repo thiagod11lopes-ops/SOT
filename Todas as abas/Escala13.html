@@ -750,6 +750,7 @@ const deleteRowBtn = document.getElementById('deleteRow');
 const colorColumnGrayBtn = document.getElementById('colorColumnGray');
 const tabButtons = document.querySelectorAll('.tab-buttons .tab-button');
 let currentRightClickedRow = null;
+function requestSyncToFirebase() { try { window.top.postMessage({ type: 'request_sync' }, '*'); } catch (e) {} }
 let currentRightClickedCell = null;
 let isEditing = false;
 let isVacationMode = false;
@@ -1141,6 +1142,7 @@ const escalaData = JSON.parse(localStorage.getItem(dataKey));
 if (escalaData && escalaData.members[memberIndex]) {
 escalaData.members[memberIndex][0] = event.target.value;
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 }
 }
 function isDateEqual(date1, date2) {
@@ -1220,6 +1222,7 @@ member[numDays + 3] = 'INFINITA';
 }
 });
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 }
 }
 function updateDntTableInDOM(dntMembers) {
@@ -1270,6 +1273,7 @@ if (escalaData) {
 const numDays = new Date(year, month, 0).getDate();
 synchronizeDntTable(escalaData, numDays, month, year);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 const tablesContainer = createTable(escalaData, month, year);
 escalaContent.appendChild(tablesContainer);
 escalaMonthYear.textContent = `${getMonthName(month).toUpperCase()} DE ${year}`;
@@ -1466,6 +1470,7 @@ escalaData.members = newMembersData;
 const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
 synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 renderEscala(filterMonth.value, filterYear.value);
 alert("Dados importados com sucesso!");
 };
@@ -1490,6 +1495,7 @@ escalaData.grayColumns.splice(indexInArray, 1);
 escalaData.grayColumns.push(dayIndexStr);
 }
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 if (contextMenu) contextMenu.style.display = 'none';
 renderEscala(filterMonth.value, filterYear.value);
 }
@@ -1649,6 +1655,7 @@ newMembers = Array.from({ length: NUM_LINHAS_VAZIAS }, () => Array(numDays + 4).
 const newEscala = { members: newMembers, dntMembers: [], grayColumns: [] };
 synchronizeDntTable(newEscala, numDays, createModalMonth.value, createModalYear.value);
 localStorage.setItem(dataKey, JSON.stringify(newEscala));
+requestSyncToFirebase();
 populateFilters(filterMonth, filterYear);
 filterMonth.value = month; filterYear.value = year;
 isEditing = true; isVacationMode = false;
@@ -1703,6 +1710,7 @@ const insertIndex = position === 'above' ? rowIndex : rowIndex + 1;
 escalaData.members.splice(insertIndex, 0, newMember);
 synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 if (contextMenu) contextMenu.style.display = 'none';
 renderEscala(filterMonth.value, filterYear.value);
 }
@@ -1717,6 +1725,7 @@ escalaData.members.splice(parseInt(firstCell.dataset.memberIndex, 10), 1);
 const numDaysDel = new Date(filterYear.value, filterMonth.value, 0).getDate();
 synchronizeDntTable(escalaData, numDaysDel, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 if (contextMenu) contextMenu.style.display = 'none';
 renderEscala(filterMonth.value, filterYear.value);
 }
@@ -1762,6 +1771,7 @@ escalaData.members[memberIndex][numDays + 2] = serviceCount;
 escalaData.members[memberIndex][numDays + 3] = escalaData.members[memberIndex][numDays + 1] === 'INFINITA' ? 'INFINITA' : routineCount;
 synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 const row = cell.closest('tr');
 if(row && isEditing) {
 const chCell = row.cells[row.cells.length - 3];

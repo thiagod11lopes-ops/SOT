@@ -1281,6 +1281,7 @@ localStorage.setItem('vistorias', JSON.stringify(inspections));
 if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
 window.firebaseSot.set('vistoriasRealizadas', inspections).catch(function() {});
 }
+try { window.top.postMessage({ type: 'request_sync' }, '*'); } catch (e) {}
 }
 
 async function refreshUIAndData() { saveData(); await loadData(); checklistContainer.classList.add('hidden'); initialFormContainer.classList.remove('hidden'); await renderCalendar(); }

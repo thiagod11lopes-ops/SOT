@@ -2229,6 +2229,16 @@ resetInactivityTimer();
 if (event.data?.type === 'escala_pao_updated') {
 updateEscalaPaoAmanha();
 }
+if (event.data?.type === 'request_sync') {
+if (!window._requestSyncTimeout) {
+window._requestSyncTimeout = setTimeout(function() {
+window._requestSyncTimeout = null;
+if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
+window.SOTSync.sync(true, { afterSync: function() {} });
+}
+}, 800);
+}
+}
 // Foco em Saídas Administrativas após edição via Cadastro de Saídas — atualização imediata da aba
 if (event.data?.type === 'saida_administrativa_atualizada') {
 const { dataSaida, id } = event.data;
@@ -2478,6 +2488,12 @@ console.log('Sistema de zoom ativado! Use Ctrl + ou Ctrl - para ajustar.');
     data.members[memberIndex][dayIndex] = newVal;
     try {
       localStorage.setItem(dataKey, JSON.stringify(data));
+      if (!window._requestSyncTimeout && window.SOTSync && typeof window.SOTSync.sync === 'function') {
+        window._requestSyncTimeout = setTimeout(function() {
+          window._requestSyncTimeout = null;
+          window.SOTSync.sync(true, { afterSync: function() {} });
+        }, 800);
+      }
       getAllTabIframes().forEach(function(iframe) {
         try { if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'escala_data_updated', year: y, month: m }, '*'); } catch (err) {}
       });
