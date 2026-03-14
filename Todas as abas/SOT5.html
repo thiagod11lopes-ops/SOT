@@ -1435,7 +1435,7 @@ margin: 20px 0;
 <div id="backupModal">
 <div id="backupModalContent">
 <h2><i class="fas fa-exclamation-triangle"></i> Backup Necessário</h2>
-<p>Faça o backup dos seus dados para garantir a segurança das informações.</p>
+<p>Faça o backup dos seus dados para garantir a segurança das informações. Ao clicar, o sistema <strong>sincroniza</strong> os dados (local ↔ Firebase) e em seguida gera o arquivo de backup para download.</p>
 <button id="backupModalBtn"><i class="fas fa-download"></i> Fazer Backup Agora</button>
 </div>
 </div>
@@ -2721,15 +2721,25 @@ const dataUltimoBackup = new Date(ultimoBackup).toDateString();
 return hoje === dataUltimoBackup;
 }
 
-// Função para fazer backup de todos os dados do localStorage
-function fazerBackupCompleto() {
+// Função para fazer backup: primeiro sincroniza (local ↔ Firebase), depois gera e baixa o JSON
+async function fazerBackupCompleto() {
+var btn = document.getElementById('backupModalBtn');
+var modalContent = document.getElementById('backupModalContent');
+if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando e fazendo backup...'; }
+
+try {
+// 1) Sincronizar dados (localStorage ↔ Firebase) antes do backup, para ter tudo atualizado
+if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
+await window.SOTSync.sync(true, { afterSync: function() {} });
+}
+} catch (e) { console.warn('Sincronização no backup:', e); }
+
 const backupData = {};
 const timestamp = new Date();
 const dataFormatada = timestamp.toLocaleDateString('pt-BR').replace(/\//g, '-');
 const horaFormatada = timestamp.toLocaleTimeString('pt-BR').replace(/:/g, '-');
 
 // Usar sempre o mesmo nome de arquivo (apenas com a data, sem hora)
-// Isso faz o navegador perguntar se quer substituir o arquivo anterior
 const nomeArquivo = `SOT_Backup_${dataFormatada}.json`;
 
 // Coletar todos os dados do localStorage (exceto a chave de controle de backup)
@@ -2744,7 +2754,8 @@ backupData[key] = localStorage.getItem(key);
 backupData._backupInfo = JSON.stringify({
 data: dataFormatada,
 hora: horaFormatada,
-totalItens: Object.keys(backupData).length
+totalItens: Object.keys(backupData).length,
+sincronizado: true
 });
 
 // Criar arquivo JSON
@@ -2766,6 +2777,7 @@ localStorage.setItem('_ultimoBackupData', timestamp.toISOString());
 
 // Fechar modal
 document.getElementById('backupModal').style.display = 'none';
+if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-download"></i> Fazer Backup Agora'; }
 }
 
 // Mostrar modal ao carregar a página (apenas se não foi feito backup hoje)
@@ -3510,10 +3522,27 @@ updateMaximizeState();
 })();
 </script>
 
+<!-- Firebase + sincronização automática (local ↔ nuvem) quando online -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase-sot-service.js"></script>
 <!-- SISTEMA DE CONTROLE POR VOZ -->
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
+<script src="sot-sync.js"></script>
 <script src="controle-voz.js"></script>
+<script>
+// Verificação automática: sincroniza localStorage ↔ Firebase ao carregar e a cada 10 min quando online
+(function() {
+  function run() {
+    if (window.SOTSync && typeof window.SOTSync.runAutoSync === 'function') window.SOTSync.runAutoSync();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(run, 2000); });
+  else setTimeout(run, 2000);
+  setInterval(run, window.SOTSync && window.SOTSync.AUTO_SYNC_INTERVAL_MS ? window.SOTSync.AUTO_SYNC_INTERVAL_MS : 600000);
+})();
+</script>
 <script>
 (function() {
  window.addEventListener('message', function(e) {

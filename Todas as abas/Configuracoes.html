@@ -12,6 +12,7 @@
     <script src="firebase-sot-service.js"></script>
     <script src="api-service.js"></script>
     <script src="data-service.js"></script>
+    <script src="sot-sync.js"></script>
     <style>
         :root {
             --primary-blue: #4a69bd;
@@ -359,8 +360,8 @@
                 <button id="salvarDownloadBtn" class="success" title="Gera um arquivo JSON com todos os dados e faz o download">
                     <i class="fas fa-download"></i> Salvar e fazer download
                 </button>
-                <button id="saveAllToFirebaseBtn" class="primary" title="Envia todos os dados atuais para o Firebase">
-                    <i class="fas fa-cloud-upload-alt"></i> Salvar no Firebase
+                <button id="saveAllToFirebaseBtn" class="primary" title="Sincroniza dados: mescla localStorage e Firebase nos dois sentidos (não apaga o que já existe)">
+                    <i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)
                 </button>
                 <button id="usarDadosLocalBtn" class="info" title="Quando acessar pelo GitHub, use os dados salvos neste computador (localStorage) em vez do Firebase">
                     <i class="fas fa-desktop"></i> Usar dados deste computador
@@ -385,6 +386,9 @@
                 <button id="clearAllDataBtn" style="background-color: var(--error-red); width: 100%;">
                     <i class="fas fa-trash-alt"></i> Apagar Todos os Dados do Sistema
                 </button>
+                <p id="ultimaSincronizacaoInfo" style="margin: 14px 0 0; font-size: 13px; color: var(--dark-gray); padding: 8px; background: #f0f4f8; border-radius: 6px;">
+                    <i class="fas fa-sync-alt"></i> Última sincronização (local ↔ Firebase): <strong id="ultimaSincronizacaoTexto">—</strong>
+                </p>
             </div>
         </div>
             </div>
@@ -1105,50 +1109,43 @@
                 });
             }
 
-            // 3) Salvar no Firebase — envia todos os dados atuais (local) para o Firebase
+            /** Atualiza o texto da última sincronização na tela (usa sot-sync.js). */
+            function updateUltimaSincronizacaoDisplay() {
+                const el = document.getElementById('ultimaSincronizacaoTexto');
+                if (el && window.SOTSync && typeof window.SOTSync.getLastSyncDisplay === 'function') el.textContent = window.SOTSync.getLastSyncDisplay();
+            }
+
+            // 3) Sincronizar (local ↔ Firebase) — botão usa sot-sync.js
             const saveAllToFirebaseBtn = document.getElementById('saveAllToFirebaseBtn');
             if (saveAllToFirebaseBtn) {
                 saveAllToFirebaseBtn.addEventListener('click', async () => {
-                    if (typeof dataService === 'undefined') {
-                        showGerenciamentoMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
-                        return;
-                    }
-                    await dataService.waitForAPICheck();
-                    if (!dataService.useFirebase) {
-                        showGerenciamentoMessage('Firebase não está configurado. Verifique firebase-config.js e as Regras do Firestore.', 'error');
-                        return;
-                    }
                     saveAllToFirebaseBtn.disabled = true;
-                    saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-                    try {
-                        const get = (key, def) => {
-                            try {
-                                const v = localStorage.getItem(key);
-                                return v ? JSON.parse(v) : def;
-                            } catch (e) { return def; }
-                        };
-                        await dataService.setSaidasAdministrativas(get('saidasAdministrativas', []));
-                        await dataService.setSaidasAmbulancias(get('saidasAmbulancias', []));
-                        await dataService.saveViaturas(get('viaturasCadastradas', []));
-                        await dataService.saveMotoristas(get('motoristasCadastrados', []));
-                        if (window.firebaseSot && window.firebaseSot.set) {
-                            await window.firebaseSot.set('vistoriasRealizadas', get('vistoriasRealizadas', []));
-                            await window.firebaseSot.set('abastecimentos', get('abastecimentos', []));
-                            await window.firebaseSot.set('escalaData', get('escalaData', {}));
-                            await window.firebaseSot.set('avisos', get('avisos', []));
-                            await window.firebaseSot.set('lembretes_ativos', get('lembretes_ativos', []));
-                        }
-                        showGerenciamentoMessage('Todos os dados foram salvos no Firebase. Disponível no GitHub e no Quadro de Saídas.', 'success');
-                        if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-                    } catch (err) {
-                        console.error('Erro ao salvar no Firebase:', err);
-                        showGerenciamentoMessage('Erro ao salvar no Firebase: ' + (err.message || err), 'error');
-                    } finally {
-                        saveAllToFirebaseBtn.disabled = false;
-                        saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Salvar no Firebase';
+                    saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+                    if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
+                        await window.SOTSync.sync(false, {
+                            onSuccess: () => showGerenciamentoMessage('Sincronização concluída: local e Firebase atualizados (dados mesclados, nada apagado).', 'success'),
+                            onError: (err) => showGerenciamentoMessage('Erro ao sincronizar: ' + (err && err.message ? err.message : err), 'error'),
+                            afterSync: updateUltimaSincronizacaoDisplay
+                        });
                     }
+                    saveAllToFirebaseBtn.disabled = false;
+                    saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)';
                 });
             }
+
+            // Exibir última sincronização ao carregar a aba
+            updateUltimaSincronizacaoDisplay();
+
+            // Ao abrir Configurações, sincronizar em background (além da verificação automática do SOT5)
+            (async function autoSyncWhenOpenConfig() {
+                try {
+                    if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
+                    if (typeof dataService === 'undefined') return;
+                    await dataService.waitForAPICheck();
+                    if (!dataService.useFirebase || !navigator.onLine) return;
+                    await window.SOTSync.sync(true, { afterSync: updateUltimaSincronizacaoDisplay });
+                } catch (e) { console.warn('Auto-sync ao abrir Configurações:', e); }
+            })();
 
             // 4) Usar dados deste computador — prioriza localStorage (para quando abrir pelo GitHub)
             const usarDadosLocalBtn = document.getElementById('usarDadosLocalBtn');
@@ -1314,8 +1311,9 @@
                     if (!confirm('ÚLTIMA CONFIRMAÇÃO: Tem CERTEZA ABSOLUTA que deseja apagar TUDO (incluindo o que está no Firebase)?')) return;
 
                     try {
-                        // Apagar dados locais
+                        // Apagar dados locais (clear remove tudo; depois recarregamos a página)
                         localStorage.clear();
+                        if (document.getElementById('ultimaSincronizacaoTexto')) document.getElementById('ultimaSincronizacaoTexto').textContent = 'nunca';
 
                         // Se Firebase estiver disponível, limpar também os dados na nuvem
                         if (typeof dataService !== 'undefined') {
