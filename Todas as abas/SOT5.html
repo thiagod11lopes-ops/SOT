@@ -3521,10 +3521,21 @@ updateMaximizeState();
 <script src="sot-sync.js"></script>
 <script src="controle-voz.js"></script>
 <script>
-// Verificação automática: sincroniza localStorage ↔ Firebase ao carregar, ao voltar online e a cada 10 min
+// Verificação automática: sincroniza localStorage ↔ Firebase e avisa as abas (Escala, etc.) para recarregar
 (function() {
+  function broadcastRefreshToIframes() {
+    try {
+      var iframes = document.querySelectorAll('.tab-content iframe');
+      for (var i = 0; i < iframes.length; i++) {
+        try {
+          if (iframes[i].contentWindow) iframes[i].contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
   function run() {
-    if (window.SOTSync && typeof window.SOTSync.runAutoSync === 'function') window.SOTSync.runAutoSync();
+    if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
+    window.SOTSync.sync(true, { afterSync: broadcastRefreshToIframes });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(run, 2000); });
   else setTimeout(run, 2000);

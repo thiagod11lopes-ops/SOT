@@ -1160,6 +1160,10 @@
                             if (typeof atualizarHistorico === 'function') atualizarHistorico();
                         }
                     }
+                    var escalaIframe = document.querySelector('#escalaContent iframe');
+                    if (escalaIframe && escalaIframe.contentWindow) {
+                        escalaIframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+                    }
                 }
                 if (e.data && e.data.type === 'escala_cell_marks_updated') {
                     var escalaIframe = document.querySelector('#escalaContent iframe');
