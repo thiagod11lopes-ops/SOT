@@ -566,6 +566,26 @@
             return partes.join(' - ') || '—';
         }
 
+        // Formata KM no padrão brasileiro, inserindo ponto para milhares (ex.: 1234 -> 1.234)
+        function formatKmValue(value) {
+            if (value === null || value === undefined) return '';
+            // Mantém apenas dígitos
+            let digits = String(value).replace(/[^\d]/g, '');
+            if (!digits) return '';
+            // Remove zeros à esquerda, mas preserva "0" se for tudo zero
+            digits = digits.replace(/^0+(\d)/, '$1');
+            if (!digits) digits = '0';
+            // Agrupar a cada 3 dígitos da direita para a esquerda
+            let result = '';
+            while (digits.length > 3) {
+                const chunk = digits.slice(-3);
+                digits = digits.slice(0, -3);
+                result = (result ? '.' + result : chunk + result);
+            }
+            result = digits + (result ? '.' + result : '');
+            return result;
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const dateInput = document.getElementById('filterDateMobile');
             const cardsContainer = document.getElementById('cardsContainer');
@@ -898,7 +918,12 @@
                                 });
 
                                 btnOk.addEventListener('click', async () => {
-                                    const val = input.value.trim();
+                                    let val = input.value.trim();
+                                    // Formatação automática de KM (milhares com ponto) antes de salvar
+                                    if (step.field === 'kmSaida' || step.field === 'kmChegada') {
+                                        val = formatKmValue(val);
+                                        input.value = val; // refletir formatação no input
+                                    }
                                     const saidaId = saida.id;
 
                                     // Mostrar animação de carregamento enquanto envia atualização

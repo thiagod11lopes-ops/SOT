@@ -2584,24 +2584,38 @@ if (!formData) return;
 const isEditing = !!saidaIdHiddenInput.value;
 const saidaId = saidaIdHiddenInput.value;
 const dataSaidaForFilter = formData.dataSaida || formData.dataPedido || '';
-await saveNewSaida(formData);
-populateSetorList();
-populateResponsavelList();
-updateFormFields(); // Atualizar campos com itens personalizados
-if (isEditing && formData.tipo === 'Administrativa' && window.parent && dataSaidaForFilter) {
-    try {
-        window.parent.postMessage({
-            type: 'saida_administrativa_atualizada',
-            id: saidaId,
-            dataSaida: dataSaidaForFilter
-        }, '*');
-    } catch (e) {
-        console.warn('Não foi possível notificar o parent sobre a saída atualizada:', e);
+
+// Animação de carregamento no botão
+const originalText = submitNewSaidaBtn.innerHTML;
+submitNewSaidaBtn.disabled = true;
+submitNewSaidaBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+try {
+    await saveNewSaida(formData);
+    populateSetorList();
+    populateResponsavelList();
+    updateFormFields(); // Atualizar campos com itens personalizados
+    if (isEditing && formData.tipo === 'Administrativa' && window.parent && dataSaidaForFilter) {
+        try {
+            window.parent.postMessage({
+                type: 'saida_administrativa_atualizada',
+                id: saidaId,
+                dataSaida: dataSaidaForFilter
+            }, '*');
+        } catch (e) {
+            console.warn('Não foi possível notificar o parent sobre a saída atualizada:', e);
+        }
     }
+    displayMessage(isEditing ? 'SAÍDA ATUALIZADA COM SUCESSO!' : 'SAÍDA CADASTRADA COM SUCESSO!', 'success');
+    clearRegisterForm();
+    window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+} catch (e) {
+    console.error('Erro ao salvar saída:', e);
+    displayMessage('Erro ao salvar saída. Tente novamente.', 'error');
+} finally {
+    submitNewSaidaBtn.disabled = false;
+    submitNewSaidaBtn.innerHTML = originalText;
 }
-displayMessage(isEditing ? 'SAÍDA ATUALIZADA COM SUCESSO!' : 'SAÍDA CADASTRADA COM SUCESSO!', 'success');
-clearRegisterForm();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 });
 multiSaidaBtn.addEventListener('click', () => {
 const formData = validateAndGetFormData();
