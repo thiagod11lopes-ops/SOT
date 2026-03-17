@@ -244,6 +244,7 @@
             letter-spacing: 0.18em;
             text-transform: uppercase;
             text-align: center;
+            z-index: 5;
             pointer-events: none;
         }
 
@@ -533,7 +534,19 @@
                         const setor = saida.setor || '—';
                         const destino = getDestino(saida);
                         const om = saida.om || '—';
-                        const realizada = !!saida.realizada;
+                        // Considera a saída "realizada" APENAS quando possui KM SAÍDA e KM CHEGADA preenchidos
+                        const kmSaidaRaw = saida.kmSaida ?? saida.km_saida ?? '';
+                        const kmChegadaRaw = saida.kmChegada ?? saida.km_chegada ?? '';
+                        const kmSaidaStr = String(kmSaidaRaw).trim();
+                        const kmChegadaStr = String(kmChegadaRaw).trim();
+                        const kmSaidaNum = kmSaidaStr ? parseFloat(kmSaidaStr.replace('.', '').replace(',', '.')) : NaN;
+                        const kmChegadaNum = kmChegadaStr ? parseFloat(kmChegadaStr.replace('.', '').replace(',', '.')) : NaN;
+                        const realizada =
+                            kmSaidaStr !== '' &&
+                            kmChegadaStr !== '' &&
+                            !isNaN(kmSaidaNum) &&
+                            !isNaN(kmChegadaNum) &&
+                            kmChegadaNum > kmSaidaNum;
 
                         const card = document.createElement('div');
                         card.className = realizada ? 'card card-realizada' : 'card';
