@@ -773,25 +773,45 @@ function populateFilters(targetMonthSelect, targetYearSelect, showAll = false) {
 const dataAtual = new Date();
 const anoAtual = dataAtual.getFullYear().toString();
 const mesAtual = String(dataAtual.getMonth() + 1).padStart(2, '0');
-const years = new Set();
-const months = new Set();
-const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
-years.add(anoAtual);
-months.add(mesAtual);
-if (existingKeys.length === 0 || showAll) {
-for (let i = dataAtual.getFullYear() - 2; i <= dataAtual.getFullYear() + 2; i++) years.add(i.toString());
-for (let i = 1; i <= 12; i++) months.add(String(i).padStart(2, '0'));
-} else {
-existingKeys.forEach(key => {
-const [year, month] = key.split('-');
-years.add(year);
-months.add(month);
-});
+
+// Guarda seleção atual (se existir) para tentar preservá-la
+const previousYear = targetYearSelect ? targetYearSelect.value : '';
+const previousMonth = targetMonthSelect ? targetMonthSelect.value : '';
+
+// Novo comportamento:
+// - Permite selecionar praticamente QUALQUER ano, independentemente das escalas já existentes.
+// - Faixa ampla, ex.: de (anoAtual - 50) até (anoAtual + 50).
+const years = [];
+for (let i = dataAtual.getFullYear() - 50; i <= dataAtual.getFullYear() + 50; i++) {
+years.push(i.toString());
 }
-const sortedYears = Array.from(years).sort((a, b) => b - a);
-const sortedMonths = Array.from(months).sort();
+
+// Meses sempre de 01 a 12
+const months = [];
+for (let i = 1; i <= 12; i++) {
+months.push(String(i).padStart(2, '0'));
+}
+
+const sortedYears = years.sort((a, b) => b - a);
+const sortedMonths = months; // já em ordem crescente de 01 a 12
+
 targetYearSelect.innerHTML = sortedYears.map(year => `<option value="${year}">${year}</option>`).join('');
 targetMonthSelect.innerHTML = sortedMonths.map(month => `<option value="${month}" ${month === mesAtual ? 'selected' : ''}>${getMonthName(month)}</option>`).join('');
+
+// Restaura o ano escolhido pelo usuário, se ainda existir na lista;
+// caso contrário, mantém o ano atual como padrão.
+if (previousYear && years.includes(previousYear)) {
+  targetYearSelect.value = previousYear;
+} else {
+  targetYearSelect.value = anoAtual;
+}
+
+// Para o mês, tentamos preservar o selecionado, senão usamos o mês atual.
+if (previousMonth && months.includes(previousMonth)) {
+  targetMonthSelect.value = previousMonth;
+} else {
+  targetMonthSelect.value = mesAtual;
+}
 }
 function createDriverSelect(selectedValue) {
 const select = document.createElement('select');
@@ -1851,9 +1871,47 @@ break;
 // Inicialização
 loadDrivers();
 populateFilters(filterMonth, filterYear);
-const dataAtual = new Date();
-filterYear.value = dataAtual.getFullYear();
-filterMonth.value = String(dataAtual.getMonth() + 1).padStart(2, '0');
+
+// Seleciona sempre a escala mais recente disponível.
+// Regra:
+// 1) Se existir uma escala para o mês/ano atual, usa ela.
+// 2) Senão, usa a escala com a MAIOR chave YYYY-MM do localStorage.
+(function selectLatestScale() {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+  const currentKey = `${currentYear}-${currentMonth}`;
+
+  const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
+
+  let targetKey = null;
+
+  if (existingKeys.includes(currentKey)) {
+    // Se existir escala para o mês/ano atual, usa ela.
+    targetKey = currentKey;
+  } else if (existingKeys.length > 0) {
+    // Caso contrário, escolhe a escala mais recente que NÃO esteja no futuro.
+    const sortedKeys = existingKeys.sort(); // ordenação lexicográfica funciona para YYYY-MM
+    const pastOrCurrentKeys = sortedKeys.filter(k => k <= currentKey);
+    if (pastOrCurrentKeys.length > 0) {
+      targetKey = pastOrCurrentKeys[pastOrCurrentKeys.length - 1];
+    } else {
+      // Se todas as escalas forem "no futuro", fica com a mais antiga para não saltar para anos muito à frente.
+      targetKey = sortedKeys[0];
+    }
+  }
+
+  if (targetKey) {
+    const [year, month] = targetKey.split('-');
+    filterYear.value = year;
+    filterMonth.value = month;
+  } else {
+    // Fallback: mês/ano atuais
+    filterYear.value = String(currentYear);
+    filterMonth.value = currentMonth;
+  }
+})();
+
 renderEscala(filterMonth.value, filterYear.value);
 setActiveTab('editScaleBtn');
 updateEditButtonText();
