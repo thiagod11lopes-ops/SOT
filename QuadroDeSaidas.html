@@ -610,16 +610,29 @@
                 return isNaN(num) ? null : num;
             }
 
-            /** Obtém a lista de saídas: prioriza Firebase (dataService), depois JSON no repositório, depois localStorage */
+            /** Obtém a lista de saídas: prioriza diretamente o Firebase (firebaseSot), depois dataService/Firebase, depois JSON/localStorage */
             async function getAllSaidas() {
-                if (window.dataService) {
+                // 1) Tentar diretamente o Firebase via firebaseSot
+                if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
                     try {
-                        const fromFirebase = await window.dataService.getSaidasAdministrativas();
-                        if (Array.isArray(fromFirebase) && fromFirebase.length > 0) return fromFirebase;
-                        if (Array.isArray(fromFirebase)) { /* Firebase vazio, tentar JSON abaixo */ }
-                        else return fromFirebase || [];
-                    } catch (e) { /* segue para JSON */ }
+                        const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
+                        if (Array.isArray(fbSaidas)) return fbSaidas;
+                    } catch (e) {
+                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase, tentando dataService/JSON.', e);
+                    }
                 }
+
+                // 2) Tentar via dataService (que normalmente usa Firebase quando a API não existe)
+                if (window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function') {
+                    try {
+                        const fromService = await window.dataService.getSaidasAdministrativas();
+                        if (Array.isArray(fromService)) return fromService;
+                    } catch (e) {
+                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas via dataService, tentando JSON.', e);
+                    }
+                }
+
+                // 3) Fallback: JSON estático (GitHub Pages) e, por fim, localStorage
                 try {
                     const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
                     if (res.ok) {
@@ -627,47 +640,92 @@
                         if (Array.isArray(data)) return data;
                     }
                 } catch (e) { /* ignora */ }
-                if (window.dataService) return await window.dataService.getSaidasAdministrativas();
-                return [];
+
+                try {
+                    const raw = localStorage.getItem('saidasAdministrativas');
+                    const lista = raw ? JSON.parse(raw) : [];
+                    return Array.isArray(lista) ? lista : [];
+                } catch (e) {
+                    return [];
+                }
             }
 
+            /**
+             * Atualiza UMA saída no Firebase (coleção saidasAdministrativas) e no cache local.
+             * Não depende de API backend — usa diretamente firebaseSot quando disponível.
+             */
             async function updateSaidaField(saidaId, field, value, saidaOriginal) {
                 try {
-                    if (!window.dataService) {
-                        console.warn('QuadroDeSaidas: dataService não disponível para salvar edição.');
-                        return;
-                    }
+                    // 1) Tentar atualizar diretamente no Firebase via firebaseSot
+                    if (window.firebaseSot && typeof window.firebaseSot.get === 'function' && typeof window.firebaseSot.set === 'function') {
+                        const atuais = await window.firebaseSot.get('saidasAdministrativas');
+                        let listaFb = Array.isArray(atuais) ? atuais : [];
 
-                    // Caminho otimizado: salvar apenas a saída alterada, se a API existir
-                    if (typeof window.dataService.saveSaidaAdministrativa === 'function' && saidaOriginal) {
-                        const updated = { ...saidaOriginal, [field]: value };
-                        await window.dataService.saveSaidaAdministrativa(updated);
-                        // Atualizar cache local apenas desta saída
+                        if (saidaOriginal && !listaFb.length) {
+                            // Se Firestore ainda não tem dados, começar com o que veio do dataService/JSON
+                            listaFb = [saidaOriginal];
+                        }
+
+                        const idxFb = listaFb.findIndex(s => s.id === saidaId);
+                        if (idxFb !== -1) {
+                            listaFb[idxFb] = { ...listaFb[idxFb], [field]: value };
+                        } else if (saidaOriginal) {
+                            listaFb.push({ ...saidaOriginal, [field]: value });
+                        }
+
+                        await window.firebaseSot.set('saidasAdministrativas', listaFb);
+
+                        // Atualizar cache localStorage com a lista vinda do Firebase
                         try {
-                            const raw = localStorage.getItem('saidasAdministrativas');
-                            const lista = raw ? JSON.parse(raw) : [];
-                            if (Array.isArray(lista)) {
-                                const idxLocal = lista.findIndex(s => s.id === updated.id);
-                                if (idxLocal !== -1) {
-                                    lista[idxLocal] = updated;
-                                    localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
-                                }
-                            }
+                            localStorage.setItem('saidasAdministrativas', JSON.stringify(listaFb));
                         } catch (e) { /* cache local é opcional */ }
                         return;
                     }
 
-                    // Fallback: atualiza lista completa (mantido apenas por compatibilidade)
-                    if (typeof window.dataService.getSaidasAdministrativas === 'function' &&
-                        typeof window.dataService.setSaidasAdministrativas === 'function') {
-                        const todas = await window.dataService.getSaidasAdministrativas();
-                        if (!Array.isArray(todas)) return;
-                        const idx = todas.findIndex(s => s.id === saidaId);
-                        if (idx === -1) return;
-                        todas[idx][field] = value;
-                        await window.dataService.setSaidasAdministrativas(todas);
-                        try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
+                    // 2) Fallback: usar dataService para atualizar a saída, se disponível
+                    if (window.dataService) {
+                        if (typeof window.dataService.saveSaidaAdministrativa === 'function' && saidaOriginal) {
+                            const updated = { ...saidaOriginal, [field]: value };
+                            await window.dataService.saveSaidaAdministrativa(updated);
+                            try {
+                                const raw = localStorage.getItem('saidasAdministrativas');
+                                const lista = raw ? JSON.parse(raw) : [];
+                                if (Array.isArray(lista)) {
+                                    const idxLocal = lista.findIndex(s => s.id === updated.id);
+                                    if (idxLocal !== -1) {
+                                        lista[idxLocal] = updated;
+                                        localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                                    }
+                                }
+                            } catch (e) { /* cache local é opcional */ }
+                            return;
+                        }
+
+                        if (typeof window.dataService.getSaidasAdministrativas === 'function' &&
+                            typeof window.dataService.setSaidasAdministrativas === 'function') {
+                            const todas = await window.dataService.getSaidasAdministrativas();
+                            if (!Array.isArray(todas)) return;
+                            const idx = todas.findIndex(s => s.id === saidaId);
+                            if (idx === -1) return;
+                            todas[idx][field] = value;
+                            await window.dataService.setSaidasAdministrativas(todas);
+                            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
+                            return;
+                        }
                     }
+
+                    // 3) Último recurso: atualizar apenas localStorage
+                    try {
+                        const raw = localStorage.getItem('saidasAdministrativas');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista)) {
+                            const idxLocal = lista.findIndex(s => s.id === saidaId);
+                            if (idxLocal !== -1) {
+                                lista[idxLocal][field] = value;
+                                localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                            }
+                        }
+                    } catch (e) { /* se falhar, não temos o que fazer */ }
                 } catch (e) {
                     console.error('QuadroDeSaidas: erro ao salvar edição de saída', e);
                 }
