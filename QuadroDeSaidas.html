@@ -351,6 +351,101 @@
             color: #e5e7eb;
         }
 
+        .card-footer {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(148, 163, 184, 0.4);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .card-footer-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-footer-field label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .card-footer-field span.value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Overlay de edição passo a passo (KM Saída, KM Chegada, Chegada) */
+        .card-edit-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .card-edit-box {
+            background: rgba(15, 23, 42, 1);
+            border-radius: 12px;
+            padding: 12px 14px;
+            border: 1px solid rgba(148, 163, 184, 0.85);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
+            min-width: 220px;
+            max-width: 260px;
+        }
+
+        .card-edit-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .card-edit-input {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.8);
+            background: rgba(15, 23, 42, 0.96);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .card-edit-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .card-edit-btn {
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+        }
+
+        .card-edit-btn.cancel {
+            background: rgba(148, 163, 184, 0.18);
+            color: var(--muted);
+        }
+
+        .card-edit-btn.ok {
+            background: rgba(56, 189, 248, 0.18);
+            color: #e5f0ff;
+            border: 1px solid rgba(56, 189, 248, 0.7);
+        }
+
         .footer-info {
             margin-top: 2px;
             font-size: 10px;
@@ -487,6 +582,34 @@
             dateInput.value = todayISO;
             dateLabel.textContent = formatDateLabel(todayISO);
 
+            function getPreviousKmChegada(placa, currentDateStr, currentHoraStr, allSaidas) {
+                if (!placa || !Array.isArray(allSaidas)) return null;
+                const baseDateTime = new Date(`${currentDateStr}T${currentHoraStr || '00:00'}`);
+                if (isNaN(baseDateTime.getTime())) return null;
+                const candidatos = allSaidas
+                    .filter(s => {
+                        if (!s.viatura || String(s.viatura).trim() !== String(placa).trim()) return false;
+                        const d = s.dataSaida || s.data;
+                        const h = s.horaSaida || s.hora || s.saida || '00:00';
+                        if (!d) return false;
+                        const dt = new Date(`${d}T${h}`);
+                        if (isNaN(dt.getTime())) return false;
+                        return dt < baseDateTime;
+                    })
+                    .sort((a, b) => {
+                        const da = new Date(`${a.dataSaida || a.data}T${a.horaSaida || a.hora || a.saida || '00:00'}`);
+                        const db = new Date(`${b.dataSaida || b.data}T${b.horaSaida || b.hora || b.saida || '00:00'}`);
+                        return db - da;
+                    });
+                if (!candidatos.length) return null;
+                const ultimo = candidatos[0];
+                const raw = ultimo.kmChegada ?? ultimo.km_chegada ?? '';
+                const str = String(raw).trim();
+                if (!str) return null;
+                const num = parseFloat(str.replace('.', '').replace(',', '.'));
+                return isNaN(num) ? null : num;
+            }
+
             /** Obtém a lista de saídas: prioriza Firebase (dataService), depois JSON no repositório, depois localStorage */
             async function getAllSaidas() {
                 if (window.dataService) {
@@ -506,6 +629,24 @@
                 } catch (e) { /* ignora */ }
                 if (window.dataService) return await window.dataService.getSaidasAdministrativas();
                 return [];
+            }
+
+            async function updateSaidaField(saidaId, field, value) {
+                try {
+                    if (!window.dataService || typeof window.dataService.getSaidasAdministrativas !== 'function' || typeof window.dataService.setSaidasAdministrativas !== 'function') {
+                        console.warn('QuadroDeSaidas: dataService não disponível para salvar edição.');
+                        return;
+                    }
+                    const todas = await window.dataService.getSaidasAdministrativas();
+                    if (!Array.isArray(todas)) return;
+                    const idx = todas.findIndex(s => s.id === saidaId);
+                    if (idx === -1) return;
+                    todas[idx][field] = value;
+                    await window.dataService.setSaidasAdministrativas(todas);
+                    try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
+                } catch (e) {
+                    console.error('QuadroDeSaidas: erro ao salvar edição de saída', e);
+                }
             }
 
             async function loadSaidasForSelectedDate() {
@@ -550,6 +691,7 @@
 
                         const card = document.createElement('div');
                         card.className = realizada ? 'card card-realizada' : 'card';
+                        card.dataset.id = saida.id || '';
                         card.innerHTML = `
                             <div class="card-header">
                                 <div class="time-pill">
@@ -581,8 +723,134 @@
                                     <span class="value">${om}</span>
                                 </div>
                             </div>
+                            <div class="card-footer">
+                                <div class="card-footer-field">
+                                    <label>KM Saída</label>
+                                    <span class="value">${saida.kmSaida || saida.km_saida || '—'}</span>
+                                </div>
+                                <div class="card-footer-field">
+                                    <label>KM Chegada</label>
+                                    <span class="value">${saida.kmChegada || saida.km_chegada || '—'}</span>
+                                </div>
+                                <div class="card-footer-field">
+                                    <label>Chegada</label>
+                                    <span class="value">${saida.chegada || '—'}</span>
+                                </div>
+                            </div>
                         `;
                         cardsContainer.appendChild(card);
+                        // Duplo clique inicia fluxo de edição em 3 passos
+                        card.addEventListener('dblclick', () => {
+                            const steps = [
+                                { field: 'kmSaida', label: 'KM Saída', type: 'text' },
+                                { field: 'kmChegada', label: 'KM Chegada', type: 'text' },
+                                { field: 'chegada', label: 'Chegada', type: 'time' }
+                            ];
+                            let currentStep = 0;
+
+                            const startStep = () => {
+                                if (currentStep >= steps.length) return;
+                                const step = steps[currentStep];
+
+                                const overlay = document.createElement('div');
+                                overlay.className = 'card-edit-overlay';
+                                const box = document.createElement('div');
+                                box.className = 'card-edit-box';
+                                const title = document.createElement('div');
+                                title.className = 'card-edit-title';
+                                title.textContent = step.label;
+
+                                const input = document.createElement('input');
+                                input.className = 'card-edit-input';
+                                input.type = step.type === 'time' ? 'time' : 'text';
+
+                                // Valor inicial (com auto-preenchimento para KM Saída e hora atual para Chegada)
+                                let initialValue = '';
+                                if (step.field === 'kmSaida') {
+                                    initialValue = saida.kmSaida || saida.km_saida || '';
+                                    if (!initialValue) {
+                                        const baseHora = getHoraSaida(saida) || '00:00';
+                                        const prevKm = getPreviousKmChegada(saida.viatura, selectedDate, baseHora, allSaidas);
+                                        if (prevKm !== null) initialValue = String(prevKm);
+                                    }
+                                } else if (step.field === 'kmChegada') {
+                                    initialValue = saida.kmChegada || saida.km_chegada || '';
+                                } else if (step.field === 'chegada') {
+                                    // Se já houver hora de chegada, usa; senão, preenche com hora atual (HH:MM)
+                                    if (saida.chegada) {
+                                        initialValue = saida.chegada;
+                                    } else {
+                                        const now = new Date();
+                                        const hh = String(now.getHours()).padStart(2, '0');
+                                        const mi = String(now.getMinutes()).padStart(2, '0');
+                                        initialValue = `${hh}:${mi}`;
+                                    }
+                                }
+                                input.value = initialValue;
+
+                                const actions = document.createElement('div');
+                                actions.className = 'card-edit-actions';
+                                const btnCancel = document.createElement('button');
+                                btnCancel.className = 'card-edit-btn cancel';
+                                btnCancel.textContent = 'Cancelar';
+                                const btnOk = document.createElement('button');
+                                btnOk.className = 'card-edit-btn ok';
+                                btnOk.textContent = 'OK';
+                                actions.appendChild(btnCancel);
+                                actions.appendChild(btnOk);
+
+                                box.appendChild(title);
+                                box.appendChild(input);
+                                box.appendChild(actions);
+                                overlay.appendChild(box);
+                                card.appendChild(overlay);
+
+                                input.focus();
+
+                                const closeOverlay = () => {
+                                    card.removeChild(overlay);
+                                };
+
+                                btnCancel.addEventListener('click', () => {
+                                    closeOverlay();
+                                });
+
+                                btnOk.addEventListener('click', async () => {
+                                    const val = input.value.trim();
+                                    const saidaId = saida.id;
+
+                                    // Mostrar animação de carregamento enquanto envia atualização
+                                    btnOk.disabled = true;
+                                    btnCancel.disabled = true;
+                                    const originalOkHtml = btnOk.innerHTML;
+                                    btnOk.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+                                    try {
+                                        if (saidaId) {
+                                            await updateSaidaField(saidaId, step.field, val);
+                                            saida[step.field] = val;
+                                        }
+
+                                        // Atualiza exibição no rodapé
+                                        const footerFields = card.querySelectorAll('.card-footer-field span.value');
+                                        if (footerFields[currentStep]) {
+                                            footerFields[currentStep].textContent = val || '—';
+                                        }
+
+                                        closeOverlay();
+                                        currentStep += 1;
+                                        startStep();
+                                    } catch (e) {
+                                        console.error('QuadroDeSaidas: falha ao atualizar campo', step.field, e);
+                                        btnOk.disabled = false;
+                                        btnCancel.disabled = false;
+                                        btnOk.innerHTML = originalOkHtml;
+                                    }
+                                });
+                            };
+
+                            startStep();
+                        });
                     });
                 } catch (error) {
                     console.error('Erro ao carregar saídas administrativas:', error);
