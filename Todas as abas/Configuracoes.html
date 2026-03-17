@@ -363,6 +363,9 @@
                 <button id="saveAllToFirebaseBtn" class="primary" title="Sincroniza dados: mescla localStorage e Firebase nos dois sentidos (não apaga o que já existe)">
                     <i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)
                 </button>
+                <button id="pushLocalToFirebaseBtn" class="warning" title="Envia todos os dados locais (deste navegador) para o Firebase, sobrescrevendo as coleções principais com o que está no localStorage">
+                    <i class="fas fa-cloud-upload-alt"></i> Enviar dados locais para Firebase
+                </button>
                 <button id="usarDadosLocalBtn" class="info" title="Quando acessar pelo GitHub, use os dados salvos neste computador (localStorage) em vez do Firebase">
                     <i class="fas fa-desktop"></i> Usar dados deste computador
                 </button>
@@ -450,6 +453,7 @@
             const salvarDownloadBtn = document.getElementById('salvarDownloadBtn');
             const clearAllDataBtn = document.getElementById('clearAllDataBtn');
             const gerenciamentoMessage = document.getElementById('gerenciamentoMessage');
+            const pushLocalToFirebaseBtn = document.getElementById('pushLocalToFirebaseBtn');
 
             console.log('Elementos encontrados:', {
                 oldPasswordInput,
@@ -1084,6 +1088,205 @@
                         carregarDadosFileInput.value = '';
                     };
                     reader.readAsText(file);
+                });
+            }
+
+            // Botão: Enviar dados locais para Firebase (somente do localStorage desta máquina para a nuvem)
+            async function pushLocalDataToFirebase() {
+                if (typeof dataService === 'undefined' && !(window.firebaseSot && typeof window.firebaseSot.set === 'function')) {
+                    showGerenciamentoMessage('Serviço de dados/Firebase não carregado. Verifique a conexão e recarregue o SOT.', 'error');
+                    return;
+                }
+
+                try {
+                    if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+                        await dataService.waitForAPICheck();
+                        if (!navigator.onLine) {
+                            showGerenciamentoMessage('Sem conexão com a internet. Conecte-se antes de enviar os dados locais para o Firebase.', 'error');
+                            return;
+                        }
+                    }
+
+                    const stats = {
+                        saidasAdministrativas: 0,
+                        saidasAmbulancias: 0,
+                        viaturasCadastradas: 0,
+                        motoristasCadastrados: 0,
+                        vistoriasRealizadas: 0,
+                        abastecimentos: 0,
+                        escalaMeses: 0,
+                        avisos: 0,
+                        lembretes_ativos: 0
+                    };
+
+                    // Saídas Administrativas
+                    try {
+                        const raw = localStorage.getItem('saidasAdministrativas');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0) {
+                            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
+                                await dataService.setSaidasAdministrativas(lista);
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                await window.firebaseSot.set('saidasAdministrativas', lista);
+                            }
+                            stats.saidasAdministrativas = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar saidasAdministrativas locais para Firebase:', e);
+                    }
+
+                    // Saídas Ambulâncias
+                    try {
+                        const raw = localStorage.getItem('saidasAmbulancias');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0) {
+                            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
+                                await dataService.setSaidasAmbulancias(lista);
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                await window.firebaseSot.set('saidasAmbulancias', lista);
+                            }
+                            stats.saidasAmbulancias = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar saidasAmbulancias locais para Firebase:', e);
+                    }
+
+                    // Viaturas
+                    try {
+                        const raw = localStorage.getItem('viaturasCadastradas');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0) {
+                            if (typeof dataService !== 'undefined' && typeof dataService.saveViaturas === 'function') {
+                                await dataService.saveViaturas(lista);
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                await window.firebaseSot.set('viaturasCadastradas', lista);
+                            }
+                            stats.viaturasCadastradas = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar viaturasCadastradas locais para Firebase:', e);
+                    }
+
+                    // Motoristas
+                    try {
+                        const raw = localStorage.getItem('motoristasCadastrados');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0) {
+                            if (typeof dataService !== 'undefined' && typeof dataService.saveMotoristas === 'function') {
+                                await dataService.saveMotoristas(lista);
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                await window.firebaseSot.set('motoristasCadastrados', lista);
+                            }
+                            stats.motoristasCadastrados = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar motoristasCadastrados locais para Firebase:', e);
+                    }
+
+                    // Vistorias
+                    try {
+                        const raw = localStorage.getItem('vistorias');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            await window.firebaseSot.set('vistoriasRealizadas', lista);
+                            stats.vistoriasRealizadas = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar vistorias locais para Firebase:', e);
+                    }
+
+                    // Abastecimentos
+                    try {
+                        const raw = localStorage.getItem('abastecimentos');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            await window.firebaseSot.set('abastecimentos', lista);
+                            stats.abastecimentos = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar abastecimentos locais para Firebase:', e);
+                    }
+
+                    // Escala (todas as chaves YYYY-MM)
+                    try {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            const escalaObj = {};
+                            const re = /^\d{4}-\d{2}$/;
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key && re.test(key)) {
+                                    try {
+                                        const val = localStorage.getItem(key);
+                                        if (val) escalaObj[key] = JSON.parse(val);
+                                    } catch (e) {
+                                        console.warn('Falha ao ler escala local para chave', key, e);
+                                    }
+                                }
+                            }
+                            const meses = Object.keys(escalaObj);
+                            if (meses.length > 0) {
+                                await window.firebaseSot.set('escalaData', escalaObj);
+                                stats.escalaMeses = meses.length;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar escalaData local para Firebase:', e);
+                    }
+
+                    // Avisos
+                    try {
+                        const raw = localStorage.getItem('avisos');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            await window.firebaseSot.set('avisos', lista);
+                            stats.avisos = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar avisos locais para Firebase:', e);
+                    }
+
+                    // Lembretes
+                    try {
+                        const raw = localStorage.getItem('lembretes_ativos');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            await window.firebaseSot.set('lembretes_ativos', lista);
+                            stats.lembretes_ativos = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar lembretes_ativos locais para Firebase:', e);
+                    }
+
+                    const partes = [];
+                    if (stats.saidasAdministrativas) partes.push(`Saídas Adm: ${stats.saidasAdministrativas}`);
+                    if (stats.saidasAmbulancias) partes.push(`Saídas Ambulância: ${stats.saidasAmbulancias}`);
+                    if (stats.viaturasCadastradas) partes.push(`Viaturas: ${stats.viaturasCadastradas}`);
+                    if (stats.motoristasCadastrados) partes.push(`Motoristas: ${stats.motoristasCadastrados}`);
+                    if (stats.vistoriasRealizadas) partes.push(`Vistorias: ${stats.vistoriasRealizadas}`);
+                    if (stats.abastecimentos) partes.push(`Abastecimentos: ${stats.abastecimentos}`);
+                    if (stats.escalaMeses) partes.push(`Escala (meses): ${stats.escalaMeses}`);
+                    if (stats.avisos) partes.push(`Avisos: ${stats.avisos}`);
+                    if (stats.lembretes_ativos) partes.push(`Lembretes: ${stats.lembretes_ativos}`);
+
+                    const resumo = partes.length > 0
+                        ? 'Dados locais enviados para o Firebase. ' + partes.join(' | ')
+                        : 'Nenhum dado local relevante encontrado para enviar ao Firebase.';
+
+                    showGerenciamentoMessage(resumo, 'success');
+                } catch (e) {
+                    console.error('Erro ao enviar dados locais para Firebase:', e);
+                    showGerenciamentoMessage('Erro ao enviar dados locais para o Firebase: ' + (e && e.message ? e.message : e), 'error');
+                }
+            }
+
+            if (pushLocalToFirebaseBtn) {
+                pushLocalToFirebaseBtn.addEventListener('click', async () => {
+                    pushLocalToFirebaseBtn.disabled = true;
+                    const originalHtml = pushLocalToFirebaseBtn.innerHTML;
+                    pushLocalToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+                    await pushLocalDataToFirebase();
+                    pushLocalToFirebaseBtn.disabled = false;
+                    pushLocalToFirebaseBtn.innerHTML = originalHtml;
                 });
             }
 
