@@ -1292,6 +1292,27 @@ async function saveState() {
         }
     }
 }
+
+// Auto-save com debounce: evita chamar Firebase a cada edição de célula
+let autoSaveTimeoutId = null;
+let autoSavePending = false;
+
+function scheduleAutoSave() {
+    autoSavePending = true;
+    if (autoSaveTimeoutId) {
+        clearTimeout(autoSaveTimeoutId);
+    }
+    autoSaveTimeoutId = setTimeout(async () => {
+        try {
+            if (!autoSavePending) return;
+            autoSavePending = false;
+            autoSaveTimeoutId = null;
+            await saveState();
+        } catch (e) {
+            console.warn('Saídas Administrativas: falha no auto-save:', e);
+        }
+    }, 30000); // 30 segundos
+}
 function getLastKmChegadaAdm(placa) {
     const allSaidas = [...saidasAdministrativas].filter(s => s.viatura === placa);
     allSaidas.sort((a, b) => {
@@ -2512,7 +2533,14 @@ ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+// Atualiza cache local imediatamente
+try {
+    localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+} catch (e) {
+    console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas (hora de chegada).', e);
+}
+// Agenda auto-save para Firebase/API em até 30s
+scheduleAutoSave();
 atualizarEstiloDaLinha(row);
 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
@@ -2569,7 +2597,14 @@ ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+// Atualiza cache local imediatamente
+try {
+    localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+} catch (e) {
+    console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas.', e);
+}
+// Agenda auto-save para Firebase/API em até 30s
+scheduleAutoSave();
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos

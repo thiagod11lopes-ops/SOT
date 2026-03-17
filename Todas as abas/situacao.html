@@ -611,6 +611,27 @@ alert('Erro ao salvar alterações!');
 }
 }
 
+// Auto-save com debounce: evita chamar Firebase a cada clique na Situação
+let autoSaveTimeoutId = null;
+let autoSavePending = false;
+
+function scheduleAutoSaveSituacao() {
+    autoSavePending = true;
+    if (autoSaveTimeoutId) {
+        clearTimeout(autoSaveTimeoutId);
+    }
+    autoSaveTimeoutId = setTimeout(async () => {
+        try {
+            if (!autoSavePending) return;
+            autoSavePending = false;
+            autoSaveTimeoutId = null;
+            await saveData();
+        } catch (e) {
+            console.warn('Situação: falha no auto-save de vistorias:', e);
+        }
+    }, 30000); // 30 segundos
+}
+
 function loadValidInspectionItems() {
 try {
 const itensVistoria = JSON.parse(localStorage.getItem('itensVistoria') || '[]');
@@ -841,7 +862,7 @@ res.nota === currentEditData.nota
 
 if (resultado) {
 resultado.nota = newNota;
-saveData();
+scheduleAutoSaveSituacao();
 closeEditModal();
 populateFilters();
 populateStatusTable();
@@ -872,7 +893,7 @@ if (resultado) {
 resultado.resolvido = true;
 resultado.dataResolucao = getCurrentDate(); // ADICIONA DATA DE RESOLUÇÃO
 console.log('Item resolvido:', resultado);
-saveData();
+scheduleAutoSaveSituacao();
 populateFilters();
 populateStatusTable();
 alert('Anotação marcada como resolvida! Verifique o Histórico para ver o item traçado.');
