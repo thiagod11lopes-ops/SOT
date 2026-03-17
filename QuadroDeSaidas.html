@@ -215,6 +215,7 @@
         }
 
         .card {
+            position: relative;
             border-radius: 16px;
             padding: 10px 12px 10px;
             background: var(--bg-elevated);
@@ -224,6 +225,26 @@
             flex-direction: column;
             gap: 6px;
             margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        /* Tarja esmaecida "REALIZADA" na transversal */
+        .card-realizada::before {
+            content: "REALIZADA";
+            position: absolute;
+            top: 12px;
+            right: -55px;
+            transform: rotate(35deg);
+            padding: 4px 60px;
+            background: rgba(56, 189, 248, 0.16);
+            border: 1px solid rgba(125, 211, 252, 0.4);
+            color: rgba(226, 232, 240, 0.9);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            text-align: center;
+            pointer-events: none;
         }
 
         .card-header {
@@ -512,9 +533,10 @@
                         const setor = saida.setor || '—';
                         const destino = getDestino(saida);
                         const om = saida.om || '—';
+                        const realizada = !!saida.realizada;
 
                         const card = document.createElement('div');
-                        card.className = 'card';
+                        card.className = realizada ? 'card card-realizada' : 'card';
                         card.innerHTML = `
                             <div class="card-header">
                                 <div class="time-pill">
