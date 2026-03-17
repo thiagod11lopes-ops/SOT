@@ -631,19 +631,43 @@
                 return [];
             }
 
-            async function updateSaidaField(saidaId, field, value) {
+            async function updateSaidaField(saidaId, field, value, saidaOriginal) {
                 try {
-                    if (!window.dataService || typeof window.dataService.getSaidasAdministrativas !== 'function' || typeof window.dataService.setSaidasAdministrativas !== 'function') {
+                    if (!window.dataService) {
                         console.warn('QuadroDeSaidas: dataService não disponível para salvar edição.');
                         return;
                     }
-                    const todas = await window.dataService.getSaidasAdministrativas();
-                    if (!Array.isArray(todas)) return;
-                    const idx = todas.findIndex(s => s.id === saidaId);
-                    if (idx === -1) return;
-                    todas[idx][field] = value;
-                    await window.dataService.setSaidasAdministrativas(todas);
-                    try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
+
+                    // Caminho otimizado: salvar apenas a saída alterada, se a API existir
+                    if (typeof window.dataService.saveSaidaAdministrativa === 'function' && saidaOriginal) {
+                        const updated = { ...saidaOriginal, [field]: value };
+                        await window.dataService.saveSaidaAdministrativa(updated);
+                        // Atualizar cache local apenas desta saída
+                        try {
+                            const raw = localStorage.getItem('saidasAdministrativas');
+                            const lista = raw ? JSON.parse(raw) : [];
+                            if (Array.isArray(lista)) {
+                                const idxLocal = lista.findIndex(s => s.id === updated.id);
+                                if (idxLocal !== -1) {
+                                    lista[idxLocal] = updated;
+                                    localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                                }
+                            }
+                        } catch (e) { /* cache local é opcional */ }
+                        return;
+                    }
+
+                    // Fallback: atualiza lista completa (mantido apenas por compatibilidade)
+                    if (typeof window.dataService.getSaidasAdministrativas === 'function' &&
+                        typeof window.dataService.setSaidasAdministrativas === 'function') {
+                        const todas = await window.dataService.getSaidasAdministrativas();
+                        if (!Array.isArray(todas)) return;
+                        const idx = todas.findIndex(s => s.id === saidaId);
+                        if (idx === -1) return;
+                        todas[idx][field] = value;
+                        await window.dataService.setSaidasAdministrativas(todas);
+                        try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
+                    }
                 } catch (e) {
                     console.error('QuadroDeSaidas: erro ao salvar edição de saída', e);
                 }
@@ -827,7 +851,7 @@
 
                                     try {
                                         if (saidaId) {
-                                            await updateSaidaField(saidaId, step.field, val);
+                                            await updateSaidaField(saidaId, step.field, val, saida);
                                             saida[step.field] = val;
                                         }
 
