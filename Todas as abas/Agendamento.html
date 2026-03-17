@@ -1110,8 +1110,14 @@
                 
                 // Contar agendamentos existentes
                 let todasSaidas = [];
-                if (typeof dataService !== 'undefined' && isAPIOnline) {
-                    todasSaidas = await dataService.getSaidasAdministrativas();
+                if (typeof dataService !== 'undefined') {
+                    try {
+                        // dataService já prioriza API/Firebase antes de localStorage
+                        todasSaidas = await dataService.getSaidasAdministrativas();
+                    } catch (e) {
+                        console.warn('Agendamento: falha ao carregar saídas via dataService, usando localStorage.', e);
+                        todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    }
                 } else {
                     todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                 }
@@ -1263,8 +1269,13 @@
                 
                 // Contar agendamentos no período
                 let todasSaidas = [];
-                if (typeof dataService !== 'undefined' && isAPIOnline) {
-                    todasSaidas = await dataService.getSaidasAdministrativas();
+                if (typeof dataService !== 'undefined') {
+                    try {
+                        todasSaidas = await dataService.getSaidasAdministrativas();
+                    } catch (e) {
+                        console.warn('Agendamento: falha ao carregar saídas via dataService para verificação de horário, usando localStorage.', e);
+                        todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    }
                 } else {
                     todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                 }
@@ -1424,11 +1435,18 @@
                     agendadoViaFrontend: true // Flag para identificar que foi agendado via este frontend
                 };
 
-                // Salvar usando dataService ou localStorage direto
-                if (typeof dataService !== 'undefined' && isAPIOnline) {
-                    await dataService.saveSaidaAdministrativa(novaSaida);
+                // Salvar usando dataService (Firebase/API) como principal, com fallback para localStorage
+                if (typeof dataService !== 'undefined') {
+                    try {
+                        await dataService.saveSaidaAdministrativa(novaSaida);
+                    } catch (e) {
+                        console.warn('Agendamento: falha ao salvar via dataService, salvando apenas em localStorage.', e);
+                        const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                        saidas.push(novaSaida);
+                        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+                    }
                 } else {
-                    // Salvar no localStorage
+                    // Sem dataService: salvar no localStorage
                     const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                     saidas.push(novaSaida);
                     localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));

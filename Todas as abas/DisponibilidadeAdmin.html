@@ -1498,13 +1498,24 @@
         }
 
         // Função para carregar disponibilidades
-        function loadDisponibilidades() {
+        async function loadDisponibilidades() {
             try {
+                // Preferir sempre dataService/Firebase para carregar saídas (agendamentos)
+                let saidas = [];
+                if (typeof dataService !== 'undefined' && typeof dataService.getSaidasAdministrativas === 'function') {
+                    try {
+                        saidas = await dataService.getSaidasAdministrativas();
+                    } catch (e) {
+                        console.warn('Disponibilidade: falha ao carregar saídas via dataService, usando localStorage.', e);
+                        saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    }
+                } else {
+                    saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                }
+
+                // Disponibilidades ainda são mantidas em localStorage (estrutura própria desta aba)
                 const stored = localStorage.getItem('disponibilidadeViaturas');
                 const disponibilidades = stored ? JSON.parse(stored) : {};
-                
-                // Carregar agendamentos para calcular vagas ocupadas
-                const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                 
                 const keys = Object.keys(disponibilidades).sort();
                 

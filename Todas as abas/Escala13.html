@@ -1868,53 +1868,67 @@ targetCell.focus();
 break;
 }
 }
-// Inicialização
-loadDrivers();
-populateFilters(filterMonth, filterYear);
-
-// Seleciona sempre a escala mais recente disponível.
-// Regra:
-// 1) Se existir uma escala para o mês/ano atual, usa ela.
-// 2) Senão, usa a escala com a MAIOR chave YYYY-MM do localStorage.
-(function selectLatestScale() {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
-  const currentKey = `${currentYear}-${currentMonth}`;
-
-  const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
-
-  let targetKey = null;
-
-  if (existingKeys.includes(currentKey)) {
-    // Se existir escala para o mês/ano atual, usa ela.
-    targetKey = currentKey;
-  } else if (existingKeys.length > 0) {
-    // Caso contrário, escolhe a escala mais recente que NÃO esteja no futuro.
-    const sortedKeys = existingKeys.sort(); // ordenação lexicográfica funciona para YYYY-MM
-    const pastOrCurrentKeys = sortedKeys.filter(k => k <= currentKey);
-    if (pastOrCurrentKeys.length > 0) {
-      targetKey = pastOrCurrentKeys[pastOrCurrentKeys.length - 1];
-    } else {
-      // Se todas as escalas forem "no futuro", fica com a mais antiga para não saltar para anos muito à frente.
-      targetKey = sortedKeys[0];
+// Inicialização com Firebase como fonte principal para a Escala
+(async function initializeEscala() {
+  // 1) Tenta carregar TODAS as escalas do Firebase e sobrescrever o localStorage.
+  if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+    try {
+      const fbEscala = await window.firebaseSot.get('escalaData');
+      if (fbEscala && typeof fbEscala === 'object') {
+        Object.keys(fbEscala).forEach(key => {
+          if (/^\d{4}-\d{2}$/.test(key)) {
+            try {
+              localStorage.setItem(key, JSON.stringify(fbEscala[key]));
+            } catch (e) {
+              console.warn('Escala: falha ao salvar escala do Firebase no localStorage para chave', key, e);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Escala: falha ao carregar escalaData do Firebase, usando apenas localStorage.', e);
     }
   }
 
-  if (targetKey) {
-    const [year, month] = targetKey.split('-');
-    filterYear.value = year;
-    filterMonth.value = month;
-  } else {
-    // Fallback: mês/ano atuais
-    filterYear.value = String(currentYear);
-    filterMonth.value = currentMonth;
-  }
-})();
+  // 2) Carrega motoristas e popula selects de mês/ano (agora já alinhados com Firebase).
+  loadDrivers();
+  populateFilters(filterMonth, filterYear);
 
-renderEscala(filterMonth.value, filterYear.value);
-setActiveTab('editScaleBtn');
-updateEditButtonText();
+  // 3) Seleciona sempre a escala mais recente disponível (sem pular para o futuro).
+  (function selectLatestScale() {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const currentKey = `${currentYear}-${currentMonth}`;
+
+    const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
+
+    let targetKey = null;
+
+    if (existingKeys.includes(currentKey)) {
+      targetKey = currentKey;
+    } else if (existingKeys.length > 0) {
+      const sortedKeys = existingKeys.sort(); // YYYY-MM
+      const pastOrCurrentKeys = sortedKeys.filter(k => k <= currentKey);
+      if (pastOrCurrentKeys.length > 0) {
+        targetKey = pastOrCurrentKeys[pastOrCurrentKeys.length - 1];
+      } else {
+        targetKey = sortedKeys[0];
+      }
+    }
+
+    if (targetKey) {
+      const [year, month] = targetKey.split('-');
+      filterYear.value = year;
+      filterMonth.value = month;
+    }
+  })();
+
+  // 4) Renderiza a escala com base no que veio do Firebase/localStorage.
+  renderEscala(filterMonth.value, filterYear.value);
+  setActiveTab('editScaleBtn');
+  updateEditButtonText();
+})();
 filterMonth.addEventListener('change', () => {
 isEditing = false; isVacationMode = false;
 renderEscala(filterMonth.value, filterYear.value);

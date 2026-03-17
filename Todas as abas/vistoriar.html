@@ -1329,12 +1329,24 @@ async function loadData() {
     }
 }
 
-function saveData() {
-localStorage.setItem('vistorias', JSON.stringify(inspections));
-if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
-window.firebaseSot.set('vistoriasRealizadas', inspections).catch(function() {});
-}
-try { window.top.postMessage({ type: 'request_sync' }, '*'); } catch (e) {}
+async function saveData() {
+  // Sempre tenta gravar primeiro no Firebase como fonte principal
+  if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+    try {
+      await window.firebaseSot.set('vistoriasRealizadas', inspections);
+    } catch (e) {
+      console.warn('Vistoria: falha ao salvar vistorias no Firebase, mantendo apenas no localStorage.', e);
+    }
+  }
+  // Em qualquer caso, mantém cópia local para modo offline/cache
+  try {
+    localStorage.setItem('vistorias', JSON.stringify(inspections));
+  } catch (e) {
+    console.warn('Vistoria: falha ao salvar vistorias no localStorage.', e);
+  }
+  try {
+    window.top.postMessage({ type: 'request_sync' }, '*');
+  } catch (e) {}
 }
 
 async function refreshUIAndData() { saveData(); await loadData(); checklistContainer.classList.add('hidden'); initialFormContainer.classList.remove('hidden'); await renderCalendar(); }

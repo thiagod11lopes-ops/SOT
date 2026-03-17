@@ -1218,28 +1218,47 @@ async function loadState() {
         // As saídas devem espelhar exatamente o que está cadastrado na sub-aba "Saídas Cadastradas"
         // NÃO filtrar ou remover saídas baseado em avisos de junção removidos
         
-        // Usar dataService para carregar dados
+        // 1) Preferir sempre dataService (que já tenta API/Firebase e depois localStorage)
         if (typeof dataService !== 'undefined') {
             saidasAdministrativas = await dataService.getSaidasAdministrativas();
             motoristasCadastrados = await dataService.getMotoristas();
             frotaData = await dataService.getViaturas();
+        } else if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+            // 2) Se não houver dataService, tentar carregar direto do Firebase
+            try {
+                const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
+                if (Array.isArray(fbSaidas)) {
+                    saidasAdministrativas = fbSaidas;
+                    try { localStorage.setItem('saidasAdministrativas', JSON.stringify(fbSaidas)); } catch (e) {}
+                    console.log(`[loadState] Carregadas ${saidasAdministrativas.length} saídas administrativas do Firebase`);
+                } else {
+                    saidasAdministrativas = [];
+                }
+            } catch (e) {
+                console.warn('Saídas Adm: falha ao carregar de Firebase, usando apenas localStorage.', e);
+                const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                saidasAdministrativas = [...todasSaidas];
+            }
+            // Motoristas e frota, se não vierem por dataService, continuam vindo apenas do localStorage
+            motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+            frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
         } else {
-            // Fallback para localStorage - carregar TODAS as saídas sem filtros
-            const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+            // 3) Fallback final: somente localStorage - carregar TODAS as saídas sem filtros
+            const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
             saidasAdministrativas = [...todasSaidas]; // Criar cópia para garantir que não seja modificada
             console.log(`[loadState] Carregadas ${saidasAdministrativas.length} saídas administrativas do localStorage`);
-            motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
-            frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+            motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+            frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
         }
         loadViaturasComProblemas();
     } catch (error) {
         console.error('Erro ao carregar estado:', error);
         // Fallback para localStorage - carregar TODAS as saídas sem filtros
-        const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
+        const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
         saidasAdministrativas = [...todasSaidas]; // Criar cópia para garantir que não seja modificada
         console.log(`[loadState - Error] Carregadas ${saidasAdministrativas.length} saídas administrativas do localStorage`);
-        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
-        frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+        frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
         loadViaturasComProblemas();
     }
 }
@@ -1249,13 +1268,25 @@ async function saveState() {
         // Sincronizar com Firebase (e localStorage) quando dataService disponível
         if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
             await dataService.setSaidasAdministrativas(saidasAdministrativas);
+        } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+            // Sem dataService, grava direto no Firebase como fonte principal
+            await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
+            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
         } else {
+            // Fallback final: apenas localStorage
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
         }
     } catch (error) {
         console.error('Erro ao salvar estado:', error);
         try {
-            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
+                await dataService.setSaidasAdministrativas(saidasAdministrativas);
+            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
+                try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
+            } else {
+                localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            }
         } catch (e) {
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
         }

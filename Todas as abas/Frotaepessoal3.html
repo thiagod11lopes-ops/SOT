@@ -368,20 +368,45 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
-            let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-            let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
-            let psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
+            let viaturasCadastradas = [];
+            let motoristasCadastrados = [];
+            let psoFila = [];
+
+            // Carregar dados priorizando sempre Firebase/dataService e usando localStorage como cache/fallback
             try {
                 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                     await dataService.waitForAPICheck();
                     if (dataService.useFirebase || dataService.apiAvailable) {
                         const v = await dataService.getViaturas();
                         const m = await dataService.getMotoristas();
-                        if (Array.isArray(v)) { viaturasCadastradas = v; localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); }
-                        if (Array.isArray(m)) { motoristasCadastrados = m; localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); }
+                        if (Array.isArray(v)) {
+                            viaturasCadastradas = v;
+                            try { localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); } catch (e) {}
+                        }
+                        if (Array.isArray(m)) {
+                            motoristasCadastrados = m;
+                            try { localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); } catch (e) {}
+                        }
                     }
                 }
-            } catch (e) { console.warn('Frota e Pessoal: falha ao carregar do Firebase', e); }
+            } catch (e) {
+                console.warn('Frota e Pessoal: falha ao carregar via dataService', e);
+            }
+
+            // Se ainda não carregou de dataService, tentar usar localStorage
+            if (!Array.isArray(viaturasCadastradas) || viaturasCadastradas.length === 0) {
+                viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+            }
+            if (!Array.isArray(motoristasCadastrados) || motoristasCadastrados.length === 0) {
+                motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+            }
+
+            // PSO sempre carregado do localStorage (não tem integração dedicada no dataService)
+            try {
+                psoFila = JSON.parse(localStorage.getItem('psoFila') || '[]');
+            } catch (e) {
+                psoFila = [];
+            }
             
             const subTabButtons = document.querySelectorAll('.sub-tab-button');
             const subTabContents = document.querySelectorAll('.sub-tab-content');
@@ -411,13 +436,26 @@
             };
 
             const saveData = async (key, data) => {
-                localStorage.setItem(key, JSON.stringify(data));
+                // Sempre tenta salvar primeiro via dataService (Firebase/API)
                 try {
                     if (typeof dataService !== 'undefined') {
-                        if (key === 'viaturasCadastradas' && dataService.saveViaturas) await dataService.saveViaturas(data);
-                        else if (key === 'motoristasCadastrados' && dataService.saveMotoristas) await dataService.saveMotoristas(data);
+                        if (key === 'viaturasCadastradas' && dataService.saveViaturas) {
+                            await dataService.saveViaturas(data);
+                        } else if (key === 'motoristasCadastrados' && dataService.saveMotoristas) {
+                            await dataService.saveMotoristas(data);
+                        }
                     }
-                } catch (e) { console.warn('Frota e Pessoal: falha ao salvar no Firebase', e); }
+                } catch (e) {
+                    console.warn('Frota e Pessoal: falha ao salvar via dataService', e);
+                }
+
+                // Em qualquer caso, mantém cópia em localStorage para cache/offline
+                try {
+                    localStorage.setItem(key, JSON.stringify(data));
+                } catch (e) {
+                    console.warn('Frota e Pessoal: falha ao salvar no localStorage', e);
+                }
+
                 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
             };
 
