@@ -3074,6 +3074,7 @@ async function loadDataAndPopulateTables() {
 // Também considerar registros offline (localStorage) para não "sumirem"
 var lsSaidasAdm = [];
 var lsSaidasAmb = [];
+let remoteLoaded = false;
 try { lsSaidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]'); } catch (e) { lsSaidasAdm = []; }
 try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); } catch (e) { lsSaidasAmb = []; }
 
@@ -3084,6 +3085,7 @@ if (typeof dataService !== 'undefined') {
         saidasAmbulancias = (await dataService.getSaidasAmbulancias()) || [];
         viaturasCadastradas = await dataService.getViaturas();
         motoristasCadastrados = await dataService.getMotoristas();
+        remoteLoaded = true;
     } catch (e) {
         console.warn('Cadastro de Saídas: falha ao carregar via dataService, usando localStorage.', e);
         saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
@@ -3098,6 +3100,7 @@ if (typeof dataService !== 'undefined') {
         const fbSaidasAmb = await window.firebaseSot.get('saidasAmbulancias');
         saidasAdministrativas = Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [];
         saidasAmbulancias = Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [];
+        remoteLoaded = true;
         try {
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
             localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
@@ -3117,9 +3120,15 @@ if (typeof dataService !== 'undefined') {
     motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
 }
 
-// Normalizar + mesclar com offline para garantir visibilidade na tabela
-saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
-saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
+// Normalizar e mesclar com offline somente se NÃO carregamos remoto com sucesso.
+// Se remoto carregou (Firebase/API), ele é fonte da verdade, mesmo quando vier [].
+if (remoteLoaded) {
+    saidasAdministrativas = mergeById(saidasAdministrativas, [], 'Administrativa');
+    saidasAmbulancias = mergeById(saidasAmbulancias, [], 'Ambulância');
+} else {
+    saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
+    saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
+}
 
 // Persistir cache normalizado
 try {

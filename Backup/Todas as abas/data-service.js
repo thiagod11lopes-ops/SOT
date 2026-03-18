@@ -120,11 +120,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('viaturasCadastradas', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('viaturasCadastradas');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('viaturasCadastradas', []);
         return this.getFromLocalStorage('viaturasCadastradas', []);
     }
 
@@ -163,11 +163,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('motoristasCadastrados', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('motoristasCadastrados');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('motoristasCadastrados', []);
         return this.getFromLocalStorage('motoristasCadastrados', []);
     }
 
@@ -205,11 +205,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAdministrativas', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('saidasAdministrativas');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAdministrativas', []);
         return this.getFromLocalStorage('saidasAdministrativas', []);
     }
 
@@ -258,11 +258,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAmbulancias', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('saidasAmbulancias');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAmbulancias', []);
         return this.getFromLocalStorage('saidasAmbulancias', []);
     }
 
@@ -288,11 +288,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('vistoriasRealizadas', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('vistoriasRealizadas');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('vistoriasRealizadas', []);
         return this.getFromLocalStorage('vistoriasRealizadas', []);
     }
 
@@ -332,11 +332,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('abastecimentos', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('abastecimentos');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('abastecimentos', []);
         return this.getFromLocalStorage('abastecimentos', []);
     }
 
@@ -376,11 +376,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('escalaData', {});
         if (this.useFirebase) {
             const data = await this._getFromFirebase('escalaData');
             if (data && typeof data === 'object') return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('escalaData', {});
         return this.getFromLocalStorage('escalaData', {});
     }
 
@@ -416,11 +416,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('avisos', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('avisos');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('avisos', []);
         return this.getFromLocalStorage('avisos', []);
     }
 
@@ -460,11 +460,11 @@ class DataService {
                 this.useAPI = false;
             }
         }
-        if (this._preferLocalStorage()) return this.getFromLocalStorage('lembretes_ativos', []);
         if (this.useFirebase) {
             const data = await this._getFromFirebase('lembretes_ativos');
             if (Array.isArray(data)) return data;
         }
+        if (this._preferLocalStorage()) return this.getFromLocalStorage('lembretes_ativos', []);
         return this.getFromLocalStorage('lembretes_ativos', []);
     }
 
