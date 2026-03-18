@@ -683,13 +683,11 @@
             function computeRealizadaFromSaida(saida) {
                 const kmSaidaRaw = saida.kmSaida ?? saida.km_saida ?? '';
                 const kmChegadaRaw = saida.kmChegada ?? saida.km_chegada ?? '';
-                const chegadaRaw = saida.chegada ?? '';
 
                 const kmSaidaStr = String(kmSaidaRaw).trim();
                 const kmChegadaStr = String(kmChegadaRaw).trim();
-                const chegadaStr = String(chegadaRaw).trim();
 
-                if (!kmSaidaStr || !kmChegadaStr || !chegadaStr) return false;
+                if (!kmSaidaStr || !kmChegadaStr) return false;
 
                 const kmSaidaNum = parseKmToNumber(kmSaidaStr);
                 const kmChegadaNum = parseKmToNumber(kmChegadaStr);
@@ -1068,6 +1066,27 @@
                             startStep();
                         });
                     });
+
+                    // Reconcilia flag "realizada" no Firebase quando existir divergência.
+                    // Isso evita casos em que o Quadro mostra o status certo, mas outros módulos filtram pela flag.
+                    try {
+                        if (filtered.length && window.firebaseSot && typeof window.firebaseSot.set === 'function' && typeof window.firebaseSot.get === 'function') {
+                            const divergentes = filtered.filter(s => {
+                                const computed = computeRealizadaFromSaida(s);
+                                const stored = !!s.realizada;
+                                return computed !== stored;
+                            });
+
+                            // Evita múltiplos writes em dias com muitos registros.
+                            const limite = 25;
+                            const tarefas = divergentes.slice(0, limite);
+                            for (const s of tarefas) {
+                                const computed = computeRealizadaFromSaida(s);
+                                await updateSaidaField(getSaidaId(s), 'realizada', computed, s);
+                                s.realizada = computed;
+                            }
+                        }
+                    } catch (e) { /* sem bloquear o carregamento */ }
                 } catch (error) {
                     console.error('Erro ao carregar saídas administrativas:', error);
                     emptyState.style.display = 'block';
