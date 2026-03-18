@@ -630,44 +630,88 @@
                 return isNaN(num) ? null : num;
             }
 
-            /** Obtém a lista de saídas: prioriza diretamente o Firebase (firebaseSot), depois dataService/Firebase, depois JSON/localStorage */
+            /** Obtém lista de saídas com persistência:
+             *  Firebase primeiro, depois mescla com localStorage (se houver), e por fim JSON estático.
+             *  Isso evita "sumir" após F5 quando o Firebase falhar ou estiver inconsistente.
+             */
             async function getAllSaidas() {
-                // 1) Tentar diretamente o Firebase via firebaseSot
+                let remoteList = null;
+
+                // 1) Firebase direto
                 if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
                     try {
                         const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
-                        if (Array.isArray(fbSaidas)) return fbSaidas;
+                        if (Array.isArray(fbSaidas)) remoteList = fbSaidas;
                     } catch (e) {
-                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase, tentando dataService/JSON.', e);
+                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase.', e);
                     }
                 }
 
-                // 2) Tentar via dataService (que normalmente usa Firebase quando a API não existe)
-                if (window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function') {
+                // 2) dataService (fallback)
+                if (!remoteList && window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function') {
                     try {
                         const fromService = await window.dataService.getSaidasAdministrativas();
-                        if (Array.isArray(fromService)) return fromService;
+                        if (Array.isArray(fromService)) remoteList = fromService;
                     } catch (e) {
-                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas via dataService, tentando JSON.', e);
+                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas via dataService.', e);
                     }
                 }
 
-                // 3) Fallback: JSON estático (GitHub Pages) e, por fim, localStorage
-                try {
-                    const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (Array.isArray(data)) return data;
-                    }
-                } catch (e) { /* ignora */ }
-
+                // 3) localStorage (persistência por navegador)
+                let localList = null;
                 try {
                     const raw = localStorage.getItem('saidasAdministrativas');
                     const lista = raw ? JSON.parse(raw) : [];
-                    return Array.isArray(lista) ? lista : [];
+                    localList = Array.isArray(lista) ? lista : [];
                 } catch (e) {
-                    return [];
+                    localList = [];
                 }
+
+                // 4) JSON estático (GitHub Pages) - somente se remoto e local estiverem vazios
+                let staticList = null;
+                if ((!remoteList || remoteList.length === 0) && (!localList || localList.length === 0)) {
+                    try {
+                        const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
+                        if (res.ok) {
+                            const data = await res.json();
+                            staticList = Array.isArray(data) ? data : null;
+                        }
+                    } catch (e) { /* ignora */ }
+                }
+
+                const base = remoteList && Array.isArray(remoteList) ? remoteList : (staticList || []);
+
+                // Mescla base + local (local "vence" para não perder edições)
+                // Garante id estável mesmo para itens antigos.
+                const map = new Map();
+                const add = (arr) => {
+                    if (!Array.isArray(arr)) return;
+                    for (const it of arr) {
+                        const n = { ...(it || {}) };
+                        const id = getSaidaId(n);
+                        n.id = id;
+                        map.set(String(id), n);
+                    }
+                };
+                add(base);
+                add(localList);
+
+                const merged = Array.from(map.values());
+
+                // Se havia remoto e local tem itens que não existiam remotamente, tenta re-emitir para Firebase
+                try {
+                    if (remoteList && Array.isArray(remoteList) && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        // Se o merge aumentou, persistir para manter sincronizado
+                        if (localList && localList.length && merged.length > remoteList.length) {
+                            window.firebaseSot.set('saidasAdministrativas', merged).catch(() => {});
+                        }
+                    }
+                } catch (e) { /* sem bloquear */ }
+
+                // Mantém cache local atualizado com o merge
+                try { localStorage.setItem('saidasAdministrativas', JSON.stringify(merged)); } catch (e) {}
+
+                return merged;
             }
 
             function normStr(v) {
@@ -777,13 +821,14 @@
                             }
                         }
 
-                        await window.firebaseSot.set('saidasAdministrativas', listaFb);
+                        const ok = await window.firebaseSot.set('saidasAdministrativas', listaFb);
 
                         // Atualizar cache localStorage com a lista vinda do Firebase
                         try {
                             localStorage.setItem('saidasAdministrativas', JSON.stringify(listaFb));
                         } catch (e) { /* cache local é opcional */ }
-                        return;
+                        if (ok) return;
+                        console.warn('QuadroDeSaidas: firebaseSot.set retornou falso, tentando fallback.', { ok });
                     }
 
                     // 2) Fallback: usar dataService para atualizar a saída, se disponível
