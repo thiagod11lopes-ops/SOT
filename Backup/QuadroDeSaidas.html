@@ -574,6 +574,20 @@
             }
 
             dateInput.addEventListener('change', loadSaidasForSelectedDate);
+
+            // Atualiza automaticamente quando outra tela disparar refresh_all_data.
+            let reloadInFlight = false;
+            window.addEventListener('message', (event) => {
+                try {
+                    const type = event && event.data && event.data.type;
+                    if (type === 'refresh_all_data' && !reloadInFlight) {
+                        reloadInFlight = true;
+                        loadSaidasForSelectedDate()
+                            .catch(() => {})
+                            .finally(() => { reloadInFlight = false; });
+                    }
+                } catch (e) {}
+            });
             await loadSaidasForSelectedDate();
         });
     </script>

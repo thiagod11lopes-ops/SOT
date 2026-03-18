@@ -702,10 +702,11 @@
                     } catch (e) { /* ignora */ }
                 }
 
-                const base = remoteList && Array.isArray(remoteList) ? remoteList : (staticList || []);
+                const hasRemote = Array.isArray(remoteList);
+                const base = hasRemote ? remoteList : (staticList || []);
 
-                // Mescla base + local, dando preferência ao "base" (remote/JSON)
-                // para evitar o Firebase "voltar" depois de sync com localStorage antigo.
+                // Mescla base + local somente quando não foi possível obter remoto.
+                // Se remoto existe (mesmo vazio), ele é a fonte da verdade e localStorage não deve "voltar" dados.
                 // Garante id estável mesmo para itens antigos.
                 const map = new Map();
 
@@ -731,7 +732,7 @@
                 };
 
                 addBase(base);
-                addLocalIfMissing(localList);
+                if (!hasRemote) addLocalIfMissing(localList);
 
                 const merged = Array.from(map.values());
 
@@ -1178,6 +1179,21 @@
             }
 
             dateInput.addEventListener('change', loadSaidasForSelectedDate);
+
+            // Se outra tela apagar/alterar saídas e disparar refresh_all_data,
+            // atualiza este Quadro imediatamente (sem depender de F5).
+            let reloadInFlight = false;
+            window.addEventListener('message', (event) => {
+                try {
+                    const type = event && event.data && event.data.type;
+                    if (type === 'refresh_all_data' && !reloadInFlight) {
+                        reloadInFlight = true;
+                        loadSaidasForSelectedDate()
+                            .catch(() => {})
+                            .finally(() => { reloadInFlight = false; });
+                    }
+                } catch (e) {}
+            });
             await loadSaidasForSelectedDate();
         });
     </script>
