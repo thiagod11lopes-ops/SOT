@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DICAMP CEMERU - SOT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root{
+      --bg: #0b1020;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.08);
+      --text: #e5e7eb;
+      --muted: rgba(229,231,235,0.7);
+      --border: rgba(255,255,255,0.12);
+      --accent: #38bdf8;
+      --accent2: #22c55e;
+      --warn: #f59e0b;
+      --danger: #fb7185;
+      --shadow: 0 18px 45px rgba(0,0,0,0.45);
+      --radius: 16px;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% 0%, rgba(56,189,248,0.18), transparent 55%),
+                  radial-gradient(1000px 700px at 100% 10%, rgba(34,197,94,0.10), transparent 50%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap{ max-width: 1100px; margin: 0 auto; padding: 22px 16px 30px; }
+    header{
+      background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow);
+    }
+    .title{ display:flex; gap: 12px; align-items:center; justify-content: space-between; flex-wrap: wrap; }
+    h1{ margin:0; font-size: 20px; letter-spacing: 0.02em; display:flex; align-items:center; gap: 10px; }
+    .badge{
+      display:inline-flex; align-items:center; gap: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .sub{ margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.35; }
+
+    .grid{ display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+    @media (min-width: 900px){ .grid{ grid-template-columns: 1.2fr 0.8fr; } }
+    .panel{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: rgba(0,0,0,0.22);
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title{
+      display:flex; align-items:center; gap: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(229,231,235,0.9);
+    }
+    .panel-body{ padding: 14px; }
+
+    .controls{ display:grid; grid-template-columns: 1fr; gap: 10px; }
+    .control{
+      display:flex; flex-direction: column; gap: 6px;
+      padding: 10px 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(0,0,0,0.18);
+    }
+    .label{ font-size: 12px; color: var(--muted); display:flex; align-items:center; gap: 8px; }
+    input[type="number"], input[type="text"]{
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      outline: none;
+      font-size: 14px;
+    }
+    input[type="number"]:focus, input[type="text"]:focus{ border-color: rgba(56,189,248,0.55); box-shadow: 0 0 0 3px rgba(56,189,248,0.12); }
+
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center; gap: 10px;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      background: rgba(56,189,248,0.14);
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+      font-weight: 650;
+      transition: transform .08s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn:hover{ background: rgba(56,189,248,0.18); border-color: rgba(56,189,248,0.35); }
+    .btn:active{ transform: translateY(1px); }
+    .btn.secondary{ background: rgba(255,255,255,0.06); }
+
+    .kpis{ display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 700px){ .kpis{ grid-template-columns: repeat(4, 1fr); } }
+    .kpi{
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(0,0,0,0.18);
+      padding: 12px 12px;
+      min-height: 86px;
+    }
+    .kpi .t{ font-size: 12px; color: var(--muted); display:flex; align-items:center; gap: 8px; }
+    .kpi .v{ margin-top: 8px; font-size: 20px; font-weight: 800; letter-spacing: 0.01em; }
+    .kpi .s{ margin-top: 4px; font-size: 12px; color: var(--muted); }
+    .mono{ font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+    table{ width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 14px; }
+    thead th{
+      background: rgba(0,0,0,0.22);
+      color: rgba(229,231,235,0.9);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    tbody td{
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: rgba(229,231,235,0.9);
+      font-size: 13px;
+      vertical-align: top;
+    }
+    tbody tr:hover td{ background: rgba(56,189,248,0.06); }
+    .right{ text-align: right; }
+    .muted{ color: var(--muted); }
+    .pill{
+      display:inline-flex; align-items:center; gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      font-size: 12px;
+      color: rgba(229,231,235,0.9);
+    }
+    .hr{ height: 1px; background: rgba(255,255,255,0.10); margin: 12px 0; }
+    .note{ font-size: 12px; color: var(--muted); line-height: 1.35; }
+
+    .toast{
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.65);
+      color: rgba(229,231,235,0.92);
+      padding: 10px 12px;
+      box-shadow: var(--shadow);
+      max-width: 520px;
+      display:none;
+    }
+    .toast.show{ display:block; }
+
+    .modal-backdrop{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(3px);
+      display:none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 2000;
+    }
+    .modal-backdrop.show{ display:flex; }
+    .modal{
+      width: min(860px, 100%);
+      border: 1px solid var(--border);
+      background: rgba(12, 16, 32, 0.92);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .modal-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: rgba(0,0,0,0.26);
+      border-bottom: 1px solid var(--border);
+    }
+    .modal-title{ display:flex; align-items:center; gap: 10px; font-weight: 800; letter-spacing: .04em; }
+    .icon-x{
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .modal-body{ padding: 14px; display:grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 820px){
+      .modal-body{ grid-template-columns: 1fr 1fr; }
+    }
+    .modal-foot{
+      display:flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.22);
+    }
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: -2px;
+      line-height: 1.3;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1><i class="fa-solid fa-ambulance"></i> DICAMP CEMERU</h1>
+        <span class="badge"><i class="fa-solid fa-cloud"></i> Firebase-first</span>
+      </div>
+      <div class="sub">
+        Relatório de Saídas (Ambulância) filtrando <b>Bairro</b> Santa Cruz / Campo Grande, meses <b>Dez/2025</b>, <b>Jan/2026</b>, <b>Fev/2026</b>.
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-sliders"></i> Parâmetros</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button id="refreshBtn" class="btn secondary"><i class="fa-solid fa-rotate"></i> Recarregar</button>
+            <button id="pdfBtn" class="btn"><i class="fa-solid fa-file-pdf"></i> Gerar PDF</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="controls">
+            <div class="control">
+              <div class="label"><i class="fa-solid fa-gas-pump"></i> Custo do Diesel (R$/L)</div>
+              <input id="dieselPrice" type="number" step="0.01" value="6.39" />
+            </div>
+            <div class="control">
+              <div class="label"><i class="fa-solid fa-road"></i> Consumo (km/L)</div>
+              <input id="kmPerLiter" type="number" step="0.1" value="7.0" />
+            </div>
+            <div class="control">
+              <div class="label"><i class="fa-solid fa-location-dot"></i> Bairros (separados por vírgula)</div>
+              <input id="bairrosInput" type="text" value="Santa Cruz, Campo Grande" />
+            </div>
+          </div>
+
+          <div class="hr"></div>
+          <div class="note">
+            Fonte de dados: coleção <span class="pill"><i class="fa-solid fa-database"></i> saidasAmbulancias</span> (Firebase), com fallback para cache local se necessário.
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-chart-line"></i> Indicadores</div>
+          <span class="pill" id="resultPill"><i class="fa-solid fa-filter"></i> 0 registros</span>
+        </div>
+        <div class="panel-body">
+          <div class="kpis">
+            <div class="kpi">
+              <div class="t"><i class="fa-solid fa-route"></i> KM Total (3 meses)</div>
+              <div class="v mono" id="kpiKmTotal">0</div>
+              <div class="s muted" id="kpiKmTotalSub">Somatório de km</div>
+            </div>
+            <div class="kpi">
+              <div class="t"><i class="fa-solid fa-list-check"></i> Total de Saídas</div>
+              <div class="v mono" id="kpiTotalSaidas">0</div>
+              <div class="s muted" id="kpiTotalSaidasSub">Registros filtrados</div>
+            </div>
+            <div class="kpi">
+              <div class="t"><i class="fa-solid fa-oil-can"></i> Diesel estimado (L)</div>
+              <div class="v mono" id="kpiLitrosTotal">0</div>
+              <div class="s muted" id="kpiLitrosTotalSub">KM / km/L</div>
+            </div>
+            <div class="kpi">
+              <div class="t"><i class="fa-solid fa-money-bill-wave"></i> Custo estimado (R$)</div>
+              <div class="v mono" id="kpiCustoTotal">0</div>
+              <div class="s muted" id="kpiCustoTotalSub">L * preço</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:12px;">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-table"></i> Resumo mensal</div>
+        <span class="pill"><i class="fa-solid fa-calendar"></i> Dez/2025 · Jan/2026 · Fev/2026</span>
+      </div>
+      <div class="panel-body">
+        <div style="overflow:auto;">
+          <table id="monthlyTable">
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th class="right">Saídas</th>
+                <th class="right">KM</th>
+                <th class="right">Diesel (L)</th>
+                <th class="right">Custo (R$)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top:12px;">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-rectangle-list"></i> Detalhamento (filtrado)</div>
+        <span class="pill"><i class="fa-solid fa-circle-info"></i> Ordenado por data</span>
+      </div>
+      <div class="panel-body">
+        <div style="overflow:auto;">
+          <table id="detailTable">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Viatura</th>
+                <th>Motorista</th>
+                <th>Bairro</th>
+                <th>Destino</th>
+                <th class="right">KM</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="note" style="margin-top:10px;">
+          Observação: o KM é calculado a partir dos dados cadastrados no SOT: <span class="pill"><i class="fa-solid fa-road"></i> kmChegada - kmSaida</span>.
+          Se o registro não tiver ambos preenchidos, ele entra como 0.
+        </div>
+      </div>
+    </section>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <div class="modal-backdrop" id="editBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+      <div class="modal-head">
+        <div class="modal-title" id="editTitle"><i class="fa-solid fa-pen-to-square"></i> Editar saída</div>
+        <button class="icon-x" id="editCloseBtn" title="Fechar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-calendar"></i> Data (YYYY-MM-DD ou DD/MM/AAAA)</div>
+          <input id="editDataSaida" type="text" />
+          <div class="hint">Campo do SOT: <b>dataSaida</b></div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-clock"></i> Hora Saída (HH:mm)</div>
+          <input id="editHoraSaida" type="text" />
+          <div class="hint">Campo do SOT: <b>horaSaida</b></div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-truck-medical"></i> Viatura</div>
+          <input id="editViatura" type="text" />
+          <div class="hint">Campo do SOT: <b>viatura</b></div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-id-card"></i> Motorista</div>
+          <input id="editMotorista" type="text" />
+          <div class="hint">Campo do SOT: <b>motorista</b></div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-location-dot"></i> Bairro</div>
+          <input id="editBairro" type="text" />
+          <div class="hint">Campo do SOT: <b>bairro</b></div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-hospital"></i> Destino (Hospital)</div>
+          <input id="editHospital" type="text" />
+          <div class="hint">Campo do SOT: <b>hospital</b> (ou objetivo/destino)</div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-road"></i> KM Saída</div>
+          <input id="editKmSaida" type="text" />
+          <div class="hint">Campo do SOT: <b>kmSaida</b></div>
+        </div>
+        <div class="control">
+          <div class="label"><i class="fa-solid fa-road"></i> KM Chegada</div>
+          <input id="editKmChegada" type="text" />
+          <div class="hint">Campo do SOT: <b>kmChegada</b></div>
+        </div>
+        <div class="control" style="grid-column: 1 / -1;">
+          <div class="label"><i class="fa-solid fa-check"></i> Chegada (HH:mm)</div>
+          <input id="editChegada" type="text" />
+          <div class="hint">Campo do SOT: <b>chegada</b></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn secondary" id="editCancelBtn"><i class="fa-solid fa-ban"></i> Cancelar</button>
+        <button class="btn" id="editSaveBtn"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="firebase-config.js"></script>
+  <script src="firebase-sot-service.js"></script>
+  <script src="data-service.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    const MESES = [
+      { key: '2025-12', label: 'Dez/2025' },
+      { key: '2026-01', label: 'Jan/2026' },
+      { key: '2026-02', label: 'Fev/2026' }
+    ];
+
+    function toast(msg, ms=2600){
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.remove('show'), ms);
+    }
+
+    function normalize(str){
+      return String(str || '').trim().toLowerCase();
+    }
+
+    function parseBairros(){
+      const raw = document.getElementById('bairrosInput').value || '';
+      return raw.split(',')
+        .map(s => normalize(s))
+        .filter(Boolean);
+    }
+
+    function toMonthKey(dateStr){
+      const d = parseDateFlexible(dateStr);
+      if (!d) return null;
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      return `${y}-${m}`;
+    }
+
+    function parseDateFlexible(v){
+      if (!v) return null;
+      if (v instanceof Date && !isNaN(v.getTime())) return v;
+      const s = String(v).trim();
+      if (!s) return null;
+
+      // YYYY-MM-DD or YYYY-MM-DDTHH:mm
+      const iso = new Date(s);
+      if (!isNaN(iso.getTime())) return iso;
+
+      // DD/MM/YYYY
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m){
+        const dd = Number(m[1]), mm = Number(m[2]), yyyy = Number(m[3]);
+        const d = new Date(yyyy, mm-1, dd);
+        if (!isNaN(d.getTime())) return d;
+      }
+      return null;
+    }
+
+    function toISODate(value){
+      if (!value) return '';
+      const s = String(value).trim();
+      if (!s) return '';
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) return `${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+      const d = new Date(s);
+      if (!isNaN(d.getTime())){
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+      return '';
+    }
+
+    function parseNumberAny(v){
+      if (typeof v === 'number' && isFinite(v)) return v;
+      if (v == null) return null;
+      const s = String(v).trim();
+      if (!s) return null;
+      const cleaned = s.replace(/[^\d,.-]/g,'').replace(/\./g,'').replace(',', '.');
+      const n = Number(cleaned);
+      return isFinite(n) ? n : null;
+    }
+
+    function inferKm(item){
+      // Preferencial (padrão SOT): kmChegada - kmSaida
+      const kmS = parseNumberAny(item.kmSaida);
+      const kmC = parseNumberAny(item.kmChegada);
+      if (kmS != null && kmC != null){
+        const d = kmC - kmS;
+        if (isFinite(d) && d > 0) return d;
+      }
+      // Compatibilidade com dados antigos: km único (ex.: "707")
+      const candidates = [item.km, item.KM, item.quilometragem, item.quilometragemGasta, item.kmRodado, item.distancia, item.distância];
+      for (const c of candidates){
+        const n = parseNumberAny(c);
+        if (n != null && n > 0) return n;
+      }
+      return 0;
+    }
+
+    function isTipoAmbulancia(item){
+      // Em saidasAmbulancias, alguns registros antigos podem vir sem 'tipo'
+      const t = normalize(item.tipo);
+      if (!t) return true;
+      return t === 'ambulância' || t === 'ambulancia' || t.includes('ambul');
+    }
+
+    function getBairro(item){
+      // Compatibilidade: bairro pode vir em campos alternativos
+      return normalize(item.bairro || item.endereco_bairro || item['Bairro'] || '');
+    }
+
+    function getDestino(item){
+      // Ambulância normalmente usa 'hospital'; fallback em 'objetivo'
+      return (item.hospital || item.objetivo || item.destino || item['Hospital de Destino'] || '').toString();
+    }
+
+    function getData(item){
+      // Preferencial: dataSaida; compat: data
+      return item.dataSaida || item.data || item.data_saida || item['Data'] || item['DATA'] || '';
+    }
+
+    function getViatura(item){
+      return (item.viatura || item.prefixo || item.veiculo || item['Viatura'] || item['VEÍCULO'] || '').toString();
+    }
+
+    function getMotorista(item){
+      return (item.motorista || item.condutor || item['Motorista'] || item['CONDUTOR'] || '').toString();
+    }
+
+    function normalizeSaidaAmb(raw){
+      const s = raw && typeof raw === 'object' ? { ...raw } : {};
+      // Forçar/normalizar tipo
+      if (!s.tipo) s.tipo = 'Ambulância';
+      // Data
+      if (!s.dataSaida) s.dataSaida = s.data || s.data_saida || '';
+      // Hora
+      if (!s.horaSaida) s.horaSaida = s.saida || s.horario || s.hora || '';
+      // Bairro/Hospital
+      if (!s.bairro) s.bairro = s.endereco_bairro || s['Bairro'] || '';
+      if (!s.hospital) s.hospital = s['Hospital de Destino'] || s.hospitalDestino || s.hospital || '';
+      // ID
+      if (!s.id) s.id = s._id || s.uuid || s.key || '';
+      if (!s.id){
+        const seed = [
+          s.dataSaida || '',
+          s.horaSaida || '',
+          s.viatura || s.viatura_id || '',
+          s.motorista || s.motorista_id || '',
+          s.bairro || '',
+          s.hospital || '',
+          s.kmSaida || '',
+          s.kmChegada || '',
+          s.km || s.KM || ''
+        ].join('|');
+        s.id = 'norm_' + btoa(unescape(encodeURIComponent(seed))).slice(0, 32);
+      }
+      return s;
+    }
+
+    function mergeById(primaryArr, secondaryArr){
+      const map = new Map();
+      (Array.isArray(primaryArr) ? primaryArr : []).forEach(it => {
+        const n = normalizeSaidaAmb(it);
+        map.set(String(n.id), n);
+      });
+      (Array.isArray(secondaryArr) ? secondaryArr : []).forEach(it => {
+        const n = normalizeSaidaAmb(it);
+        const id = String(n.id);
+        if (!map.has(id)) map.set(id, n);
+      });
+      return Array.from(map.values());
+    }
+
+    async function getSaidasAmbulanciasFirebaseFirst(){
+      let remote = null;
+      // 1) Firebase direto
+      if (window.firebaseSot && typeof window.firebaseSot.get === 'function'){
+        try{
+          const fb = await window.firebaseSot.get('saidasAmbulancias');
+          if (Array.isArray(fb)) remote = fb;
+        }catch(e){
+          console.warn('DICAMP CEMERU: falha ao carregar saidasAmbulancias do Firebase', e);
+        }
+      }
+      // 2) dataService (se existir) - como fallback
+      if (!remote && window.dataService && typeof window.dataService.getSaidasAmbulancias === 'function'){
+        try{
+          const ds = await window.dataService.getSaidasAmbulancias();
+          if (Array.isArray(ds)) remote = ds;
+        }catch(e){
+          console.warn('DICAMP CEMERU: falha ao carregar saidasAmbulancias via dataService', e);
+        }
+      }
+      // localStorage (offline)
+      let local = [];
+      try{
+        local = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+      }catch(e){
+        localStorage.removeItem('saidasAmbulancias');
+        local = [];
+      }
+      const merged = mergeById(remote || [], local);
+      try{ localStorage.setItem('saidasAmbulancias', JSON.stringify(merged)); } catch(e){}
+      return merged;
+    }
+
+    function buildMonthlySummary(items, kmPerLiter, dieselPrice){
+      const byMonth = new Map(MESES.map(m => [m.key, { key: m.key, label: m.label, saidas: 0, km: 0 }]));
+      for (const it of items){
+        const mk = toMonthKey(getData(it));
+        if (!mk || !byMonth.has(mk)) continue;
+        const b = byMonth.get(mk);
+        b.saidas += 1;
+        b.km += inferKm(it);
+      }
+      const rows = [];
+      for (const m of MESES){
+        const r = byMonth.get(m.key);
+        const litros = kmPerLiter > 0 ? (r.km / kmPerLiter) : 0;
+        const custo = litros * dieselPrice;
+        rows.push({ ...r, litros, custo });
+      }
+      return rows;
+    }
+
+    function renderMonthlyTable(rows){
+      const tbody = document.querySelector('#monthlyTable tbody');
+      tbody.innerHTML = '';
+      for (const r of rows){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.label}</td>
+          <td class="right mono">${formatInt(r.saidas)}</td>
+          <td class="right mono">${formatNumber(r.km, 0)}</td>
+          <td class="right mono">${formatNumber(r.litros, 1)}</td>
+          <td class="right mono">${formatCurrency(r.custo)}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderDetailTable(items){
+      const tbody = document.querySelector('#detailTable tbody');
+      tbody.innerHTML = '';
+      for (const it of items){
+        const d = parseDateFlexible(getData(it));
+        const dateLabel = d ? d.toLocaleDateString('pt-BR') : (getData(it) || '');
+        const tr = document.createElement('tr');
+        tr.dataset.id = String(it.id || '');
+        tr.title = 'Duplo clique para editar';
+        tr.innerHTML = `
+          <td class="mono">${escapeHtml(dateLabel)}</td>
+          <td>${escapeHtml(getViatura(it))}</td>
+          <td>${escapeHtml(getMotorista(it))}</td>
+          <td>${escapeHtml((getBairro(it) || '').toString())}</td>
+          <td>${escapeHtml(getDestino(it))}</td>
+          <td class="right mono">${formatNumber(inferKm(it), 0)}</td>
+        `;
+        tr.addEventListener('dblclick', () => openEdit(it));
+        tbody.appendChild(tr);
+      }
+    }
+
+    function formatInt(n){
+      const v = Number(n || 0);
+      return isFinite(v) ? v.toLocaleString('pt-BR') : '0';
+    }
+    function formatNumber(n, digits=0){
+      const v = Number(n || 0);
+      return isFinite(v) ? v.toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '0';
+    }
+    function formatCurrency(v){
+      const n = Number(v || 0);
+      return isFinite(n) ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+    }
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    }
+
+    function filterItems(all, bairros){
+      const allowedMonths = new Set(MESES.map(m => m.key));
+      const bairrosSet = new Set(bairros);
+      return all.filter(it => {
+        if (!isTipoAmbulancia(it)) return false;
+        const mk = toMonthKey(getData(it));
+        if (!mk || !allowedMonths.has(mk)) return false;
+        const b = getBairro(it);
+        if (!b) return false;
+        // Excluir destinos específicos
+        const dest = normalize(getDestino(it));
+        if (dest.includes('upa')) return false;
+        if (dest.includes('rocha faria')) return false;
+        if (dest.includes('alta')) return false;
+        // Remover registro específico informado (não deve aparecer no relatório)
+        try{
+          const dIso = (function(){
+            const d = parseDateFlexible(getData(it));
+            if (!d) return '';
+            return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+          })();
+          const v = normalize(getViatura(it));
+          const m = normalize(getMotorista(it));
+          const kmSingle = parseNumberAny(it.km ?? it.KM ?? it.quilometragem ?? it.quilometragemGasta ?? it.kmRodado ?? it.distancia ?? it.distância);
+          if (
+            dIso === '2025-12-20' &&
+            v === normalize('TTD-1A38') &&
+            m.includes(normalize('MN-RM2 PRADO')) &&
+            b === normalize('campo grande') &&
+            dest.includes(normalize('di camp')) &&
+            kmSingle === 707
+          ) return false;
+        }catch(e){}
+        return bairrosSet.has(b);
+      });
+    }
+
+    async function saveSaidaAmbulanciaById(updated){
+      const id = String(updated.id || '');
+      if (!id) throw new Error('Saída sem id.');
+
+      // 1) Firebase direto
+      if (window.firebaseSot && typeof window.firebaseSot.get === 'function' && typeof window.firebaseSot.set === 'function'){
+        const atuais = await window.firebaseSot.get('saidasAmbulancias');
+        const list = Array.isArray(atuais) ? atuais : [];
+        let found = false;
+        const next = list.map(it => {
+          const nid = String((it && it.id) || '');
+          if (nid && nid === id){
+            found = true;
+            return { ...it, ...updated };
+          }
+          return it;
+        });
+        if (!found) next.push(updated);
+        await window.firebaseSot.set('saidasAmbulancias', next);
+        try{ localStorage.setItem('saidasAmbulancias', JSON.stringify(next)); }catch(e){}
+        return;
+      }
+
+      // 2) dataService
+      if (window.dataService && typeof window.dataService.getSaidasAmbulancias === 'function' && typeof window.dataService.setSaidasAmbulancias === 'function'){
+        const atuais = await window.dataService.getSaidasAmbulancias();
+        const list = Array.isArray(atuais) ? atuais : [];
+        let found = false;
+        const next = list.map(it => {
+          const nid = String((it && it.id) || '');
+          if (nid && nid === id){
+            found = true;
+            return { ...it, ...updated };
+          }
+          return it;
+        });
+        if (!found) next.push(updated);
+        await window.dataService.setSaidasAmbulancias(next);
+        try{ localStorage.setItem('saidasAmbulancias', JSON.stringify(next)); }catch(e){}
+        return;
+      }
+
+      // 3) localStorage
+      let list = [];
+      try{ list = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); }catch(e){ list = []; }
+      let found = false;
+      const next = (Array.isArray(list) ? list : []).map(it => {
+        const nid = String((it && it.id) || '');
+        if (nid && nid === id){
+          found = true;
+          return { ...it, ...updated };
+        }
+        return it;
+      });
+      if (!found) next.push(updated);
+      localStorage.setItem('saidasAmbulancias', JSON.stringify(next));
+    }
+
+    const editEls = {
+      backdrop: () => document.getElementById('editBackdrop'),
+      close: () => document.getElementById('editCloseBtn'),
+      cancel: () => document.getElementById('editCancelBtn'),
+      save: () => document.getElementById('editSaveBtn'),
+      dataSaida: () => document.getElementById('editDataSaida'),
+      horaSaida: () => document.getElementById('editHoraSaida'),
+      viatura: () => document.getElementById('editViatura'),
+      motorista: () => document.getElementById('editMotorista'),
+      bairro: () => document.getElementById('editBairro'),
+      hospital: () => document.getElementById('editHospital'),
+      kmSaida: () => document.getElementById('editKmSaida'),
+      kmChegada: () => document.getElementById('editKmChegada'),
+      chegada: () => document.getElementById('editChegada')
+    };
+    let editingItem = null;
+
+    function openEdit(item){
+      editingItem = item ? { ...item } : null;
+      if (!editingItem) return;
+
+      editEls.dataSaida().value = editingItem.dataSaida || getData(editingItem) || '';
+      editEls.horaSaida().value = editingItem.horaSaida || editingItem.saida || editingItem.horario || editingItem.hora || '';
+      editEls.viatura().value = getViatura(editingItem) || '';
+      editEls.motorista().value = getMotorista(editingItem) || '';
+      editEls.bairro().value = (editingItem.bairro || '').toString();
+      editEls.hospital().value = (editingItem.hospital || getDestino(editingItem) || '').toString();
+      editEls.kmSaida().value = (editingItem.kmSaida || '').toString();
+      editEls.kmChegada().value = (editingItem.kmChegada || '').toString();
+      editEls.chegada().value = (editingItem.chegada || '').toString();
+
+      editEls.backdrop().classList.add('show');
+      editEls.backdrop().setAttribute('aria-hidden', 'false');
+    }
+
+    function closeEdit(){
+      editingItem = null;
+      editEls.backdrop().classList.remove('show');
+      editEls.backdrop().setAttribute('aria-hidden', 'true');
+    }
+
+    async function saveEdit(){
+      if (!editingItem) return;
+      const btn = editEls.save();
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Salvando...';
+      try{
+        const updated = { ...editingItem };
+        updated.tipo = updated.tipo || 'Ambulância';
+        updated.dataSaida = toISODate(editEls.dataSaida().value) || (updated.dataSaida || '');
+        updated.horaSaida = String(editEls.horaSaida().value || '').trim();
+        updated.saida = updated.horaSaida || updated.saida || '';
+        updated.horario = updated.horaSaida || updated.horario || '';
+        updated.hora = updated.horaSaida || updated.hora || '';
+        updated.viatura = String(editEls.viatura().value || '').trim();
+        updated.motorista = String(editEls.motorista().value || '').trim();
+        updated.bairro = String(editEls.bairro().value || '').trim();
+        updated.hospital = String(editEls.hospital().value || '').trim();
+        updated.kmSaida = String(editEls.kmSaida().value || '').trim();
+        updated.kmChegada = String(editEls.kmChegada().value || '').trim();
+        updated.chegada = String(editEls.chegada().value || '').trim();
+
+        await saveSaidaAmbulanciaById(updated);
+        toast('Saída atualizada.');
+        closeEdit();
+        await refresh();
+      }catch(e){
+        console.error(e);
+        toast('Falha ao salvar edição.');
+      }finally{
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    }
+
+    async function refresh(){
+      const kmPerLiter = Number(document.getElementById('kmPerLiter').value || 0);
+      const dieselPrice = Number(document.getElementById('dieselPrice').value || 0);
+      const bairros = parseBairros();
+
+      const all = await getSaidasAmbulanciasFirebaseFirst();
+      const filtered = filterItems(all, bairros)
+        .map(it => ({ ...it, _d: parseDateFlexible(getData(it)) }))
+        .sort((a,b) => (a._d?.getTime() || 0) - (b._d?.getTime() || 0));
+
+      document.getElementById('resultPill').innerHTML = `<i class="fa-solid fa-filter"></i> ${formatInt(filtered.length)} registros`;
+
+      const kmTotal = filtered.reduce((acc,it) => acc + inferKm(it), 0);
+      const litrosTotal = kmPerLiter > 0 ? (kmTotal / kmPerLiter) : 0;
+      const custoTotal = litrosTotal * dieselPrice;
+
+      document.getElementById('kpiKmTotal').textContent = formatNumber(kmTotal, 0);
+      document.getElementById('kpiTotalSaidas').textContent = formatInt(filtered.length);
+      document.getElementById('kpiLitrosTotal').textContent = formatNumber(litrosTotal, 1);
+      document.getElementById('kpiCustoTotal').textContent = formatCurrency(custoTotal);
+
+      const rows = buildMonthlySummary(filtered, kmPerLiter, dieselPrice);
+      renderMonthlyTable(rows);
+      renderDetailTable(filtered);
+
+      refresh._state = { filtered, rows, kmPerLiter, dieselPrice, bairros, kmTotal, litrosTotal, custoTotal };
+    }
+
+    async function buildPdf(){
+      const st = refresh._state;
+      if (!st) { toast('Carregue os dados antes de gerar o PDF.'); return; }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const marginX = 40;
+      let y = 44;
+
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(16);
+      doc.text('DICAMP CEMERU - Relatório de Saídas (Ambulância)', marginX, y);
+      y += 18;
+
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(10);
+      doc.text(`Período: Dez/2025, Jan/2026, Fev/2026`, marginX, y);
+      y += 14;
+      doc.text(`Filtro Bairro: ${st.bairros.join(', ')}`, marginX, y);
+      y += 14;
+      doc.text(`Preço Diesel: R$ ${Number(st.dieselPrice||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})} | Consumo: ${Number(st.kmPerLiter||0).toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1})} km/L`, marginX, y);
+      y += 18;
+
+      doc.setFont('helvetica','bold');
+      doc.text(`Total KM: ${formatNumber(st.kmTotal,0)} | Saídas: ${formatInt(st.filtered.length)} | Diesel: ${formatNumber(st.litrosTotal,1)} L | Custo: ${formatCurrency(st.custoTotal)}`, marginX, y);
+      y += 16;
+
+      doc.setFont('helvetica','bold');
+      doc.text('Resumo mensal', marginX, y);
+      y += 6;
+      doc.autoTable({
+        startY: y,
+        head: [[ 'Mês', 'Saídas', 'KM', 'Diesel (L)', 'Custo (R$)' ]],
+        body: st.rows.map(r => [
+          r.label,
+          String(r.saidas),
+          String(Math.round(r.km)),
+          String(Number(r.litros).toFixed(1)),
+          (Number(r.custo||0)).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })
+        ]),
+        styles: { font: 'helvetica', fontSize: 9 },
+        headStyles: { fillColor: [11,16,32], textColor: 240 },
+        theme: 'grid',
+        margin: { left: marginX, right: marginX }
+      });
+
+      y = doc.lastAutoTable.finalY + 18;
+      doc.setFont('helvetica','bold');
+      doc.text('Detalhamento (filtrado)', marginX, y);
+      y += 6;
+
+      const detailRows = st.filtered.map(it => {
+        const d = parseDateFlexible(getData(it));
+        const dateLabel = d ? d.toLocaleDateString('pt-BR') : (getData(it) || '');
+        return [
+          dateLabel,
+          getViatura(it) || '',
+          getMotorista(it) || '',
+          (getBairro(it) || ''),
+          getDestino(it) || '',
+          String(Math.round(inferKm(it)))
+        ];
+      });
+
+      doc.autoTable({
+        startY: y,
+        head: [[ 'Data', 'Viatura', 'Motorista', 'Bairro', 'Destino', 'KM' ]],
+        body: detailRows,
+        styles: { font: 'helvetica', fontSize: 8 },
+        headStyles: { fillColor: [11,16,32], textColor: 240 },
+        theme: 'grid',
+        margin: { left: marginX, right: marginX },
+        columnStyles: { 5: { halign: 'right' } }
+      });
+
+      const file = `DICAMP-CEMERU_${new Date().toISOString().slice(0,10)}.pdf`;
+      doc.save(file);
+    }
+
+    function wire(){
+      document.getElementById('refreshBtn').addEventListener('click', () => refresh().catch(e => { console.error(e); toast('Falha ao carregar dados.'); }));
+      document.getElementById('pdfBtn').addEventListener('click', () => buildPdf());
+      for (const id of ['dieselPrice','kmPerLiter','bairrosInput']){
+        document.getElementById(id).addEventListener('change', () => refresh().catch(()=>{}));
+      }
+
+      editEls.close().addEventListener('click', closeEdit);
+      editEls.cancel().addEventListener('click', closeEdit);
+      editEls.backdrop().addEventListener('click', (ev) => { if (ev.target === editEls.backdrop()) closeEdit(); });
+      document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && editEls.backdrop().classList.contains('show')) closeEdit(); });
+      editEls.save().addEventListener('click', () => saveEdit());
+    }
+
+    (async function init(){
+      wire();
+      try{
+        await refresh();
+        toast('Dados carregados.');
+      }catch(e){
+        console.error(e);
+        toast('Não foi possível carregar os dados agora.');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DiCamp Estatísticas - SOT</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root{
+      --bg: #0b1020;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.08);
+      --text: #e5e7eb;
+      --muted: rgba(229,231,235,0.7);
+      --border: rgba(255,255,255,0.12);
+      --accent: #38bdf8;
+      --accent2: #22c55e;
+      --warn: #f59e0b;
+      --danger: #fb7185;
+      --shadow: 0 18px 45px rgba(0,0,0,0.45);
+      --radius: 16px;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% 0%, rgba(56,189,248,0.18), transparent 55%),
+                  radial-gradient(1000px 700px at 100% 10%, rgba(34,197,94,0.10), transparent 50%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 22px 16px 30px;
+    }
+    header{
+      background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.05));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 18px 14px;
+      box-shadow: var(--shadow);
+    }
+    .title{
+      display:flex;
+      gap: 12px;
+      align-items:center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    h1{
+      margin:0;
+      font-size: 20px;
+      letter-spacing: 0.02em;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.18);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .sub{
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    @media (min-width: 900px){
+      .grid{ grid-template-columns: 1.2fr 0.8fr; }
+    }
+    .panel{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-head{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: rgba(0,0,0,0.22);
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(229,231,235,0.9);
+    }
+    .panel-body{ padding: 14px; }
+
+    .controls{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 900px){
+      .controls{ grid-template-columns: 1fr; }
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .field label{
+      display:block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .field input, .field select{
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+      color: var(--text);
+      outline: none;
+      font-weight: 600;
+    }
+    .field input:focus, .field select:focus{
+      border-color: rgba(56,189,248,0.7);
+      box-shadow: 0 0 0 4px rgba(56,189,248,0.14);
+    }
+    .actions{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn{
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.28);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 700;
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+    }
+    .btn.primary{
+      background: rgba(56,189,248,0.18);
+      border-color: rgba(56,189,248,0.5);
+    }
+    .btn:disabled{
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    @media (min-width: 700px){
+      .kpis{ grid-template-columns: repeat(3, 1fr); }
+    }
+    .kpi{
+      padding: 12px 12px 10px;
+      border-radius: 14px;
+      background: var(--panel2);
+      border: 1px solid var(--border);
+    }
+    .kpi .label{
+      font-size: 12px;
+      color: var(--muted);
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+    .kpi .value{
+      margin-top: 6px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+    .kpi .hint{
+      margin-top: 4px;
+      font-size: 12px;
+      color: rgba(229,231,235,0.65);
+    }
+    .kpi .value.accent{ color: #e5f0ff; }
+    .kpi .value.green{ color: #bbf7d0; }
+    .kpi .value.warn{ color: #fde68a; }
+
+    table{
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,0.16);
+    }
+    thead th{
+      text-align:left;
+      padding: 10px 10px;
+      font-size: 12px;
+      color: rgba(229,231,235,0.86);
+      border-bottom: 1px solid var(--border);
+      background: rgba(0,0,0,0.22);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    tbody td{
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 13px;
+      color: rgba(229,231,235,0.92);
+    }
+    tbody tr:last-child td{ border-bottom: none; }
+    .mono{ font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .muted{ color: var(--muted); }
+    .note{
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(245,158,11,0.35);
+      background: rgba(245,158,11,0.10);
+      color: rgba(253,230,138,0.95);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .footer{
+      margin-top: 10px;
+      color: rgba(229,231,235,0.55);
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">
+        <h1><i class="fas fa-chart-line" style="color: var(--accent)"></i> DiCamp Estatísticas</h1>
+        <div class="badge"><i class="fas fa-filter"></i> Hospital de Destino: <strong>Di Camp</strong></div>
+      </div>
+      <div class="sub">
+        Dados base: <strong>Saídas de Ambulância</strong> cadastradas no SOT (Firebase). Período fixo: <strong>Dez/2025</strong>, <strong>Jan/2026</strong>, <strong>Fev/2026</strong>.
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fas fa-sliders-h" style="color: var(--accent)"></i> Parâmetros de cálculo</div>
+        </div>
+        <div class="panel-body">
+          <div class="controls">
+            <div class="row">
+              <div class="field">
+                <label><i class="fas fa-gas-pump" style="color: var(--accent)"></i> Custo do Diesel (R$/L)</label>
+                <input id="dieselCost" type="number" step="0.01" value="6.39" />
+              </div>
+              <div class="field">
+                <label><i class="fas fa-tachometer-alt" style="color: var(--accent2)"></i> Consumo médio (km/L) — estimativa</label>
+                <input id="kmPerLiter" type="number" step="0.1" value="7.0" />
+              </div>
+            </div>
+            <div class="actions">
+              <button id="reloadBtn" class="btn primary"><i class="fas fa-sync-alt"></i> Recarregar e calcular</button>
+              <button id="exportBtn" class="btn"><i class="fas fa-file-export"></i> Exportar CSV (saídas filtradas)</button>
+              <button id="pdfBtn" class="btn"><i class="fas fa-file-pdf"></i> Gerar PDF</button>
+            </div>
+            <div class="note">
+              <strong>Observação</strong>: as saídas não possuem “litros consumidos” por ocorrência. Portanto, o <strong>Diesel (L)</strong> é calculado por estimativa: \(litros = km\_total / (km/L)\).
+              Se você preferir, podemos integrar com registros de abastecimento por viatura para melhorar a precisão.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fas fa-bolt" style="color: var(--accent2)"></i> Resumo</div>
+          <div id="status" class="muted" style="font-size: 12px;"></div>
+        </div>
+        <div class="panel-body">
+          <div class="kpis" id="kpis"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top: 12px;">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fas fa-calendar-alt" style="color: var(--accent)"></i> Por mês</div>
+      </div>
+      <div class="panel-body">
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th class="mono">Qtd saídas</th>
+                <th class="mono">KM total</th>
+                <th class="mono">KM médio/saída</th>
+                <th class="mono">Diesel (L) est.</th>
+                <th class="mono">Custo Diesel (R$)</th>
+              </tr>
+            </thead>
+            <tbody id="byMonthBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" style="margin-top: 12px;">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fas fa-list" style="color: var(--accent)"></i> Saídas filtradas</div>
+      </div>
+      <div class="panel-body">
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Viatura</th>
+                <th>Motorista</th>
+                <th>Hospital</th>
+                <th class="mono">KM Saída</th>
+                <th class="mono">KM Chegada</th>
+                <th class="mono">KM gasto</th>
+              </tr>
+            </thead>
+            <tbody id="exitsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">SOT — DiCamp Estatísticas</div>
+  </div>
+
+  <!-- PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- Firebase + serviços do SOT -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="Todas%20as%20abas/firebase-config.js"></script>
+  <script src="Todas%20as%20abas/firebase-sot-service.js"></script>
+  <script src="Todas%20as%20abas/api-service.js"></script>
+  <script src="Todas%20as%20abas/data-service.js"></script>
+
+  <script>
+    const TARGET_HOSPITAL = "di camp";
+    const MONTHS = [
+      { key: "2025-12", label: "Dez/2025", year: 2025, month: 12 },
+      { key: "2026-01", label: "Jan/2026", year: 2026, month: 1 },
+      { key: "2026-02", label: "Fev/2026", year: 2026, month: 2 },
+    ];
+
+    function parseISODate(d) {
+      if (!d) return null;
+      if (typeof d !== "string") return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        const dt = new Date(d + "T00:00:00");
+        return isNaN(dt.getTime()) ? null : dt;
+      }
+      return null;
+    }
+
+    function getSaidaDate(saida) {
+      return saida.dataSaida || saida.data || "";
+    }
+
+    function getSaidaHour(saida) {
+      return saida.horaSaida || saida.saida || saida.horario || saida.hora || "";
+    }
+
+    function kmToNumber(km) {
+      if (km == null) return null;
+      const s = String(km).trim();
+      if (!s) return null;
+      const n = parseFloat(s.replace(/\./g, "").replace(",", "."));
+      return isNaN(n) ? null : n;
+    }
+
+    function formatNumberBR(n, decimals = 0) {
+      if (n == null || isNaN(n)) return "—";
+      return n.toLocaleString("pt-BR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    function formatMoneyBR(n) {
+      if (n == null || isNaN(n)) return "—";
+      return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function normalizeHospital(h) {
+      return String(h || "").trim().toLowerCase();
+    }
+
+    function monthKeyFromDateStr(dateStr) {
+      const dt = parseISODate(dateStr);
+      if (!dt) return null;
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      return `${y}-${m}`;
+    }
+
+    async function getSaidasAmbulancias() {
+      // Prioridade: firebaseSot direto, depois dataService, depois localStorage
+      if (window.firebaseSot && typeof window.firebaseSot.get === "function") {
+        try {
+          const fb = await window.firebaseSot.get("saidasAmbulancias");
+          if (Array.isArray(fb)) return fb;
+        } catch (e) {}
+      }
+      if (window.dataService && typeof window.dataService.getSaidasAmbulancias === "function") {
+        try {
+          const data = await window.dataService.getSaidasAmbulancias();
+          if (Array.isArray(data)) return data;
+        } catch (e) {}
+      }
+      try {
+        const raw = localStorage.getItem("saidasAmbulancias");
+        const list = raw ? JSON.parse(raw) : [];
+        return Array.isArray(list) ? list : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function buildCsv(rows) {
+      const header = ["dataSaida","horaSaida","viatura","motorista","hospital","kmSaida","kmChegada","kmGasto"];
+      const lines = [header.join(";")];
+      rows.forEach(r => {
+        const line = header.map(k => String(r[k] ?? "").replaceAll(";", ",")).join(";");
+        lines.push(line);
+      });
+      return lines.join("\n");
+    }
+
+    function downloadText(filename, content, mime = "text/plain") {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function setStatus(text) {
+      const el = document.getElementById("status");
+      if (el) el.textContent = text || "";
+    }
+
+    let lastReport = null;
+
+    function buildPdf(report) {
+      if (!report) {
+        alert("Nenhum dado calculado ainda. Clique em 'Recarregar e calcular' antes.");
+        return;
+      }
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("Biblioteca de PDF não carregou. Verifique sua conexão e recarregue a página.");
+        return;
+      }
+
+      const { byMonth, filtered, totals, params, generatedAtIso } = report;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Cabeçalho
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("DiCamp Estatísticas — Saídas de Ambulância", pageWidth / 2, 46, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Hospital de destino: Di Camp`, 40, 66);
+      doc.text(`Período: Dez/2025, Jan/2026, Fev/2026`, 40, 80);
+      doc.text(`Gerado em: ${generatedAtIso.replace("T", " ").slice(0, 19)}`, 40, 94);
+
+      // Parâmetros
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Parâmetros de cálculo", 40, 120);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Custo do Diesel (R$/L): ${params.dieselCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 40, 138);
+      doc.text(`Consumo médio (km/L): ${params.kmPerLiter.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`, 40, 152);
+
+      // Resumo
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Resumo (3 meses)", 40, 178);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Total de saídas: ${totals.totalExits}`, 40, 196);
+      doc.text(`KM total: ${totals.totalKm.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`, 40, 210);
+      doc.text(`Diesel (L) estimado: ${totals.totalDieselLiters.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 40, 224);
+      doc.text(`Custo Diesel estimado: ${totals.totalDieselCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`, 40, 238);
+
+      // Tabela por mês
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Detalhamento por mês", 40, 268);
+
+      const monthRows = MONTHS.map(m => {
+        const r = byMonth[m.key] || { exits: 0, km: 0, dieselLiters: 0, dieselCost: 0 };
+        const kmAvg = r.exits ? (r.km / r.exits) : 0;
+        return [
+          m.label,
+          String(r.exits),
+          r.km.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+          kmAvg.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+          r.dieselLiters.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          r.dieselCost.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+        ];
+      });
+
+      doc.autoTable({
+        startY: 282,
+        head: [["Mês", "Qtd", "KM total", "KM méd/saída", "Diesel (L)", "Custo (R$)"]],
+        body: monthRows,
+        styles: { font: "helvetica", fontSize: 9, cellPadding: 4 },
+        headStyles: { fillColor: [26, 54, 93], textColor: 255 },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { left: 40, right: 40 },
+      });
+
+      // Tabela de saídas filtradas (resumida)
+      const after = doc.lastAutoTable ? doc.lastAutoTable.finalY : 700;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Saídas filtradas (resumo)", 40, after + 26);
+
+      const exitRows = filtered.map(s => {
+        const kmSaida = kmToNumber(s.kmSaida ?? s.km_saida);
+        const kmChegada = kmToNumber(s.kmChegada ?? s.km_chegada);
+        const kmGasto = (kmSaida != null && kmChegada != null && kmChegada >= kmSaida) ? (kmChegada - kmSaida) : 0;
+        return [
+          getSaidaDate(s) || "",
+          getSaidaHour(s) || "",
+          s.viatura || "",
+          s.motorista || "",
+          s.hospital || "",
+          String(s.kmSaida || s.km_saida || ""),
+          String(s.kmChegada || s.km_chegada || ""),
+          kmGasto.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
+        ];
+      });
+
+      doc.autoTable({
+        startY: after + 40,
+        head: [["Data", "Hora", "Viatura", "Motorista", "Hospital", "KM Saída", "KM Chegada", "KM gasto"]],
+        body: exitRows,
+        styles: { font: "helvetica", fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [56, 189, 248], textColor: 0 },
+        alternateRowStyles: { fillColor: [250, 251, 252] },
+        margin: { left: 40, right: 40 },
+      });
+
+      const fileName = `DiCamp_Estatisticas_${MONTHS[0].key}_a_${MONTHS[2].key}.pdf`;
+      doc.save(fileName);
+    }
+
+    function renderKpis(summary) {
+      const el = document.getElementById("kpis");
+      el.innerHTML = "";
+      const items = [
+        { icon: "fa-route", label: "KM total (3 meses)", value: formatNumberBR(summary.totalKm, 1), cls: "accent", hint: "Somatório de (KM chegada − KM saída) nas saídas filtradas." },
+        { icon: "fa-ambulance", label: "Total de saídas", value: formatNumberBR(summary.totalExits, 0), cls: "green", hint: "Qtd de saídas de ambulância com Hospital = Di Camp." },
+        { icon: "fa-gas-pump", label: "Custo Diesel (3 meses)", value: formatMoneyBR(summary.totalDieselCost), cls: "warn", hint: `Estimado por km/L e custo do litro.` },
+      ];
+      items.forEach(i => {
+        const div = document.createElement("div");
+        div.className = "kpi";
+        div.innerHTML = `
+          <div class="label"><i class="fas ${i.icon}" style="color: var(--accent)"></i> ${i.label}</div>
+          <div class="value ${i.cls} mono">${i.value}</div>
+          <div class="hint">${i.hint}</div>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    function renderByMonth(byMonth) {
+      const tbody = document.getElementById("byMonthBody");
+      tbody.innerHTML = "";
+      MONTHS.forEach(m => {
+        const row = byMonth[m.key] || { exits: 0, km: 0, dieselLiters: 0, dieselCost: 0 };
+        const kmAvg = row.exits ? row.km / row.exits : 0;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${m.label}</strong></td>
+          <td class="mono">${formatNumberBR(row.exits,0)}</td>
+          <td class="mono">${formatNumberBR(row.km,1)}</td>
+          <td class="mono">${formatNumberBR(kmAvg,1)}</td>
+          <td class="mono">${formatNumberBR(row.dieselLiters,2)}</td>
+          <td class="mono">${formatMoneyBR(row.dieselCost)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderExits(exits) {
+      const tbody = document.getElementById("exitsBody");
+      tbody.innerHTML = "";
+      exits.forEach(s => {
+        const kmSaida = kmToNumber(s.kmSaida ?? s.km_saida);
+        const kmChegada = kmToNumber(s.kmChegada ?? s.km_chegada);
+        const kmGasto = (kmSaida != null && kmChegada != null && kmChegada >= kmSaida) ? (kmChegada - kmSaida) : 0;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${getSaidaDate(s) || "—"}</td>
+          <td class="mono">${getSaidaHour(s) || "—"}</td>
+          <td>${s.viatura || "—"}</td>
+          <td>${s.motorista || "—"}</td>
+          <td>${s.hospital || "—"}</td>
+          <td class="mono">${s.kmSaida || s.km_saida || "—"}</td>
+          <td class="mono">${s.kmChegada || s.km_chegada || "—"}</td>
+          <td class="mono">${formatNumberBR(kmGasto,1)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function run() {
+      const reloadBtn = document.getElementById("reloadBtn");
+      reloadBtn.disabled = true;
+      setStatus("Carregando do Firebase...");
+
+      const dieselCost = parseFloat(document.getElementById("dieselCost").value || "6.39");
+      const kmPerLiter = Math.max(0.1, parseFloat(document.getElementById("kmPerLiter").value || "6"));
+
+      const saidas = await getSaidasAmbulancias();
+
+      // Filtrar hospital Di Camp e meses específicos
+      const filtered = (saidas || [])
+        .filter(s => normalizeHospital(s.hospital) === TARGET_HOSPITAL)
+        .filter(s => MONTHS.some(m => m.key === monthKeyFromDateStr(getSaidaDate(s))));
+
+      // Ordenar por data/hora
+      filtered.sort((a, b) => {
+        const da = new Date(`${getSaidaDate(a)}T${getSaidaHour(a) || "00:00"}`);
+        const db = new Date(`${getSaidaDate(b)}T${getSaidaHour(b) || "00:00"}`);
+        return da - db;
+      });
+
+      const byMonth = {};
+      MONTHS.forEach(m => byMonth[m.key] = { exits: 0, km: 0, dieselLiters: 0, dieselCost: 0 });
+
+      let totalKm = 0;
+      filtered.forEach(s => {
+        const key = monthKeyFromDateStr(getSaidaDate(s));
+        if (!key || !(key in byMonth)) return;
+        const kmSaida = kmToNumber(s.kmSaida ?? s.km_saida);
+        const kmChegada = kmToNumber(s.kmChegada ?? s.km_chegada);
+        const kmGasto = (kmSaida != null && kmChegada != null && kmChegada >= kmSaida) ? (kmChegada - kmSaida) : 0;
+        byMonth[key].exits += 1;
+        byMonth[key].km += kmGasto;
+        totalKm += kmGasto;
+      });
+
+      MONTHS.forEach(m => {
+        const row = byMonth[m.key];
+        row.dieselLiters = row.km / kmPerLiter;
+        row.dieselCost = row.dieselLiters * dieselCost;
+      });
+
+      const totalExits = filtered.length;
+      const totalDieselLiters = MONTHS.reduce((sum, m) => sum + (byMonth[m.key].dieselLiters || 0), 0);
+      const totalDieselCost = MONTHS.reduce((sum, m) => sum + (byMonth[m.key].dieselCost || 0), 0);
+
+      renderKpis({ totalKm, totalExits, totalDieselLiters, totalDieselCost });
+      renderByMonth(byMonth);
+      renderExits(filtered);
+
+      lastReport = {
+        byMonth,
+        filtered,
+        totals: { totalKm, totalExits, totalDieselLiters, totalDieselCost },
+        params: { dieselCost, kmPerLiter },
+        generatedAtIso: new Date().toISOString()
+      };
+
+      setStatus(`OK • ${totalExits} saída(s) encontradas`);
+      reloadBtn.disabled = false;
+
+      // Export
+      const exportBtn = document.getElementById("exportBtn");
+      exportBtn.onclick = () => {
+        const rows = filtered.map(s => {
+          const kmSaida = kmToNumber(s.kmSaida ?? s.km_saida);
+          const kmChegada = kmToNumber(s.kmChegada ?? s.km_chegada);
+          const kmGasto = (kmSaida != null && kmChegada != null && kmChegada >= kmSaida) ? (kmChegada - kmSaida) : 0;
+          return {
+            dataSaida: getSaidaDate(s),
+            horaSaida: getSaidaHour(s),
+            viatura: s.viatura || "",
+            motorista: s.motorista || "",
+            hospital: s.hospital || "",
+            kmSaida: s.kmSaida || s.km_saida || "",
+            kmChegada: s.kmChegada || s.km_chegada || "",
+            kmGasto: kmGasto
+          };
+        });
+        downloadText("dicamp_saidas_ambulancia.csv", buildCsv(rows), "text/csv;charset=utf-8");
+      };
+    }
+
+    document.getElementById("pdfBtn").addEventListener("click", () => buildPdf(lastReport));
+    document.getElementById("reloadBtn").addEventListener("click", run);
+    window.addEventListener("load", run);
+  </script>
+</body>
+</html>
+

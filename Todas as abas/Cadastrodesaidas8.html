@@ -1686,6 +1686,83 @@ var ValidacaoCadastro = {
   }
 };
 
+// ========== NORMALIZAÇÃO (compatibilidade com dados antigos/offline) ==========
+function parseDateToISO(value) {
+  if (!value) return '';
+  var s = String(value).trim();
+  if (!s) return '';
+  // Já está em ISO (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // DD/MM/YYYY
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+  // tenta Date()
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  return '';
+}
+
+function normalizeSaida(raw, forcedTipo) {
+  var s = raw && typeof raw === 'object' ? { ...raw } : {};
+  var tipo = (s.tipo || forcedTipo || '').toString().trim();
+  if (!tipo) tipo = forcedTipo || '';
+  s.tipo = tipo;
+
+  // Datas: garantir dataSaida/dataPedido no formato ISO
+  if (!s.dataSaida) s.dataSaida = s.data || s.data_saida || s['Data'] || s['DATA'] || '';
+  if (!s.dataPedido) s.dataPedido = s.dataPedido || s.data_pedido || '';
+  s.dataSaida = parseDateToISO(s.dataSaida);
+  s.dataPedido = parseDateToISO(s.dataPedido);
+
+  // Hora
+  if (!s.horaSaida) s.horaSaida = s.saida || s.horario || s.hora || '';
+  if (!s.saida) s.saida = s.horaSaida || '';
+
+  // Destino/Bairro/Hospital (compat)
+  if (!s.bairro) s.bairro = s.endereco_bairro || s['Bairro'] || '';
+  if (!s.destino) s.destino = s.destino || s.bairro || '';
+  if (!s.hospital) s.hospital = s.hospitalDestino || s['Hospital de Destino'] || s.hospital || '';
+
+  // IDs (evitar itens "invisíveis" por não terem id)
+  if (!s.id) s.id = s._id || s.uuid || s.key || '';
+  if (!s.id) {
+    // fallback determinístico para não duplicar fácil
+    var seed = [
+      s.tipo || '',
+      s.dataSaida || '',
+      s.horaSaida || '',
+      s.viatura || s.viatura_id || '',
+      s.motorista || s.motorista_id || '',
+      s.bairro || '',
+      s.hospital || ''
+    ].join('|');
+    s.id = 'norm_' + btoa(unescape(encodeURIComponent(seed))).slice(0, 32);
+  }
+
+  // kmSaida/kmChegada: manter strings como no SOT
+  if (s.kmSaida == null) s.kmSaida = '';
+  if (s.kmChegada == null) s.kmChegada = '';
+  if (s.chegada == null) s.chegada = s.chegada || '';
+
+  return s;
+}
+
+function mergeById(primaryArr, secondaryArr, forcedTipo) {
+  var map = new Map();
+  (Array.isArray(primaryArr) ? primaryArr : []).forEach(function (it) {
+    var n = normalizeSaida(it, forcedTipo);
+    map.set(String(n.id), n);
+  });
+  (Array.isArray(secondaryArr) ? secondaryArr : []).forEach(function (it) {
+    var n = normalizeSaida(it, forcedTipo);
+    var id = String(n.id);
+    if (!map.has(id)) map.set(id, n);
+  });
+  return Array.from(map.values());
+}
+
 // ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
 loadItensData();
 setTimeout(function () {
@@ -2994,6 +3071,12 @@ if (responsavelInput) {
 }
 }
 async function loadDataAndPopulateTables() {
+// Também considerar registros offline (localStorage) para não "sumirem"
+var lsSaidasAdm = [];
+var lsSaidasAmb = [];
+try { lsSaidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]'); } catch (e) { lsSaidasAdm = []; }
+try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); } catch (e) { lsSaidasAmb = []; }
+
 if (typeof dataService !== 'undefined') {
     try {
         // dataService já tenta API/Firebase primeiro e só depois localStorage
@@ -3033,6 +3116,38 @@ if (typeof dataService !== 'undefined') {
     viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
     motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
 }
+
+// Normalizar + mesclar com offline para garantir visibilidade na tabela
+saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
+saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
+
+// Persistir cache normalizado
+try {
+  localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+  localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+} catch (e) {}
+
+// Se havia dados offline que não estavam no remoto, tenta subir (sem bloquear a UI)
+try {
+  if (typeof dataService !== 'undefined') {
+    // heurística simples: se local tem mais itens, tentar sincronizar
+    if (Array.isArray(lsSaidasAdm) && lsSaidasAdm.length > 0 && saidasAdministrativas.length >= lsSaidasAdm.length) {
+      dataService.setSaidasAdministrativas(saidasAdministrativas).catch(function(){});
+    }
+    if (Array.isArray(lsSaidasAmb) && lsSaidasAmb.length > 0 && saidasAmbulancias.length >= lsSaidasAmb.length) {
+      dataService.setSaidasAmbulancias(saidasAmbulancias).catch(function(){});
+    }
+  } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+    // fallback direto no firebase
+    if (Array.isArray(lsSaidasAdm) && lsSaidasAdm.length > 0 && saidasAdministrativas.length >= lsSaidasAdm.length) {
+      window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas).catch(function(){});
+    }
+    if (Array.isArray(lsSaidasAmb) && lsSaidasAmb.length > 0 && saidasAmbulancias.length >= lsSaidasAmb.length) {
+      window.firebaseSot.set('saidasAmbulancias', saidasAmbulancias).catch(function(){});
+    }
+  }
+} catch (e) {}
+
 loadItensData(); // Carregar itens personalizados
 populateAllYearFilters();
 populateCidadeFilter();
