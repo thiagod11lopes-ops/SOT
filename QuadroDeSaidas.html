@@ -670,6 +670,74 @@
                 }
             }
 
+            function normStr(v) {
+                return String(v == null ? '' : v).trim().toLowerCase();
+            }
+
+            function parseKmToNumber(raw) {
+                const str = String(raw == null ? '' : raw).trim();
+                if (!str) return NaN;
+                return parseFloat(str.replace('.', '').replace(',', '.'));
+            }
+
+            function computeRealizadaFromSaida(saida) {
+                const kmSaidaRaw = saida.kmSaida ?? saida.km_saida ?? '';
+                const kmChegadaRaw = saida.kmChegada ?? saida.km_chegada ?? '';
+                const chegadaRaw = saida.chegada ?? '';
+
+                const kmSaidaStr = String(kmSaidaRaw).trim();
+                const kmChegadaStr = String(kmChegadaRaw).trim();
+                const chegadaStr = String(chegadaRaw).trim();
+
+                if (!kmSaidaStr || !kmChegadaStr || !chegadaStr) return false;
+
+                const kmSaidaNum = parseKmToNumber(kmSaidaStr);
+                const kmChegadaNum = parseKmToNumber(kmChegadaStr);
+                if (isNaN(kmSaidaNum) || isNaN(kmChegadaNum)) return false;
+
+                return kmChegadaNum > kmSaidaNum;
+            }
+
+            // Gera id estável (não depende de km/chegada) para permitir edição mesmo quando s.id vier vazio
+            function genSaidaIdStable(saida) {
+                const data = String(saida.dataSaida ?? saida.data ?? '').trim();
+                const hora = String(saida.horaSaida ?? saida.hora ?? saida.saida ?? '').trim();
+                const viatura = String(saida.viatura ?? saida.viatura_id ?? '').trim();
+                const motorista = String(saida.motorista ?? saida.motorista_id ?? '').trim();
+                const destino = String(saida.hospital ?? saida.objetivo ?? saida.destino ?? '').trim();
+                const seed = [data, hora, viatura, motorista, destino].join('|');
+                const b = btoa(unescape(encodeURIComponent(seed)));
+                return 'gen_' + b.slice(0, 28);
+            }
+
+            function getSaidaId(saida) {
+                const id = saida?.id ?? saida?._id ?? saida?.uuid ?? saida?.key ?? saida?.saidaId ?? saida?.saida_id;
+                if (id != null && String(id).trim() !== '') return String(id).trim();
+                return genSaidaIdStable(saida || {});
+            }
+
+            function matchSaidaByStableKey(listItem, targetSaida) {
+                const aData = String(listItem.dataSaida ?? listItem.data ?? '').trim();
+                const aHora = String(listItem.horaSaida ?? listItem.hora ?? listItem.saida ?? '').trim();
+                const aViatura = String(listItem.viatura ?? listItem.viatura_id ?? '').trim();
+                const aMotorista = String(listItem.motorista ?? listItem.motorista_id ?? '').trim();
+                const aDestino = (String(listItem.hospital ?? listItem.objetivo ?? listItem.destino ?? '').trim() || String(getDestino(listItem)).trim());
+
+                const bData = String(targetSaida.dataSaida ?? targetSaida.data ?? '').trim();
+                const bHora = String(targetSaida.horaSaida ?? targetSaida.hora ?? targetSaida.saida ?? '').trim();
+                const bViatura = String(targetSaida.viatura ?? targetSaida.viatura_id ?? '').trim();
+                const bMotorista = String(targetSaida.motorista ?? targetSaida.motorista_id ?? '').trim();
+                const bDestino = (String(targetSaida.hospital ?? targetSaida.objetivo ?? targetSaida.destino ?? '').trim() || String(getDestino(targetSaida)).trim());
+
+                return (
+                    aData === bData &&
+                    aHora === bHora &&
+                    aViatura === bViatura &&
+                    aMotorista === bMotorista &&
+                    normStr(aDestino) === normStr(bDestino)
+                );
+            }
+
             /**
              * Atualiza UMA saída no Firebase (coleção saidasAdministrativas) e no cache local.
              * Não depende de API backend — usa diretamente firebaseSot quando disponível.
@@ -681,16 +749,34 @@
                         const atuais = await window.firebaseSot.get('saidasAdministrativas');
                         let listaFb = Array.isArray(atuais) ? atuais : [];
 
+                        const base = saidaOriginal || {};
+                        const resolvedId = saidaId || getSaidaId(base);
+                        const next = { ...base, [field]: value, id: resolvedId };
+
+                        // Compatibilidade com nomes alternativos (registros antigos)
+                        if (field === 'kmSaida') next.km_saida = value;
+                        if (field === 'kmChegada') next.km_chegada = value;
+
+                        // Marca realizada também no Firebase
+                        next.realizada = computeRealizadaFromSaida(next);
+
                         if (saidaOriginal && !listaFb.length) {
                             // Se Firestore ainda não tem dados, começar com o que veio do dataService/JSON
-                            listaFb = [saidaOriginal];
-                        }
+                            listaFb = [next];
+                        } else {
+                            // 1) Atualiza por id (quando disponível)
+                            const idxById = resolvedId ? listaFb.findIndex(s => String(s.id || '').trim() === String(resolvedId).trim()) : -1;
 
-                        const idxFb = listaFb.findIndex(s => s.id === saidaId);
-                        if (idxFb !== -1) {
-                            listaFb[idxFb] = { ...listaFb[idxFb], [field]: value };
-                        } else if (saidaOriginal) {
-                            listaFb.push({ ...saidaOriginal, [field]: value });
+                            // 2) Se não achou, tenta por chave estável (para casos onde s.id veio vazio)
+                            const idxStable = idxById === -1 && saidaOriginal ? listaFb.findIndex(s => matchSaidaByStableKey(s, saidaOriginal)) : -1;
+                            const idx = idxById !== -1 ? idxById : idxStable;
+
+                            if (idx !== -1) {
+                                const existingId = listaFb[idx].id;
+                                listaFb[idx] = { ...listaFb[idx], ...next, id: existingId || resolvedId };
+                            } else if (saidaOriginal) {
+                                listaFb.push(next);
+                            }
                         }
 
                         await window.firebaseSot.set('saidasAdministrativas', listaFb);
@@ -705,7 +791,12 @@
                     // 2) Fallback: usar dataService para atualizar a saída, se disponível
                     if (window.dataService) {
                         if (typeof window.dataService.saveSaidaAdministrativa === 'function' && saidaOriginal) {
-                            const updated = { ...saidaOriginal, [field]: value };
+                            const base = saidaOriginal || {};
+                            const resolvedId = saidaId || getSaidaId(base);
+                            const updated = { ...base, [field]: value, id: resolvedId };
+                            if (field === 'kmSaida') updated.km_saida = value;
+                            if (field === 'kmChegada') updated.km_chegada = value;
+                            updated.realizada = computeRealizadaFromSaida(updated);
                             await window.dataService.saveSaidaAdministrativa(updated);
                             try {
                                 const raw = localStorage.getItem('saidasAdministrativas');
@@ -725,9 +816,21 @@
                             typeof window.dataService.setSaidasAdministrativas === 'function') {
                             const todas = await window.dataService.getSaidasAdministrativas();
                             if (!Array.isArray(todas)) return;
-                            const idx = todas.findIndex(s => s.id === saidaId);
+                            const base = saidaOriginal || {};
+                            const resolvedId = saidaId || getSaidaId(base);
+                            const idxById = resolvedId ? todas.findIndex(s => String(s.id || '').trim() === String(resolvedId).trim()) : -1;
+                            const idxStable = idxById === -1 && saidaOriginal ? todas.findIndex(s => matchSaidaByStableKey(s, saidaOriginal)) : -1;
+                            const idx = idxById !== -1 ? idxById : idxStable;
                             if (idx === -1) return;
+
                             todas[idx][field] = value;
+                            if (field === 'kmSaida') todas[idx].km_saida = value;
+                            if (field === 'kmChegada') todas[idx].km_chegada = value;
+
+                            // Atualiza flag realizada também
+                            const next = { ...todas[idx], id: todas[idx].id || resolvedId };
+                            next.realizada = computeRealizadaFromSaida(next);
+                            todas[idx].realizada = next.realizada;
                             await window.dataService.setSaidasAdministrativas(todas);
                             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
                             return;
@@ -739,15 +842,29 @@
                         const raw = localStorage.getItem('saidasAdministrativas');
                         const lista = raw ? JSON.parse(raw) : [];
                         if (Array.isArray(lista)) {
-                            const idxLocal = lista.findIndex(s => s.id === saidaId);
-                            if (idxLocal !== -1) {
-                                lista[idxLocal][field] = value;
+                            const base = saidaOriginal || {};
+                            const resolvedId = saidaId || getSaidaId(base);
+                            const next = { ...base, [field]: value, id: resolvedId };
+                            if (field === 'kmSaida') next.km_saida = value;
+                            if (field === 'kmChegada') next.km_chegada = value;
+                            next.realizada = computeRealizadaFromSaida(next);
+
+                            const idxLocalById = resolvedId ? lista.findIndex(s => String(s.id || '').trim() === String(resolvedId).trim()) : -1;
+                            const idxLocalStable = idxLocalById === -1 && saidaOriginal ? lista.findIndex(s => matchSaidaByStableKey(s, saidaOriginal)) : -1;
+                            const idx = idxLocalById !== -1 ? idxLocalById : idxLocalStable;
+
+                            if (idx !== -1) {
+                                lista[idx] = { ...lista[idx], ...next, id: lista[idx].id || resolvedId };
+                                localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                            } else if (saidaOriginal) {
+                                lista.push(next);
                                 localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
                             }
                         }
                     } catch (e) { /* se falhar, não temos o que fazer */ }
                 } catch (e) {
                     console.error('QuadroDeSaidas: erro ao salvar edição de saída', e);
+                    throw e;
                 }
             }
 
@@ -777,23 +894,12 @@
                         const setor = saida.setor || '—';
                         const destino = getDestino(saida);
                         const om = saida.om || '—';
-                        // Considera a saída "realizada" APENAS quando possui KM SAÍDA e KM CHEGADA preenchidos
-                        const kmSaidaRaw = saida.kmSaida ?? saida.km_saida ?? '';
-                        const kmChegadaRaw = saida.kmChegada ?? saida.km_chegada ?? '';
-                        const kmSaidaStr = String(kmSaidaRaw).trim();
-                        const kmChegadaStr = String(kmChegadaRaw).trim();
-                        const kmSaidaNum = kmSaidaStr ? parseFloat(kmSaidaStr.replace('.', '').replace(',', '.')) : NaN;
-                        const kmChegadaNum = kmChegadaStr ? parseFloat(kmChegadaStr.replace('.', '').replace(',', '.')) : NaN;
-                        const realizada =
-                            kmSaidaStr !== '' &&
-                            kmChegadaStr !== '' &&
-                            !isNaN(kmSaidaNum) &&
-                            !isNaN(kmChegadaNum) &&
-                            kmChegadaNum > kmSaidaNum;
+                        // Marca como "realizada" somente quando KM Saída, KM Chegada e Chegada estão preenchidos
+                        const realizada = computeRealizadaFromSaida(saida);
 
                         const card = document.createElement('div');
                         card.className = realizada ? 'card card-realizada' : 'card';
-                        card.dataset.id = saida.id || '';
+                        card.dataset.id = getSaidaId(saida) || '';
                         card.innerHTML = `
                             <div class="card-header">
                                 <div class="time-pill">
@@ -933,16 +1039,19 @@
                                     btnOk.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
                                     try {
-                                        if (saidaId) {
-                                            await updateSaidaField(saidaId, step.field, val, saida);
-                                            saida[step.field] = val;
-                                        }
+                                        await updateSaidaField(saidaId, step.field, val, saida);
+                                        saida[step.field] = val;
+                                        if (step.field === 'kmSaida') saida.km_saida = val;
+                                        if (step.field === 'kmChegada') saida.km_chegada = val;
 
                                         // Atualiza exibição no rodapé
                                         const footerFields = card.querySelectorAll('.card-footer-field span.value');
                                         if (footerFields[currentStep]) {
                                             footerFields[currentStep].textContent = val || '—';
                                         }
+
+                                        // Atualiza tarja "REALIZADA" sem precisar de F5
+                                        card.className = computeRealizadaFromSaida(saida) ? 'card card-realizada' : 'card';
 
                                         closeOverlay();
                                         currentStep += 1;
