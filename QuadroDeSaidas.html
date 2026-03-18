@@ -659,12 +659,16 @@
              */
             async function getAllSaidas() {
                 let remoteList = null;
+                let remoteLoaded = false;
 
                 // 1) Firebase direto
                 if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
                     try {
                         const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
-                        if (Array.isArray(fbSaidas)) remoteList = fbSaidas;
+                        if (Array.isArray(fbSaidas)) {
+                            remoteList = fbSaidas;
+                            remoteLoaded = true;
+                        }
                     } catch (e) {
                         console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase.', e);
                     }
@@ -674,7 +678,11 @@
                 if (!remoteList && window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function') {
                     try {
                         const fromService = await window.dataService.getSaidasAdministrativas();
-                        if (Array.isArray(fromService)) remoteList = fromService;
+                        if (Array.isArray(fromService)) {
+                            remoteList = fromService;
+                            // Não marcamos remoteLoaded aqui: o dataService pode ter caído em localStorage.
+                            // A reconciliação que escreve no Firebase só deve ocorrer quando o remoto vem do firebaseSot diretamente.
+                        }
                     } catch (e) {
                         console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas via dataService.', e);
                     }
@@ -736,20 +744,10 @@
 
                 const merged = Array.from(map.values());
 
-                // Se havia remoto e local tem itens que não existiam remotamente, tenta re-emitir para Firebase
-                try {
-                    if (remoteList && Array.isArray(remoteList) && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
-                        // Se o merge aumentou, persistir para manter sincronizado
-                        if (localList && localList.length && merged.length > remoteList.length) {
-                            window.firebaseSot.set('saidasAdministrativas', merged).catch(() => {});
-                        }
-                    }
-                } catch (e) { /* sem bloquear */ }
-
                 // Mantém cache local atualizado com o merge
                 try { localStorage.setItem('saidasAdministrativas', JSON.stringify(merged)); } catch (e) {}
 
-                return merged;
+                return { saidas: merged, remoteLoaded };
             }
 
             function normStr(v) {
@@ -957,7 +955,9 @@
                 loading.style.display = 'block';
 
                 try {
-                    const allSaidas = await getAllSaidas();
+                    const result = await getAllSaidas();
+                    const allSaidas = result?.saidas || [];
+                    const remoteLoaded = !!result?.remoteLoaded;
                     const filtered = (allSaidas || []).filter(s => parseDateToISO(s.dataSaida || s.data) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
 
@@ -1150,26 +1150,28 @@
                         });
                     });
 
-                    // Reconcilia flag "realizada" no Firebase quando existir divergência.
-                    // Isso evita casos em que o Quadro mostra o status certo, mas outros módulos filtram pela flag.
-                    try {
-                        if (filtered.length && window.firebaseSot && typeof window.firebaseSot.set === 'function' && typeof window.firebaseSot.get === 'function') {
-                            const divergentes = filtered.filter(s => {
-                                const computed = computeRealizadaFromSaida(s);
-                                const stored = !!s.realizada;
-                                return computed !== stored;
-                            });
+                    // Reconcilia flag "realizada" no Firebase SOMENTE quando a lista veio do remoto.
+                    // Isso impede que itens "apagados" no Firebase voltem via cache local.
+                    if (remoteLoaded) {
+                        try {
+                            if (filtered.length && window.firebaseSot && typeof window.firebaseSot.set === 'function' && typeof window.firebaseSot.get === 'function') {
+                                const divergentes = filtered.filter(s => {
+                                    const computed = computeRealizadaFromSaida(s);
+                                    const stored = !!s.realizada;
+                                    return computed !== stored;
+                                });
 
-                            // Evita múltiplos writes em dias com muitos registros.
-                            const limite = 25;
-                            const tarefas = divergentes.slice(0, limite);
-                            for (const s of tarefas) {
-                                const computed = computeRealizadaFromSaida(s);
-                                await updateSaidaField(getSaidaId(s), 'realizada', computed, s);
-                                s.realizada = computed;
+                                // Evita múltiplos writes em dias com muitos registros.
+                                const limite = 25;
+                                const tarefas = divergentes.slice(0, limite);
+                                for (const s of tarefas) {
+                                    const computed = computeRealizadaFromSaida(s);
+                                    await updateSaidaField(getSaidaId(s), 'realizada', computed, s);
+                                    s.realizada = computed;
+                                }
                             }
-                        }
-                    } catch (e) { /* sem bloquear o carregamento */ }
+                        } catch (e) { /* sem bloquear o carregamento */ }
+                    }
                 } catch (error) {
                     console.error('Erro ao carregar saídas administrativas:', error);
                     emptyState.style.display = 'block';
