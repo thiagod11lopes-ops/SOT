@@ -554,6 +554,26 @@
             return formatter.format(date).replace('.', '');
         }
 
+        // Normaliza data para ISO YYYY-MM-DD (compatibilidade com dados antigos)
+        function parseDateToISO(value) {
+            if (!value) return '';
+            const s = String(value).trim();
+            if (!s) return '';
+            // Já está em ISO
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            // YYYY-MM-DDTHH:mm:ss...
+            if (s.includes('T')) return s.split('T')[0];
+            // DD/MM/YYYY (ou DD-MM-YYYY)
+            const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (m) return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+            // tenta Date()
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) {
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            return '';
+        }
+
         function getHoraSaida(saida) {
             return saida.horaSaida || saida.saida || saida.horario || saida.hora || '';
         }
@@ -611,14 +631,17 @@
                         if (!s.viatura || String(s.viatura).trim() !== String(placa).trim()) return false;
                         const d = s.dataSaida || s.data;
                         const h = s.horaSaida || s.hora || s.saida || '00:00';
-                        if (!d) return false;
-                        const dt = new Date(`${d}T${h}`);
+                        const isoDate = parseDateToISO(d);
+                        if (!isoDate) return false;
+                        const dt = new Date(`${isoDate}T${h}`);
                         if (isNaN(dt.getTime())) return false;
                         return dt < baseDateTime;
                     })
                     .sort((a, b) => {
-                        const da = new Date(`${a.dataSaida || a.data}T${a.horaSaida || a.hora || a.saida || '00:00'}`);
-                        const db = new Date(`${b.dataSaida || b.data}T${b.horaSaida || b.hora || b.saida || '00:00'}`);
+                        const daIso = parseDateToISO(a.dataSaida || a.data);
+                        const dbIso = parseDateToISO(b.dataSaida || b.data);
+                        const da = daIso ? new Date(`${daIso}T${a.horaSaida || a.hora || a.saida || '00:00'}`) : new Date(0);
+                        const db = dbIso ? new Date(`${dbIso}T${b.horaSaida || b.hora || b.saida || '00:00'}`) : new Date(0);
                         return db - da;
                     });
                 if (!candidatos.length) return null;
@@ -742,7 +765,7 @@
 
             // Gera id estável (não depende de km/chegada) para permitir edição mesmo quando s.id vier vazio
             function genSaidaIdStable(saida) {
-                const data = String(saida.dataSaida ?? saida.data ?? '').trim();
+                const data = parseDateToISO(saida.dataSaida ?? saida.data ?? '');
                 const hora = String(saida.horaSaida ?? saida.hora ?? saida.saida ?? '').trim();
                 const viatura = String(saida.viatura ?? saida.viatura_id ?? '').trim();
                 const motorista = String(saida.motorista ?? saida.motorista_id ?? '').trim();
@@ -759,13 +782,13 @@
             }
 
             function matchSaidaByStableKey(listItem, targetSaida) {
-                const aData = String(listItem.dataSaida ?? listItem.data ?? '').trim();
+                const aData = parseDateToISO(listItem.dataSaida ?? listItem.data ?? '');
                 const aHora = String(listItem.horaSaida ?? listItem.hora ?? listItem.saida ?? '').trim();
                 const aViatura = String(listItem.viatura ?? listItem.viatura_id ?? '').trim();
                 const aMotorista = String(listItem.motorista ?? listItem.motorista_id ?? '').trim();
                 const aDestino = (String(listItem.hospital ?? listItem.objetivo ?? listItem.destino ?? '').trim() || String(getDestino(listItem)).trim());
 
-                const bData = String(targetSaida.dataSaida ?? targetSaida.data ?? '').trim();
+                const bData = parseDateToISO(targetSaida.dataSaida ?? targetSaida.data ?? '');
                 const bHora = String(targetSaida.horaSaida ?? targetSaida.hora ?? targetSaida.saida ?? '').trim();
                 const bViatura = String(targetSaida.viatura ?? targetSaida.viatura_id ?? '').trim();
                 const bMotorista = String(targetSaida.motorista ?? targetSaida.motorista_id ?? '').trim();
@@ -920,7 +943,7 @@
 
                 try {
                     const allSaidas = await getAllSaidas();
-                    const filtered = (allSaidas || []).filter(s => (s.dataSaida || s.data) === selectedDate);
+                    const filtered = (allSaidas || []).filter(s => parseDateToISO(s.dataSaida || s.data) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
 
                     counterValue.textContent = filtered.length;

@@ -437,6 +437,22 @@
             return formatter.format(date).replace('.', '');
         }
 
+        // Normaliza data para ISO YYYY-MM-DD (compatibilidade com dados antigos)
+        function parseDateToISO(value) {
+            if (!value) return '';
+            const s = String(value).trim();
+            if (!s) return '';
+            if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            if (s.includes('T')) return s.split('T')[0];
+            const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+            if (m) return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) {
+                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            }
+            return '';
+        }
+
         function getHoraSaida(saida) {
             return saida.horaSaida || saida.saida || saida.horario || saida.hora || '';
         }
@@ -495,7 +511,7 @@
 
                 try {
                     const allSaidas = await getAllSaidas();
-                    const filtered = (allSaidas || []).filter(s => (s.dataSaida || s.data) === selectedDate);
+                    const filtered = (allSaidas || []).filter(s => parseDateToISO(s.dataSaida || s.data) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
 
                     counterValue.textContent = filtered.length;
