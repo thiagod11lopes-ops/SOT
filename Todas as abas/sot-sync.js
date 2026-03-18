@@ -34,11 +34,14 @@
         if (!Array.isArray(local)) local = [];
         if (!Array.isArray(remote)) remote = [];
         var byId = new Map();
-        local.forEach(function(item) {
+        // Preferir o "remote" em conflitos (mesmo id).
+        // Isso impede que uma versão antiga no localStorage sobrescreva o Firebase
+        // quando ocorrer sincronização após atualizações no app.
+        remote.forEach(function(item) {
             var id = item && item[idField];
             if (id != null) byId.set(String(id), item);
         });
-        remote.forEach(function(item) {
+        local.forEach(function(item) {
             var id = item && item[idField];
             if (id != null && !byId.has(String(id))) byId.set(String(id), item);
         });

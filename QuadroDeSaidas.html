@@ -704,10 +704,12 @@
 
                 const base = remoteList && Array.isArray(remoteList) ? remoteList : (staticList || []);
 
-                // Mescla base + local (local "vence" para não perder edições)
+                // Mescla base + local, dando preferência ao "base" (remote/JSON)
+                // para evitar o Firebase "voltar" depois de sync com localStorage antigo.
                 // Garante id estável mesmo para itens antigos.
                 const map = new Map();
-                const add = (arr) => {
+
+                const addBase = (arr) => {
                     if (!Array.isArray(arr)) return;
                     for (const it of arr) {
                         const n = { ...(it || {}) };
@@ -716,8 +718,20 @@
                         map.set(String(id), n);
                     }
                 };
-                add(base);
-                add(localList);
+
+                const addLocalIfMissing = (arr) => {
+                    if (!Array.isArray(arr)) return;
+                    for (const it of arr) {
+                        const n = { ...(it || {}) };
+                        const id = getSaidaId(n);
+                        n.id = id;
+                        const key = String(id);
+                        if (!map.has(key)) map.set(key, n);
+                    }
+                };
+
+                addBase(base);
+                addLocalIfMissing(localList);
 
                 const merged = Array.from(map.values());
 
