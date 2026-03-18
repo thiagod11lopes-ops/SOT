@@ -1917,7 +1917,7 @@ const row = event.target.closest('tr');
 if (!row) return;
 const idToDelete = row.dataset.id;
 const tipoSaida = row.dataset.tipo;
-if (confirm('Tem certeza que deseja excluir esta saída?')) {
+if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 if (tipoSaida === 'Administrativa') {
 saidasAdministrativas = saidasAdministrativas.filter(i => i.id !== idToDelete);
 if (typeof dataService !== 'undefined' && dataService.setSaidasAdministrativas) dataService.setSaidasAdministrativas(saidasAdministrativas); else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
@@ -3300,7 +3300,7 @@ const year = filterUnplannedYearSelect.value;
 downloadPdfTable('unplannedExitsTable', 'Relatorio_Saidas_Nao_Programadas', 'Relatório de Saídas Não Programadas', `Período: ${month} / ${year}`);
 });
 deleteAllBtn.addEventListener('click', () => {
-if (confirm("Tem certeza que deseja EXCLUIR TODOS os registros de saídas? Esta ação não pode ser desfeita.")) {
+if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 localStorage.removeItem('saidasAdministrativas');
 localStorage.removeItem('saidasAmbulancias');
 loadDataAndPopulateTables();

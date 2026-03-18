@@ -8,7 +8,7 @@
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
-    const FIREBASE_CACHE_TTL_MS = 30 * 1000; // 30 segundos para reduzir leituras repetidas
+    const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
     const LOG_PREFIX = '[data-service]';
 
