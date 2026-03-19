@@ -357,6 +357,9 @@
                 <button id="carregarDadosBtn" class="warning" title="Carrega um arquivo JSON e mescla com os dados atuais (não substitui)">
                     <i class="fas fa-file-import"></i> Carregar Dados
                 </button>
+                <button id="restaurarSaidasBackupBtn" class="warning" title="Substitui apenas Saídas Administrativas e Saídas Ambulâncias no Firebase e local pelo conteúdo do backup (use se os dados de saídas foram perdidos)">
+                    <i class="fas fa-undo"></i> Restaurar saídas do backup
+                </button>
                 <button id="salvarDownloadBtn" class="success" title="Gera um arquivo JSON com todos os dados e faz o download">
                     <i class="fas fa-download"></i> Salvar e fazer download
                 </button>
@@ -377,6 +380,7 @@
                 <strong>Usar dados deste computador:</strong> ao abrir o SOT pelo GitHub em um computador que já tem dados no navegador, clique aqui para exibir esses dados em vez do Firebase. <strong>Usar dados do Firebase:</strong> volta a exibir os dados da nuvem.
             </p>
             <input type="file" id="carregarDadosFileInput" accept=".json" style="display: none;">
+            <input type="file" id="restaurarSaidasBackupFileInput" accept=".json" style="display: none;">
             <div id="gerenciamentoMessage" class="message" style="margin-top: 12px;"></div>
 
             <div class="config-group" style="margin-top: 24px;">
@@ -450,6 +454,8 @@
             // Elementos de Gerenciamento de Dados
             const carregarDadosBtn = document.getElementById('carregarDadosBtn');
             const carregarDadosFileInput = document.getElementById('carregarDadosFileInput');
+            const restaurarSaidasBackupBtn = document.getElementById('restaurarSaidasBackupBtn');
+            const restaurarSaidasBackupFileInput = document.getElementById('restaurarSaidasBackupFileInput');
             const salvarDownloadBtn = document.getElementById('salvarDownloadBtn');
             const clearAllDataBtn = document.getElementById('clearAllDataBtn');
             const gerenciamentoMessage = document.getElementById('gerenciamentoMessage');
@@ -1086,6 +1092,76 @@
                             showGerenciamentoMessage('Erro ao carregar arquivo. Verifique se é um JSON válido do SOT.', 'error');
                         }
                         carregarDadosFileInput.value = '';
+                    };
+                    reader.readAsText(file);
+                });
+            }
+
+            // Restaurar saídas do backup: substitui saidasAdministrativas e saidasAmbulancias no Firebase e local pelo conteúdo do arquivo
+            if (restaurarSaidasBackupBtn && restaurarSaidasBackupFileInput) {
+                restaurarSaidasBackupBtn.addEventListener('click', () => restaurarSaidasBackupFileInput.click());
+                restaurarSaidasBackupFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        try {
+                            const importedData = JSON.parse(event.target.result);
+                            const parseVal = (val) => {
+                                if (val == null) return [];
+                                if (Array.isArray(val)) return val;
+                                if (typeof val === 'string') {
+                                    try { return JSON.parse(val); } catch (_) { return []; }
+                                }
+                                return [];
+                            };
+                            const saidasAdm = parseVal(importedData.saidasAdministrativas);
+                            const saidasAmb = parseVal(importedData.saidasAmbulancias);
+                            if (saidasAdm.length === 0 && saidasAmb.length === 0) {
+                                showGerenciamentoMessage('Arquivo não contém saidasAdministrativas nem saidasAmbulancias (ou estão vazias).', 'error');
+                                restaurarSaidasBackupFileInput.value = '';
+                                return;
+                            }
+                            if (typeof dataService === 'undefined' && !(window.firebaseSot && typeof window.firebaseSot.set === 'function')) {
+                                showGerenciamentoMessage('Serviço de dados/Firebase não carregado. Recarregue a página.', 'error');
+                                restaurarSaidasBackupFileInput.value = '';
+                                return;
+                            }
+                            showGerenciamentoMessage('Restaurando saídas no Firebase e local...', 'info');
+                            if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+                                await dataService.waitForAPICheck();
+                            }
+                            if (Array.isArray(saidasAdm)) {
+                                localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdm));
+                                if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
+                                    await dataService.setSaidasAdministrativas(saidasAdm);
+                                } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                    await window.firebaseSot.set('saidasAdministrativas', saidasAdm);
+                                }
+                            }
+                            if (Array.isArray(saidasAmb)) {
+                                localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmb));
+                                if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
+                                    await dataService.setSaidasAmbulancias(saidasAmb);
+                                } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                    await window.firebaseSot.set('saidasAmbulancias', saidasAmb);
+                                }
+                            }
+                            if (window.firebaseSot && typeof window.firebaseSot.invalidateAllCache === 'function') {
+                                window.firebaseSot.invalidateAllCache();
+                            }
+                            const parts = [];
+                            if (Array.isArray(saidasAdm) && saidasAdm.length) parts.push(`Saídas administrativas: ${saidasAdm.length}`);
+                            if (Array.isArray(saidasAmb) && saidasAmb.length) parts.push(`Saídas ambulâncias: ${saidasAmb.length}`);
+                            showGerenciamentoMessage('Saídas restauradas com sucesso. ' + (parts.length ? parts.join('; ') : 'Nenhum dado de saída no arquivo.'), 'success');
+                            if (window.parent && window.parent.postMessage) {
+                                window.parent.postMessage({ type: 'reload_required' }, '*');
+                            }
+                        } catch (error) {
+                            console.error('Erro ao restaurar saídas do backup:', error);
+                            showGerenciamentoMessage('Erro ao processar o arquivo. Verifique se é um JSON válido do SOT (com saidasAdministrativas/saidasAmbulancias).', 'error');
+                        }
+                        restaurarSaidasBackupFileInput.value = '';
                     };
                     reader.readAsText(file);
                 });
