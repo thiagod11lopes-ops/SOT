@@ -1093,6 +1093,10 @@
                 }
             }
 
+            /** Enquanto o usuário percorre KM Saída → KM Chegada → Chegada, não recarregar a lista (senão o DOM some e o próximo modal não abre). */
+            let quadroKmFlowActive = false;
+            let quadroReloadPendingAfterFlow = false;
+
             async function loadSaidasForSelectedDate() {
                 const selectedDate = dateInput.value;
                 dateLabel.textContent = formatDateLabel(selectedDate);
@@ -1177,6 +1181,8 @@
                                 showQuadroBloqueadoOverlay(card);
                                 return;
                             }
+                            quadroKmFlowActive = true;
+                            quadroReloadPendingAfterFlow = false;
                             const steps = [
                                 { field: 'kmSaida', label: 'KM Saída', type: 'text' },
                                 { field: 'kmChegada', label: 'KM Chegada', type: 'text' },
@@ -1249,6 +1255,7 @@
 
                                 btnCancel.addEventListener('click', () => {
                                     closeOverlay();
+                                    endQuadroKmFlow();
                                 });
 
                                 btnOk.addEventListener('click', async () => {
@@ -1283,9 +1290,15 @@
 
                                         closeOverlay();
                                         currentStep += 1;
-                                        startStep();
+                                        if (currentStep >= steps.length) {
+                                            endQuadroKmFlow();
+                                        } else {
+                                            // Próximo passo no frame seguinte para o overlay de KM Chegada abrir de forma estável
+                                            requestAnimationFrame(function () { startStep(); });
+                                        }
                                     } catch (e) {
                                         console.error('QuadroDeSaidas: falha ao atualizar campo', step.field, e);
+                                        endQuadroKmFlow();
                                         btnOk.disabled = false;
                                         btnCancel.disabled = false;
                                         btnOk.innerHTML = originalOkHtml;
@@ -1337,6 +1350,10 @@
             let reloadQueued = false;
             let reloadQuadroDebounceTimer = null;
             function scheduleReloadQuadroFromExternal() {
+                if (quadroKmFlowActive) {
+                    quadroReloadPendingAfterFlow = true;
+                    return;
+                }
                 try { clearTimeout(reloadQuadroDebounceTimer); } catch (e) {}
                 reloadQuadroDebounceTimer = setTimeout(function () {
                     reloadQuadroDebounceTimer = null;
@@ -1361,6 +1378,14 @@
                             }
                         });
                 }, 0);
+            }
+
+            function endQuadroKmFlow() {
+                quadroKmFlowActive = false;
+                if (quadroReloadPendingAfterFlow) {
+                    quadroReloadPendingAfterFlow = false;
+                    scheduleReloadQuadroFromExternal();
+                }
             }
 
             window.addEventListener('storage', function (e) {

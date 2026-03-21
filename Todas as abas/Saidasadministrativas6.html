@@ -212,6 +212,12 @@ z-index: 1;
 .km-alert-confirm-btn:hover { background-color: var(--secondary-blue); }
 .km-alert-cancel-btn { background-color: #6c757d; color: var(--white); }
 .km-alert-cancel-btn:hover { background-color: #5a6268; }
+/* Confirmação antes de sincronizar KM / chegada com o Quadro de Saídas */
+#confirmQuadroSyncModal { display: none; position: fixed; z-index: 10003; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.55); justify-content: center; align-items: flex-start; padding-top: 90px; }
+#confirmQuadroSyncModal.show { display: flex; }
+#confirmQuadroSyncModal .km-alert-modal-content { text-align: left; max-width: 520px; }
+#confirmQuadroSyncModal #confirmQuadroSyncMessage { white-space: pre-line; text-align: left; }
+#confirmQuadroSyncModal h3 { text-align: center; }
 textarea#obsTextarea { width: 100%; height: 150px; box-sizing: border-box; }
 .assinatura-container-geral { display: none; flex-direction: column; align-items: center; gap: 20px; margin-top: 25px; padding: 20px; background-color: var(--light-gray-bg); border: 1px solid var(--gray); border-radius: 8px; }
 .assinatura-box { display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -1344,6 +1350,67 @@ function persistSaidasAdministrativasImmediate() {
     saveState().catch(function (e) {
         console.warn('Saídas Administrativas: falha ao gravar imediato (KM/chegada):', e);
     });
+}
+
+/** Modal: confirmar gravação e aviso ao Quadro de Saídas (BroadcastChannel / Firebase). */
+var pendingQuadroSyncConfirm = null;
+function openConfirmQuadroSyncModal(message, onConfirm, onCancel) {
+    var modal = document.getElementById('confirmQuadroSyncModal');
+    var msgEl = document.getElementById('confirmQuadroSyncMessage');
+    pendingQuadroSyncConfirm = { onConfirm: onConfirm, onCancel: onCancel };
+    if (msgEl) msgEl.textContent = message || '';
+    if (modal) {
+        modal.classList.add('show');
+        try { modal.scrollTop = 0; } catch (e) {}
+    }
+}
+function hideConfirmQuadroSyncModal() {
+    var modal = document.getElementById('confirmQuadroSyncModal');
+    if (modal) modal.classList.remove('show');
+}
+/** Grava KM no estado, persiste e notifica o Quadro; opcional segundo modal para hora de chegada. */
+function commitKmFieldsFromModal(ids, keyToUpdate, valueToSave, row) {
+    ids.forEach(function (id) {
+        var index = saidasAdministrativas.findIndex(function (item) { return item.id === id; });
+        if (index !== -1) {
+            saidasAdministrativas[index][keyToUpdate] = valueToSave;
+            if (keyToUpdate === 'kmSaida') { saidasAdministrativas[index].km_saida = valueToSave; }
+            if (keyToUpdate === 'kmChegada') { saidasAdministrativas[index].km_chegada = valueToSave; }
+        }
+    });
+    try {
+        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+    } catch (e) {
+        console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas.', e);
+    }
+    notifySaidasAdministrativasChanged(true);
+    persistSaidasAdministrativasImmediate();
+    if (row) atualizarEstiloDaLinha(row);
+
+    if (keyToUpdate === 'kmChegada' && valueToSave !== '' && row) {
+        var timeInput = row.querySelector('input[data-key="chegada"]');
+        if (timeInput && !timeInput.value) {
+            var now = new Date();
+            var currentTime = now.toTimeString().slice(0, 5);
+            openConfirmQuadroSyncModal(
+                'Preencher automaticamente a hora de chegada com ' + currentTime + ' e atualizar o Quadro de Saídas?\n\nOK = confirmar\nCancelar = informar a hora manualmente depois',
+                function () {
+                    timeInput.value = currentTime;
+                    ids.forEach(function (id) {
+                        var index = saidasAdministrativas.findIndex(function (item) { return item.id === id; });
+                        if (index !== -1) saidasAdministrativas[index].chegada = currentTime;
+                    });
+                    try {
+                        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+                    } catch (e) {}
+                    persistSaidasAdministrativasImmediate();
+                    notifySaidasAdministrativasChanged(true);
+                    atualizarEstiloDaLinha(row);
+                },
+                function () { /* mantém chegada vazia para preenchimento manual */ }
+            );
+        }
+    }
 }
 function getLastKmChegadaAdm(placa) {
     const allSaidas = [...saidasAdministrativas].filter(s => s.viatura === placa);
@@ -2577,73 +2644,105 @@ function handleTimeInputChange(event) {
 const input = event.target;
 const row = input.closest('tr');
 if (!row) return;
-const ids = row.dataset.id.split(',');
+const ids = row.dataset.id.split(',').filter(Boolean);
 const keyToUpdate = input.dataset.key;
+if (keyToUpdate !== 'chegada') return;
 const valueToSave = input.value;
+const idx0 = saidasAdministrativas.findIndex(item => item.id === ids[0]);
+const oldVal = idx0 !== -1 ? (saidasAdministrativas[idx0].chegada || '') : '';
+if (valueToSave === oldVal) return;
 var dedupeKey = (row.dataset.id || '') + '|' + keyToUpdate;
 if (handleTimeInputChange._lastDedupe === dedupeKey && handleTimeInputChange._lastVal === valueToSave) return;
 handleTimeInputChange._lastDedupe = dedupeKey;
 handleTimeInputChange._lastVal = valueToSave;
-ids.forEach(id => {
-const index = saidasAdministrativas.findIndex(item => item.id === id);
-if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
-});
-try {
-    localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
-} catch (e) {
-    console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas (hora de chegada).', e);
-}
-notifySaidasAdministrativasChanged(true);
-persistSaidasAdministrativasImmediate();
-atualizarEstiloDaLinha(row);
+const placa = (row.querySelector('td') && row.querySelector('td').textContent.trim()) || '';
+openConfirmQuadroSyncModal(
+    'Confirmar hora de chegada: ' + (valueToSave || '(vazio)') + '\n\nViatura: ' + placa + '\n\nAo clicar em OK, os dados serão gravados e o Quadro de Saídas será atualizado.',
+    function () {
+        ids.forEach(id => {
+            const index = saidasAdministrativas.findIndex(item => item.id === id);
+            if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
+        });
+        try {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        } catch (e) {
+            console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas (hora de chegada).', e);
+        }
+        notifySaidasAdministrativasChanged(true);
+        persistSaidasAdministrativasImmediate();
+        atualizarEstiloDaLinha(row);
+    },
+    function () {
+        input.value = oldVal;
+        handleTimeInputChange._lastVal = oldVal;
+    }
+);
 }
 function formatKm(value) {
     let num = value.replace(/,/g, '').replace(/\./g, '');
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+function kmDigitsOnly(s) {
+    return String(s == null ? '' : s).replace(/\./g, '').replace(/,/g, '').trim();
+}
+
 function handleCellEdit(event) {
 const cell = event.target;
 const row = cell.closest('tr');
-const ids = row.dataset.id.split(',');
+const ids = row.dataset.id.split(',').filter(Boolean);
 const keyToUpdate = cell.dataset.key;
 let valueToSave = cell.textContent.trim();
 
-// Formatar KM se for kmSaida ou kmChegada
+// KM Saída / KM Chegada: validar, confirmar em modal e só então gravar + avisar o Quadro de Saídas
 if (keyToUpdate === 'kmSaida' || keyToUpdate === 'kmChegada') {
     valueToSave = formatKm(valueToSave);
-    cell.textContent = valueToSave; // Atualizar a célula também
-}
-
-// Validação de quilometragem ANTES de salvar
-if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
+    cell.textContent = valueToSave;
     const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
-    if (saidaData) {
+    if (keyToUpdate === 'kmChegada' && valueToSave !== '' && saidaData) {
         const kmSaidaStr = saidaData.kmSaida ? saidaData.kmSaida.replace(/\./g, '') : '';
         const kmChegadaStr = valueToSave.replace(/\./g, '');
-        
         if (kmSaidaStr && kmChegadaStr) {
             const kmSaida = parseFloat(kmSaidaStr);
             const kmChegada = parseFloat(kmChegadaStr);
-            
             if (!isNaN(kmSaida) && !isNaN(kmChegada)) {
-                // Verificar se KM chegada <= KM saída
                 if (kmChegada <= kmSaida) {
                     showKmAlertModal('Quilometragem de chegada incorreta, verifique o preenchimento novamente.');
-                    // Reverter o valor
                     const oldValue = saidaData.kmChegada || '';
                     cell.textContent = oldValue ? formatKm(oldValue) : '';
-                    return; // Não salvar se a validação falhar
-                }
-                
-                // Verificar se a distância percorrida é maior que 110km
-                const distancia = kmChegada - kmSaida;
-                if (distancia > 110) {
-                    showKmAlertModal('Quilometragem alta, está certo desse preenchimento?', cell, row, ids, true);
+                    return;
                 }
             }
         }
     }
+    const first = saidaData || saidasAdministrativas.find(item => item.id === ids[0]);
+    const oldRaw = first ? (first[keyToUpdate] || '') : '';
+    if (kmDigitsOnly(valueToSave) === kmDigitsOnly(oldRaw)) {
+        atualizarEstiloDaLinha(row);
+        return;
+    }
+    let distanciaWarn = '';
+    if (keyToUpdate === 'kmChegada' && valueToSave !== '' && first) {
+        const ks = (first.kmSaida || '').replace(/\./g, '');
+        const kc = valueToSave.replace(/\./g, '');
+        if (ks && kc) {
+            const kmSaida = parseFloat(ks);
+            const kmChegada = parseFloat(kc);
+            if (!isNaN(kmSaida) && !isNaN(kmChegada) && (kmChegada - kmSaida) > 110) {
+                distanciaWarn = '\n\nAtenção: distância percorrida superior a 110 km.';
+            }
+        }
+    }
+    const placa = (row.querySelector('td') && row.querySelector('td').textContent.trim()) || '';
+    const label = keyToUpdate === 'kmSaida' ? 'KM Saída' : 'KM Chegada';
+    const msg = 'Confirmar ' + label + ': ' + (valueToSave || '(vazio)') + '\n\nViatura: ' + placa + distanciaWarn + '\n\nAo clicar em OK, os dados serão gravados e o Quadro de Saídas será atualizado.';
+    openConfirmQuadroSyncModal(msg, function () {
+        commitKmFieldsFromModal(ids, keyToUpdate, valueToSave, row);
+    }, function () {
+        const oldVal = first ? (first[keyToUpdate] || '') : '';
+        cell.textContent = oldVal ? formatKm(String(oldVal).trim()) : '';
+    });
+    return;
 }
 
 ids.forEach(id => {
@@ -2660,12 +2759,7 @@ try {
 } catch (e) {
     console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas.', e);
 }
-if (keyToUpdate === 'kmSaida' || keyToUpdate === 'kmChegada') {
-    notifySaidasAdministrativasChanged(true);
-    persistSaidasAdministrativasImmediate();
-} else {
-    scheduleAutoSave();
-}
+scheduleAutoSave();
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos
@@ -2705,30 +2799,7 @@ if (keyToUpdate === 'destino' || keyToUpdate === 'bairro' || keyToUpdate === 'se
     populateTables();
 }
 
-if (keyToUpdate !== 'kmSaida' && keyToUpdate !== 'kmChegada') {
-    notifySaidasAdministrativasChanged(false);
-}
-
-// Novo: Preencher CHEGADA automaticamente se KM CHEGADA foi preenchido
-if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
-    const timeInput = row.querySelector('input[data-key="chegada"]');
-    if (timeInput && !timeInput.value) {
-        const now = new Date();
-        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
-        if (confirm(`Confirmar hora de chegada: ${currentTime}?`)) {
-            timeInput.value = currentTime;
-            // Salvar também a chegada
-            ids.forEach(id => {
-                const index = saidasAdministrativas.findIndex(item => item.id === id);
-                if (index !== -1) saidasAdministrativas[index].chegada = currentTime;
-            });
-            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
-            atualizarEstiloDaLinha(row);
-            persistSaidasAdministrativasImmediate();
-            notifySaidasAdministrativasChanged(true);
-        }
-    }
-}
+notifySaidasAdministrativasChanged(false);
 }
 
 // Função para manipular a edição de motorista com senha
@@ -4233,6 +4304,38 @@ if (modal) {
         }
     });
 }
+
+// Modal KM/chegada (markup deste modal vem após </script>; DC já inclui esse HTML no DOM)
+setTimeout(function setupConfirmQuadroSyncModal() {
+    function runCancel() {
+        var p = pendingQuadroSyncConfirm;
+        pendingQuadroSyncConfirm = null;
+        hideConfirmQuadroSyncModal();
+        if (p && typeof p.onCancel === 'function') {
+            try { p.onCancel(); } catch (e) {}
+        }
+    }
+    function runOk() {
+        var p = pendingQuadroSyncConfirm;
+        pendingQuadroSyncConfirm = null;
+        hideConfirmQuadroSyncModal();
+        if (p && typeof p.onConfirm === 'function') {
+            try { p.onConfirm(); } catch (e) { console.warn('confirmQuadroSync OK:', e); }
+        }
+    }
+    var okBtn = document.getElementById('confirmQuadroSyncOk');
+    var cancelBtn = document.getElementById('confirmQuadroSyncCancel');
+    var closeX = document.getElementById('confirmQuadroSyncCloseBtn');
+    var syncModal = document.getElementById('confirmQuadroSyncModal');
+    if (okBtn) okBtn.addEventListener('click', runOk);
+    if (cancelBtn) cancelBtn.addEventListener('click', runCancel);
+    if (closeX) closeX.addEventListener('click', runCancel);
+    if (syncModal) {
+        syncModal.addEventListener('click', function (e) {
+            if (e.target === syncModal) runCancel();
+        });
+    }
+}, 0);
 });
 </script>
 
@@ -4245,6 +4348,19 @@ if (modal) {
         <div class="km-alert-modal-buttons">
             <button id="kmAlertConfirmBtn" class="km-alert-confirm-btn">Sim</button>
             <button id="kmAlertCancelBtn" class="km-alert-cancel-btn">Não</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmação antes de gravar KM / chegada e atualizar o Quadro de Saídas -->
+<div id="confirmQuadroSyncModal" class="km-alert-modal" style="z-index: 10003;">
+    <div class="km-alert-modal-content">
+        <span id="confirmQuadroSyncCloseBtn" class="close-button">&times;</span>
+        <h3>Confirmar alteração</h3>
+        <p id="confirmQuadroSyncMessage"></p>
+        <div class="km-alert-modal-buttons">
+            <button type="button" id="confirmQuadroSyncOk" class="km-alert-confirm-btn">OK</button>
+            <button type="button" id="confirmQuadroSyncCancel" class="km-alert-cancel-btn">Cancelar</button>
         </div>
     </div>
 </div>
