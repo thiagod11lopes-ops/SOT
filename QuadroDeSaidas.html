@@ -446,6 +446,23 @@
             border: 1px solid rgba(56, 189, 248, 0.7);
         }
 
+        .card-edit-blocked-msg {
+            font-size: 13px;
+            line-height: 1.45;
+            color: #e5e7eb;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .card-edit-blocked-msg strong {
+            color: #fbbf24;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
         .footer-info {
             margin-top: 2px;
             font-size: 10px;
@@ -503,7 +520,7 @@
                 </div>
             </div>
             <div class="subtitle">
-                Visualização apenas — <strong>Saídas Administrativas</strong> do dia selecionado.
+                <strong>Saídas Administrativas</strong> do dia. Após preencher KM Saída, KM Chegada e Chegada, o registro fica bloqueado aqui — alterações só no sistema SOT completo.
             </div>
             <div class="filter-card">
                 <div class="filter-label">
@@ -776,6 +793,41 @@
                 return kmChegadaNum > kmSaidaNum;
             }
 
+            /** Registro finalizado no Quadro: os três campos preenchidos — não pode mais editar nesta página. */
+            var QUADRO_MSG_BLOQUEIO = 'Registro Bloqueado para Atualização, procure o responsável pelo Sistema';
+
+            function isQuadroRegistroBloqueado(saida) {
+                if (!saida) return false;
+                const kmS = String(saida.kmSaida ?? saida.km_saida ?? '').trim();
+                const kmC = String(saida.kmChegada ?? saida.km_chegada ?? '').trim();
+                const cheg = String(saida.chegada ?? '').trim();
+                return kmS.length > 0 && kmC.length > 0 && cheg.length > 0;
+            }
+
+            function showQuadroBloqueadoOverlay(card) {
+                const overlay = document.createElement('div');
+                overlay.className = 'card-edit-overlay';
+                const box = document.createElement('div');
+                box.className = 'card-edit-box';
+                const msg = document.createElement('div');
+                msg.className = 'card-edit-blocked-msg';
+                msg.innerHTML = '<strong>Atenção</strong>' + QUADRO_MSG_BLOQUEIO +
+                    '<br><br><span style="color:var(--muted);font-size:12px;">Edite esta saída apenas no sistema SOT (aba Saídas administrativas).</span>';
+                const actions = document.createElement('div');
+                actions.className = 'card-edit-actions';
+                const btnOk = document.createElement('button');
+                btnOk.className = 'card-edit-btn ok';
+                btnOk.textContent = 'Entendi';
+                btnOk.addEventListener('click', function () {
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                });
+                actions.appendChild(btnOk);
+                box.appendChild(msg);
+                box.appendChild(actions);
+                overlay.appendChild(box);
+                card.appendChild(overlay);
+            }
+
             // Gera id estável (não depende de km/chegada) para permitir edição mesmo quando s.id vier vazio
             function genSaidaIdStable(saida) {
                 const data = parseDateToISO(saida.dataSaida ?? saida.data ?? '');
@@ -822,6 +874,13 @@
              */
             async function updateSaidaField(saidaId, field, value, saidaOriginal) {
                 try {
+                    if (saidaOriginal && (field === 'kmSaida' || field === 'kmChegada' || field === 'chegada')) {
+                        if (isQuadroRegistroBloqueado(saidaOriginal)) {
+                            const err = new Error(QUADRO_MSG_BLOQUEIO);
+                            err.code = 'QUADRO_BLOQUEADO';
+                            throw err;
+                        }
+                    }
                     // 1) Tentar atualizar diretamente no Firebase via firebaseSot
                     if (window.firebaseSot && typeof window.firebaseSot.get === 'function' && typeof window.firebaseSot.set === 'function') {
                         const atuais = await window.firebaseSot.get('saidasAdministrativas');
@@ -1028,8 +1087,12 @@
                             </div>
                         `;
                         cardsContainer.appendChild(card);
-                        // Duplo clique inicia fluxo de edição em 3 passos
+                        // Duplo clique inicia fluxo de edição em 3 passos (bloqueado após KM Saída + KM Chegada + Chegada)
                         card.addEventListener('dblclick', () => {
+                            if (isQuadroRegistroBloqueado(saida)) {
+                                showQuadroBloqueadoOverlay(card);
+                                return;
+                            }
                             const steps = [
                                 { field: 'kmSaida', label: 'KM Saída', type: 'text' },
                                 { field: 'kmChegada', label: 'KM Chegada', type: 'text' },
