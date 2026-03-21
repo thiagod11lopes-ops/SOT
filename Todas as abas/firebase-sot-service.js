@@ -247,6 +247,8 @@
         set: set,
         getConfig: getConfig,
         setConfig: setConfig,
+        /** Invalida uma chave (ex.: após outra aba avisar via BroadcastChannel). */
+        invalidateCache: invalidateCache,
         invalidateAllCache: invalidateAllCache
     };
 })();

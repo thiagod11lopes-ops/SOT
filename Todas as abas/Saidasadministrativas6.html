@@ -218,6 +218,9 @@ textarea#obsTextarea { width: 100%; height: 150px; box-sizing: border-box; }
 .assinatura-box select { width: 250px; padding: 8px; border: 1px solid #ccc; border-radius: 5-px; font-size: 14px; }
 .assinatura-box label { font-weight: bold; font-size: 14px; color: var(--dark-gray); }
 .saida-realizada { background-color: #dbe4ff !important; }
+/* KM Saída preenchido; removida quando KM Chegada e hora Chegada estiverem preenchidos */
+.saida-iniciada { background-color: rgba(34, 197, 94, 0.22) !important; }
+tbody tr.saida-iniciada:nth-child(even) { background-color: rgba(34, 197, 94, 0.26) !important; }
 @keyframes piscarVermelho { 0% { background-color: inherit; } 50% { background-color: rgba(250, 0, 0, 0.2); } 100% { background-color: inherit; } }
 .alarme-oleo-piscando { animation: piscarVermelho 1.5s infinite; }
 .quadro-e-lembretes-wrapper {
@@ -1263,6 +1266,22 @@ async function loadState() {
     }
 }
 
+/** Aviso para QuadroDeSaidas (outras abas / BroadcastChannel) e iframes do SOT */
+var SOT_SAIDAS_ADM_BC = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('sot_saidas_administrativas') : null;
+function broadcastSaidasAdministrativasUpdated() {
+    try {
+        if (SOT_SAIDAS_ADM_BC) SOT_SAIDAS_ADM_BC.postMessage({ type: 'saidas_updated', t: Date.now() });
+    } catch (e) {}
+}
+/** immediateSync=true: SOT5 roda sync Firebase na hora (sem espera 800 ms) — KM / chegada */
+function notifySaidasAdministrativasChanged(immediateSync) {
+    broadcastSaidasAdministrativasUpdated();
+    try { window.parent.postMessage({ type: 'refresh_all_data' }, '*'); } catch (e) {}
+    try {
+        window.top.postMessage({ type: 'request_sync', immediate: !!immediateSync }, '*');
+    } catch (e) {}
+}
+
 async function saveState() {
     try {
         // Sincronizar com Firebase (e localStorage) quando dataService disponível
@@ -1291,6 +1310,7 @@ async function saveState() {
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
         }
     }
+    broadcastSaidasAdministrativasUpdated();
 }
 
 // Auto-save com debounce: evita chamar Firebase a cada edição de célula
@@ -1312,6 +1332,18 @@ function scheduleAutoSave() {
             console.warn('Saídas Administrativas: falha no auto-save:', e);
         }
     }, 30000); // 30 segundos
+}
+
+/** Grava Firebase/API já ao alterar KM/chegada — evita Quadro e sync usarem remoto desatualizado. */
+function persistSaidasAdministrativasImmediate() {
+    if (autoSaveTimeoutId) {
+        clearTimeout(autoSaveTimeoutId);
+        autoSaveTimeoutId = null;
+    }
+    autoSavePending = false;
+    saveState().catch(function (e) {
+        console.warn('Saídas Administrativas: falha ao gravar imediato (KM/chegada):', e);
+    });
 }
 function getLastKmChegadaAdm(placa) {
     const allSaidas = [...saidasAdministrativas].filter(s => s.viatura === placa);
@@ -1344,6 +1376,17 @@ noticeList.appendChild(li);
 });
 } else { noticeList.innerHTML = '<li>Nenhum aviso no momento.</li>'; }
 }
+/** Mesma regra do QuadroDeSaidas: iniciada com KM Saída; cancela quando KM Chegada e hora Chegada preenchidos. */
+function isSaidaAdministrativaIniciada(saida) {
+    if (!saida) return false;
+    const kmS = String(saida.kmSaida ?? saida.km_saida ?? '').trim();
+    const kmC = String(saida.kmChegada ?? saida.km_chegada ?? '').trim();
+    const cheg = String(saida.chegada ?? '').trim();
+    if (!kmS) return false;
+    if (kmC.length > 0 && cheg.length > 0) return false;
+    return true;
+}
+
 function atualizarEstiloDaLinha(row) {
 const ids = row.dataset.id.split(',');
 if (!ids[0]) return;
@@ -1362,7 +1405,13 @@ if (!alertedVehiclesOil.has(placa)) { playOilChangeAlert(placa); alertedVehicles
 }
 }
 row.classList.toggle('alarme-oleo-piscando', alarmeOleoAtivo);
-if (!alarmeOleoAtivo) { row.classList.toggle('saida-realizada', !!(saidaPrincipal.kmSaida && saidaPrincipal.kmChegada && saidaPrincipal.chegada)); }
+if (!alarmeOleoAtivo) {
+    const completa = !!(saidaPrincipal.kmSaida && saidaPrincipal.kmChegada && saidaPrincipal.chegada);
+    row.classList.toggle('saida-realizada', completa);
+    row.classList.toggle('saida-iniciada', isSaidaAdministrativaIniciada(saidaPrincipal));
+} else {
+    row.classList.remove('saida-iniciada');
+}
 }
 function formatarListaComE(itens) {
 if (!itens || itens.length === 0) return '';
@@ -2271,7 +2320,7 @@ async function separarSetorPorDuploClique(saidaJuntadaId, setorData) {
         
         // Atualizar tabela
         populateTables();
-        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        notifySaidasAdministrativasChanged();
         
         console.log('✅ Setor separado com sucesso via duplo clique!');
     } catch (error) {
@@ -2515,6 +2564,7 @@ cell.addEventListener('blur', handleCellEdit);
 const timeInput = row.querySelector('input[type="time"]');
 if (timeInput) {
 timeInput.addEventListener('change', handleTimeInputChange);
+timeInput.addEventListener('blur', handleTimeInputChange);
 }
 row.querySelector('td[contenteditable="true"][data-key="kmSaida"]')?.addEventListener('focus', (e) => {
 if (e.target.textContent.trim() === '') {
@@ -2526,23 +2576,26 @@ e.target.textContent = getLastKmChegadaAdm(placa);
 function handleTimeInputChange(event) {
 const input = event.target;
 const row = input.closest('tr');
+if (!row) return;
 const ids = row.dataset.id.split(',');
 const keyToUpdate = input.dataset.key;
 const valueToSave = input.value;
+var dedupeKey = (row.dataset.id || '') + '|' + keyToUpdate;
+if (handleTimeInputChange._lastDedupe === dedupeKey && handleTimeInputChange._lastVal === valueToSave) return;
+handleTimeInputChange._lastDedupe = dedupeKey;
+handleTimeInputChange._lastVal = valueToSave;
 ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
 });
-// Atualiza cache local imediatamente
 try {
     localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
 } catch (e) {
     console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas (hora de chegada).', e);
 }
-// Agenda auto-save para Firebase/API em até 30s
-scheduleAutoSave();
+notifySaidasAdministrativasChanged(true);
+persistSaidasAdministrativasImmediate();
 atualizarEstiloDaLinha(row);
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
 function formatKm(value) {
     let num = value.replace(/,/g, '').replace(/\./g, '');
@@ -2595,7 +2648,11 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
 
 ids.forEach(id => {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
-if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
+if (index !== -1) {
+saidasAdministrativas[index][keyToUpdate] = valueToSave;
+if (keyToUpdate === 'kmSaida') { saidasAdministrativas[index].km_saida = valueToSave; }
+if (keyToUpdate === 'kmChegada') { saidasAdministrativas[index].km_chegada = valueToSave; }
+}
 });
 // Atualiza cache local imediatamente
 try {
@@ -2603,8 +2660,12 @@ try {
 } catch (e) {
     console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas.', e);
 }
-// Agenda auto-save para Firebase/API em até 30s
-scheduleAutoSave();
+if (keyToUpdate === 'kmSaida' || keyToUpdate === 'kmChegada') {
+    notifySaidasAdministrativasChanged(true);
+    persistSaidasAdministrativasImmediate();
+} else {
+    scheduleAutoSave();
+}
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos
@@ -2644,7 +2705,9 @@ if (keyToUpdate === 'destino' || keyToUpdate === 'bairro' || keyToUpdate === 'se
     populateTables();
 }
 
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+if (keyToUpdate !== 'kmSaida' && keyToUpdate !== 'kmChegada') {
+    notifySaidasAdministrativasChanged(false);
+}
 
 // Novo: Preencher CHEGADA automaticamente se KM CHEGADA foi preenchido
 if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
@@ -2661,6 +2724,8 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
             });
             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
             atualizarEstiloDaLinha(row);
+            persistSaidasAdministrativasImmediate();
+            notifySaidasAdministrativasChanged(true);
         }
     }
 }
@@ -2714,7 +2779,7 @@ saidasAdministrativas[index].motorista = newValue;
 });
             
 if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+notifySaidasAdministrativasChanged();
             
 // Remove o event listener
 cell.removeEventListener('blur', saveEdit);
@@ -2919,7 +2984,7 @@ async function desagruparParaEdicao(saidaJuntada, indice, setor, destinoObj) {
         populateTables();
         
         // Notificar parent window
-        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        notifySaidasAdministrativasChanged();
         
         console.log('✅ Saída juntada desagrupada para edição');
     } catch (error) {
@@ -3269,7 +3334,7 @@ console.warn('Erro ao deletar da API, continuando:', error);
 saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
 await saveState(); 
 populateTables();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+notifySaidasAdministrativasChanged();
 } catch (error) {
 console.error('Erro ao deletar saída:', error);
 saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
@@ -3482,7 +3547,7 @@ saidasAdministrativas[index].observacoes = newObs;
 }
 });
 saveState(); populateTables(); obsModal.style.display = 'none';
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+notifySaidasAdministrativasChanged();
 }
 };
 obsModal.querySelector('.close-button').onclick = () => obsModal.style.display = 'none';
@@ -4119,13 +4184,15 @@ function clearKmChegada() {
             const index = saidasAdministrativas.findIndex(item => item.id === id);
             if (index !== -1) {
                 saidasAdministrativas[index].kmChegada = '';
+                saidasAdministrativas[index].km_chegada = '';
             }
         });
         
         // Salvar os dados
         if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
         atualizarEstiloDaLinha(kmAlertRow);
-        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        notifySaidasAdministrativasChanged(true);
+        persistSaidasAdministrativasImmediate();
     }
 }
 

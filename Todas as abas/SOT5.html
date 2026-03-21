@@ -2230,12 +2230,21 @@ if (event.data?.type === 'escala_pao_updated') {
 updateEscalaPaoAmanha();
 }
 if (event.data?.type === 'request_sync') {
-if (!window._requestSyncTimeout) {
-window._requestSyncTimeout = setTimeout(function() {
+var runSOTSyncNow = function() {
+if (window._requestSyncTimeout) {
+clearTimeout(window._requestSyncTimeout);
 window._requestSyncTimeout = null;
+}
 if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
 window.SOTSync.sync(true, { afterSync: function() {} });
 }
+};
+if (event.data && event.data.immediate) {
+runSOTSyncNow();
+} else if (!window._requestSyncTimeout) {
+window._requestSyncTimeout = setTimeout(function() {
+window._requestSyncTimeout = null;
+runSOTSyncNow();
 }, 800);
 }
 }
@@ -2325,7 +2334,12 @@ try { if (iframe.contentWindow && iframe.contentWindow !== event.source) iframe.
 }
 if (event.data?.type === 'refresh_all_data') {
 getAllTabIframes().forEach(function(iframe) {
-try { if (iframe.contentWindow && iframe.contentWindow !== event.source) iframe.contentWindow.postMessage({ type: 'refresh_data' }, '*'); } catch (e) {}
+try {
+if (iframe.contentWindow && iframe.contentWindow !== event.source) {
+iframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+iframe.contentWindow.postMessage({ type: 'refresh_data' }, '*');
+}
+} catch (e) {}
 });
 }
 });

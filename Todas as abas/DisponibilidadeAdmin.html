@@ -1929,7 +1929,7 @@
         // Ouvir mensagens do sistema principal (SOT5)
         window.addEventListener('message', function(event) {
             // Atualizar dados quando solicitado
-            if (event.data?.type === 'refresh_all_data') {
+            if (event.data?.type === 'refresh_all_data' || event.data?.type === 'refresh_data') {
                 setTimeout(() => {
                     loadDisponibilidades();
                     loadAgendamentosPendentes();
