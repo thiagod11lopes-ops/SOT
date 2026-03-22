@@ -4305,7 +4305,7 @@ if (modal) {
     });
 }
 
-// Modal KM/chegada (markup deste modal vem após </script>; DC já inclui esse HTML no DOM)
+// Modal KM/chegada (markup do modal fica no HTML depois deste bloco; DOMContentLoaded já inclui no DOM)
 setTimeout(function setupConfirmQuadroSyncModal() {
     function runCancel() {
         var p = pendingQuadroSyncConfirm;
