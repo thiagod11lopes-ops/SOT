@@ -30,8 +30,10 @@
             overflow: hidden;
         }
         
+        /* min-height: 0 evita que o iframe (SOT5) empurre a barra inferior para fora da viewport */
         #contentArea {
             flex: 1;
+            min-height: 0;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -39,6 +41,7 @@
         
         #contentArea iframe.content-frame {
             flex: 1;
+            min-height: 0;
             border: none;
             width: 100%;
             height: 100%;
@@ -52,11 +55,61 @@
             font-size: 12px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            gap: 12px;
+            flex-wrap: wrap;
+            /* Garante login visível mesmo se o cálculo do flex falhar em algum navegador */
+            position: relative;
+            z-index: 2147483646;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+        }
+        /* Login no documento principal: o script firebase-auth não acessa o iframe (evita falha em file:// e bloqueios). */
+        #google-login-shell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+        #google-login-shell #btn-login {
+            padding: 8px 14px;
+            cursor: pointer;
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        #google-login-shell #btn-sair {
+            padding: 6px 12px;
+            cursor: pointer;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        #google-login-shell #usuario-info {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        #sot-file-protocol-hint {
+            display: none;
+            background: #fff3cd;
+            color: #856404;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid #ffc107;
             flex-shrink: 0;
         }
+        #sot-file-protocol-hint strong { display: block; margin-bottom: 4px; }
     </style>
 </head>
 <body>
+    <div id="sot-file-protocol-hint" role="status" aria-live="polite"></div>
     <div id="contentArea">
         <iframe class="content-frame" src="SOT5.html" title="SOT"></iframe>
     </div>
@@ -64,6 +117,13 @@
     <div class="status-bar">
         <span id="statusText">SOT</span>
         <span id="dateTime"></span>
+        <div id="google-login-shell">
+            <button type="button" id="btn-login">Entrar com Google</button>
+            <div id="usuario-info">
+                <span>Bem-vindo, <strong id="nome-usuario"></strong></span>
+                <button type="button" id="btn-sair">Sair</button>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -77,6 +137,18 @@
         
         setInterval(updateDateTime, 1000);
         updateDateTime();
+
+        (function showFileProtocolHint() {
+            if (window.location.protocol !== 'file:') return;
+            var el = document.getElementById('sot-file-protocol-hint');
+            if (!el) return;
+            el.style.display = 'block';
+            el.innerHTML =
+                '<strong>Modo arquivo (file://)</strong>' +
+                'O popup do Google costuma falhar neste modo. Para ver o login e usar o sistema como no site online, abra esta pasta com um servidor local HTTP ' +
+                '(ex.: VS Code <em>Live Server</em> em <code>Todas as abas</code>, ou no terminal: <code>npx --yes serve .</code> e acesse <code>http://127.0.0.1:3000/index.html</code>). ' +
+                'No Firebase Console → Authentication → Settings → Authorized domains, inclua <code>localhost</code> e <code>127.0.0.1</code>.';
+        })();
     </script>
     <script type="module" src="firebase-auth.js"></script>
 </body>

@@ -3891,7 +3891,7 @@
         window.closeMaterialModal = closeMaterialModal;
         window.editMaterial = editMaterial;
         window.deleteMaterial = deleteMaterial;
-        window.viewHistory = viewHistory;
+        window.viewHistory = typeof viewMaterialHistory === 'function' ? viewMaterialHistory : function () { console.warn('viewMaterialHistory indisponível'); };
         window.closeHistoryModal = closeHistoryModal;
         window.closeNoResultsModal = closeNoResultsModal;
         window.closeWithdrawalModal = closeWithdrawalModal;

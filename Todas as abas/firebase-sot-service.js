@@ -60,6 +60,23 @@
         }
     }
 
+    /** Firestore não aceita arrays aninhados (ex.: escalaData). */
+    function valueNeedsJsonBlob(value) {
+        if (value === null || value === undefined) return false;
+        if (Array.isArray(value)) {
+            if (value.some(function(item) { return Array.isArray(item); })) return true;
+            return value.some(function(item) {
+                return item !== null && typeof item === 'object' && valueNeedsJsonBlob(item);
+            });
+        }
+        if (typeof value === 'object') {
+            for (var k in value) {
+                if (Object.prototype.hasOwnProperty.call(value, k) && valueNeedsJsonBlob(value[k])) return true;
+            }
+        }
+        return false;
+    }
+
     /** Remove entrada do cache (chamado após set para manter consistência). */
     function invalidateCache(key) {
         try {
@@ -145,7 +162,14 @@
                 }
                 const data = snap.data();
                 let value = null;
-                if (data && Array.isArray(data.items)) value = data.items;
+                if (data && data._sotJsonV1 === true && typeof data.body === 'string') {
+                    try {
+                        value = JSON.parse(data.body);
+                    } catch (parseErr) {
+                        log('error', 'get JSON parse key=' + keyStr, parseErr && parseErr.message);
+                        value = null;
+                    }
+                } else if (data && Array.isArray(data.items)) value = data.items;
                 else if (data && data.data !== undefined) value = data.data;
                 else value = data;
                 setCache(keyStr, value);
@@ -195,9 +219,16 @@
             try {
                 const ref = d.collection(COL).doc(keyStr);
                 const ts = fb.firestore && fb.firestore.FieldValue ? fb.firestore.FieldValue.serverTimestamp() : null;
-                const payload = Array.isArray(value)
-                    ? (ts ? { items: value, updatedAt: ts } : { items: value })
-                    : (ts ? { data: value, updatedAt: ts } : { data: value });
+                var payload;
+                if (valueNeedsJsonBlob(value)) {
+                    payload = ts
+                        ? { _sotJsonV1: true, body: JSON.stringify(value), updatedAt: ts }
+                        : { _sotJsonV1: true, body: JSON.stringify(value) };
+                } else if (Array.isArray(value)) {
+                    payload = ts ? { items: value, updatedAt: ts } : { items: value };
+                } else {
+                    payload = ts ? { data: value, updatedAt: ts } : { data: value };
+                }
                 await ref.set(payload);
                 return true;
             } catch (e) {

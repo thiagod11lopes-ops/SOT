@@ -1,14 +1,15 @@
 /**
  * Serviço de Dados Unificado
- * Usa backend (API) quando disponível, fallback para Firebase e localStorage.
- * Inclui cache para leituras Firebase e tratamento robusto de erros.
+ * Com SOT_FORCE_FIREBASE_ONLY: leituras vêm só do Firestore (e cache em memória TTL curto).
+ * localStorage não é usado como fonte de leitura; gravações podem ainda espelhar no LS.
+ * Sem a flag: API quando disponível, senão Firebase e fallbacks locais.
  */
 
 (function() {
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
-    /** Se true: fonte de verdade é o Firestore (sot_data), não localStorage nem API REST /api. */
+    /** Se true: leituras só na nuvem (Firestore sot_data); sem fallback de leitura no localStorage nem API /api. */
     const SOT_FORCE_FIREBASE_ONLY = true;
     const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
@@ -126,8 +127,12 @@
             return !!(this.useAPI && this.apiAvailable);
         }
 
-        /** Lê array do localStorage (ignora SOT_FORCE_FIREBASE_ONLY) — para modo offline / importação. */
+        /**
+         * Lê array do localStorage (somente quando SOT_FORCE_FIREBASE_ONLY é false).
+         * Com leitura somente nuvem, nunca lê o navegador — evita misturar dados antigos do LS.
+         */
         _readLocalStorageArray(key) {
+            if (SOT_FORCE_FIREBASE_ONLY) return null;
             if (typeof localStorage === 'undefined') return null;
             try {
                 const raw = localStorage.getItem(key);
@@ -185,6 +190,11 @@
             if (apiCheckPromise) return apiCheckPromise;
             apiCheckPromise = (async () => {
                 try {
+                    if (SOT_FORCE_FIREBASE_ONLY) {
+                        this.apiAvailable = false;
+                        this.useAPI = false;
+                        return false;
+                    }
                     if (typeof api === 'undefined') {
                         log('warn', 'api-service.js não carregado');
                         this.apiAvailable = false;
@@ -227,6 +237,7 @@
             }
         }
 
+        /** Com SOT_FORCE_FIREBASE_ONLY não lê o navegador — só devolve defaultValue (leitura somente nuvem nos getters). */
         getFromLocalStorage(key, defaultValue) {
             if (defaultValue === undefined) defaultValue = null;
             if (SOT_FORCE_FIREBASE_ONLY) return defaultValue;
@@ -335,6 +346,10 @@
                     return data;
                 }
             }
+            if (SOT_FORCE_FIREBASE_ONLY) {
+                log('warn', 'getSaidasAdministrativas: sem lista válida no Firebase; retornando [] (leitura somente nuvem).');
+                return [];
+            }
             const localSaidas = this._readLocalStorageArray('saidasAdministrativas');
             if (!navigator.onLine) {
                 return localSaidas != null ? localSaidas : [];
@@ -391,6 +406,10 @@
                 if (Array.isArray(data)) {
                     return data;
                 }
+            }
+            if (SOT_FORCE_FIREBASE_ONLY) {
+                log('warn', 'getSaidasAmbulancias: sem lista válida no Firebase; retornando [] (leitura somente nuvem).');
+                return [];
             }
             const localAmb = this._readLocalStorageArray('saidasAmbulancias');
             if (!navigator.onLine) {

@@ -134,7 +134,7 @@ function getUI() {
 }
 
 function setUIForSignedIn(user) {
-  const { btnLogin, usuarioInfo, nomeUsuario } = getUI();
+  const { btnLogin, btnSair, usuarioInfo, nomeUsuario } = getUI();
 
   const displayName = user?.displayName || user?.email || "";
 
@@ -143,7 +143,6 @@ function setUIForSignedIn(user) {
   if (usuarioInfo) usuarioInfo.style.display = "block";
   if (btnLogin) btnLogin.style.display = "none";
 
-  // opcional: garante que o botão sair fique visível
   if (btnSair) btnSair.style.display = "inline-block";
 }
 
@@ -154,6 +153,21 @@ function setUIForSignedOut() {
 }
 
 let boundToTargetDoc = false;
+
+function setUsuarioInfoVisibility(usuarioInfoEl, visible) {
+  if (!usuarioInfoEl) return;
+  if (!visible) {
+    usuarioInfoEl.style.display = "none";
+    return;
+  }
+  try {
+    const shell = typeof document !== "undefined" ? document.getElementById("google-login-shell") : null;
+    const inMainShell = shell && shell.contains(usuarioInfoEl);
+    usuarioInfoEl.style.display = inMainShell ? "flex" : "block";
+  } catch (e) {
+    usuarioInfoEl.style.display = "block";
+  }
+}
 
 function bindUIToDoc(targetDoc) {
   if (!targetDoc || boundToTargetDoc) return;
@@ -178,11 +192,11 @@ function bindUIToDoc(targetDoc) {
     } catch (e) {}
 
     if (user) {
-      if (ui.usuarioInfo) ui.usuarioInfo.style.display = "block";
+      setUsuarioInfoVisibility(ui.usuarioInfo, true);
       if (ui.btnLogin) ui.btnLogin.style.display = "none";
       if (ui.btnSair) ui.btnSair.style.display = "inline-block";
     } else {
-      if (ui.usuarioInfo) ui.usuarioInfo.style.display = "none";
+      setUsuarioInfoVisibility(ui.usuarioInfo, false);
       if (ui.btnLogin) ui.btnLogin.style.display = "inline-block";
     }
   });
@@ -190,6 +204,16 @@ function bindUIToDoc(targetDoc) {
   // Event listeners (botões)
   if (ui.btnLogin) {
     ui.btnLogin.addEventListener("click", async () => {
+      if (window.location.protocol === "file:") {
+        alert(
+          "O login Google não funciona ao abrir o arquivo direto (file://).\n\n" +
+            "Use um endereço http://, por exemplo:\n" +
+            "• VS Code: extensão «Live Server» → abra http://127.0.0.1:5500/.../index.html\n" +
+            "• Terminal: npx --yes serve \"Todas as abas\"\n\n" +
+            "No Firebase: Authentication → Settings → Authorized domains → inclua «localhost» e «127.0.0.1»."
+        );
+        return;
+      }
       if (!navigator.onLine) {
         alert("Sem conexão com a internet.");
         return;
@@ -254,4 +278,15 @@ if (document.readyState === "loading") {
     if (iframe) iframe.addEventListener("load", () => tryBind());
   }
 }
+
+// Se o módulo carregar antes do DOM completo ou o iframe atrasar, tenta de novo.
+setTimeout(function () {
+  if (!boundToTargetDoc) tryBind();
+}, 500);
+setTimeout(function () {
+  if (!boundToTargetDoc) tryBind();
+}, 2500);
+window.addEventListener("load", function () {
+  if (!boundToTargetDoc) tryBind();
+});
 

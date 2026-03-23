@@ -109,6 +109,23 @@ function snapshotExists(snap) {
   }
 }
 
+/** Firestore não aceita arrays aninhados (ex.: escalaData.members = [[...],[...]]). */
+function valueNeedsJsonBlob(value) {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) {
+    if (value.some(function (item) { return Array.isArray(item); })) return true;
+    return value.some(function (item) {
+      return item !== null && typeof item === "object" && valueNeedsJsonBlob(item);
+    });
+  }
+  if (typeof value === "object") {
+    for (var k in value) {
+      if (Object.prototype.hasOwnProperty.call(value, k) && valueNeedsJsonBlob(value[k])) return true;
+    }
+  }
+  return false;
+}
+
 async function ensureAuthTokenForFirestore() {
   try {
     const u = auth && auth.currentUser;
@@ -228,7 +245,14 @@ export async function installFirebaseSot() {
           }
           const data = snap.data();
           let value = null;
-          if (data && Array.isArray(data.items)) value = data.items;
+          if (data && data._sotJsonV1 === true && typeof data.body === "string") {
+            try {
+              value = JSON.parse(data.body);
+            } catch (parseErr) {
+              log("error", "get JSON parse key=" + keyStr, parseErr && parseErr.message);
+              value = null;
+            }
+          } else if (data && Array.isArray(data.items)) value = data.items;
           else if (data && data.data !== undefined) value = data.data;
           else value = data;
           setCache(keyStr, value);
@@ -278,9 +302,14 @@ export async function installFirebaseSot() {
           try {
             const ref = doc(db, COL, keyStr);
             const ts = serverTimestamp();
-            const payload = Array.isArray(value)
-              ? { items: value, updatedAt: ts }
-              : { data: value, updatedAt: ts };
+            var payload;
+            if (valueNeedsJsonBlob(value)) {
+              payload = { _sotJsonV1: true, body: JSON.stringify(value), updatedAt: ts };
+            } else if (Array.isArray(value)) {
+              payload = { items: value, updatedAt: ts };
+            } else {
+              payload = { data: value, updatedAt: ts };
+            }
             await setDoc(ref, payload);
             return true;
           } catch (e) {
