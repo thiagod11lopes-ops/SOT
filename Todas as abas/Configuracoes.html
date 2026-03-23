@@ -1638,16 +1638,95 @@
             // 5) Usar dados do Firebase — desativa a preferência pelo localStorage
             const usarDadosFirebaseBtn = document.getElementById('usarDadosFirebaseBtn');
             if (usarDadosFirebaseBtn) {
-                usarDadosFirebaseBtn.addEventListener('click', () => {
+                usarDadosFirebaseBtn.addEventListener('click', async () => {
                     if (typeof dataService === 'undefined') {
                         showGerenciamentoMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
                         return;
                     }
-                    dataService.setPreferLocalStorage(false);
-                    showGerenciamentoMessage('Agora o sistema usa os dados do Firebase. A página será recarregada.', 'success');
-                    setTimeout(() => {
-                        if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'reload_required' }, '*');
-                    }, 1500);
+                    if (!navigator.onLine) {
+                        showGerenciamentoMessage('Sem internet. Conecte-se para carregar os dados do Firebase.', 'error');
+                        return;
+                    }
+
+                    usarDadosFirebaseBtn.disabled = true;
+                    const originalHtml = usarDadosFirebaseBtn.innerHTML;
+                    usarDadosFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Carregando da nuvem...';
+
+                    try {
+                        dataService.setPreferLocalStorage(false);
+                        if (window.firebaseSot && typeof window.firebaseSot.invalidateAllCache === 'function') {
+                            window.firebaseSot.invalidateAllCache();
+                        }
+                        await dataService.waitForAPICheck();
+
+                        // Força baixar da nuvem e atualizar o localStorage desta máquina
+                        const saidasAdm = await dataService.getSaidasAdministrativas();
+                        if (Array.isArray(saidasAdm)) localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdm));
+
+                        const saidasAmb = await dataService.getSaidasAmbulancias();
+                        if (Array.isArray(saidasAmb)) localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmb));
+
+                        const viaturas = await dataService.getViaturas();
+                        if (Array.isArray(viaturas)) localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturas));
+
+                        const motoristas = await dataService.getMotoristas();
+                        if (Array.isArray(motoristas)) localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristas));
+
+                        if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                            const directArrayKeys = ['vistoriasRealizadas', 'abastecimentos', 'avisos', 'lembretes_ativos', 'motoristasVistoria', 'integrantesEscalaPao', 'feriadosEscalaPao', 'escalaPaoInsercoes', 'diasExcluidosEscalaPao', 'historicoEscalaPao'];
+                            for (const k of directArrayKeys) {
+                                try {
+                                    const v = await window.firebaseSot.get(k);
+                                    if (Array.isArray(v)) localStorage.setItem(k, JSON.stringify(v));
+                                } catch (e) {
+                                    console.warn('Falha ao obter do Firebase:', k, e);
+                                }
+                            }
+                            try {
+                                const escalaData = await window.firebaseSot.get('escalaData');
+                                if (escalaData && typeof escalaData === 'object') {
+                                    localStorage.setItem('escalaData', JSON.stringify(escalaData));
+                                    Object.keys(escalaData).forEach((mk) => {
+                                        if (/^\d{4}-\d{2}$/.test(mk)) {
+                                            localStorage.setItem(mk, JSON.stringify(escalaData[mk]));
+                                        }
+                                    });
+                                }
+                            } catch (e) {
+                                console.warn('Falha ao obter escalaData do Firebase:', e);
+                            }
+                            try {
+                                const pulados = await window.firebaseSot.get('puladosEscalaPao');
+                                if (pulados && typeof pulados === 'object') localStorage.setItem('puladosEscalaPao', JSON.stringify(pulados));
+                            } catch (e) {
+                                console.warn('Falha ao obter puladosEscalaPao do Firebase:', e);
+                            }
+                            try {
+                                const ultimoIndice = await window.firebaseSot.get('ultimoIndiceEscala');
+                                if (ultimoIndice !== null && ultimoIndice !== undefined) localStorage.setItem('ultimoIndiceEscala', JSON.stringify(ultimoIndice));
+                            } catch (e) {
+                                console.warn('Falha ao obter ultimoIndiceEscala do Firebase:', e);
+                            }
+                            try {
+                                const dataRef = await window.firebaseSot.get('escalaPaoDataReferencia');
+                                if (dataRef) localStorage.setItem('escalaPaoDataReferencia', String(dataRef));
+                            } catch (e) {
+                                console.warn('Falha ao obter escalaPaoDataReferencia do Firebase:', e);
+                            }
+                        }
+
+                        recordUsuarioAudit('config_force_pull_from_firebase', { source: 'Configuracoes.html' });
+                        showGerenciamentoMessage('Dados do Firebase carregados nesta máquina. A página será recarregada.', 'success');
+                        setTimeout(() => {
+                            if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'reload_required' }, '*');
+                        }, 1200);
+                    } catch (e) {
+                        console.error('Falha ao carregar dados do Firebase para local:', e);
+                        showGerenciamentoMessage('Erro ao carregar dados da nuvem. Verifique conexão/permissões.', 'error');
+                    } finally {
+                        usarDadosFirebaseBtn.disabled = false;
+                        usarDadosFirebaseBtn.innerHTML = originalHtml;
+                    }
                 });
             }
 
