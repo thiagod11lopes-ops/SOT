@@ -26,12 +26,12 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebas
 // TODO: Cole aqui o seu firebaseConfig real do Console do Firebase.
 // Exemplo (apenas estrutura):
 const firebaseConfig = {
-  apiKey: "COLE_AQUI",
-  authDomain: "COLE_AQUI",
-  projectId: "COLE_AQUI",
-  storageBucket: "COLE_AQUI",
-  messagingSenderId: "COLE_AQUI",
-  appId: "COLE_AQUI"
+  apiKey: "AIzaSyCJkB0sDzoz8kuchiM-A9lycQk011H6Pmw",
+  authDomain: "sot-c77cb.firebaseapp.com",
+  projectId: "sot-c77cb",
+  storageBucket: "sot-c77cb.firebasestorage.app",
+  messagingSenderId: "608364494039",
+  appId: "1:608364494039:web:018231f1db30be94c7c492"
 };
 
 // Inicializa Firebase
