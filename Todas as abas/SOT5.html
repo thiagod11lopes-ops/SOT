@@ -2161,7 +2161,7 @@ document.addEventListener('keydown', (e) => {
 function showPasswordPrompt() {
     // Se estiver logado com Google, desbloqueia sem pedir senha (fallback continua funcionando).
     try {
-        if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+        if (window.top && window.top._sot_google_signed_in) {
             isLocked = false;
             updateLockState(false);
             resetInactivityTimer();
@@ -3575,64 +3575,8 @@ updateMaximizeState();
 <!-- Firebase + sincronização automática (local ↔ nuvem) quando online -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="firebase-sot-service.js"></script>
-
-<!-- Firebase Auth (Google) - login para desbloqueio -->
-<script>
-(function() {
-  'use strict';
-
-  var btnLogin = document.getElementById('btn-login');
-  var btnSair = document.getElementById('btn-sair');
-  var usuarioInfo = document.getElementById('usuario-info');
-  var nomeUsuario = document.getElementById('nome-usuario');
-
-  if (typeof firebase === 'undefined' || !firebase.auth) return;
-
-  var auth = firebase.auth();
-  var provider = new firebase.auth.GoogleAuthProvider();
-
-  function setGoogleUI(user) {
-    try {
-      var signedIn = !!user;
-      window._sot_google_signed_in = signedIn;
-
-      if (btnLogin) btnLogin.style.display = signedIn ? 'none' : 'inline-block';
-      if (usuarioInfo) usuarioInfo.style.display = signedIn ? 'block' : 'none';
-      if (nomeUsuario) nomeUsuario.textContent = user && (user.displayName || user.email) ? (user.displayName || user.email) : '';
-    } catch (e) {}
-  }
-
-  try {
-    auth.onAuthStateChanged(function(user) {
-      setGoogleUI(user);
-    });
-  } catch (e) {}
-
-  if (btnLogin) {
-    btnLogin.addEventListener('click', function() {
-      if (!navigator.onLine) {
-        alert('Sem conexão com a internet.');
-        return;
-      }
-      auth.signInWithPopup(provider).catch(function(err) {
-        console.error('Erro no login Google:', err);
-        alert('Falha ao entrar com Google. Verifique as configurações do Firebase Auth (método Google ativado).');
-      });
-    });
-  }
-
-  if (btnSair) {
-    btnSair.addEventListener('click', function() {
-      auth.signOut().catch(function(err) {
-        console.error('Erro ao sair:', err);
-      });
-    });
-  }
-})();
-</script>
 
 <!-- SISTEMA DE CONTROLE POR VOZ -->
 <script src="api-service.js"></script>

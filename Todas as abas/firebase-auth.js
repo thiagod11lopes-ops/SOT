@@ -94,6 +94,13 @@ function bindUIToDoc(targetDoc) {
     const displayName = user?.displayName || user?.email || "";
     if (ui.nomeUsuario) ui.nomeUsuario.textContent = displayName;
 
+    // Usado pelo SOT5.html (iframe) para liberar o desbloqueio sem senha.
+    // Atribuímos no window.top porque o SOT5 roda dentro de um iframe.
+    try {
+      if (window.top) window.top._sot_google_signed_in = !!user;
+      else window._sot_google_signed_in = !!user;
+    } catch (e) {}
+
     if (user) {
       if (ui.usuarioInfo) ui.usuarioInfo.style.display = "block";
       if (ui.btnLogin) ui.btnLogin.style.display = "none";
