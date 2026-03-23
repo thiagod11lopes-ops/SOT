@@ -87,6 +87,36 @@ function authGateOk() {
   }
 }
 
+/**
+ * SDK modular: em várias versões `exists` é método `exists()`; em outras é boolean.
+ * Usar só `snap.exists` como boolean quebra leituras (sempre "documento inexistente").
+ */
+function snapshotExists(snap) {
+  if (!snap) return false;
+  try {
+    if (typeof snap.exists === "function") {
+      return snap.exists();
+    }
+  } catch (e) {}
+  if (typeof snap.exists === "boolean") {
+    return snap.exists;
+  }
+  try {
+    const d = snap.data();
+    return d !== undefined;
+  } catch (e2) {
+    return false;
+  }
+}
+
+async function ensureAuthTokenForFirestore() {
+  try {
+    const u = auth && auth.currentUser;
+    if (!u) return;
+    await u.getIdToken();
+  } catch (e) {}
+}
+
 function syncSignedInFlag() {
   const ok = authGateOk();
   try {
@@ -111,6 +141,7 @@ export function waitUntilSignedIn(timeoutMs) {
       return;
     }
     if (auth.currentUser) {
+      auth.currentUser.getIdToken().catch(function () {});
       resolve(true);
       return;
     }
@@ -123,6 +154,7 @@ export function waitUntilSignedIn(timeoutMs) {
     var unsub = onAuthStateChanged(auth, function (user) {
       if (user) {
         clearTimeout(t);
+        user.getIdToken().catch(function () {});
         try {
           unsub();
         } catch (e) {}
@@ -187,9 +219,10 @@ export async function installFirebaseSot() {
           return null;
         }
         try {
+          await ensureAuthTokenForFirestore();
           const ref = doc(db, COL, keyStr);
           const snap = await getDoc(ref);
-          if (!snap.exists) {
+          if (!snapshotExists(snap)) {
             setCache(keyStr, null);
             return null;
           }
@@ -201,7 +234,13 @@ export async function installFirebaseSot() {
           setCache(keyStr, value);
           return value;
         } catch (e) {
-          log("error", "get error key=" + keyStr, e && e.message);
+          const code = e && e.code ? e.code : "";
+          const msg = e && e.message ? e.message : String(e);
+          if (code === "permission-denied") {
+            log("error", "get PERMISSION-DENIED key=" + keyStr + " — confira regras Firestore e login Google.", msg);
+          } else {
+            log("error", "get error key=" + keyStr, msg);
+          }
           return null;
         }
       })();
@@ -265,9 +304,10 @@ export async function installFirebaseSot() {
       if (!authGateOk()) return null;
       if (!db) return null;
       try {
+        await ensureAuthTokenForFirestore();
         const ref = doc(db, COL, "config_" + String(chave));
         const snap = await getDoc(ref);
-        if (!snap.exists) return null;
+        if (!snapshotExists(snap)) return null;
         const data = snap.data();
         return data && data.value !== undefined ? data.value : null;
       } catch (e) {
