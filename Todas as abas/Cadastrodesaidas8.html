@@ -3104,16 +3104,25 @@ if (typeof dataService !== 'undefined') {
         motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
     }
 } else if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
-    // Sem dataService: tenta carregar direto do Firebase e espelhar no localStorage
+    // Sem dataService: Firebase (principal) + localStorage (complemento por id)
+    var _merge = (window.sotDataMerge && window.sotDataMerge.mergeArraysCloudPrimary) || function (c, l) {
+        var a = Array.isArray(c) ? c : [], b = Array.isArray(l) ? l : [], m = new Map();
+        a.forEach(function (it) { if (it && it.id != null && it.id !== '') m.set(String(it.id), it); });
+        b.forEach(function (it) { if (it && it.id != null && it.id !== '' && !m.has(String(it.id))) m.set(String(it.id), it); });
+        return Array.from(m.values());
+    };
+    var _lsArr = (window.sotDataMerge && window.sotDataMerge.readLocalStorageArrayAlways) || function (key) {
+        try { var r = localStorage.getItem(key); if (!r) return []; var v = JSON.parse(r); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    };
     try {
         const fbSaidasAdm = await window.firebaseSot.get('saidasAdministrativas');
         const fbSaidasAmb = await window.firebaseSot.get('saidasAmbulancias');
-        saidasAdministrativas = Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [];
-        saidasAmbulancias = Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [];
+        saidasAdministrativas = _merge(Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [], _lsArr('saidasAdministrativas'), 'id');
+        saidasAmbulancias = _merge(Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [], _lsArr('saidasAmbulancias'), 'id');
         const fbV = await window.firebaseSot.get('viaturasCadastradas');
         const fbM = await window.firebaseSot.get('motoristasCadastrados');
-        viaturasCadastradas = Array.isArray(fbV) ? fbV : [];
-        motoristasCadastrados = Array.isArray(fbM) ? fbM : [];
+        viaturasCadastradas = _merge(Array.isArray(fbV) ? fbV : [], _lsArr('viaturasCadastradas'), 'id');
+        motoristasCadastrados = _merge(Array.isArray(fbM) ? fbM : [], _lsArr('motoristasCadastrados'), 'id');
         remoteLoaded = true;
         try {
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));

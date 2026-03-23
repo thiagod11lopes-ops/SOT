@@ -368,38 +368,30 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
-            // null = ainda não recebemos resposta do dataService; [] = nuvem retornou lista vazia (válido)
-            let viaturasCadastradas = null;
-            let motoristasCadastrados = null;
+            // dataService: nuvem (principal) + localStorage (complementa por id, sem apagar um ao outro)
+            let viaturasCadastradas = [];
+            let motoristasCadastrados = [];
             let psoFila = [];
 
-            // Carregar do Firestore via dataService (lista vazia da nuvem não deve ser trocada por localStorage)
             try {
                 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                     await dataService.waitForAPICheck();
                     if (typeof dataService.getViaturas === 'function' && typeof dataService.getMotoristas === 'function') {
-                        const v = await dataService.getViaturas();
-                        const m = await dataService.getMotoristas();
-                        if (Array.isArray(v)) {
-                            viaturasCadastradas = v;
-                            try { localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); } catch (e) {}
-                        }
-                        if (Array.isArray(m)) {
-                            motoristasCadastrados = m;
-                            try { localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); } catch (e) {}
-                        }
+                        viaturasCadastradas = await dataService.getViaturas();
+                        motoristasCadastrados = await dataService.getMotoristas();
+                        try { localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas)); } catch (e) {}
+                        try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
                     }
                 }
             } catch (e) {
                 console.warn('Frota e Pessoal: falha ao carregar via dataService', e);
-            }
-
-            // Fallback local só se o dataService não devolveu array (indisponível / erro), não quando veio [] do Firebase
-            if (!Array.isArray(viaturasCadastradas)) {
-                viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
-            }
-            if (!Array.isArray(motoristasCadastrados)) {
-                motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+                try {
+                    viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+                    motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+                } catch (e2) {
+                    viaturasCadastradas = [];
+                    motoristasCadastrados = [];
+                }
             }
 
             // PSO sempre carregado do localStorage (não tem integração dedicada no dataService)

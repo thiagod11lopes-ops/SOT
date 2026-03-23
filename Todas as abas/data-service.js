@@ -1,15 +1,15 @@
 /**
  * Serviço de Dados Unificado
- * Com SOT_FORCE_FIREBASE_ONLY: leituras vêm só do Firestore (e cache em memória TTL curto).
- * localStorage não é usado como fonte de leitura; gravações podem ainda espelhar no LS.
- * Sem a flag: API quando disponível, senão Firebase e fallbacks locais.
+ * Com SOT_FORCE_FIREBASE_ONLY: Firestore é a fonte principal; localStorage só completa (união por id).
+ * Em conflito de mesmo id, prevalece a nuvem. Gravações podem espelhar no LS.
+ * Sem a flag: API quando disponível, senão Firebase + merge com local.
  */
 
 (function() {
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
-    /** Se true: leituras só na nuvem (Firestore sot_data); sem fallback de leitura no localStorage nem API /api. */
+    /** Se true: não usa API REST /api; leituras = Firestore (principal) + localStorage (complemento por id). */
     const SOT_FORCE_FIREBASE_ONLY = true;
     const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
@@ -19,6 +19,57 @@
     const firebaseReadCache = new Map();
     /** Uma única Promise para a verificação da API (evita corrida) */
     let apiCheckPromise = null;
+
+    /** Lê array do localStorage sempre (para merge; não respeita “só nuvem”). */
+    function readLocalStorageArrayAlways(key) {
+        if (typeof localStorage === 'undefined') return [];
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw == null || raw === '') return [];
+            const v = JSON.parse(raw);
+            return Array.isArray(v) ? v : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /**
+     * União por id: itens da nuvem (cloudArr) têm prioridade; local só acrescenta ids ausentes na nuvem.
+     */
+    function mergeArraysCloudPrimary(cloudArr, localArr, idField) {
+        idField = idField || 'id';
+        const remote = Array.isArray(cloudArr) ? cloudArr : [];
+        const local = Array.isArray(localArr) ? localArr : [];
+        const byId = new Map();
+        remote.forEach(function(item) {
+            const id = item && item[idField];
+            if (id != null && id !== '') byId.set(String(id), item);
+        });
+        local.forEach(function(item) {
+            const id = item && item[idField];
+            if (id != null && id !== '' && !byId.has(String(id))) byId.set(String(id), item);
+        });
+        return Array.from(byId.values());
+    }
+
+    function readLocalStorageEscalaObject() {
+        if (typeof localStorage === 'undefined') return {};
+        try {
+            const raw = localStorage.getItem('escalaData');
+            if (!raw) return {};
+            const v = JSON.parse(raw);
+            return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    /** Objetos: chaves só no local permanecem; chaves em ambos usam valor da nuvem. */
+    function mergeObjectsCloudPrimary(cloudObj, localObj) {
+        const local = localObj && typeof localObj === 'object' && !Array.isArray(localObj) ? localObj : {};
+        const cloud = cloudObj && typeof cloudObj === 'object' && !Array.isArray(cloudObj) ? cloudObj : {};
+        return Object.assign({}, local, cloud);
+    }
 
     function log(level, message, detail) {
         try {
@@ -127,21 +178,10 @@
             return !!(this.useAPI && this.apiAvailable);
         }
 
-        /**
-         * Lê array do localStorage (somente quando SOT_FORCE_FIREBASE_ONLY é false).
-         * Com leitura somente nuvem, nunca lê o navegador — evita misturar dados antigos do LS.
-         */
+        /** @deprecated use readLocalStorageArrayAlways + mergeArraysCloudPrimary nos getters */
         _readLocalStorageArray(key) {
-            if (SOT_FORCE_FIREBASE_ONLY) return null;
-            if (typeof localStorage === 'undefined') return null;
-            try {
-                const raw = localStorage.getItem(key);
-                if (raw == null || raw === '') return null;
-                const v = JSON.parse(raw);
-                return Array.isArray(v) ? v : null;
-            } catch (e) {
-                return null;
-            }
+            const a = readLocalStorageArrayAlways(key);
+            return a.length ? a : null;
         }
 
         /** Limpa cache em memória das leituras Firebase (ex.: após importar JSON). */
@@ -237,7 +277,7 @@
             }
         }
 
-        /** Com SOT_FORCE_FIREBASE_ONLY não lê o navegador — só devolve defaultValue (leitura somente nuvem nos getters). */
+        /** Com SOT_FORCE_FIREBASE_ONLY não lê LS aqui (merge feito nos getters dedicados). */
         getFromLocalStorage(key, defaultValue) {
             if (defaultValue === undefined) defaultValue = null;
             if (SOT_FORCE_FIREBASE_ONLY) return defaultValue;
@@ -253,9 +293,11 @@
         // ---------- Viaturas ----------
         async getViaturas() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('viaturasCadastradas');
             if (this._useRestApi()) {
                 try {
-                    return await api.getViaturas();
+                    const apiData = await api.getViaturas();
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getViaturas API', e);
                     this.apiAvailable = false;
@@ -264,8 +306,9 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('viaturasCadastradas');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
+            if (local.length) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('viaturasCadastradas', []);
             return this.getFromLocalStorage('viaturasCadastradas', []);
         }
@@ -292,9 +335,11 @@
         // ---------- Motoristas ----------
         async getMotoristas() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('motoristasCadastrados');
             if (this._useRestApi()) {
                 try {
-                    return await api.getMotoristas();
+                    const apiData = await api.getMotoristas();
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getMotoristas API', e);
                     this.apiAvailable = false;
@@ -303,8 +348,9 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('motoristasCadastrados');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
+            if (local.length) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('motoristasCadastrados', []);
             return this.getFromLocalStorage('motoristasCadastrados', []);
         }
@@ -331,9 +377,11 @@
         // ---------- Saídas administrativas ----------
         async getSaidasAdministrativas() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('saidasAdministrativas');
             if (this._useRestApi()) {
                 try {
-                    return await api.getSaidasAdministrativas();
+                    const apiData = await api.getSaidasAdministrativas();
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getSaidasAdministrativas API', e);
                     this.apiAvailable = false;
@@ -342,22 +390,10 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('saidasAdministrativas');
-                if (Array.isArray(data)) {
-                    return data;
-                }
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
-            if (SOT_FORCE_FIREBASE_ONLY) {
-                log('warn', 'getSaidasAdministrativas: sem lista válida no Firebase; retornando [] (leitura somente nuvem).');
-                return [];
-            }
-            const localSaidas = this._readLocalStorageArray('saidasAdministrativas');
-            if (!navigator.onLine) {
-                return localSaidas != null ? localSaidas : [];
-            }
-            if (localSaidas != null && localSaidas.length > 0) {
-                log('warn', 'getSaidasAdministrativas: Firebase não retornou lista; usando cópia do localStorage.');
-                return localSaidas;
-            }
+            if (local.length) return local.slice();
+            if (!navigator.onLine) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAdministrativas', []);
             return this.getFromLocalStorage('saidasAdministrativas', []);
         }
@@ -392,9 +428,11 @@
         // ---------- Saídas ambulâncias ----------
         async getSaidasAmbulancias() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('saidasAmbulancias');
             if (this._useRestApi()) {
                 try {
-                    return await api.getSaidasAmbulancias();
+                    const apiData = await api.getSaidasAmbulancias();
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getSaidasAmbulancias API', e);
                     this.apiAvailable = false;
@@ -403,22 +441,10 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('saidasAmbulancias');
-                if (Array.isArray(data)) {
-                    return data;
-                }
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
-            if (SOT_FORCE_FIREBASE_ONLY) {
-                log('warn', 'getSaidasAmbulancias: sem lista válida no Firebase; retornando [] (leitura somente nuvem).');
-                return [];
-            }
-            const localAmb = this._readLocalStorageArray('saidasAmbulancias');
-            if (!navigator.onLine) {
-                return localAmb != null ? localAmb : [];
-            }
-            if (localAmb != null && localAmb.length > 0) {
-                log('warn', 'getSaidasAmbulancias: Firebase não retornou lista; usando cópia do localStorage.');
-                return localAmb;
-            }
+            if (local.length) return local.slice();
+            if (!navigator.onLine) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAmbulancias', []);
             return this.getFromLocalStorage('saidasAmbulancias', []);
         }
@@ -432,9 +458,11 @@
         // ---------- Vistorias ----------
         async getVistorias() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('vistoriasRealizadas');
             if (this._useRestApi()) {
                 try {
-                    return await api.getVistorias();
+                    const apiData = await api.getVistorias();
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getVistorias API', e);
                     this.apiAvailable = false;
@@ -443,8 +471,9 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('vistoriasRealizadas');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
+            if (local.length) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('vistoriasRealizadas', []);
             return this.getFromLocalStorage('vistoriasRealizadas', []);
         }
@@ -473,9 +502,11 @@
         // ---------- Abastecimentos ----------
         async getAbastecimentos() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('abastecimentos');
             if (this._useRestApi()) {
                 try {
-                    return await api.getAbastecimentos();
+                    const apiData = await api.getAbastecimentos();
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getAbastecimentos API', e);
                     this.apiAvailable = false;
@@ -484,8 +515,9 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('abastecimentos');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
+            if (local.length) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('abastecimentos', []);
             return this.getFromLocalStorage('abastecimentos', []);
         }
@@ -514,9 +546,13 @@
         // ---------- Escala ----------
         async getEscala() {
             await this.waitForAPICheck();
+            const localObj = readLocalStorageEscalaObject();
             if (this._useRestApi()) {
                 try {
-                    return await api.getEscala();
+                    const apiData = await api.getEscala();
+                    if (apiData && typeof apiData === 'object' && !Array.isArray(apiData)) {
+                        return mergeObjectsCloudPrimary(apiData, localObj);
+                    }
                 } catch (e) {
                     log('warn', 'getEscala API', e);
                     this.apiAvailable = false;
@@ -525,8 +561,11 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('escalaData');
-                if (data && typeof data === 'object') return data;
+                if (data && typeof data === 'object' && !Array.isArray(data)) {
+                    return mergeObjectsCloudPrimary(data, localObj);
+                }
             }
+            if (Object.keys(localObj).length) return mergeObjectsCloudPrimary({}, localObj);
             if (this._preferLocalStorage()) return this.getFromLocalStorage('escalaData', {});
             return this.getFromLocalStorage('escalaData', {});
         }
@@ -551,9 +590,11 @@
         // ---------- Avisos ----------
         async getAvisos() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('avisos');
             if (this._useRestApi()) {
                 try {
-                    return await api.getAvisos({ ativo: 1 });
+                    const apiData = await api.getAvisos({ ativo: 1 });
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getAvisos API', e);
                     this.apiAvailable = false;
@@ -562,8 +603,9 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('avisos');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
+            if (local.length) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('avisos', []);
             return this.getFromLocalStorage('avisos', []);
         }
@@ -592,9 +634,11 @@
         // ---------- Lembretes ----------
         async getLembretes() {
             await this.waitForAPICheck();
+            const local = readLocalStorageArrayAlways('lembretes_ativos');
             if (this._useRestApi()) {
                 try {
-                    return await api.getLembretes({ ativo: 1, concluido: 0 });
+                    const apiData = await api.getLembretes({ ativo: 1, concluido: 0 });
+                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getLembretes API', e);
                     this.apiAvailable = false;
@@ -603,8 +647,9 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('lembretes_ativos');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
             }
+            if (local.length) return local.slice();
             if (this._preferLocalStorage()) return this.getFromLocalStorage('lembretes_ativos', []);
             return this.getFromLocalStorage('lembretes_ativos', []);
         }
@@ -670,7 +715,7 @@
             }
             log('log', 'Sincronizando localStorage para API...');
             try {
-                const viaturas = this.getFromLocalStorage('viaturasCadastradas', []);
+                const viaturas = await this.getViaturas();
                 for (const v of viaturas) {
                     try {
                         if (v.id) await api.updateViatura(v.id, v);
@@ -679,7 +724,7 @@
                         log('warn', 'syncToAPI viatura', e);
                     }
                 }
-                const motoristas = this.getFromLocalStorage('motoristasCadastrados', []);
+                const motoristas = await this.getMotoristas();
                 for (const m of motoristas) {
                     try {
                         if (m.id) await api.updateMotorista(m.id, m);
@@ -708,6 +753,15 @@
 
     window.DataService = DataService;
     window.dataService = dataService;
+
+    try {
+        window.sotDataMerge = {
+            mergeArraysCloudPrimary: mergeArraysCloudPrimary,
+            readLocalStorageArrayAlways: readLocalStorageArrayAlways,
+            mergeObjectsCloudPrimary: mergeObjectsCloudPrimary,
+            readLocalStorageEscalaObject: readLocalStorageEscalaObject
+        };
+    } catch (e) {}
 
     try {
         window.addEventListener('sot-firebase-auth-changed', function() {
