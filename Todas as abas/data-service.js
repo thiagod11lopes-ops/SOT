@@ -8,7 +8,8 @@
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
-    const SOT_FORCE_FIREBASE_ONLY = true; // Se true, ignora leituras de localStorage/IndexedDB e usa apenas nuvem.
+    /** Se true: fonte de verdade é o Firestore (sot_data), não localStorage nem API REST /api. */
+    const SOT_FORCE_FIREBASE_ONLY = true;
     const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
     const LOG_PREFIX = '[data-service]';
@@ -110,6 +111,15 @@
             }
         }
 
+        /**
+         * Com SOT_FORCE_FIREBASE_ONLY, não usar backend REST (/api), mesmo se /health responder OK —
+         * evita listas vazias quando o Firestore tem dados mas os endpoints de saídas não estão populados.
+         */
+        _useRestApi() {
+            if (SOT_FORCE_FIREBASE_ONLY) return false;
+            return !!(this.useAPI && this.apiAvailable);
+        }
+
         async _getFromFirebase(key) {
             const cached = getCached(key);
             if (cached !== undefined) return cached;
@@ -204,7 +214,7 @@
         // ---------- Viaturas ----------
         async getViaturas() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getViaturas();
                 } catch (e) {
@@ -223,7 +233,7 @@
 
         async saveViaturas(viaturas) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     for (const viatura of viaturas) {
                         if (viatura.id) await api.updateViatura(viatura.id, viatura);
@@ -243,7 +253,7 @@
         // ---------- Motoristas ----------
         async getMotoristas() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getMotoristas();
                 } catch (e) {
@@ -262,7 +272,7 @@
 
         async saveMotoristas(motoristas) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     for (const m of motoristas) {
                         if (m.id) await api.updateMotorista(m.id, m);
@@ -282,7 +292,7 @@
         // ---------- Saídas administrativas ----------
         async getSaidasAdministrativas() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getSaidasAdministrativas();
                 } catch (e) {
@@ -301,7 +311,7 @@
 
         async saveSaidaAdministrativa(saida) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     const result = await api.createSaidaAdministrativa(saida);
                     const saidas = await this.getSaidasAdministrativas();
@@ -329,7 +339,7 @@
         // ---------- Saídas ambulâncias ----------
         async getSaidasAmbulancias() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getSaidasAmbulancias();
                 } catch (e) {
@@ -355,7 +365,7 @@
         // ---------- Vistorias ----------
         async getVistorias() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getVistorias();
                 } catch (e) {
@@ -374,7 +384,7 @@
 
         async saveVistoria(vistoria) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     const result = await api.createVistoria(vistoria);
                     const vistorias = await this.getVistorias();
@@ -396,7 +406,7 @@
         // ---------- Abastecimentos ----------
         async getAbastecimentos() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getAbastecimentos();
                 } catch (e) {
@@ -415,7 +425,7 @@
 
         async saveAbastecimento(abastecimento) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     const result = await api.createAbastecimento(abastecimento);
                     const abastecimentos = await this.getAbastecimentos();
@@ -437,7 +447,7 @@
         // ---------- Escala ----------
         async getEscala() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getEscala();
                 } catch (e) {
@@ -456,7 +466,7 @@
 
         async saveEscalaItem(item) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     await api.saveEscala(item);
                 } catch (e) {
@@ -474,7 +484,7 @@
         // ---------- Avisos ----------
         async getAvisos() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getAvisos({ ativo: 1 });
                 } catch (e) {
@@ -493,7 +503,7 @@
 
         async saveAviso(aviso) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     const result = await api.createAviso(aviso);
                     const avisos = await this.getAvisos();
@@ -515,7 +525,7 @@
         // ---------- Lembretes ----------
         async getLembretes() {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     return await api.getLembretes({ ativo: 1, concluido: 0 });
                 } catch (e) {
@@ -535,7 +545,7 @@
         // ---------- Configurações ----------
         async getConfiguracao(chave) {
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     const configs = await api.getConfiguracao();
                     return configs && configs[chave] && configs[chave].valor != null ? configs[chave].valor : null;
@@ -563,7 +573,7 @@
         async saveConfiguracao(chave, valor, tipo) {
             tipo = tipo || 'string';
             await this.waitForAPICheck();
-            if (this.useAPI && this.apiAvailable) {
+            if (this._useRestApi()) {
                 try {
                     await api.saveConfiguracao(chave, valor, tipo);
                 } catch (e) {
