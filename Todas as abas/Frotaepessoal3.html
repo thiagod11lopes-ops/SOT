@@ -455,6 +455,31 @@
                 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
             };
 
+            /**
+             * Remove linhas sem dado essencial: viaturas sem placa, motoristas sem nome.
+             * KM atual só lista viaturas cadastradas — ao limpar viaturas vazias, some da KM também.
+             */
+            const aplicarRemocaoLinhasSemDados = async () => {
+                const nV0 = viaturasCadastradas.length;
+                const nM0 = motoristasCadastrados.length;
+                viaturasCadastradas = (viaturasCadastradas || []).filter(function (v) {
+                    if (!v || typeof v !== 'object') return false;
+                    return ValidacaoFrota.sanitizePlaca(v.placa).length > 0;
+                });
+                motoristasCadastrados = (motoristasCadastrados || []).filter(function (m) {
+                    if (!m || typeof m !== 'object') return false;
+                    return ValidacaoFrota.sanitizeNome(m.nome).length > 0;
+                });
+                if (viaturasCadastradas.length !== nV0) {
+                    await saveData('viaturasCadastradas', viaturasCadastradas);
+                }
+                if (motoristasCadastrados.length !== nM0) {
+                    await saveData('motoristasCadastrados', motoristasCadastrados);
+                }
+            };
+
+            await aplicarRemocaoLinhasSemDados();
+
             const handleUpdate = (id, key, value, dataType) => {
                 const dataArray = dataType === 'viatura' ? viaturasCadastradas : motoristasCadastrados;
                 const item = dataArray.find(d => d.id === id);
@@ -1217,6 +1242,7 @@
                     motoristasCadastrados = await dataService.getMotoristas();
                     try { localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas)); } catch (e) {}
                     try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
+                    await aplicarRemocaoLinhasSemDados();
                     populateFrotaTable();
                     populatePessoalTable();
                     await populateKmAtualTable();
