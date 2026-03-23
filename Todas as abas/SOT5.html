@@ -190,7 +190,7 @@ height: 70px;
 border: 6px solid rgba(74,105,189,0.18);
 border-top-color: var(--primary-blue);
 border-radius: 50%;
-animation: spinLoader 2.4s ease-in-out forwards;
+animation: spinLoader 1s linear infinite;
 transition: opacity 0.4s ease, transform 0.4s ease;
 }
 .update-message {
@@ -263,9 +263,8 @@ box-shadow: none;
 100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes spinLoader {
-0% { transform: rotate(0deg) scale(1); opacity: 1; }
-70% { transform: rotate(540deg) scale(1); opacity: 1; }
-100% { transform: rotate(720deg) scale(0.6); opacity: 0; }
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
 }
 .update-loader.is-complete {
 opacity: 0;
@@ -1382,8 +1381,8 @@ margin: 20px 0;
 <img src="mascotedoblo.png" alt="Mascote SOT">
 </div>
 <div class="update-message">
-<strong>Bem-vindo ao SOT</strong>
-<span>Sistema de Organização de Transporte 10.1</span>
+<strong id="updateOverlayTitle">Bem-vindo ao SOT</strong>
+<span id="updateOverlaySubtitle">Sistema de Organização de Transporte 10.1</span>
 </div>
 <div class="update-loader" aria-hidden="true"></div>
 </div>
@@ -1950,6 +1949,8 @@ renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
 const SOT5_BUILD_ID = '2025-11-09-anim-v1';
 const updateOverlay = document.getElementById('updateOverlay');
 const updateLoader = document.querySelector('.update-loader');
+const updateOverlayTitle = document.getElementById('updateOverlayTitle');
+const updateOverlaySubtitle = document.getElementById('updateOverlaySubtitle');
 const THEME_ID_KEY = 'sot_theme_id';
 const THEME_VARS_KEY = 'sot_theme_variables';
 
@@ -2046,23 +2047,63 @@ updateOverlay.setAttribute('hidden', 'true');
 }
 if (updateOverlay) {
 showUpdateOverlay();
-console.log('Exibindo animação de boas-vindas do SOT5.');
-const openSystemAfterLoad = () => {
-localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
-const fullscreenPromise = requestFullscreenSafe();
-hideUpdateOverlay();
-fullscreenPromise.then(() => {
-console.log('Modo tela cheia solicitado ao entrar no SOT5.');
-});
+console.log('Exibindo carregamento inicial com status real do Firebase.');
+
+const setOverlayStatus = (title, subtitle, state) => {
+    if (updateOverlayTitle) updateOverlayTitle.textContent = title || '';
+    if (updateOverlaySubtitle) updateOverlaySubtitle.textContent = subtitle || '';
+    if (updateOverlayTitle) {
+        if (state === 'success') updateOverlayTitle.style.color = '#1f8b4c';
+        else if (state === 'error') updateOverlayTitle.style.color = '#b42318';
+        else updateOverlayTitle.style.color = 'var(--primary-blue)';
+    }
 };
-if (updateLoader) {
-updateLoader.addEventListener('animationend', () => {
-updateLoader.classList.add('is-complete');
-openSystemAfterLoad();
-}, { once: true });
-} else {
-setTimeout(openSystemAfterLoad, 800);
-}
+
+const waitForServices = async (timeoutMs) => {
+    const start = Date.now();
+    while ((Date.now() - start) < timeoutMs) {
+        if (window.SOTSync && typeof window.SOTSync.sync === 'function' &&
+            typeof dataService !== 'undefined' && dataService && typeof dataService.waitForAPICheck === 'function') {
+            return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 120));
+    }
+    return false;
+};
+
+const finishOverlay = (state) => {
+    if (updateLoader) updateLoader.classList.add('is-complete');
+    localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
+    const delay = state === 'success' ? 700 : 1800;
+    setTimeout(() => {
+        hideUpdateOverlay();
+        requestFullscreenSafe().then(() => {
+            console.log('Modo tela cheia solicitado ao entrar no SOT5.');
+        });
+    }, delay);
+};
+
+const runInitialFirebaseLoad = async () => {
+    setOverlayStatus('Carregando dados do Firebase...', 'Aguarde enquanto sincronizamos os dados do sistema.', 'loading');
+    try {
+        const ready = await waitForServices(12000);
+        if (!ready) throw new Error('Serviços de sincronização não ficaram disponíveis a tempo.');
+
+        dataService.setPreferLocalStorage(false);
+        await dataService.waitForAPICheck();
+        if (!dataService.useFirebase) throw new Error('Firebase não está disponível no momento.');
+
+        await window.SOTSync.sync(true, { afterSync: function() {} });
+        setOverlayStatus('Dados carregados com sucesso', 'Sistema atualizado com dados do Firebase.', 'success');
+        finishOverlay('success');
+    } catch (e) {
+        console.error('Falha no carregamento inicial do Firebase:', e);
+        setOverlayStatus('Falha ao carregar dados da nuvem', 'Verifique conexão/regras do Firebase. O sistema seguirá com os dados disponíveis.', 'error');
+        finishOverlay('error');
+    }
+};
+
+setTimeout(runInitialFirebaseLoad, 0);
 }
 function getPassword() {
 if (!localStorage.getItem('adminPassword')) {
