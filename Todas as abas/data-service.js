@@ -8,6 +8,7 @@
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
+    const SOT_FORCE_FIREBASE_ONLY = true; // Se true, ignora leituras de localStorage/IndexedDB e usa apenas nuvem.
     const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
     const LOG_PREFIX = '[data-service]';
@@ -66,6 +67,7 @@
 
         _preferLocalStorage() {
             try {
+                if (SOT_FORCE_FIREBASE_ONLY) return false;
                 return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SOT_PREFER_LOCAL_KEY) === 'true';
             } catch (e) {
                 return false;
@@ -75,12 +77,27 @@
         setPreferLocalStorage(value) {
             try {
                 if (typeof sessionStorage === 'undefined') return;
+                if (SOT_FORCE_FIREBASE_ONLY) {
+                    sessionStorage.removeItem(SOT_PREFER_LOCAL_KEY);
+                    if (typeof localStorage !== 'undefined') localStorage.removeItem(SOT_PREFER_LOCAL_KEY);
+                    return;
+                }
                 if (value) sessionStorage.setItem(SOT_PREFER_LOCAL_KEY, 'true');
                 else sessionStorage.removeItem(SOT_PREFER_LOCAL_KEY);
                 if (typeof localStorage !== 'undefined' && !value) localStorage.removeItem(SOT_PREFER_LOCAL_KEY);
             } catch (e) {
                 log('warn', 'setPreferLocalStorage', e);
             }
+        }
+
+        async _ensureFirebaseAvailable(timeoutMs) {
+            timeoutMs = timeoutMs || 4000;
+            const startedAt = Date.now();
+            while ((Date.now() - startedAt) < timeoutMs) {
+                if (this._checkFirebase()) return true;
+                await new Promise(function(resolve) { setTimeout(resolve, 120); });
+            }
+            return this._checkFirebase();
         }
 
         _checkFirebase() {
@@ -155,8 +172,9 @@
             try {
                 if (!apiCheckPromise) apiCheckPromise = this.checkAPI();
                 await apiCheckPromise;
-                this._checkFirebase();
+                await this._ensureFirebaseAvailable(SOT_FORCE_FIREBASE_ONLY ? 7000 : 4000);
                 if (this.useFirebase) log('log', 'Firebase SOT disponível');
+                else if (SOT_FORCE_FIREBASE_ONLY) log('warn', 'Firebase indisponível no modo somente-nuvem');
                 return apiCheckPromise;
             } catch (e) {
                 log('error', 'waitForAPICheck', e);
@@ -166,6 +184,7 @@
 
         getFromLocalStorage(key, defaultValue) {
             if (defaultValue === undefined) defaultValue = null;
+            if (SOT_FORCE_FIREBASE_ONLY) return defaultValue;
             try {
                 const item = localStorage.getItem(key);
                 return item ? JSON.parse(item) : defaultValue;
@@ -519,7 +538,7 @@
                     this.useAPI = false;
                 }
             }
-            if (this._preferLocalStorage() && typeof localStorage !== 'undefined') {
+            if (!SOT_FORCE_FIREBASE_ONLY && this._preferLocalStorage() && typeof localStorage !== 'undefined') {
                 try { return localStorage.getItem(chave); } catch (e) { return null; }
             }
             if (this.useFirebase && window.firebaseSot && typeof window.firebaseSot.getConfig === 'function') {
@@ -530,6 +549,7 @@
                     log('warn', 'getConfiguracao Firebase', e);
                 }
             }
+            if (SOT_FORCE_FIREBASE_ONLY) return null;
             try { return localStorage.getItem(chave); } catch (e) { return null; }
         }
 
