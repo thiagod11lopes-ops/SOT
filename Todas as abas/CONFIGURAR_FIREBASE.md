@@ -50,6 +50,9 @@ service cloud.firestore {
     match /sot_agendamento_usuarios/{document=**} {
       allow read, write: if true;
     }
+    match /sot_google_audit_logs/{document=**} {
+      allow read, write: if true;
+    }
     match /sot_data/{document=**} {
       allow read, write: if true;
     }

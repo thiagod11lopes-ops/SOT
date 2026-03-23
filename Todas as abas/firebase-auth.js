@@ -21,7 +21,12 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 // TODO: Cole aqui o seu firebaseConfig real do Console do Firebase.
 // Exemplo (apenas estrutura):
@@ -43,9 +48,80 @@ export const db = getFirestore(app);
 
 const provider = new GoogleAuthProvider();
 
+function safeStringifyJson(value) {
+  try {
+    if (value == null) return "";
+    if (typeof value === "string") return value;
+    return JSON.stringify(value);
+  } catch (e) {
+    return "";
+  }
+}
+
+async function recordAuditForUser(userSnapshot, action, details) {
+  try {
+    if (!userSnapshot || !userSnapshot.uid) return;
+    const detailsStr = safeStringifyJson(details);
+    await addDoc(collection(db, "sot_google_audit_logs"), {
+      uid: userSnapshot.uid,
+      email: userSnapshot.email || "",
+      displayName: userSnapshot.displayName || "",
+      action: action || "",
+      details: detailsStr === "{}" ? "" : detailsStr,
+      createdAt: serverTimestamp()
+    });
+  } catch (e) {
+    // Auditoria deve falhar silenciosamente para não quebrar o app.
+    console.warn("[firebase-auth] Falha ao gravar auditoria:", e && e.message ? e.message : e);
+  }
+}
+
+let lastUserSnapshot = null;
+
+// Exponibiliza para iframes/scripts não-modulares (ex.: Configurações.html).
+// Assinatura: window.top._sotRecordAuditAction(action: string, details?: object)
+function recordAuditActionFromUI(action, details) {
+  const user = auth.currentUser;
+  const snapshot = user
+    ? { uid: user.uid, email: user.email || "", displayName: user.displayName || "" }
+    : lastUserSnapshot;
+  return recordAuditForUser(snapshot, action, details);
+}
+
+try {
+  if (window.top) window.top._sotRecordAuditAction = recordAuditActionFromUI;
+  window._sotRecordAuditAction = recordAuditActionFromUI;
+} catch (e) {}
+
+// Grava login/logout independentemente do UI bind.
+onAuthStateChanged(auth, (user) => {
+  const snapshot = user
+    ? { uid: user.uid, email: user.email || "", displayName: user.displayName || "" }
+    : null;
+
+  if (snapshot) {
+    lastUserSnapshot = snapshot;
+    void recordAuditForUser(snapshot, "google_login", {});
+  } else if (lastUserSnapshot) {
+    void recordAuditForUser(lastUserSnapshot, "google_logout", {});
+    lastUserSnapshot = null;
+  }
+});
+
 function $(id) {
   return document.getElementById(id);
 }
+
+// Debug rápido: ajuda a confirmar se o arquivo carregado no navegador
+// está usando o `firebaseConfig` real (e não placeholders).
+try {
+  if (firebaseConfig?.apiKey && String(firebaseConfig.apiKey).includes("COLE_AQUI")) {
+    console.error("[firebase-auth] firebaseConfig ainda parece placeholder (apiKey=COLE_AQUI).");
+  } else {
+    console.log("[firebase-auth] firebaseConfig apiKey prefix:", String(firebaseConfig?.apiKey || "").slice(0, 10));
+    console.log("[firebase-auth] firebaseConfig authDomain:", firebaseConfig?.authDomain);
+  }
+} catch (e) {}
 
 function getUI() {
   const doc = document;
@@ -122,7 +198,9 @@ function bindUIToDoc(targetDoc) {
         await signInWithPopup(auth, provider);
       } catch (err) {
         console.error("Erro ao entrar com Google:", err);
-        alert("Falha ao entrar com Google. Verifique as configurações do Firebase Auth (Google habilitado).");
+        const code = err && err.code ? err.code : "";
+        const msg = err && err.message ? err.message : "";
+        alert("Falha ao entrar com Google.\n" + (code ? "Código: " + code + "\n" : "") + (msg ? msg : ""));
       }
     });
   }

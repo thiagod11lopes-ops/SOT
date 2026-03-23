@@ -357,6 +357,9 @@
                 <button id="carregarDadosBtn" class="warning" title="Carrega um arquivo JSON e mescla com os dados atuais (não substitui)">
                     <i class="fas fa-file-import"></i> Carregar Dados
                 </button>
+                    <button id="abrirUsuariosAuditBtn" title="Ver histórico do que cada usuário logado com Google fez no sistema">
+                        <i class="fas fa-users"></i> Usuários
+                    </button>
                 <button id="restaurarSaidasBackupBtn" class="warning" title="Substitui apenas Saídas Administrativas e Saídas Ambulâncias no Firebase e local pelo conteúdo do backup (use se os dados de saídas foram perdidos)">
                     <i class="fas fa-undo"></i> Restaurar saídas do backup
                 </button>
@@ -407,6 +410,31 @@
             </div>
         </div>
     </main>
+
+    <!-- Modal: Auditoria de Usuários (Login Google) -->
+    <div id="usuariosAuditModal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100000; align-items: center; justify-content: center; padding: 18px;">
+        <div style="width: 100%; max-width: 980px; background: var(--white); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.35); overflow: hidden; display: flex; flex-direction: column;">
+            <div style="display:flex; align-items:center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--gray); background: #f1f3f5;">
+                <div style="display:flex; flex-direction: column; gap: 4px;">
+                    <h3 style="margin:0; color: var(--primary-blue); font-size: 20px;"><i class="fas fa-users"></i> Usuários (Google)</h3>
+                    <span style="font-size: 12px; color: var(--dark-gray);">Histórico do que cada usuário fez no sistema</span>
+                </div>
+                <button id="usuariosAuditCloseBtn" style="background: transparent; border: none; cursor: pointer; font-size: 22px; color: #666; padding: 6px 10px;">&times;</button>
+            </div>
+            <div style="padding: 16px 20px; display: flex; gap: 16px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 280px;">
+                    <label style="display:block; font-weight: bold; margin-bottom: 8px; color: var(--dark-gray);">Selecione um usuário</label>
+                    <select id="usuariosAuditSelect" style="width:100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 14px;"></select>
+                    <div id="usuariosAuditLoading" class="message info" style="display:none; text-align:left; margin-top: 12px;"></div>
+                </div>
+                <div style="flex: 2; min-width: 420px;">
+                    <div id="usuariosAuditHeader" style="margin-bottom: 10px; color: var(--dark-gray); font-weight: bold;"></div>
+                    <div id="usuariosAuditActions" style="background: #fafafa; border: 1px solid #e9ecef; border-radius: 12px; padding: 12px; max-height: 460px; overflow: auto;"></div>
+                    <div id="usuariosAuditEmpty" style="display:none; color:#666; text-align:center; padding: 28px 10px;">Nenhuma ação registrada para este usuário.</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
         console.log('=== CONFIGURAÇÕES: Script iniciado ===');
@@ -460,6 +488,15 @@
             const clearAllDataBtn = document.getElementById('clearAllDataBtn');
             const gerenciamentoMessage = document.getElementById('gerenciamentoMessage');
             const pushLocalToFirebaseBtn = document.getElementById('pushLocalToFirebaseBtn');
+            const abrirUsuariosAuditBtn = document.getElementById('abrirUsuariosAuditBtn');
+
+            const usuariosAuditModal = document.getElementById('usuariosAuditModal');
+            const usuariosAuditCloseBtn = document.getElementById('usuariosAuditCloseBtn');
+            const usuariosAuditSelect = document.getElementById('usuariosAuditSelect');
+            const usuariosAuditActions = document.getElementById('usuariosAuditActions');
+            const usuariosAuditHeader = document.getElementById('usuariosAuditHeader');
+            const usuariosAuditLoading = document.getElementById('usuariosAuditLoading');
+            const usuariosAuditEmpty = document.getElementById('usuariosAuditEmpty');
 
             console.log('Elementos encontrados:', {
                 oldPasswordInput,
@@ -469,6 +506,155 @@
                 salvarDownloadBtn,
                 clearAllDataBtn
             });
+
+            function escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function recordUsuarioAudit(action, details) {
+                try {
+                    if (window.top && typeof window.top._sotRecordAuditAction === 'function') {
+                        window.top._sotRecordAuditAction(action, details || {});
+                    }
+                } catch (e) {}
+            }
+
+            async function loadUsuariosAuditLogs() {
+                if (!usuariosAuditModal) return;
+
+                // Mostra loading
+                if (usuariosAuditLoading) usuariosAuditLoading.style.display = 'block';
+                if (usuariosAuditEmpty) usuariosAuditEmpty.style.display = 'none';
+                if (usuariosAuditActions) usuariosAuditActions.innerHTML = '';
+                if (usuariosAuditHeader) usuariosAuditHeader.textContent = '';
+
+                try {
+                    if (!window.firebaseDb || typeof window.firebaseDb.collection !== 'function') {
+                        throw new Error('Firestore não disponível para carregar auditoria.');
+                    }
+
+                    const snapshot = await window.firebaseDb
+                        .collection('sot_google_audit_logs')
+                        .orderBy('createdAt', 'desc')
+                        .limit(400)
+                        .get();
+
+                    const byUid = {};
+
+                    snapshot.forEach((doc) => {
+                        const d = doc.data() || {};
+                        const uid = d.uid || doc.id || 'unknown';
+                        if (!byUid[uid]) {
+                            byUid[uid] = {
+                                uid: uid,
+                                email: d.email || '',
+                                displayName: d.displayName || '',
+                                actions: []
+                            };
+                        }
+                        byUid[uid].actions.push({
+                            action: d.action || '',
+                            details: d.details || '',
+                            createdAt: d.createdAt || null
+                        });
+                    });
+
+                    const users = Object.values(byUid);
+
+                    // Ordena usuários pelo timestamp da última ação
+                    users.sort((a, b) => {
+                        const ad = a.actions && a.actions[0] ? a.actions[0].createdAt : null;
+                        const bd = b.actions && b.actions[0] ? b.actions[0].createdAt : null;
+                        const at = ad && ad.toMillis ? ad.toMillis() : (ad && ad.seconds ? ad.seconds * 1000 : 0);
+                        const bt = bd && bd.toMillis ? bd.toMillis() : (bd && bd.seconds ? bd.seconds * 1000 : 0);
+                        return bt - at;
+                    });
+
+                    if (!users.length) {
+                        if (usuariosAuditSelect) usuariosAuditSelect.innerHTML = '';
+                        if (usuariosAuditEmpty) usuariosAuditEmpty.style.display = 'block';
+                        return;
+                    }
+
+                    if (usuariosAuditSelect) {
+                        usuariosAuditSelect.innerHTML = '';
+                        users.forEach((u, idx) => {
+                            const label = (u.displayName ? u.displayName : u.email ? u.email : u.uid);
+                            const opt = document.createElement('option');
+                            opt.value = u.uid;
+                            opt.textContent = label;
+                            usuariosAuditSelect.appendChild(opt);
+                        });
+                    }
+
+                    // Render inicial do primeiro usuário
+                    const selectedUid = usuariosAuditSelect ? usuariosAuditSelect.value : users[0].uid;
+                    const selectedUser = users.find(u => u.uid === selectedUid) || users[0];
+
+                    if (usuariosAuditHeader) {
+                        const label = selectedUser.displayName ? selectedUser.displayName : (selectedUser.email || selectedUser.uid);
+                        usuariosAuditHeader.textContent = `${label} — ${selectedUser.actions.length} ações registradas`;
+                    }
+
+                    const actionsHtmlParts = [];
+                    const maxActions = 120;
+                    const actions = selectedUser.actions.slice(0, maxActions);
+                    actions.forEach((a) => {
+                        let when = '-';
+                        try {
+                            if (a.createdAt && a.createdAt.toDate) when = a.createdAt.toDate().toLocaleString('pt-BR');
+                            else if (a.createdAt && a.createdAt.seconds) when = new Date(a.createdAt.seconds * 1000).toLocaleString('pt-BR');
+                        } catch (e) {}
+
+                        actionsHtmlParts.push(
+                            `<div style="padding: 10px 12px; border: 1px solid #e9ecef; border-radius: 10px; background: white; margin-bottom: 10px;">` +
+                            `<div style="display:flex; justify-content: space-between; gap: 12px; font-weight: bold; color: var(--dark-gray);">` +
+                            `<span>${escapeHtml(a.action)}</span>` +
+                            `<span style="font-weight: 500; color:#666; font-size: 12px;">${escapeHtml(when)}</span>` +
+                            `</div>` +
+                            (a.details ? `<pre style="margin:8px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; color:#444; background:#f8f9fa; padding: 8px; border-radius: 10px;">${escapeHtml(a.details).slice(0, 900)}</pre>` : '') +
+                            `</div>`
+                        );
+                    });
+
+                    if (usuariosAuditActions) usuariosAuditActions.innerHTML = actionsHtmlParts.join('');
+                    if (usuariosAuditEmpty) usuariosAuditEmpty.style.display = 'none';
+                } catch (error) {
+                    console.error('Erro ao carregar auditoria de usuários:', error);
+                    if (usuariosAuditEmpty) {
+                        usuariosAuditEmpty.style.display = 'block';
+                        usuariosAuditEmpty.textContent = 'Falha ao carregar auditoria de usuários.';
+                    }
+                } finally {
+                    if (usuariosAuditLoading) usuariosAuditLoading.style.display = 'none';
+                }
+            }
+
+            if (abrirUsuariosAuditBtn) {
+                abrirUsuariosAuditBtn.addEventListener('click', async () => {
+                    if (usuariosAuditModal) usuariosAuditModal.style.display = 'flex';
+                    await loadUsuariosAuditLogs();
+                });
+            }
+
+            if (usuariosAuditCloseBtn && usuariosAuditModal) {
+                usuariosAuditCloseBtn.addEventListener('click', () => {
+                    usuariosAuditModal.style.display = 'none';
+                });
+            }
+
+            if (usuariosAuditSelect && usuariosAuditModal) {
+                usuariosAuditSelect.addEventListener('change', async () => {
+                    // Recarrega para simplificar (garante consistência)
+                    await loadUsuariosAuditLogs();
+                });
+            }
 
             const themeGrid = document.getElementById('themeGrid');
             const themeMessage = document.getElementById('themeMessage');
@@ -1050,6 +1236,7 @@
                         newPasswordInput.value = '';
 
                         window.parent.postMessage({ type: 'password_changed' }, '*');
+                        recordUsuarioAudit('config_password_changed', { source: 'Configuracoes.html' });
                     } else {
                         showPasswordMessage('Senha atual incorreta.', 'error');
                         oldPasswordInput.value = '';
@@ -1154,6 +1341,7 @@
                             if (Array.isArray(saidasAdm) && saidasAdm.length) parts.push(`Saídas administrativas: ${saidasAdm.length}`);
                             if (Array.isArray(saidasAmb) && saidasAmb.length) parts.push(`Saídas ambulâncias: ${saidasAmb.length}`);
                             showGerenciamentoMessage('Saídas restauradas com sucesso. ' + (parts.length ? parts.join('; ') : 'Nenhum dado de saída no arquivo.'), 'success');
+                            recordUsuarioAudit('config_restaurar_saidas_backup', { total: parts.join('; ') });
                             if (window.parent && window.parent.postMessage) {
                                 window.parent.postMessage({ type: 'reload_required' }, '*');
                             }
@@ -1361,6 +1549,7 @@
                     const originalHtml = pushLocalToFirebaseBtn.innerHTML;
                     pushLocalToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
                     await pushLocalDataToFirebase();
+                    recordUsuarioAudit('config_push_local_to_firebase', { source: 'Configuracoes.html' });
                     pushLocalToFirebaseBtn.disabled = false;
                     pushLocalToFirebaseBtn.innerHTML = originalHtml;
                 });
@@ -1381,6 +1570,7 @@
                         a.click();
                         URL.revokeObjectURL(url);
                         showGerenciamentoMessage('Download concluído: ' + filename, 'success');
+                        recordUsuarioAudit('config_export_download_backup', { filename: filename });
                     } catch (error) {
                         console.error('Erro ao gerar download:', error);
                         showGerenciamentoMessage('Erro ao gerar arquivo de backup.', 'error');
@@ -1402,7 +1592,10 @@
                     saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
                     if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
                         await window.SOTSync.sync(false, {
-                            onSuccess: () => showGerenciamentoMessage('Sincronização concluída: local e Firebase atualizados (dados mesclados, nada apagado).', 'success'),
+                            onSuccess: () => {
+                                showGerenciamentoMessage('Sincronização concluída: local e Firebase atualizados (dados mesclados, nada apagado).', 'success');
+                                recordUsuarioAudit('config_sync_local_firebase', { source: 'Configuracoes.html' });
+                            },
                             onError: (err) => showGerenciamentoMessage('Erro ao sincronizar: ' + (err && err.message ? err.message : err), 'error'),
                             afterSync: updateUltimaSincronizacaoDisplay
                         });
@@ -1618,6 +1811,7 @@
                         }
 
                         showGerenciamentoMessage('Todos os dados locais e do Firebase foram apagados! O sistema será recarregado...', 'success');
+                        recordUsuarioAudit('config_clear_all_data', { source: 'Configuracoes.html' });
                     } catch (error) {
                         console.error('Erro ao apagar todos os dados:', error);
                         showGerenciamentoMessage('Erro ao apagar todos os dados. Verifique o console para detalhes.', 'error');
