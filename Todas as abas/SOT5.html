@@ -388,6 +388,28 @@ justify-content: center;
 display: block;
 }
 
+#google-login-container {
+display: flex;
+flex-direction: column;
+align-items: flex-end;
+justify-content: center;
+background-color: #f1f3f5;
+padding: 8px 12px;
+border-radius: 8px;
+border: 1px solid var(--gray);
+box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+}
+
+#google-login-container #btn-login {
+white-space: nowrap;
+}
+
+#google-login-container #usuario-info p {
+margin: 0 0 8px 0;
+font-size: 13px;
+color: var(--dark-gray);
+}
+
 /* Modal Escala de Pão - Calendário */
 .modal-escala-pao { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; }
 .modal-escala-pao.active { display: flex; }
@@ -1396,6 +1418,16 @@ margin: 20px 0;
 <div id="lock-container">
 <div id="lock-icon-container" title="Clique para desbloquear com senha; duplo clique para desbloquear sem senha"></div>
 </div>
+<div id="google-login-container">
+<button id="btn-login" style="padding: 10px 20px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 4px; font-weight: bold;">
+  Entrar com Google
+</button>
+
+<div id="usuario-info" style="margin-top: 20px; display: none;">
+  <p>Bem-vindo, <span id="nome-usuario"></span>!</p>
+  <button id="btn-sair">Sair</button>
+</div>
+</div>
 </div>
 </header>
 
@@ -2127,6 +2159,22 @@ document.addEventListener('keydown', (e) => {
 });
 
 function showPasswordPrompt() {
+    // Se estiver logado com Google, desbloqueia sem pedir senha (fallback continua funcionando).
+    try {
+        if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
+            isLocked = false;
+            updateLockState(false);
+            resetInactivityTimer();
+            setTimeout(function() {
+                if (typeof requestFullscreenSafe === 'function') requestFullscreenSafe();
+                if (typeof updateMaximizeState === 'function') {
+                    updateMaximizeState();
+                }
+            }, 0);
+            return;
+        }
+    } catch (e) {}
+
 const overlay = document.createElement('div');
 overlay.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;`;
 const modal = document.createElement('div');
@@ -3527,8 +3575,65 @@ updateMaximizeState();
 <!-- Firebase + sincronização automática (local ↔ nuvem) quando online -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="firebase-sot-service.js"></script>
+
+<!-- Firebase Auth (Google) - login para desbloqueio -->
+<script>
+(function() {
+  'use strict';
+
+  var btnLogin = document.getElementById('btn-login');
+  var btnSair = document.getElementById('btn-sair');
+  var usuarioInfo = document.getElementById('usuario-info');
+  var nomeUsuario = document.getElementById('nome-usuario');
+
+  if (typeof firebase === 'undefined' || !firebase.auth) return;
+
+  var auth = firebase.auth();
+  var provider = new firebase.auth.GoogleAuthProvider();
+
+  function setGoogleUI(user) {
+    try {
+      var signedIn = !!user;
+      window._sot_google_signed_in = signedIn;
+
+      if (btnLogin) btnLogin.style.display = signedIn ? 'none' : 'inline-block';
+      if (usuarioInfo) usuarioInfo.style.display = signedIn ? 'block' : 'none';
+      if (nomeUsuario) nomeUsuario.textContent = user && (user.displayName || user.email) ? (user.displayName || user.email) : '';
+    } catch (e) {}
+  }
+
+  try {
+    auth.onAuthStateChanged(function(user) {
+      setGoogleUI(user);
+    });
+  } catch (e) {}
+
+  if (btnLogin) {
+    btnLogin.addEventListener('click', function() {
+      if (!navigator.onLine) {
+        alert('Sem conexão com a internet.');
+        return;
+      }
+      auth.signInWithPopup(provider).catch(function(err) {
+        console.error('Erro no login Google:', err);
+        alert('Falha ao entrar com Google. Verifique as configurações do Firebase Auth (método Google ativado).');
+      });
+    });
+  }
+
+  if (btnSair) {
+    btnSair.addEventListener('click', function() {
+      auth.signOut().catch(function(err) {
+        console.error('Erro ao sair:', err);
+      });
+    });
+  }
+})();
+</script>
+
 <!-- SISTEMA DE CONTROLE POR VOZ -->
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
