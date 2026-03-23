@@ -54,6 +54,12 @@
         } catch (e) {}
     }
 
+    function clearAllFirebaseReadCache() {
+        try {
+            firebaseReadCache.clear();
+        } catch (e) {}
+    }
+
     class DataService {
         constructor() {
             this.useAPI = false;
@@ -120,13 +126,35 @@
             return !!(this.useAPI && this.apiAvailable);
         }
 
+        /** Lê array do localStorage (ignora SOT_FORCE_FIREBASE_ONLY) — para modo offline / importação. */
+        _readLocalStorageArray(key) {
+            if (typeof localStorage === 'undefined') return null;
+            try {
+                const raw = localStorage.getItem(key);
+                if (raw == null || raw === '') return null;
+                const v = JSON.parse(raw);
+                return Array.isArray(v) ? v : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        /** Limpa cache em memória das leituras Firebase (ex.: após importar JSON). */
+        clearFirebaseReadCache() {
+            clearAllFirebaseReadCache();
+        }
+
         async _getFromFirebase(key) {
             const cached = getCached(key);
-            if (cached !== undefined) return cached;
+            // Não usar cache de null: antes da Auth ficar pronta o get falha e null ficava 5s na cache —
+            // o sync e as telas liam [] e podiam sobrescrever o Firebase.
+            if (cached !== undefined && cached !== null) return cached;
             if (!this.useFirebase || !window.firebaseSot || typeof window.firebaseSot.get !== 'function') return null;
             try {
                 const value = await window.firebaseSot.get(key);
-                setCache(key, value);
+                if (value !== null && value !== undefined) {
+                    setCache(key, value);
+                }
                 return value;
             } catch (e) {
                 log('error', '_getFromFirebase key=' + key, e);
@@ -303,7 +331,17 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('saidasAdministrativas');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) {
+                    return data;
+                }
+            }
+            const localSaidas = this._readLocalStorageArray('saidasAdministrativas');
+            if (!navigator.onLine) {
+                return localSaidas != null ? localSaidas : [];
+            }
+            if (localSaidas != null && localSaidas.length > 0) {
+                log('warn', 'getSaidasAdministrativas: Firebase não retornou lista; usando cópia do localStorage.');
+                return localSaidas;
             }
             if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAdministrativas', []);
             return this.getFromLocalStorage('saidasAdministrativas', []);
@@ -350,7 +388,17 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('saidasAmbulancias');
-                if (Array.isArray(data)) return data;
+                if (Array.isArray(data)) {
+                    return data;
+                }
+            }
+            const localAmb = this._readLocalStorageArray('saidasAmbulancias');
+            if (!navigator.onLine) {
+                return localAmb != null ? localAmb : [];
+            }
+            if (localAmb != null && localAmb.length > 0) {
+                log('warn', 'getSaidasAmbulancias: Firebase não retornou lista; usando cópia do localStorage.');
+                return localAmb;
             }
             if (this._preferLocalStorage()) return this.getFromLocalStorage('saidasAmbulancias', []);
             return this.getFromLocalStorage('saidasAmbulancias', []);

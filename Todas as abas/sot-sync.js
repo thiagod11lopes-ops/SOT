@@ -187,9 +187,26 @@
                 await yieldToUI();
                 var p = pairsDataService[i];
                 var key = p[0], getFb = p[1], setFb = p[2], localArr = p[3];
-                var fbArr = await getFb();
-                var freshRemote = await getFb();
-                var remoteBase = Array.isArray(freshRemote) ? freshRemote : (Array.isArray(fbArr) ? fbArr : []);
+                // Saídas: ler direto do Firestore (contorna cache curto do dataService e garante dados da nuvem após F5).
+                var remoteBase;
+                if ((key === 'saidasAdministrativas' || key === 'saidasAmbulancias') && window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                    var gateOk = typeof window.firebaseSot.authGateOk !== 'function' || window.firebaseSot.authGateOk();
+                    if (gateOk) {
+                        try {
+                            var directRemote = await window.firebaseSot.get(key);
+                            if (Array.isArray(directRemote)) {
+                                remoteBase = directRemote;
+                            }
+                        } catch (directErr) {
+                            log('warn', 'sync leitura direta ' + key, directErr);
+                        }
+                    }
+                }
+                if (remoteBase === undefined) {
+                    var fbArr = await getFb();
+                    var freshRemote = await getFb();
+                    remoteBase = Array.isArray(freshRemote) ? freshRemote : (Array.isArray(fbArr) ? fbArr : []);
+                }
 
                 var merged = null;
                 if (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') {

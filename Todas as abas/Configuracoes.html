@@ -363,6 +363,9 @@
                 <button id="restaurarSaidasBackupBtn" class="warning" title="Substitui apenas Saídas Administrativas e Saídas Ambulâncias no Firebase e local pelo conteúdo do backup (use se os dados de saídas foram perdidos)">
                     <i class="fas fa-undo"></i> Restaurar saídas do backup
                 </button>
+                <button id="exportarSaidasJsonBtn" class="success" title="Baixa um JSON só com saídas administrativas e de ambulância (útil para backup e uso offline)">
+                    <i class="fas fa-file-export"></i> Baixar saídas (JSON)
+                </button>
                 <button id="salvarDownloadBtn" class="success" title="Gera um arquivo JSON com todos os dados e faz o download">
                     <i class="fas fa-download"></i> Salvar e fazer download
                 </button>
@@ -379,6 +382,9 @@
                     <i class="fas fa-cloud"></i> Usar dados do Firebase
                 </button>
             </div>
+            <p style="margin: 8px 0 0; font-size: 13px; color: var(--dark-gray);">
+                <strong>Offline:</strong> você pode importar um JSON com <code>saidasAdministrativas</code> e <code>saidasAmbulancias</code> (veja <code>EXPORTAR_SAIDAS_OFFLINE.md</code> na pasta do projeto). Sem internet, os dados ficam no navegador; ao voltar online, use <em>Enviar dados locais para Firebase</em> para atualizar a nuvem.
+            </p>
             <p style="margin: 8px 0 0; font-size: 13px; color: var(--dark-gray);">
                 <strong>Usar dados deste computador:</strong> ao abrir o SOT pelo GitHub em um computador que já tem dados no navegador, clique aqui para exibir esses dados em vez do Firebase. <strong>Usar dados do Firebase:</strong> volta a exibir os dados da nuvem.
             </p>
@@ -484,6 +490,7 @@
             const carregarDadosFileInput = document.getElementById('carregarDadosFileInput');
             const restaurarSaidasBackupBtn = document.getElementById('restaurarSaidasBackupBtn');
             const restaurarSaidasBackupFileInput = document.getElementById('restaurarSaidasBackupFileInput');
+            const exportarSaidasJsonBtn = document.getElementById('exportarSaidasJsonBtn');
             const salvarDownloadBtn = document.getElementById('salvarDownloadBtn');
             const clearAllDataBtn = document.getElementById('clearAllDataBtn');
             const gerenciamentoMessage = document.getElementById('gerenciamentoMessage');
@@ -1337,10 +1344,14 @@
                             if (window.firebaseSot && typeof window.firebaseSot.invalidateAllCache === 'function') {
                                 window.firebaseSot.invalidateAllCache();
                             }
+                            if (typeof dataService !== 'undefined' && typeof dataService.clearFirebaseReadCache === 'function') {
+                                dataService.clearFirebaseReadCache();
+                            }
                             const parts = [];
                             if (Array.isArray(saidasAdm) && saidasAdm.length) parts.push(`Saídas administrativas: ${saidasAdm.length}`);
                             if (Array.isArray(saidasAmb) && saidasAmb.length) parts.push(`Saídas ambulâncias: ${saidasAmb.length}`);
-                            showGerenciamentoMessage('Saídas restauradas com sucesso. ' + (parts.length ? parts.join('; ') : 'Nenhum dado de saída no arquivo.'), 'success');
+                            const offlineNote = (!navigator.onLine) ? ' Modo offline: dados no navegador; ao conectar, use «Enviar dados locais para Firebase».' : '';
+                            showGerenciamentoMessage('Saídas restauradas com sucesso. ' + (parts.length ? parts.join('; ') : 'Nenhum dado de saída no arquivo.') + offlineNote, 'success');
                             recordUsuarioAudit('config_restaurar_saidas_backup', { total: parts.join('; ') });
                             if (window.parent && window.parent.postMessage) {
                                 window.parent.postMessage({ type: 'reload_required' }, '*');
@@ -1352,6 +1363,49 @@
                         restaurarSaidasBackupFileInput.value = '';
                     };
                     reader.readAsText(file);
+                });
+            }
+
+            // Baixar só saídas (JSON) — mesmos campos que «Restaurar saídas do backup» aceita
+            if (exportarSaidasJsonBtn) {
+                exportarSaidasJsonBtn.addEventListener('click', async () => {
+                    exportarSaidasJsonBtn.disabled = true;
+                    exportarSaidasJsonBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+                    try {
+                        if (typeof dataService === 'undefined') {
+                            showGerenciamentoMessage('Serviço de dados não carregado. Abra Configurações pelo SOT5.', 'error');
+                            return;
+                        }
+                        await dataService.waitForAPICheck();
+                        const saidasAdministrativas = await dataService.getSaidasAdministrativas();
+                        const saidasAmbulancias = await dataService.getSaidasAmbulancias();
+                        const payload = {
+                            saidasAdministrativas: JSON.stringify(Array.isArray(saidasAdministrativas) ? saidasAdministrativas : []),
+                            saidasAmbulancias: JSON.stringify(Array.isArray(saidasAmbulancias) ? saidasAmbulancias : []),
+                            _exportInfo: JSON.stringify({
+                                origem: 'SOT exportar saídas',
+                                data: new Date().toISOString(),
+                                qtdAdm: Array.isArray(saidasAdministrativas) ? saidasAdministrativas.length : 0,
+                                qtdAmb: Array.isArray(saidasAmbulancias) ? saidasAmbulancias.length : 0
+                            })
+                        };
+                        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        const d = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+                        a.href = url;
+                        a.download = `SOT_saidas_${d}.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        showGerenciamentoMessage('Arquivo de saídas baixado. Use «Restaurar saídas do backup» em outro PC ou offline.', 'success');
+                        recordUsuarioAudit('config_export_saidas_json', { adm: payload._exportInfo });
+                    } catch (err) {
+                        console.error(err);
+                        showGerenciamentoMessage('Erro ao exportar saídas: ' + (err && err.message ? err.message : err), 'error');
+                    } finally {
+                        exportarSaidasJsonBtn.disabled = false;
+                        exportarSaidasJsonBtn.innerHTML = '<i class="fas fa-file-export"></i> Baixar saídas (JSON)';
+                    }
                 });
             }
 
