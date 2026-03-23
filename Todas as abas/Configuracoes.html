@@ -1716,10 +1716,13 @@
                         }
 
                         recordUsuarioAudit('config_force_pull_from_firebase', { source: 'Configuracoes.html' });
-                        showGerenciamentoMessage('Dados do Firebase carregados nesta máquina. A página será recarregada.', 'success');
+                        showGerenciamentoMessage('Dados do Firebase carregados nesta máquina. Atualizando as abas sem deslogar.', 'success');
                         setTimeout(() => {
-                            if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'reload_required' }, '*');
-                        }, 1200);
+                            // Evita reload completo para não perder a sessão visual de login.
+                            if (window.parent && window.parent.postMessage) {
+                                window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+                            }
+                        }, 350);
                     } catch (e) {
                         console.error('Falha ao carregar dados do Firebase para local:', e);
                         showGerenciamentoMessage('Erro ao carregar dados da nuvem. Verifique conexão/permissões.', 'error');
