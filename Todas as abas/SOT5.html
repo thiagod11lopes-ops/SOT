@@ -2094,6 +2094,19 @@ const runInitialFirebaseLoad = async () => {
         if (!dataService.useFirebase) throw new Error('Firebase não está disponível no momento.');
 
         await window.SOTSync.sync(true, { afterSync: function() {} });
+
+        // Garante que todas as abas reflitam os dados sincronizados na inicialização.
+        try {
+            getAllTabIframes().forEach(function(iframe) {
+                var src = iframe.getAttribute('data-src') || iframe.getAttribute('src');
+                if (src) {
+                    iframe.setAttribute('src', src);
+                }
+            });
+        } catch (reloadErr) {
+            console.warn('Falha ao recarregar iframes após sync inicial:', reloadErr);
+        }
+
         setOverlayStatus('Dados carregados com sucesso', 'Sistema atualizado com dados do Firebase.', 'success');
         finishOverlay('success');
     } catch (e) {
