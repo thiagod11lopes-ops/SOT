@@ -306,6 +306,31 @@
             }
         }
 
+        /**
+         * Aguarda Firebase Auth (Google) antes de leituras Firestore no iframe.
+         * Em GitHub Pages o iframe pode montar antes do currentUser estar pronto — get() retorna null sem login.
+         * @param {number} [timeoutMs] padrão 15000 ms; após o timeout segue mesmo sem login (UI pode atualizar no evento sot-firebase-auth-changed).
+         */
+        async waitForGoogleAuthReady(timeoutMs) {
+            if (timeoutMs == null) timeoutMs = 15000;
+            try {
+                const fs = window.firebaseSot;
+                if (fs && typeof fs.authGateOk === 'function' && fs.authGateOk()) {
+                    return true;
+                }
+                if (typeof window.__sotWaitUntilSignedIn === 'function') {
+                    return await window.__sotWaitUntilSignedIn(timeoutMs);
+                }
+            } catch (e) {
+                log('warn', 'waitForGoogleAuthReady', e);
+            }
+            try {
+                return !!(window.firebaseSot && window.firebaseSot.authGateOk && window.firebaseSot.authGateOk());
+            } catch (e2) {
+                return false;
+            }
+        }
+
         /** Com SOT_FORCE_FIREBASE_ONLY não lê LS aqui (merge feito nos getters dedicados). */
         getFromLocalStorage(key, defaultValue) {
             if (defaultValue === undefined) defaultValue = null;

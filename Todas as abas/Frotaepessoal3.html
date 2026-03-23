@@ -376,6 +376,9 @@
             try {
                 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                     await dataService.waitForAPICheck();
+                    if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                        await dataService.waitForGoogleAuthReady(15000);
+                    }
                     if (typeof dataService.getViaturas === 'function' && typeof dataService.getMotoristas === 'function') {
                         viaturasCadastradas = await dataService.getViaturas();
                         motoristasCadastrados = await dataService.getMotoristas();
@@ -706,7 +709,7 @@
                     
                     // Atualizar tabela de KM Atual quando a aba for ativada
                     if (tabId === 'kmAtualContent') {
-                        populateKmAtualTable();
+                        void populateKmAtualTable();
                     }
                     // Atualizar tabela PSO quando a aba for ativada
                     if (tabId === 'psoContent') {
@@ -982,7 +985,7 @@
             
             populateFrotaTable();
             populatePessoalTable();
-            populateKmAtualTable();
+            await populateKmAtualTable();
             populatePsoTable();
             
             // Configurar event listeners para PSO
@@ -1078,16 +1081,46 @@
             });
             
             // Função para carregar e exibir quilometragem atual das viaturas
-            function populateKmAtualTable() {
+            async function populateKmAtualTable() {
                 const kmAtualTableBody = document.getElementById('kmAtualTableBody');
                 if (!kmAtualTableBody) return;
                 
-                // Buscar todas as viaturas cadastradas
-                const viaturas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+                // Preferir array em memória (já mesclado com Firebase); file:// costuma ter LS cheio, https muitas vezes não.
+                let viaturas = Array.isArray(viaturasCadastradas) && viaturasCadastradas.length
+                    ? viaturasCadastradas
+                    : [];
+                if (!viaturas.length) {
+                    try {
+                        viaturas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+                    } catch (e) {
+                        viaturas = [];
+                    }
+                }
                 
-                // Buscar todas as saídas (administrativas e ambulâncias)
-                const saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-                const saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+                let saidasAdministrativas = [];
+                let saidasAmbulancias = [];
+                if (typeof dataService !== 'undefined' && dataService.getSaidasAdministrativas && dataService.getSaidasAmbulancias) {
+                    try {
+                        saidasAdministrativas = await dataService.getSaidasAdministrativas();
+                        saidasAmbulancias = await dataService.getSaidasAmbulancias();
+                    } catch (e) {
+                        console.warn('KM Atual: falha ao buscar saídas via dataService', e);
+                    }
+                }
+                if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = [];
+                if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = [];
+                if (!saidasAdministrativas.length && !saidasAmbulancias.length) {
+                    try {
+                        saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    } catch (e) {
+                        saidasAdministrativas = [];
+                    }
+                    try {
+                        saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+                    } catch (e) {
+                        saidasAmbulancias = [];
+                    }
+                }
                 const todasSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
                 
                 // Criar um mapa para armazenar a última quilometragem lançada de cada viatura
@@ -1169,14 +1202,39 @@
             // Atualizar tabela de KM Atual quando os dados mudarem
             window.addEventListener('storage', function(e) {
                 if (e.key === 'saidasAdministrativas' || e.key === 'saidasAmbulancias' || e.key === 'viaturasCadastradas') {
-                    populateKmAtualTable();
+                    void populateKmAtualTable();
+                }
+            });
+
+            const reloadFrotaAfterSignIn = async () => {
+                if (typeof dataService === 'undefined' || typeof dataService.getViaturas !== 'function') return;
+                try {
+                    await dataService.waitForAPICheck();
+                    if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                        await dataService.waitForGoogleAuthReady(8000);
+                    }
+                    viaturasCadastradas = await dataService.getViaturas();
+                    motoristasCadastrados = await dataService.getMotoristas();
+                    try { localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas)); } catch (e) {}
+                    try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
+                    populateFrotaTable();
+                    populatePessoalTable();
+                    await populateKmAtualTable();
+                } catch (err) {
+                    console.warn('Frota: recarregar após login Firebase', err);
+                }
+            };
+
+            window.addEventListener('sot-firebase-auth-changed', function (ev) {
+                if (ev && ev.detail && ev.detail.signedIn) {
+                    void reloadFrotaAfterSignIn();
                 }
             });
             
             // Escutar mensagens de atualização
             window.addEventListener('message', function(e) {
                 if (e.data && (e.data.type === 'refresh_all_data' || e.data.type === 'refresh_data')) {
-                    populateKmAtualTable();
+                    void populateKmAtualTable();
                     if (typeof integrantesEscalaPao !== 'undefined') {
                         integrantesEscalaPao = JSON.parse(localStorage.getItem('integrantesEscalaPao') || '[]');
                         feriadosEscalaPao = JSON.parse(localStorage.getItem('feriadosEscalaPao') || '[]');
