@@ -1611,10 +1611,11 @@ body[data-theme="dark"] button[class*="btn"]:hover {
 </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
-let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+// Viaturas/motoristas vêm do Firebase em loadDataAndPopulateTables (evita lista local antiga antes da nuvem)
+let viaturasCadastradas = [];
+let motoristasCadastrados = [];
 let saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
 let saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
 const subTabButtons = document.querySelectorAll('#registerSaidaSection .sub-tab-button');
@@ -3080,11 +3081,20 @@ try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'
 
 if (typeof dataService !== 'undefined') {
     try {
-        // dataService já tenta API/Firebase primeiro e só depois localStorage
+        if (typeof dataService.waitForAPICheck === 'function') {
+            await dataService.waitForAPICheck();
+        }
+        // dataService: Firestore primeiro (viaturas/motoristas normalizados como array)
         saidasAdministrativas = await dataService.getSaidasAdministrativas();
         saidasAmbulancias = (await dataService.getSaidasAmbulancias()) || [];
-        viaturasCadastradas = await dataService.getViaturas();
-        motoristasCadastrados = await dataService.getMotoristas();
+        var _v = await dataService.getViaturas();
+        var _m = await dataService.getMotoristas();
+        viaturasCadastradas = Array.isArray(_v) ? _v : [];
+        motoristasCadastrados = Array.isArray(_m) ? _m : [];
+        try {
+            localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas));
+            localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados));
+        } catch (e) {}
         remoteLoaded = true;
     } catch (e) {
         console.warn('Cadastro de Saídas: falha ao carregar via dataService, usando localStorage.', e);
@@ -3100,18 +3110,24 @@ if (typeof dataService !== 'undefined') {
         const fbSaidasAmb = await window.firebaseSot.get('saidasAmbulancias');
         saidasAdministrativas = Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [];
         saidasAmbulancias = Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [];
+        const fbV = await window.firebaseSot.get('viaturasCadastradas');
+        const fbM = await window.firebaseSot.get('motoristasCadastrados');
+        viaturasCadastradas = Array.isArray(fbV) ? fbV : [];
+        motoristasCadastrados = Array.isArray(fbM) ? fbM : [];
         remoteLoaded = true;
         try {
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
             localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+            localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas));
+            localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados));
         } catch (e) {}
     } catch (e) {
         console.warn('Cadastro de Saídas: falha ao carregar de Firebase, usando localStorage.', e);
         saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
         saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+        viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
     }
-    viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
-    motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
 } else {
     // Fallback final: apenas localStorage
     saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
@@ -3455,7 +3471,7 @@ applyEditButtonHighlight(targetRow.querySelector('.edit-row-btn'));
 }
 }, 150);
 }
-loadDataAndPopulateTables();
+await loadDataAndPopulateTables();
 
 // Inicializar abas dos itens se a aba já estiver ativa
 if (document.getElementById('cadastrarItensContent') && document.getElementById('cadastrarItensContent').classList.contains('active')) {

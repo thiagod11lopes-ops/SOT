@@ -368,15 +368,16 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
-            let viaturasCadastradas = [];
-            let motoristasCadastrados = [];
+            // null = ainda não recebemos resposta do dataService; [] = nuvem retornou lista vazia (válido)
+            let viaturasCadastradas = null;
+            let motoristasCadastrados = null;
             let psoFila = [];
 
-            // Carregar dados priorizando sempre Firebase/dataService e usando localStorage como cache/fallback
+            // Carregar do Firestore via dataService (lista vazia da nuvem não deve ser trocada por localStorage)
             try {
                 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                     await dataService.waitForAPICheck();
-                    if (dataService.useFirebase || dataService.apiAvailable) {
+                    if (typeof dataService.getViaturas === 'function' && typeof dataService.getMotoristas === 'function') {
                         const v = await dataService.getViaturas();
                         const m = await dataService.getMotoristas();
                         if (Array.isArray(v)) {
@@ -393,11 +394,11 @@
                 console.warn('Frota e Pessoal: falha ao carregar via dataService', e);
             }
 
-            // Se ainda não carregou de dataService, tentar usar localStorage
-            if (!Array.isArray(viaturasCadastradas) || viaturasCadastradas.length === 0) {
+            // Fallback local só se o dataService não devolveu array (indisponível / erro), não quando veio [] do Firebase
+            if (!Array.isArray(viaturasCadastradas)) {
                 viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
             }
-            if (!Array.isArray(motoristasCadastrados) || motoristasCadastrados.length === 0) {
+            if (!Array.isArray(motoristasCadastrados)) {
                 motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
             }
 
