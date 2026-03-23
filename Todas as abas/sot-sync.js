@@ -257,7 +257,12 @@
                 var freshEscala = await window.firebaseSot.get('escalaData');
                 if (freshEscala && typeof freshEscala === 'object') mergedEscala = Object.assign({}, freshEscala, mergedEscala);
                 setLocalEscalaFromObject(mergedEscala);
-                await window.firebaseSot.set('escalaData', mergedEscala);
+                try {
+                    await window.firebaseSot.set('escalaData', mergedEscala);
+                } catch (escalaErr) {
+                    // Não abortar toda a sincronização se escalaData tiver formato incompatível (ex.: nested arrays).
+                    log('warn', 'sync escalaData (ignorado)', escalaErr);
+                }
             }
 
             if (window.firebaseSot.get && window.firebaseSot.set) {
