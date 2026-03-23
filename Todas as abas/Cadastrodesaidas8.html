@@ -2056,8 +2056,12 @@ function getPlacasInoperantesRDV() {
 }
 
 function populateRegisterSaidaSelects() {
-    registerViaturaSelect.innerHTML = '<option value="">-- Selecione a Viatura --</option>';
-    registerMotoristaSelect.innerHTML = '<option value="">-- Selecione o Motorista --</option>';
+    // Sempre usar o nó atual do DOM (evita referência obsoleta se algo recriar o formulário)
+    var vSel = document.getElementById('registerViatura');
+    var mSel = document.getElementById('registerMotorista');
+    if (!vSel || !mSel) return;
+    vSel.innerHTML = '<option value="">-- Selecione a Viatura --</option>';
+    mSel.innerHTML = '<option value="">-- Selecione o Motorista --</option>';
     const selectedType = registerTipoSaidaSelect.value;
     const placasInoperantesRDV = getPlacasInoperantesRDV();
     viaturasCadastradas.forEach(vtr => {
@@ -2080,10 +2084,10 @@ function populateRegisterSaidaSelects() {
                 option.textContent = (optionText.trim()) + ' (Inoperante)';
             }
         }
-        registerViaturaSelect.appendChild(option);
+        vSel.appendChild(option);
     });
     motoristasCadastrados.forEach(mot => {
-        registerMotoristaSelect.add(new Option(mot.nome, mot.nome));
+        mSel.add(new Option(mot.nome, mot.nome));
     });
 }
 // Função para obter a última quilometragem de chegada de uma ambulância
@@ -3084,6 +3088,9 @@ if (typeof dataService !== 'undefined') {
         if (typeof dataService.waitForAPICheck === 'function') {
             await dataService.waitForAPICheck();
         }
+        if (typeof dataService.waitForGoogleAuthReady === 'function') {
+            await dataService.waitForGoogleAuthReady(15000);
+        }
         // dataService: Firestore primeiro (viaturas/motoristas normalizados como array)
         saidasAdministrativas = await dataService.getSaidasAdministrativas();
         saidasAmbulancias = (await dataService.getSaidasAmbulancias()) || [];
@@ -3207,7 +3214,7 @@ subTabButtons.forEach(button => {
 button.addEventListener('click', () => {
 const tabId = button.dataset.subTab;
 showSubTab(tabId);
-if (tabId === 'todasSaidasContent') {
+if (tabId === 'todasSaidasContent' || tabId === 'registerFormContent') {
 loadDataAndPopulateTables();
 } else if (tabId === 'cadastrarItensContent') {
 // Recarregar dados existentes e atualizar tabelas
@@ -3238,10 +3245,7 @@ if (filterTodasSaidasOM) filterTodasSaidasOM.addEventListener('change', filterTo
 if (filterTodasSaidasHospital) filterTodasSaidasHospital.addEventListener('change', filterTodasSaidasTableDebounced);
 [filterUnplannedMonthSelect, filterUnplannedYearSelect].forEach(el => el.addEventListener('change', updateUnplannedExitsTable));
 registerTipoSaidaSelect.addEventListener('change', adjustRegisterFormFields);
-// Garantir que o botão apareça na inicialização se tipo for Ambulância
-setTimeout(() => {
-    adjustRegisterFormFields();
-}, 200);
+// adjustRegisterFormFields() roda APÓS loadDataAndPopulateTables() para não repopular selects com viaturas/motoristas ainda vazios (corrida com setTimeout 200 ms).
 registerViaturaSelect.addEventListener('change', () => {
     // Atualizar KM SAÍDA automaticamente quando viatura for selecionada (apenas para Ambulância)
     if (registerTipoSaidaSelect.value === 'Ambulância') {
@@ -3415,6 +3419,14 @@ loadDataAndPopulateTables();
 }
 });
 
+window.addEventListener('sot-firebase-auth-changed', function (ev) {
+    if (ev && ev.detail && ev.detail.signedIn) {
+        void loadDataAndPopulateTables().then(function () {
+            setTimeout(function () { adjustRegisterFormFields(); }, 0);
+        });
+    }
+});
+
 // Botão OK do modal "Todos os campos serão preenchidos com os dados da saída"
 var confirmarPreencherEdicaoOkBtn = document.getElementById('confirmarPreencherEdicaoOk');
 var confirmarPreencherEdicaoModal = document.getElementById('confirmarPreencherEdicaoModal');
@@ -3481,6 +3493,9 @@ applyEditButtonHighlight(targetRow.querySelector('.edit-row-btn'));
 }, 150);
 }
 await loadDataAndPopulateTables();
+setTimeout(function () {
+    adjustRegisterFormFields();
+}, 0);
 
 // Inicializar abas dos itens se a aba já estiver ativa
 if (document.getElementById('cadastrarItensContent') && document.getElementById('cadastrarItensContent').classList.contains('active')) {
