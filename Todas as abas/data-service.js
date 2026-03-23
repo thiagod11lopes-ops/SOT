@@ -170,6 +170,13 @@
 
         async waitForAPICheck() {
             try {
+                if (window.__sotFirestoreBoot) {
+                    try {
+                        await window.__sotFirestoreBoot;
+                    } catch (bootErr) {
+                        log('warn', 'Boot Firestore modular', bootErr);
+                    }
+                }
                 if (!apiCheckPromise) apiCheckPromise = this.checkAPI();
                 await apiCheckPromise;
                 await this._ensureFirebaseAvailable(SOT_FORCE_FIREBASE_ONLY ? 7000 : 4000);
@@ -624,4 +631,15 @@
 
     window.DataService = DataService;
     window.dataService = dataService;
+
+    try {
+        window.addEventListener('sot-firebase-auth-changed', function() {
+            try {
+                firebaseReadCache.clear();
+            } catch (e) {}
+            try {
+                dataService._checkFirebase();
+            } catch (e2) {}
+        });
+    } catch (e) {}
 })();

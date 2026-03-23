@@ -12,6 +12,23 @@
     const CACHE_TTL_MS = 60 * 1000; // 1 minuto: reduz leituras repetidas ao Firestore
     const LOG_PREFIX = '[firebase-sot]';
 
+    /**
+     * Opção A (produção): não acessar sot_data sem Firebase Auth quando as regras exigem request.auth.
+     * Defina window.SOT_FIRESTORE_REQUIRE_AUTH = false só para depuração local.
+     */
+    function authGateAllowsFirestore() {
+        if (window.SOT_FIRESTORE_REQUIRE_AUTH === false) return true;
+        try {
+            if (window.top && window.top._sot_google_signed_in) return true;
+        } catch (e) {}
+        if (window._sot_google_signed_in) return true;
+        try {
+            var fb = firebaseApp();
+            if (fb && fb.auth && typeof fb.auth === 'function' && fb.auth().currentUser) return true;
+        } catch (e2) {}
+        return false;
+    }
+
     /** Cache em memória: key -> { value, expiresAt } */
     const cache = new Map();
     /** Requisições em voo: key -> Promise, para coalescência */
@@ -97,6 +114,10 @@
      */
     async function get(key) {
         const keyStr = String(key);
+        if (!authGateAllowsFirestore()) {
+            log('warn', 'get: login Google necessário (regras Firestore)', keyStr);
+            return null;
+        }
         const cached = getCached(keyStr);
         if (cached !== null) return cached;
 
@@ -161,6 +182,10 @@
         }
 
         promise = (async function() {
+            if (!authGateAllowsFirestore()) {
+                log('warn', 'set: login Google necessário (regras Firestore)', keyStr);
+                return false;
+            }
             const d = db();
             const fb = firebaseApp();
             if (!d || !fb) {
@@ -195,6 +220,10 @@
      * Lê uma configuração (chave/valor). Documentos de config: config_<chave> com campo value.
      */
     async function getConfig(chave) {
+        if (!authGateAllowsFirestore()) {
+            log('warn', 'getConfig: login Google necessário');
+            return null;
+        }
         const d = db();
         if (!d) {
             log('warn', 'getConfig: Firebase db não disponível');
@@ -216,6 +245,10 @@
      * Grava uma configuração.
      */
     async function setConfig(chave, valor) {
+        if (!authGateAllowsFirestore()) {
+            log('warn', 'setConfig: login Google necessário');
+            return false;
+        }
         const d = db();
         const fb = firebaseApp();
         if (!d || !fb) {
@@ -243,6 +276,7 @@
 
     window.firebaseSot = {
         isAvailable: isAvailable,
+        authGateOk: authGateAllowsFirestore,
         get: get,
         set: set,
         getConfig: getConfig,

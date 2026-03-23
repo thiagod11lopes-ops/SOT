@@ -160,6 +160,11 @@
             if (callbacks.onError) callbacks.onError(new Error('Firebase não está configurado.'));
             return false;
         }
+        if (typeof window.firebaseSot.authGateOk === 'function' && !window.firebaseSot.authGateOk()) {
+            log('warn', 'sync ignorado: usuário não autenticado no Firebase (login Google necessário).');
+            if (!silent && callbacks.onError) callbacks.onError(new Error('Faça login com Google para sincronizar com a nuvem.'));
+            return false;
+        }
 
         syncInFlight = true;
         try {

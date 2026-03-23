@@ -2093,6 +2093,13 @@ const runInitialFirebaseLoad = async () => {
         await dataService.waitForAPICheck();
         if (!dataService.useFirebase) throw new Error('Firebase não está disponível no momento.');
 
+        if (window.__sotWaitUntilSignedIn && typeof window.__sotWaitUntilSignedIn === 'function') {
+            setOverlayStatus('Login Google necessário', 'Use «Entrar com Google» na barra superior (ou acima) e aguarde.', 'loading');
+            const signedIn = await window.__sotWaitUntilSignedIn(300000);
+            if (!signedIn) throw new Error('É necessário entrar com Google para carregar e sincronizar os dados na nuvem.');
+        }
+
+        setOverlayStatus('Carregando dados do Firebase...', 'Sincronizando com a nuvem…', 'loading');
         await window.SOTSync.sync(true, { afterSync: function() {} });
 
         // Garante que todas as abas reflitam os dados sincronizados na inicialização.
@@ -2117,6 +2124,20 @@ const runInitialFirebaseLoad = async () => {
 };
 
 setTimeout(runInitialFirebaseLoad, 0);
+
+// Se o usuário fizer login Google depois que a página já carregou, sincroniza com a nuvem.
+window.addEventListener('sot-firebase-auth-changed', function (ev) {
+    try {
+        if (!ev.detail || !ev.detail.signedIn) return;
+        if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
+        if (window._sot_postLoginSyncScheduled) return;
+        window._sot_postLoginSyncScheduled = true;
+        setTimeout(function () {
+            window._sot_postLoginSyncScheduled = false;
+            window.SOTSync.sync(true, { afterSync: function () {} });
+        }, 800);
+    } catch (e) {}
+});
 }
 function getPassword() {
 if (!localStorage.getItem('adminPassword')) {
@@ -3626,11 +3647,12 @@ updateMaximizeState();
 })();
 </script>
 
-<!-- Firebase + sincronização automática (local ↔ nuvem) quando online -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
+<!-- Firebase: Firestore modular + Auth (mesma sessão que index.html / firebase-auth.js) -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) {
+  return m.installFirebaseSot();
+});
+</script>
 
 <!-- SISTEMA DE CONTROLE POR VOZ -->
 <script src="api-service.js"></script>
