@@ -33,23 +33,52 @@
         }
     }
 
+    /** id / _id / uuid / key — evita descartar toda a nuvem se o campo não for só `id`. */
+    function getStableRecordId(item, idField) {
+        if (!item || typeof item !== 'object') return null;
+        idField = idField || 'id';
+        var v = item[idField];
+        if (v != null && v !== '') return String(v);
+        if (item._id != null && item._id !== '') return String(item._id);
+        if (item.uuid != null && item.uuid !== '') return String(item.uuid);
+        if (item.key != null && item.key !== '') return String(item.key);
+        return null;
+    }
+
     /**
-     * União por id: itens da nuvem (cloudArr) têm prioridade; local só acrescenta ids ausentes na nuvem.
+     * União: nuvem primeiro (principal em conflito de mesmo id); local só completa ids que a nuvem não tem.
+     * Registros da nuvem sem id estável continuam na lista (antes eram descartados → listas vazias online).
      */
     function mergeArraysCloudPrimary(cloudArr, localArr, idField) {
         idField = idField || 'id';
         const remote = Array.isArray(cloudArr) ? cloudArr : [];
         const local = Array.isArray(localArr) ? localArr : [];
-        const byId = new Map();
+        const seenIds = new Set();
+        const out = [];
+
         remote.forEach(function(item) {
-            const id = item && item[idField];
-            if (id != null && id !== '') byId.set(String(id), item);
+            if (!item || typeof item !== 'object') return;
+            var sid = getStableRecordId(item, idField);
+            if (sid != null) {
+                if (seenIds.has(sid)) return;
+                seenIds.add(sid);
+                out.push(item);
+            } else {
+                out.push(item);
+            }
         });
+
         local.forEach(function(item) {
-            const id = item && item[idField];
-            if (id != null && id !== '' && !byId.has(String(id))) byId.set(String(id), item);
+            if (!item || typeof item !== 'object') return;
+            var sid = getStableRecordId(item, idField);
+            if (sid != null) {
+                if (seenIds.has(sid)) return;
+                seenIds.add(sid);
+                out.push(item);
+            }
         });
-        return Array.from(byId.values());
+
+        return out;
     }
 
     function readLocalStorageEscalaObject() {
@@ -757,6 +786,7 @@
     try {
         window.sotDataMerge = {
             mergeArraysCloudPrimary: mergeArraysCloudPrimary,
+            getStableRecordId: getStableRecordId,
             readLocalStorageArrayAlways: readLocalStorageArrayAlways,
             mergeObjectsCloudPrimary: mergeObjectsCloudPrimary,
             readLocalStorageEscalaObject: readLocalStorageEscalaObject

@@ -305,10 +305,8 @@
                 try {
                     if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                         await dataService.waitForAPICheck();
-                        if (dataService.useFirebase || dataService.apiAvailable) {
-                            const data = await dataService.getAvisos();
-                            if (Array.isArray(data) && data.length > 0) { avisos = data; localStorage.setItem('avisos', JSON.stringify(data)); }
-                        }
+                        const data = await dataService.getAvisos();
+                        if (Array.isArray(data)) { avisos = data; localStorage.setItem('avisos', JSON.stringify(data)); }
                     }
                 } catch (e) { console.warn('Avisos: falha ao carregar do Firebase', e); }
                 populateNotices();

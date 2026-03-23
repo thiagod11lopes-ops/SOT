@@ -850,14 +850,12 @@ let saidasAdministrativas, saidasAmbulancias, abastecimentosData;
 try {
 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
 await dataService.waitForAPICheck();
-if (dataService.useFirebase || dataService.apiAvailable) {
 saidasAdministrativas = await dataService.getSaidasAdministrativas();
 saidasAmbulancias = await dataService.getSaidasAmbulancias();
 abastecimentosData = await dataService.getAbastecimentos();
 if (Array.isArray(saidasAdministrativas)) localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
 if (Array.isArray(saidasAmbulancias)) localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
 if (Array.isArray(abastecimentosData)) localStorage.setItem('abastecimentos', JSON.stringify(abastecimentosData));
-}
 }
 } catch (e) { console.warn('Estatística: falha ao carregar do Firebase', e); }
 if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
@@ -2826,7 +2824,6 @@ async function sotRefreshEstatisticasSaidasData() {
 try {
 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
 await dataService.waitForAPICheck();
-if (dataService.useFirebase || dataService.apiAvailable) {
 try {
 const s = await dataService.getSaidasAdministrativas();
 const a = await dataService.getSaidasAmbulancias();
@@ -2835,7 +2832,6 @@ if (Array.isArray(s)) { saidasAdministrativas = s; localStorage.setItem('saidasA
 if (Array.isArray(a)) { saidasAmbulancias = a; localStorage.setItem('saidasAmbulancias', JSON.stringify(a)); }
 if (Array.isArray(ab)) { abastecimentosData = ab; localStorage.setItem('abastecimentos', JSON.stringify(ab)); }
 } catch (err) { console.warn('Estatísticas: falha ao recarregar dados remotos', err); }
-}
 }
 } catch (e) { console.warn('Estatísticas: refresh', e); }
 if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');

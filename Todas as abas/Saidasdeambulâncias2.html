@@ -513,12 +513,11 @@ try {
 
 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
 await dataService.waitForAPICheck();
-if (dataService.useFirebase || dataService.apiAvailable) {
+            // Não exigir apiAvailable: com SOT_FORCE_FIREBASE_ONLY ele fica false mesmo com Firebase OK
             const s = await dataService.getSaidasAmbulancias();
             const v = await dataService.getViaturas();
             const m = await dataService.getMotoristas();
 
-            // Se consultamos remoto, não devemos recair para localStorage no mesmo reload.
             remoteLoadedSaidas = true;
             remoteLoadedFrota = true;
             remoteLoadedMotoristas = true;
@@ -543,7 +542,6 @@ if (dataService.useFirebase || dataService.apiAvailable) {
                 motoristasCadastrados = [];
             }
             try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
-}
 }
     // Quando Firebase/API devolve [] (lista vazia), isso é um resultado válido.
     // Então não devemos “voltar” para localStorage.
