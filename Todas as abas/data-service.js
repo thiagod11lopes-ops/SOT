@@ -301,6 +301,17 @@
                 if (!apiCheckPromise) apiCheckPromise = this.checkAPI();
                 await apiCheckPromise;
                 await this._ensureFirebaseAvailable(SOT_FORCE_FIREBASE_ONLY ? 7000 : 4000);
+                // Em modo somente-Firebase, aguardar autenticação Google antes das leituras.
+                // Sem isso, firebaseSot.get() retorna null por authGate e as telas ficam vazias.
+                if (SOT_FORCE_FIREBASE_ONLY) {
+                    try {
+                        await this.waitForGoogleAuthReady(20000);
+                    } catch (authWaitErr) {
+                        log('warn', 'waitForGoogleAuthReady no waitForAPICheck', authWaitErr);
+                    }
+                    // Revalida disponibilidade após auth para evitar estado stale no primeiro carregamento.
+                    await this._ensureFirebaseAvailable(4000);
+                }
                 if (this.useFirebase) log('log', 'Firebase SOT disponível');
                 else if (SOT_FORCE_FIREBASE_ONLY) log('warn', 'Firebase indisponível no modo somente-nuvem');
                 return apiCheckPromise;
