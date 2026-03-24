@@ -11,6 +11,8 @@
     const COL = 'sot_data';
     const CACHE_TTL_MS = 60 * 1000; // 1 minuto: reduz leituras repetidas ao Firestore
     const LOG_PREFIX = '[firebase-sot]';
+    /** Item 13 Quadro: evitar serializar objetos grandes na consola. */
+    const LOG_DETAIL_MAX_LEN = 320;
 
     /**
      * Opção A (produção): não acessar sot_data sem Firebase Auth quando as regras exigem request.auth.
@@ -35,12 +37,43 @@
     const inFlightGets = new Map();
     const inFlightSets = new Map();
 
+    function formatLogDetail(detail) {
+        if (detail == null) return '';
+        var t = typeof detail;
+        if (t === 'string') {
+            return detail.length > LOG_DETAIL_MAX_LEN ? detail.slice(0, LOG_DETAIL_MAX_LEN) + '…' : detail;
+        }
+        if (t === 'number' || t === 'boolean') return String(detail);
+        if (detail instanceof Error) {
+            var em = detail.message || String(detail);
+            return em.length > LOG_DETAIL_MAX_LEN ? em.slice(0, LOG_DETAIL_MAX_LEN) + '…' : em;
+        }
+        if (t === 'object') {
+            var code = detail.code != null ? String(detail.code) : '';
+            var msg = detail.message != null ? String(detail.message) : '';
+            if (code || msg) {
+                var pair = (code ? code : '') + (code && msg ? ' ' : '') + (msg || '');
+                return pair.length > LOG_DETAIL_MAX_LEN ? pair.slice(0, LOG_DETAIL_MAX_LEN) + '…' : pair;
+            }
+            try {
+                var j = JSON.stringify(detail);
+                if (j.length > LOG_DETAIL_MAX_LEN) return j.slice(0, LOG_DETAIL_MAX_LEN) + '…';
+                return j;
+            } catch (e) {
+                return '[Object]';
+            }
+        }
+        var s = String(detail);
+        return s.length > LOG_DETAIL_MAX_LEN ? s.slice(0, LOG_DETAIL_MAX_LEN) + '…' : s;
+    }
+
     function log(level, message, detail) {
         try {
-            const msg = detail != null ? message + ' ' + (typeof detail === 'object' ? JSON.stringify(detail) : detail) : message;
+            var extra = formatLogDetail(detail);
+            var msg = extra ? message + ' ' + extra : message;
             if (level === 'warn') console.warn(LOG_PREFIX, msg);
             else if (level === 'error') console.error(LOG_PREFIX, msg);
-            else console.log(LOG_PREFIX, msg);
+            else console.debug(LOG_PREFIX, msg);
         } catch (e) {}
     }
 

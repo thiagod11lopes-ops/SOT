@@ -20,7 +20,9 @@ import {
   getDoc,
   getDocs,
   setDoc,
-  serverTimestamp
+  onSnapshot,
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -34,8 +36,19 @@ const firebaseConfig = {
 
 const COL = "sot_data";
 const COL_AGENDAMENTO_USERS = "sot_agendamento_usuarios";
-const CACHE_TTL_MS = 60 * 1000;
+/** Alinhado a QuadroDeSaidas.html / ESTRATEGIA-QUADRO-CONSULTA-DIA.md (item 2–3) */
+const SAIDAS_ADM_DAY_SHARD_PREFIX = "saidasAdm_day_";
+/** Limite de documentos-dia por gravação do mestre (evita batches gigantes). */
+const SAIDAS_ADM_DAY_SHARD_MAX_DATES = 220;
+/** Item 5 Quadro: TTL base; chaves de saídas admin usam valores específicos abaixo. */
+const CACHE_TTL_MS_DEFAULT = 60 * 1000;
+/** Lista mestre grande — TTL mais curto reduz risco de filtro do dia desatualizado no fallback. */
+const CACHE_TTL_MS_SAIDAS_ADM_MASTER = 45 * 1000;
+/** Shards por dia (payload menor) — TTL maior evita reads repetidas ao alternar datas no Quadro. */
+const CACHE_TTL_MS_SAIDAS_ADM_DAY_SHARD = 2 * 60 * 1000;
 const LOG_PREFIX = "[firebase-sot-modular]";
+/** Item 13 Quadro: nunca despejar payloads grandes na consola. */
+const LOG_DETAIL_MAX_LEN = 320;
 
 const cache = new Map();
 const inFlightGets = new Map();
@@ -45,15 +58,43 @@ let db = null;
 let auth = null;
 const googleProvider = new GoogleAuthProvider();
 
+function formatLogDetail(detail) {
+  if (detail == null) return "";
+  var t = typeof detail;
+  if (t === "string") {
+    return detail.length > LOG_DETAIL_MAX_LEN ? detail.slice(0, LOG_DETAIL_MAX_LEN) + "…" : detail;
+  }
+  if (t === "number" || t === "boolean") return String(detail);
+  if (detail instanceof Error) {
+    var em = detail.message || String(detail);
+    return em.length > LOG_DETAIL_MAX_LEN ? em.slice(0, LOG_DETAIL_MAX_LEN) + "…" : em;
+  }
+  if (t === "object") {
+    var code = detail.code != null ? String(detail.code) : "";
+    var msg = detail.message != null ? String(detail.message) : "";
+    if (code || msg) {
+      var pair = (code ? code : "") + (code && msg ? " " : "") + (msg || "");
+      return pair.length > LOG_DETAIL_MAX_LEN ? pair.slice(0, LOG_DETAIL_MAX_LEN) + "…" : pair;
+    }
+    try {
+      var j = JSON.stringify(detail);
+      if (j.length > LOG_DETAIL_MAX_LEN) return j.slice(0, LOG_DETAIL_MAX_LEN) + "…";
+      return j;
+    } catch (e) {
+      return "[Object]";
+    }
+  }
+  var s = String(detail);
+  return s.length > LOG_DETAIL_MAX_LEN ? s.slice(0, LOG_DETAIL_MAX_LEN) + "…" : s;
+}
+
 function log(level, message, detail) {
   try {
-    const msg =
-      detail != null
-        ? message + " " + (typeof detail === "object" ? JSON.stringify(detail) : detail)
-        : message;
+    var extra = formatLogDetail(detail);
+    var msg = extra ? message + " " + extra : message;
     if (level === "warn") console.warn(LOG_PREFIX, msg);
     else if (level === "error") console.error(LOG_PREFIX, msg);
-    else console.log(LOG_PREFIX, msg);
+    else console.debug(LOG_PREFIX, msg);
   } catch (e) {}
 }
 
@@ -61,6 +102,13 @@ function invalidateCache(key) {
   try {
     cache.delete(String(key));
   } catch (e) {}
+}
+
+function cacheTtlMsForKey(keyStr) {
+  var k = String(keyStr || "");
+  if (k === "saidasAdministrativas") return CACHE_TTL_MS_SAIDAS_ADM_MASTER;
+  if (k.indexOf(SAIDAS_ADM_DAY_SHARD_PREFIX) === 0) return CACHE_TTL_MS_SAIDAS_ADM_DAY_SHARD;
+  return CACHE_TTL_MS_DEFAULT;
 }
 
 function getCached(key) {
@@ -79,9 +127,10 @@ function getCached(key) {
 
 function setCache(key, value) {
   try {
-    cache.set(String(key), {
+    var keyStr = String(key);
+    cache.set(keyStr, {
       value,
-      expiresAt: Date.now() + CACHE_TTL_MS
+      expiresAt: Date.now() + cacheTtlMsForKey(keyStr)
     });
   } catch (e) {}
 }
@@ -116,6 +165,22 @@ function snapshotExists(snap) {
   }
 }
 
+/** Mesma regra que `get` usa para `snap.data()` → valor JS (array, objeto, etc.). */
+function valueFromFirestoreDocData(data) {
+  if (!data || typeof data !== "object") return null;
+  if (data._sotJsonV1 === true && typeof data.body === "string") {
+    try {
+      return JSON.parse(data.body);
+    } catch (parseErr) {
+      log("error", "valueFromFirestoreDocData JSON parse", parseErr && parseErr.message);
+      return null;
+    }
+  }
+  if (Array.isArray(data.items)) return data.items;
+  if (data.data !== undefined) return data.data;
+  return data;
+}
+
 /** Firestore não aceita arrays aninhados (ex.: escalaData.members = [[...],[...]]). */
 function valueNeedsJsonBlob(value) {
   if (value === null || value === undefined) return false;
@@ -139,6 +204,106 @@ async function ensureAuthTokenForFirestore() {
     if (!u) return;
     await u.getIdToken();
   } catch (e) {}
+}
+
+/** Mesma semântica que QuadroDeSaidas.parseDateToISO para data da saída administrativa. */
+function parseSaidaAdmDateToISO(value) {
+  if (value === null || value === undefined) return "";
+  var s = String(value).trim();
+  if (!s) return "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (s.indexOf("T") !== -1) return s.split("T")[0];
+  var m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+  if (m) {
+    return (
+      m[3] +
+      "-" +
+      String(m[2]).padStart(2, "0") +
+      "-" +
+      String(m[1]).padStart(2, "0")
+    );
+  }
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return (
+      d.getFullYear() +
+      "-" +
+      String(d.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(d.getDate()).padStart(2, "0")
+    );
+  }
+  return "";
+}
+
+function groupSaidasAdministrativasByDay(list) {
+  var map = new Map();
+  if (!Array.isArray(list)) return map;
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    if (!item || typeof item !== "object") continue;
+    var raw =
+      item.dataSaida != null
+        ? item.dataSaida
+        : item.dataPedido != null
+          ? item.dataPedido
+          : item.data;
+    var iso = parseSaidaAdmDateToISO(raw);
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) continue;
+    if (!map.has(iso)) map.set(iso, []);
+    map.get(iso).push(item);
+  }
+  return map;
+}
+
+/**
+ * Item 3 Quadro: após gravar o mestre, atualiza documentos sot_data/saidasAdm_day_{ISO} (batches de até 400 ops).
+ */
+async function syncSaidasAdministrativasDayShards(list) {
+  if (!db || !Array.isArray(list) || list.length === 0) return;
+  var groups = groupSaidasAdministrativasByDay(list);
+  if (!groups.size) return;
+  var keys = Array.from(groups.keys()).sort(function (a, b) {
+    return b.localeCompare(a);
+  });
+  if (keys.length > SAIDAS_ADM_DAY_SHARD_MAX_DATES) {
+    keys = keys.slice(0, SAIDAS_ADM_DAY_SHARD_MAX_DATES);
+    try {
+      log(
+        "warn",
+        "sync day shards: truncado a " +
+          SAIDAS_ADM_DAY_SHARD_MAX_DATES +
+          " datas (mais recentes); dias mais antigos podem ficar com shard desatualizado até próximo save que os inclua"
+      );
+    } catch (e) {}
+  }
+  await ensureAuthTokenForFirestore();
+  var batch = writeBatch(db);
+  var n = 0;
+  var ts = serverTimestamp();
+  for (var k = 0; k < keys.length; k++) {
+    var iso = keys[k];
+    var arr = groups.get(iso) || [];
+    var ref = doc(db, COL, SAIDAS_ADM_DAY_SHARD_PREFIX + iso);
+    if (valueNeedsJsonBlob(arr)) {
+      batch.set(ref, { _sotJsonV1: true, body: JSON.stringify(arr), updatedAt: ts });
+    } else {
+      batch.set(ref, { items: arr, updatedAt: ts });
+    }
+    n++;
+    try {
+      invalidateCache(SAIDAS_ADM_DAY_SHARD_PREFIX + iso);
+    } catch (e) {}
+    if (n >= 400) {
+      await batch.commit();
+      batch = writeBatch(db);
+      n = 0;
+      ts = serverTimestamp();
+    }
+  }
+  if (n > 0) {
+    await batch.commit();
+  }
 }
 
 function syncSignedInFlag() {
@@ -214,6 +379,60 @@ export async function installFirebaseSot() {
       invalidateCache(key);
     },
 
+    /**
+     * Item 5 (Quadro): invalida o mestre + o shard do dia selecionado numa única chamada (chaves alinhadas ao TTL por tipo).
+     */
+    invalidateQuadroSaidasCaches: function (selectedDateIso) {
+      invalidateCache("saidasAdministrativas");
+      var d = selectedDateIso != null ? String(selectedDateIso).slice(0, 10) : "";
+      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        invalidateCache(SAIDAS_ADM_DAY_SHARD_PREFIX + d);
+      }
+    },
+
+    /**
+     * Item 11 (Quadro): ouve só o documento do dia `saidasAdm_day_YYYY-MM-DD` (payload pequeno).
+     * Atualiza a cache em memória desse id e chama `callback` a cada mudança remota.
+     * Não subscreve o mestre `saidasAdministrativas` (evita custo e ruído da lista completa).
+     * @returns {function} unsubscribe
+     */
+    watchSaidasAdmDayShard: function (dateIso, callback) {
+      var d = dateIso != null ? String(dateIso).slice(0, 10) : "";
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        return function () {};
+      }
+      if (!db || !authGateOk()) {
+        return function () {};
+      }
+      var keyStr = SAIDAS_ADM_DAY_SHARD_PREFIX + d;
+      var ref = doc(db, COL, keyStr);
+      var unsub = onSnapshot(
+        ref,
+        function (snap) {
+          try {
+            var value = null;
+            if (snapshotExists(snap)) {
+              value = valueFromFirestoreDocData(snap.data());
+            }
+            setCache(keyStr, value);
+          } catch (e) {
+            log("warn", "watchSaidasAdmDayShard parse key=" + keyStr, e && e.message);
+          }
+          try {
+            if (typeof callback === "function") callback();
+          } catch (e2) {}
+        },
+        function (err) {
+          log("warn", "watchSaidasAdmDayShard listener key=" + keyStr, err && err.message);
+        }
+      );
+      return function () {
+        try {
+          unsub();
+        } catch (e) {}
+      };
+    },
+
     invalidateAllCache: function () {
       try {
         cache.clear();
@@ -279,18 +498,7 @@ export async function installFirebaseSot() {
             setCache(keyStr, null);
             return null;
           }
-          const data = snap.data();
-          let value = null;
-          if (data && data._sotJsonV1 === true && typeof data.body === "string") {
-            try {
-              value = JSON.parse(data.body);
-            } catch (parseErr) {
-              log("error", "get JSON parse key=" + keyStr, parseErr && parseErr.message);
-              value = null;
-            }
-          } else if (data && Array.isArray(data.items)) value = data.items;
-          else if (data && data.data !== undefined) value = data.data;
-          else value = data;
+          const value = valueFromFirestoreDocData(snap.data());
           setCache(keyStr, value);
           return value;
         } catch (e) {
@@ -347,6 +555,13 @@ export async function installFirebaseSot() {
               payload = { data: value, updatedAt: ts };
             }
             await setDoc(ref, payload);
+            if (keyStr === "saidasAdministrativas" && Array.isArray(value) && value.length > 0) {
+              try {
+                await syncSaidasAdministrativasDayShards(value);
+              } catch (shardErr) {
+                log("warn", "syncSaidasAdministrativasDayShards após set mestre", shardErr && shardErr.message);
+              }
+            }
             return true;
           } catch (e) {
             log("error", "set error key=" + keyStr, e && e.message);

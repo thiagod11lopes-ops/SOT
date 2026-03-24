@@ -6,6 +6,7 @@
     <title>SOT - Quadro de Saídas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <meta name="theme-color" content="#1a365d">
+    <!-- Item 15: pastas relativas ao HTML — ver DEPLOY-QUADRO-SAIDAS.md (GitHub Pages / mesmo origin). -->
     <style>
         :root {
             --primary: #1a365d;
@@ -257,6 +258,34 @@
             color: rgba(148, 163, 184, 0.9);
         }
 
+        .empty-state-line1 {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+
+        .empty-state-line2 {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.45;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+
+        .empty-state.empty-state--accent i {
+            color: var(--accent);
+        }
+
+        .empty-state.empty-state--warn i {
+            color: #fbbf24;
+        }
+
+        .empty-state.empty-state--danger i {
+            color: var(--danger);
+        }
+
         .card {
             position: relative;
             border-radius: 16px;
@@ -354,6 +383,7 @@
             flex-wrap: wrap;
             gap: 6px;
             align-items: center;
+            min-width: 0;
         }
 
         .chip {
@@ -364,6 +394,9 @@
             border-radius: 999px;
             font-size: 11px;
             font-weight: 500;
+            max-width: 100%;
+            min-width: 0;
+            flex: 1 1 auto;
         }
 
         .chip-viatura {
@@ -385,6 +418,13 @@
 
         .chip span.value {
             color: var(--text);
+            min-width: 0;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            word-break: break-word;
+            line-height: 1.25;
         }
 
         .card-body {
@@ -393,31 +433,54 @@
             display: flex;
             flex-direction: column;
             gap: 3px;
+            min-width: 0;
         }
 
         .row {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
             gap: 8px;
+            min-width: 0;
         }
 
         .row span.label {
             color: rgba(148, 163, 184, 0.9);
+            flex-shrink: 0;
         }
 
         .row span.value {
             color: var(--text);
             font-weight: 500;
             text-align: right;
+            min-width: 0;
+            max-width: 62%;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+            word-break: break-word;
+            line-height: 1.3;
         }
 
         .destino {
             font-size: 13px;
             color: #e5e7eb;
+            min-width: 0;
         }
 
         .destino strong {
             color: #e5e7eb;
+        }
+
+        /* Item 8: destino longo não empurra a largura do card */
+        .destino .quadro-destino-text {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 3;
+            overflow: hidden;
+            word-break: break-word;
+            line-height: 1.35;
         }
 
         .card-footer {
@@ -446,6 +509,10 @@
         .card-footer-field span.value {
             color: var(--text);
             font-weight: 500;
+            max-width: min(42vw, 160px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* Overlay de edição passo a passo (KM Saída, KM Chegada, Chegada) */
@@ -532,6 +599,14 @@
             text-transform: uppercase;
         }
 
+        .card-edit-blocked-msg .quadro-blocked-hint {
+            display: block;
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
         .footer-info {
             margin-top: 2px;
             font-size: 10px;
@@ -567,9 +642,35 @@
             50% { transform: scale(0.7); opacity: 0.4; }
         }
 
-        @media (min-width: 500px) {
+        /**
+         * Item 9 (tablet opcional): ecrãs >480px — contentor mais largo centrado;
+         * em paisagem, lista de cards em 2 colunas (retrato mantém 1 coluna, foco móvel).
+         */
+        @media (min-width: 481px) {
             .app {
+                max-width: min(900px, calc(100vw - 20px));
                 padding-top: 18px;
+            }
+
+            .empty-state-line2 {
+                max-width: min(520px, 92vw);
+            }
+        }
+
+        @media (min-width: 481px) and (orientation: landscape) {
+            #cardsContainer {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                align-content: start;
+            }
+
+            #cardsContainer > .card {
+                margin-bottom: 0;
+            }
+
+            .card-footer-field span.value {
+                max-width: min(160px, 100%);
             }
         }
     </style>
@@ -624,22 +725,22 @@
                 <span><span class="loading-dot"></span> Carregando saídas...</span>
             </div>
             <div id="listContainer" class="list-container">
-                <div id="emptyState" class="empty-state">
-                    <i class="far fa-calendar-times"></i>
-                    <div>Nenhuma saída administrativa encontrada para a data selecionada.</div>
+                <div id="emptyState" class="empty-state" role="status" aria-live="polite">
+                    <i id="emptyStateIcon" class="far fa-calendar-times" aria-hidden="true"></i>
+                    <div id="emptyStateLine1" class="empty-state-line1"></div>
+                    <div id="emptyStateLine2" class="empty-state-line2"></div>
                 </div>
                 <div id="cardsContainer"></div>
             </div>
         </div>
     </div>
 
-    <!-- Firebase modular (mesma base do SOT5) -->
+    <!-- Firebase modular (mesma base do SOT5). Paths resolvem com document.baseURI — manter QuadroDeSaidas.html e pasta "Todas as abas/" irmãos no deploy (item 15). -->
     <script>
       window.__sotFirestoreBoot = import(new URL('Todas as abas/firebase-sot-firestore.mjs', document.baseURI).href)
         .then(function (m) { return m.installFirebaseSot(); });
     </script>
-    <script src="Todas%20as%20abas/api-service.js?v=20260319-1"></script>
-    <script src="Todas%20as%20abas/data-service.js?v=20260319-1"></script>
+    <!-- Item 14: api-service + data-service carregados sob demanda (updateSaidaField fallback) — ver ensureQuadroDataServiceFallbackLoaded -->
     <script type="module" src="Todas%20as%20abas/firebase-auth.js?v=20260319-1"></script>
     <script>
         function formatDateLabel(isoDate) {
@@ -679,12 +780,18 @@
             return parseDateToISO(saida.dataSaida || saida.dataPedido || saida.data || '');
         }
 
-        function getDestino(saida) {
-            if (saida.destino) return saida.destino;
+        /** Texto de destino sem placeholder (para truncagem + tooltip no Quadro, item 8). */
+        function getDestinoRaw(saida) {
+            if (!saida) return '';
+            if (saida.destino) return String(saida.destino).trim();
             const partes = [];
-            if (saida.cidade) partes.push(saida.cidade);
-            if (saida.bairro) partes.push(saida.bairro);
-            return partes.join(' - ') || '—';
+            if (saida.cidade) partes.push(String(saida.cidade).trim());
+            if (saida.bairro) partes.push(String(saida.bairro).trim());
+            return partes.join(' - ');
+        }
+
+        function getDestino(saida) {
+            return getDestinoRaw(saida) || '—';
         }
 
         // Formata KM no padrão brasileiro, inserindo ponto para milhares (ex.: 1234 -> 1.234)
@@ -711,10 +818,150 @@
             const dateInput = document.getElementById('filterDateMobile');
             const cardsContainer = document.getElementById('cardsContainer');
             const emptyState = document.getElementById('emptyState');
+            const emptyStateIcon = document.getElementById('emptyStateIcon');
+            const emptyStateLine1 = document.getElementById('emptyStateLine1');
+            const emptyStateLine2 = document.getElementById('emptyStateLine2');
             const counterValue = document.getElementById('counterValue');
             const dateLabel = document.getElementById('dateLabel');
             const loading = document.getElementById('loading');
             let lastKnownGoogleSignedIn = false;
+
+            emptyState.style.display = 'none';
+
+            /** Item 7: mensagens distintas para vazio real vs login vs rede vs erro. */
+            function hideQuadroEmptyState() {
+                emptyState.style.display = 'none';
+            }
+
+            function showQuadroEmptyState(kind, detail) {
+                const extra = detail != null && String(detail).trim() ? String(detail).trim() : '';
+                emptyState.style.display = 'block';
+                emptyState.className = 'empty-state';
+                if (kind === 'no_data') {
+                    emptyStateIcon.className = 'far fa-calendar-times';
+                    emptyStateLine1.textContent = 'Nenhuma saída administrativa para esta data.';
+                    emptyStateLine2.textContent =
+                        'Escolha outra data no calendário ou cadastre saídas no sistema SOT completo.';
+                    return;
+                }
+                if (kind === 'auth_required') {
+                    emptyState.classList.add('empty-state--accent');
+                    emptyStateIcon.className = 'fas fa-user-lock';
+                    emptyStateLine1.textContent = 'Inicie sessão com o Google';
+                    emptyStateLine2.textContent =
+                        'As saídas são lidas do Firebase. Use «Entrar com Google» no canto superior e aguarde o carregamento.';
+                    return;
+                }
+                if (kind === 'offline') {
+                    emptyState.classList.add('empty-state--warn');
+                    emptyStateIcon.className = 'fas fa-wifi-slash';
+                    emptyStateLine1.textContent = 'Sem ligação à internet';
+                    emptyStateLine2.textContent =
+                        'Quando a rede voltar, a lista pode atualizar sozinha ou altere a data para recarregar.';
+                    return;
+                }
+                if (kind === 'no_cloud') {
+                    emptyState.classList.add('empty-state--warn');
+                    emptyStateIcon.className = 'fas fa-cloud-slash';
+                    emptyStateLine1.textContent = 'Não foi possível obter dados da nuvem';
+                    emptyStateLine2.textContent =
+                        'Confirme que está ligado à internet e autenticado. Se o problema continuar, tente mais tarde.';
+                    return;
+                }
+                if (kind === 'fetch_failed' || kind === 'exception') {
+                    emptyState.classList.add('empty-state--danger');
+                    emptyStateIcon.className = 'fas fa-triangle-exclamation';
+                    emptyStateLine1.textContent =
+                        kind === 'exception' ? 'Erro ao carregar o quadro' : 'Falha ao aceder ao Firebase';
+                    emptyStateLine2.textContent =
+                        extra ||
+                        'Pode ser rede, permissão nas regras do Firestore ou sessão expirada. Tente iniciar sessão de novo.';
+                    return;
+                }
+                emptyStateIcon.className = 'far fa-calendar-times';
+                emptyStateLine1.textContent = 'Sem informação para mostrar.';
+                emptyStateLine2.textContent = extra || '';
+            }
+
+            /** Item 2: prefixo do documento opcional por dia em sot_data — ver ESTRATEGIA-QUADRO-CONSULTA-DIA.md */
+            var SOT_QUADRO_DAY_DOC_PREFIX = 'saidasAdm_day_';
+
+            /** Item 1 (melhorias Quadro): baseline de tamanho — ativar com ?quadroBaseline=1 ou localStorage sot_quadro_baseline_v1 = 1 */
+            function quadroBaselineEnabled() {
+                try {
+                    if (new URLSearchParams(location.search).get('quadroBaseline') === '1') return true;
+                    if (localStorage.getItem('sot_quadro_baseline_v1') === '1') return true;
+                } catch (e) {}
+                return false;
+            }
+
+            function quadroUtf8ByteLength(str) {
+                try {
+                    return new TextEncoder().encode(str).length;
+                } catch (e) {
+                    return String(str).length * 2;
+                }
+            }
+
+            function quadroMeasureSaidasPayload(allSaidas) {
+                const n = Array.isArray(allSaidas) ? allSaidas.length : 0;
+                if (n === 0) {
+                    return { recordCount: 0, jsonUtf8BytesApprox: 0, jsonMeasureNote: 'empty' };
+                }
+                if (n <= 3000) {
+                    try {
+                        const bytes = quadroUtf8ByteLength(JSON.stringify(allSaidas));
+                        return { recordCount: n, jsonUtf8BytesApprox: bytes, jsonMeasureNote: 'exact_json_stringify' };
+                    } catch (e) {
+                        return { recordCount: n, jsonUtf8BytesApprox: 0, jsonMeasureNote: 'stringify_error' };
+                    }
+                }
+                const sampleN = Math.min(120, n);
+                const sample = allSaidas.slice(0, sampleN);
+                try {
+                    const sampleBytes = quadroUtf8ByteLength(JSON.stringify(sample));
+                    const per = sampleBytes / sampleN;
+                    return {
+                        recordCount: n,
+                        jsonUtf8BytesApprox: Math.round(per * n),
+                        jsonMeasureNote: 'estimated_first_' + sampleN + '_rows'
+                    };
+                } catch (e) {
+                    return { recordCount: n, jsonUtf8BytesApprox: 0, jsonMeasureNote: 'sample_stringify_error' };
+                }
+            }
+
+            function logQuadroBaselineDiagnostics(allSaidas, filtered, selectedDate, remoteLoaded, loadMode) {
+                if (!quadroBaselineEnabled()) return;
+                const t0 = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+                const measured = quadroMeasureSaidasPayload(allSaidas);
+                const t1 = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
+                let mem = null;
+                try {
+                    if (typeof performance !== 'undefined' && performance.memory) {
+                        mem = {
+                            usedJSHeapSize: performance.memory.usedJSHeapSize,
+                            totalJSHeapSize: performance.memory.totalJSHeapSize,
+                            jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+                        };
+                    }
+                } catch (e) {}
+                const lm = loadMode || 'full';
+                console.info('[QuadroDeSaidas][baseline]', {
+                    doc: lm === 'day_shard' ? 'sot_data/' + SOT_QUADRO_DAY_DOC_PREFIX + (selectedDate || '') : 'sot_data/saidasAdministrativas',
+                    loadMode: lm,
+                    at: new Date().toISOString(),
+                    selectedDate: selectedDate || '',
+                    remoteLoaded: !!remoteLoaded,
+                    recordCountTotal: measured.recordCount,
+                    recordCountDay: Array.isArray(filtered) ? filtered.length : 0,
+                    jsonUtf8BytesApprox: measured.jsonUtf8BytesApprox,
+                    jsonMeasureNote: measured.jsonMeasureNote,
+                    measureMs: t1 && t0 ? Math.round((t1 - t0) * 100) / 100 : null,
+                    performanceMemoryChrome: mem,
+                    hint: 'Pico de heap: abra DevTools > Performance/Memory, grave um reload com quadroBaseline=1.'
+                });
+            }
 
             function isGoogleSignedInNow() {
                 try {
@@ -781,56 +1028,9 @@
                 return isNaN(num) ? null : num;
             }
 
-            /** Obtém lista de saídas SOMENTE do Firebase. */
-            async function getAllSaidas() {
-                let remoteList = [];
-                let remoteLoaded = false;
-
-                // Alinhar com o SOT: aguardar serviços + auth Google antes da leitura.
-                try {
-                    if (window.dataService && typeof window.dataService.waitForAPICheck === 'function') {
-                        await window.dataService.waitForAPICheck();
-                    }
-                    if (window.dataService && typeof window.dataService.waitForGoogleAuthReady === 'function') {
-                        await window.dataService.waitForGoogleAuthReady(20000);
-                    }
-                } catch (e) {
-                    console.warn('QuadroDeSaidas: falha ao aguardar auth/serviços Firebase.', e);
-                }
-
-                // Firebase direto (fonte única da verdade)
-                if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
-                    try {
-                        const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
-                        if (Array.isArray(fbSaidas)) {
-                            remoteList = fbSaidas;
-                            remoteLoaded = true;
-                        } else if (fbSaidas === null) {
-                            // Pode ocorrer corrida de auth no mobile: aguarda login e tenta novamente.
-                            try {
-                                if (window.dataService && typeof window.dataService.waitForGoogleAuthReady === 'function') {
-                                    await window.dataService.waitForGoogleAuthReady(10000);
-                                }
-                                const fbRetry = await window.firebaseSot.get('saidasAdministrativas');
-                                if (Array.isArray(fbRetry)) {
-                                    remoteList = fbRetry;
-                                    remoteLoaded = true;
-                                }
-                            } catch (retryErr) {
-                                console.warn('QuadroDeSaidas: retry após auth falhou.', retryErr);
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase.', e);
-                    }
-                }
-
-                // Em modo somente-Firebase, se não carregou remoto retorna vazio.
+            function normalizeQuadroSaidasRemote(remoteList) {
                 const base = Array.isArray(remoteList) ? remoteList : [];
-
-                // Mapa id -> registro apenas da nuvem.
                 const map = new Map();
-
                 const addBase = (arr) => {
                     if (!Array.isArray(arr)) return;
                     for (const it of arr) {
@@ -840,11 +1040,189 @@
                         map.set(String(id), n);
                     }
                 };
-
                 addBase(base);
+                return Array.from(map.values());
+            }
 
-                const merged = Array.from(map.values());
-                return { saidas: merged, remoteLoaded };
+            /** Item 14: espera Firestore modular + auth sem carregar data-service.js na abertura. */
+            async function quadroEnsureFirebaseSotReady(timeoutMs) {
+                if (timeoutMs == null) timeoutMs = 7000;
+                const t0 = Date.now();
+                while (Date.now() - t0 < timeoutMs) {
+                    try {
+                        if (
+                            window.firebaseSot &&
+                            typeof window.firebaseSot.isAvailable === 'function' &&
+                            window.firebaseSot.isAvailable()
+                        ) {
+                            return true;
+                        }
+                    } catch (e) {}
+                    await new Promise(r => setTimeout(r, 120));
+                }
+                try {
+                    return !!(
+                        window.firebaseSot &&
+                        window.firebaseSot.isAvailable &&
+                        window.firebaseSot.isAvailable()
+                    );
+                } catch (e2) {
+                    return false;
+                }
+            }
+
+            async function quadroWaitForFirebaseAuth(timeoutMs) {
+                if (timeoutMs == null) timeoutMs = 15000;
+                try {
+                    if (window.__sotFirestoreBoot) await window.__sotFirestoreBoot;
+                } catch (e) {}
+                try {
+                    const fs = window.firebaseSot;
+                    if (fs && typeof fs.authGateOk === 'function' && fs.authGateOk()) return true;
+                    if (typeof window.__sotWaitUntilSignedIn === 'function') {
+                        return await window.__sotWaitUntilSignedIn(timeoutMs);
+                    }
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: quadroWaitForFirebaseAuth', e);
+                }
+                try {
+                    return !!(window.firebaseSot && window.firebaseSot.authGateOk && window.firebaseSot.authGateOk());
+                } catch (e2) {
+                    return false;
+                }
+            }
+
+            let quadroDataServiceBundlePromise = null;
+
+            function quadroLoadScript(src) {
+                return new Promise(function (resolve, reject) {
+                    const s = document.createElement('script');
+                    s.src = src;
+                    s.async = true;
+                    s.onload = function () {
+                        resolve();
+                    };
+                    s.onerror = function () {
+                        reject(new Error('Falha ao carregar script: ' + src));
+                    };
+                    document.head.appendChild(s);
+                });
+            }
+
+            /**
+             * Item 14: carrega api-service + data-service só quando o fallback de updateSaidaField precisa
+             * (evita ~2 scripts na carga inicial do Quadro).
+             */
+            async function ensureQuadroDataServiceFallbackLoaded() {
+                if (window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function') {
+                    return true;
+                }
+                if (!quadroDataServiceBundlePromise) {
+                    const base = new URL('Todas as abas/', document.baseURI || document.URL).href;
+                    quadroDataServiceBundlePromise = (async function () {
+                        if (typeof window.api === 'undefined') {
+                            await quadroLoadScript(new URL('api-service.js?v=20260319-1', base).href);
+                        }
+                        if (typeof window.dataService === 'undefined') {
+                            await quadroLoadScript(new URL('data-service.js?v=20260319-1', base).href);
+                        }
+                    })();
+                }
+                try {
+                    await quadroDataServiceBundlePromise;
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: fallback data-service não carregado.', e);
+                    quadroDataServiceBundlePromise = null;
+                    return false;
+                }
+                return !!(window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function');
+            }
+
+            /**
+             * Obtém lista de saídas SOMENTE do Firebase.
+             * @param {string} [forDateISO] YYYY-MM-DD — tenta primeiro sot_data/{SOT_QUADRO_DAY_DOC_PREFIX}{data}
+             */
+            async function getAllSaidas(forDateISO) {
+                let remoteList = [];
+                let remoteLoaded = false;
+                let hadFetchError = false;
+
+                try {
+                    if (window.__sotFirestoreBoot) await window.__sotFirestoreBoot;
+                    await quadroEnsureFirebaseSotReady(7000);
+                    await quadroWaitForFirebaseAuth(20000);
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: falha ao aguardar auth/serviços Firebase.', e);
+                }
+
+                const dateKey = forDateISO && String(forDateISO).slice(0, 10);
+
+                if (dateKey && window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                    try {
+                        const dayDocId = SOT_QUADRO_DAY_DOC_PREFIX + dateKey;
+                        const dayArr = await window.firebaseSot.get(dayDocId);
+                        if (Array.isArray(dayArr)) {
+                            return {
+                                saidas: normalizeQuadroSaidasRemote(dayArr),
+                                remoteLoaded: true,
+                                loadMode: 'day_shard',
+                                loadHint: null
+                            };
+                        }
+                    } catch (e) {
+                        hadFetchError = true;
+                        console.warn('QuadroDeSaidas: falha ao ler shard do dia, usando lista completa.', dateKey, e);
+                    }
+                }
+
+                if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                    try {
+                        const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
+                        if (Array.isArray(fbSaidas)) {
+                            remoteList = fbSaidas;
+                            remoteLoaded = true;
+                        } else if (fbSaidas === null) {
+                            try {
+                                await quadroWaitForFirebaseAuth(10000);
+                                const fbRetry = await window.firebaseSot.get('saidasAdministrativas');
+                                if (Array.isArray(fbRetry)) {
+                                    remoteList = fbRetry;
+                                    remoteLoaded = true;
+                                }
+                            } catch (retryErr) {
+                                hadFetchError = true;
+                                console.warn('QuadroDeSaidas: retry após auth falhou.', retryErr);
+                            }
+                        }
+                    } catch (e) {
+                        hadFetchError = true;
+                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase.', e);
+                    }
+                }
+
+                let loadHint = null;
+                if (!remoteLoaded) {
+                    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                        loadHint = 'offline';
+                    } else if (
+                        window.firebaseSot &&
+                        typeof window.firebaseSot.authGateOk === 'function' &&
+                        !window.firebaseSot.authGateOk()
+                    ) {
+                        loadHint = 'auth_required';
+                    } else if (hadFetchError) {
+                        loadHint = 'fetch_failed';
+                    } else {
+                        loadHint = 'no_cloud';
+                    }
+                }
+
+                return {
+                    saidas: normalizeQuadroSaidasRemote(remoteList),
+                    remoteLoaded,
+                    loadMode: 'full',
+                    loadHint
+                };
             }
 
             function normStr(v) {
@@ -909,8 +1287,15 @@
                 box.className = 'card-edit-box';
                 const msg = document.createElement('div');
                 msg.className = 'card-edit-blocked-msg';
-                msg.innerHTML = '<strong>Atenção</strong>' + QUADRO_MSG_BLOQUEIO +
-                    '<br><br><span style="color:var(--muted);font-size:12px;">Edite esta saída apenas no sistema SOT (aba Saídas administrativas).</span>';
+                const strong = document.createElement('strong');
+                strong.textContent = 'Atenção';
+                msg.appendChild(strong);
+                msg.appendChild(document.createElement('br'));
+                msg.appendChild(document.createTextNode(QUADRO_MSG_BLOQUEIO));
+                const hint = document.createElement('span');
+                hint.className = 'quadro-blocked-hint';
+                hint.textContent = 'Edite esta saída apenas no sistema SOT (aba Saídas administrativas).';
+                msg.appendChild(hint);
                 const actions = document.createElement('div');
                 actions.className = 'card-edit-actions';
                 const btnOk = document.createElement('button');
@@ -1036,7 +1421,10 @@
                         console.warn('QuadroDeSaidas: firebaseSot.set retornou falso, tentando fallback.', { ok });
                     }
 
-                    // 2) Fallback: usar dataService para atualizar a saída, se disponível
+                    // 2) Fallback: data-service (carga lazy — item 14) só aqui
+                    await ensureQuadroDataServiceFallbackLoaded();
+
+                    // 2b) Fallback: usar dataService para atualizar a saída, se disponível
                     if (window.dataService) {
                         if (typeof window.dataService.saveSaidaAdministrativa === 'function' && saidaOriginal) {
                             const base = saidaOriginal || {};
@@ -1120,6 +1508,262 @@
                 }
             }
 
+            /**
+             * Item 4: reconcilia `realizada` com um único get + um único set do mestre (evita N× get/set via updateSaidaField).
+             */
+            async function reconcileRealizadaBatchAfterLoad(filteredForDay) {
+                if (!filteredForDay || !filteredForDay.length) return;
+                if (!window.firebaseSot || typeof window.firebaseSot.get !== 'function' || typeof window.firebaseSot.set !== 'function') {
+                    return;
+                }
+
+                const divergentes = filteredForDay.filter(s => {
+                    const computed = computeRealizadaFromSaida(s);
+                    const stored = !!s.realizada;
+                    return computed !== stored;
+                });
+                if (!divergentes.length) return;
+
+                let full;
+                try {
+                    full = await window.firebaseSot.get('saidasAdministrativas');
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: reconcile realizada — get mestre falhou', e);
+                    return;
+                }
+                if (!Array.isArray(full)) return;
+
+                let changed = false;
+                for (const d of divergentes) {
+                    const rid = getSaidaId(d);
+                    let idx = rid ? full.findIndex(s => String(s.id || '').trim() === String(rid).trim()) : -1;
+                    if (idx === -1) {
+                        idx = full.findIndex(s => matchSaidaByStableKey(s, d));
+                    }
+                    if (idx === -1) continue;
+
+                    const computed = computeRealizadaFromSaida(full[idx]);
+                    if (!!full[idx].realizada === computed) {
+                        d.realizada = computed;
+                        continue;
+                    }
+                    full[idx] = { ...full[idx], realizada: computed };
+                    changed = true;
+                    d.realizada = computed;
+                }
+
+                if (!changed) return;
+
+                try {
+                    const ok = await window.firebaseSot.set('saidasAdministrativas', full);
+                    if (ok) {
+                        try {
+                            localStorage.setItem('saidasAdministrativas', JSON.stringify(full));
+                        } catch (e) { /* opcional */ }
+                    }
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: reconcile realizada — set mestre falhou', e);
+                }
+            }
+
+            /** Cache em memória da lista completa (só usado com loadMode day_shard, para hint de KM Saída). */
+            let quadroFullSaidasCache = null;
+
+            async function ensureQuadroFullSaidasForHints() {
+                if (quadroFullSaidasCache !== null) return quadroFullSaidasCache;
+                if (!window.firebaseSot || typeof window.firebaseSot.get !== 'function') {
+                    quadroFullSaidasCache = [];
+                    return quadroFullSaidasCache;
+                }
+                try {
+                    const fb = await window.firebaseSot.get('saidasAdministrativas');
+                    quadroFullSaidasCache = normalizeQuadroSaidasRemote(Array.isArray(fb) ? fb : []);
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: falha ao carregar lista completa para hint de KM.', e);
+                    quadroFullSaidasCache = [];
+                }
+                return quadroFullSaidasCache;
+            }
+
+            /** Item 6: contexto da última lista pintada (delegação de dblclick). */
+            let quadroLoadContext = { selectedDate: '', loadMode: 'full', allSaidas: [] };
+            let quadroSaidasById = new Map();
+            let quadroLastListDateKey = null;
+
+            function findQuadroCardById(container, id) {
+                if (!container || id == null || id === '') return null;
+                const sid = String(id);
+                for (let i = 0; i < container.children.length; i++) {
+                    if (container.children[i].dataset.id === sid) return container.children[i];
+                }
+                return null;
+            }
+
+            /** Item 8: truncagem CSS + tooltip nativo com texto completo. */
+            function quadroSetTruncatable(el, raw) {
+                if (!el) return;
+                const s = raw == null ? '' : String(raw).trim();
+                if (!s) {
+                    el.textContent = '—';
+                    el.removeAttribute('title');
+                    return;
+                }
+                el.textContent = s;
+                el.title = s;
+            }
+
+            function quadroSetFooterField(el, val) {
+                if (!el) return;
+                const s = val == null || val === '' ? '' : String(val).trim();
+                el.textContent = s || '—';
+                if (s) el.title = s;
+                else el.removeAttribute('title');
+            }
+
+            function fillQuadroCardFromSaida(card, saida) {
+                if (!card || !saida) return;
+                card.className = getQuadroCardClassName(saida);
+                const timeSpan = card.querySelector('.time-pill span');
+                if (timeSpan) {
+                    const hs = (getHoraSaida(saida) || '').trim();
+                    timeSpan.textContent = hs || '—';
+                    if (hs) timeSpan.title = hs;
+                    else timeSpan.removeAttribute('title');
+                }
+                quadroSetTruncatable(card.querySelector('.chip-viatura .value'), saida.viatura);
+                quadroSetTruncatable(card.querySelector('.chip-motorista .value'), saida.motorista);
+                quadroSetTruncatable(card.querySelector('.quadro-destino-text'), getDestinoRaw(saida));
+                const rows = card.querySelectorAll('.card-body .row');
+                if (rows[0]) quadroSetTruncatable(rows[0].querySelector('.value'), saida.setor);
+                if (rows[1]) quadroSetTruncatable(rows[1].querySelector('.value'), saida.om);
+                const footers = card.querySelectorAll('.card-footer-field span.value');
+                if (footers[0]) quadroSetFooterField(footers[0], saida.kmSaida || saida.km_saida);
+                if (footers[1]) quadroSetFooterField(footers[1], saida.kmChegada || saida.km_chegada);
+                if (footers[2]) quadroSetFooterField(footers[2], saida.chegada);
+            }
+
+            /** Item 12: sem innerHTML em estrutura de card (dados vêm depois via textContent em fillQuadroCardFromSaida). */
+            function buildQuadroCardFromSaida(saida) {
+                const card = document.createElement('div');
+                card.dataset.id = getSaidaId(saida) || '';
+
+                function el(tag, className) {
+                    const n = document.createElement(tag);
+                    if (className) n.className = className;
+                    return n;
+                }
+
+                const header = el('div', 'card-header');
+                const timePill = el('div', 'time-pill');
+                const clockIcon = document.createElement('i');
+                clockIcon.className = 'far fa-clock';
+                clockIcon.setAttribute('aria-hidden', 'true');
+                timePill.appendChild(clockIcon);
+                timePill.appendChild(el('span'));
+                header.appendChild(timePill);
+                const typeTag = el('span', 'tag');
+                typeTag.textContent = 'Saída Administrativa';
+                header.appendChild(typeTag);
+
+                const cardTitle = el('div', 'card-title');
+                const chipV = el('div', 'chip chip-viatura');
+                const labV = el('span', 'label');
+                labV.textContent = 'Viatura';
+                chipV.appendChild(labV);
+                chipV.appendChild(el('span', 'value'));
+                const chipM = el('div', 'chip chip-motorista');
+                const labM = el('span', 'label');
+                labM.textContent = 'Motorista';
+                chipM.appendChild(labM);
+                chipM.appendChild(el('span', 'value'));
+                cardTitle.appendChild(chipV);
+                cardTitle.appendChild(chipM);
+
+                const cardBody = el('div', 'card-body');
+                const destino = el('div', 'destino');
+                const destStrong = document.createElement('strong');
+                destStrong.textContent = 'Destino: ';
+                destino.appendChild(destStrong);
+                const destSpan = el('span', 'quadro-destino-text');
+                destino.appendChild(destSpan);
+                cardBody.appendChild(destino);
+
+                function makeRow(labelText) {
+                    const row = el('div', 'row');
+                    const lab = el('span', 'label');
+                    lab.textContent = labelText;
+                    row.appendChild(lab);
+                    row.appendChild(el('span', 'value'));
+                    return row;
+                }
+                cardBody.appendChild(makeRow('Setor'));
+                cardBody.appendChild(makeRow('OM'));
+
+                const cardFooter = el('div', 'card-footer');
+                function makeFooterField(labelText) {
+                    const wrap = el('div', 'card-footer-field');
+                    const lab = document.createElement('label');
+                    lab.textContent = labelText;
+                    wrap.appendChild(lab);
+                    wrap.appendChild(el('span', 'value'));
+                    return wrap;
+                }
+                cardFooter.appendChild(makeFooterField('KM Saída'));
+                cardFooter.appendChild(makeFooterField('KM Chegada'));
+                cardFooter.appendChild(makeFooterField('Chegada'));
+
+                card.appendChild(header);
+                card.appendChild(cardTitle);
+                card.appendChild(cardBody);
+                card.appendChild(cardFooter);
+
+                fillQuadroCardFromSaida(card, saida);
+                return card;
+            }
+
+            /**
+             * Item 6: mesma data + cards existentes → diff/reordena; mudança de data ou lista vazia antes → rebuild completo.
+             */
+            function applyQuadroCardsDOM(filtered, selectedDate, loadMode, allSaidas, incremental) {
+                quadroLoadContext.selectedDate = selectedDate;
+                quadroLoadContext.loadMode = loadMode || 'full';
+                quadroLoadContext.allSaidas = allSaidas || [];
+                quadroSaidasById.clear();
+                filtered.forEach(s => {
+                    const sid = getSaidaId(s) || '';
+                    if (sid) quadroSaidasById.set(sid, s);
+                });
+
+                if (!incremental) {
+                    cardsContainer.replaceChildren();
+                    filtered.forEach(s => cardsContainer.appendChild(buildQuadroCardFromSaida(s)));
+                    quadroLastListDateKey = selectedDate;
+                    return;
+                }
+
+                const idList = filtered.map(s => getSaidaId(s) || '');
+                const want = new Set(idList);
+                [...cardsContainer.children].forEach(ch => {
+                    if (!want.has(ch.dataset.id)) ch.remove();
+                });
+
+                for (let i = 0; i < idList.length; i++) {
+                    const id = idList[i];
+                    const saida = filtered[i];
+                    let card = findQuadroCardById(cardsContainer, id);
+                    if (!card) {
+                        card = buildQuadroCardFromSaida(saida);
+                    } else {
+                        fillQuadroCardFromSaida(card, saida);
+                    }
+                    const ref = cardsContainer.children[i];
+                    if (card !== ref) {
+                        cardsContainer.insertBefore(card, ref);
+                    }
+                }
+                quadroLastListDateKey = selectedDate;
+            }
+
             /** Enquanto o usuário percorre KM Saída → KM Chegada → Chegada, não recarregar a lista (senão o DOM some e o próximo modal não abre). */
             let quadroKmFlowActive = false;
             let quadroReloadPendingAfterFlow = false;
@@ -1127,255 +1771,235 @@
             async function loadSaidasForSelectedDate() {
                 const selectedDate = dateInput.value;
                 dateLabel.textContent = formatDateLabel(selectedDate);
-                cardsContainer.innerHTML = '';
-                emptyState.style.display = 'none';
+                hideQuadroEmptyState();
                 loading.style.display = 'block';
+                quadroFullSaidasCache = null;
 
                 try {
-                    const result = await getAllSaidas();
+                    const result = await getAllSaidas(selectedDate);
                     const allSaidas = result?.saidas || [];
                     const remoteLoaded = !!result?.remoteLoaded;
+                    const loadMode = result?.loadMode || 'full';
+                    const loadHint = result?.loadHint != null ? result.loadHint : null;
                     const filtered = (allSaidas || []).filter(s => getSaidaDateISO(s) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
+
+                    logQuadroBaselineDiagnostics(allSaidas, filtered, selectedDate, remoteLoaded, loadMode);
 
                     counterValue.textContent = filtered.length;
 
                     if (!filtered.length) {
-                        emptyState.style.display = 'block';
+                        cardsContainer.replaceChildren();
+                        quadroLastListDateKey = selectedDate;
+                        quadroSaidasById.clear();
+                        if (remoteLoaded) {
+                            showQuadroEmptyState('no_data');
+                        } else if (loadHint === 'offline') {
+                            showQuadroEmptyState('offline');
+                        } else if (loadHint === 'auth_required') {
+                            showQuadroEmptyState('auth_required');
+                        } else if (loadHint === 'fetch_failed') {
+                            showQuadroEmptyState('fetch_failed');
+                        } else {
+                            showQuadroEmptyState('no_cloud');
+                        }
                         return;
                     }
 
-                    filtered.forEach(saida => {
-                        const hora = getHoraSaida(saida) || '—';
-                        const viatura = saida.viatura || '—';
-                        const motorista = saida.motorista || '—';
-                        const setor = saida.setor || '—';
-                        const destino = getDestino(saida);
-                        const om = saida.om || '—';
-                        const card = document.createElement('div');
-                        card.className = getQuadroCardClassName(saida);
-                        card.dataset.id = getSaidaId(saida) || '';
-                        card.innerHTML = `
-                            <div class="card-header">
-                                <div class="time-pill">
-                                    <i class="far fa-clock"></i>
-                                    <span>${hora}</span>
-                                </div>
-                                <span class="tag">Saída Administrativa</span>
-                            </div>
-                            <div class="card-title">
-                                <div class="chip chip-viatura">
-                                    <span class="label">Viatura</span>
-                                    <span class="value">${viatura}</span>
-                                </div>
-                                <div class="chip chip-motorista">
-                                    <span class="label">Motorista</span>
-                                    <span class="value">${motorista}</span>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="destino">
-                                    <strong>Destino: </strong>${destino}
-                                </div>
-                                <div class="row">
-                                    <span class="label">Setor</span>
-                                    <span class="value">${setor}</span>
-                                </div>
-                                <div class="row">
-                                    <span class="label">OM</span>
-                                    <span class="value">${om}</span>
-                                </div>
-                            </div>
-                            <div class="card-footer">
-                                <div class="card-footer-field">
-                                    <label>KM Saída</label>
-                                    <span class="value">${saida.kmSaida || saida.km_saida || '—'}</span>
-                                </div>
-                                <div class="card-footer-field">
-                                    <label>KM Chegada</label>
-                                    <span class="value">${saida.kmChegada || saida.km_chegada || '—'}</span>
-                                </div>
-                                <div class="card-footer-field">
-                                    <label>Chegada</label>
-                                    <span class="value">${saida.chegada || '—'}</span>
-                                </div>
-                            </div>
-                        `;
-                        cardsContainer.appendChild(card);
-                        // Duplo clique inicia fluxo de edição em 3 passos (bloqueado após KM Saída + KM Chegada + Chegada)
-                        card.addEventListener('dblclick', () => {
-                            if (isQuadroRegistroBloqueado(saida)) {
-                                showQuadroBloqueadoOverlay(card);
-                                return;
-                            }
-                            quadroKmFlowActive = true;
-                            quadroReloadPendingAfterFlow = false;
-                            const steps = [
-                                { field: 'kmSaida', label: 'KM Saída', type: 'text' },
-                                { field: 'kmChegada', label: 'KM Chegada', type: 'text' },
-                                { field: 'chegada', label: 'Chegada', type: 'time' }
-                            ];
-                            let currentStep = 0;
+                    hideQuadroEmptyState();
 
-                            const startStep = () => {
-                                if (currentStep >= steps.length) return;
-                                const step = steps[currentStep];
+                    const useIncremental =
+                        quadroLastListDateKey === selectedDate && cardsContainer.children.length > 0;
 
-                                const overlay = document.createElement('div');
-                                overlay.className = 'card-edit-overlay';
-                                const box = document.createElement('div');
-                                box.className = 'card-edit-box';
-                                const title = document.createElement('div');
-                                title.className = 'card-edit-title';
-                                title.textContent = step.label;
+                    applyQuadroCardsDOM(filtered, selectedDate, loadMode, allSaidas, useIncremental);
 
-                                const input = document.createElement('input');
-                                input.className = 'card-edit-input';
-                                input.type = step.type === 'time' ? 'time' : 'text';
-
-                                // Valor inicial (com auto-preenchimento para KM Saída e hora atual para Chegada)
-                                let initialValue = '';
-                                if (step.field === 'kmSaida') {
-                                    initialValue = saida.kmSaida || saida.km_saida || '';
-                                    if (!initialValue) {
-                                        const baseHora = getHoraSaida(saida) || '00:00';
-                                        const prevKm = getPreviousKmChegada(saida.viatura, selectedDate, baseHora, allSaidas);
-                                        if (prevKm !== null) initialValue = String(prevKm);
-                                    }
-                                } else if (step.field === 'kmChegada') {
-                                    initialValue = saida.kmChegada || saida.km_chegada || '';
-                                } else if (step.field === 'chegada') {
-                                    // Se já houver hora de chegada, usa; senão, preenche com hora atual (HH:MM)
-                                    if (saida.chegada) {
-                                        initialValue = saida.chegada;
-                                    } else {
-                                        const now = new Date();
-                                        const hh = String(now.getHours()).padStart(2, '0');
-                                        const mi = String(now.getMinutes()).padStart(2, '0');
-                                        initialValue = `${hh}:${mi}`;
-                                    }
-                                }
-                                input.value = initialValue;
-
-                                const actions = document.createElement('div');
-                                actions.className = 'card-edit-actions';
-                                const btnCancel = document.createElement('button');
-                                btnCancel.className = 'card-edit-btn cancel';
-                                btnCancel.textContent = 'Cancelar';
-                                const btnOk = document.createElement('button');
-                                btnOk.className = 'card-edit-btn ok';
-                                btnOk.textContent = 'OK';
-                                actions.appendChild(btnCancel);
-                                actions.appendChild(btnOk);
-
-                                box.appendChild(title);
-                                box.appendChild(input);
-                                box.appendChild(actions);
-                                overlay.appendChild(box);
-                                card.appendChild(overlay);
-
-                                input.focus();
-
-                                const closeOverlay = () => {
-                                    card.removeChild(overlay);
-                                };
-
-                                btnCancel.addEventListener('click', () => {
-                                    closeOverlay();
-                                    endQuadroKmFlow();
-                                });
-
-                                btnOk.addEventListener('click', async () => {
-                                    let val = input.value.trim();
-                                    // Formatação automática de KM (milhares com ponto) antes de salvar
-                                    if (step.field === 'kmSaida' || step.field === 'kmChegada') {
-                                        val = formatKmValue(val);
-                                        input.value = val; // refletir formatação no input
-                                    }
-                                    const saidaId = saida.id;
-
-                                    // Mostrar animação de carregamento enquanto envia atualização
-                                    btnOk.disabled = true;
-                                    btnCancel.disabled = true;
-                                    const originalOkHtml = btnOk.innerHTML;
-                                    btnOk.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-
-                                    try {
-                                        await updateSaidaField(saidaId, step.field, val, saida);
-                                        saida[step.field] = val;
-                                        if (step.field === 'kmSaida') saida.km_saida = val;
-                                        if (step.field === 'kmChegada') saida.km_chegada = val;
-
-                                        // Atualiza exibição no rodapé
-                                        const footerFields = card.querySelectorAll('.card-footer-field span.value');
-                                        if (footerFields[currentStep]) {
-                                            footerFields[currentStep].textContent = val || '—';
-                                        }
-
-                                        // Atualiza tarjas INICIADA / REALIZADA sem precisar de F5
-                                        card.className = getQuadroCardClassName(saida);
-
-                                        closeOverlay();
-                                        currentStep += 1;
-                                        if (currentStep >= steps.length) {
-                                            endQuadroKmFlow();
-                                        } else {
-                                            // Próximo passo no frame seguinte para o overlay de KM Chegada abrir de forma estável
-                                            requestAnimationFrame(function () { startStep(); });
-                                        }
-                                    } catch (e) {
-                                        console.error('QuadroDeSaidas: falha ao atualizar campo', step.field, e);
-                                        endQuadroKmFlow();
-                                        btnOk.disabled = false;
-                                        btnCancel.disabled = false;
-                                        btnOk.innerHTML = originalOkHtml;
-                                    }
-                                });
-                            };
-
-                            startStep();
-                        });
-                    });
-
-                    // Reconcilia flag "realizada" no Firebase SOMENTE quando a lista veio do remoto.
-                    // Isso impede que itens "apagados" no Firebase voltem via cache local.
                     if (remoteLoaded) {
                         try {
-                            if (filtered.length && window.firebaseSot && typeof window.firebaseSot.set === 'function' && typeof window.firebaseSot.get === 'function') {
-                                const divergentes = filtered.filter(s => {
-                                    const computed = computeRealizadaFromSaida(s);
-                                    const stored = !!s.realizada;
-                                    return computed !== stored;
-                                });
-
-                                // Evita múltiplos writes em dias com muitos registros.
-                                const limite = 25;
-                                const tarefas = divergentes.slice(0, limite);
-                                for (const s of tarefas) {
-                                    const computed = computeRealizadaFromSaida(s);
-                                    await updateSaidaField(getSaidaId(s), 'realizada', computed, s);
-                                    s.realizada = computed;
-                                }
-                            }
+                            await reconcileRealizadaBatchAfterLoad(filtered);
+                            filtered.forEach(s => {
+                                const c = findQuadroCardById(cardsContainer, getSaidaId(s));
+                                if (c) c.className = getQuadroCardClassName(s);
+                            });
                         } catch (e) { /* sem bloquear o carregamento */ }
                     }
                 } catch (error) {
                     console.error('Erro ao carregar saídas administrativas:', error);
-                    emptyState.style.display = 'block';
+                    cardsContainer.replaceChildren();
+                    quadroLastListDateKey = null;
+                    quadroSaidasById.clear();
+                    showQuadroEmptyState('exception', error && error.message ? error.message : '');
                 } finally {
                     loading.style.display = 'none';
+                    try {
+                        resyncQuadroDayShardListener();
+                    } catch (e) {}
                 }
             }
 
+            cardsContainer.addEventListener('dblclick', async function (ev) {
+                const card = ev.target.closest('.card');
+                if (!card || !cardsContainer.contains(card)) return;
+                const sid = card.dataset.id;
+                if (!sid) return;
+                const saida = quadroSaidasById.get(sid);
+                if (!saida) return;
+                const selectedDate = dateInput.value;
+                const loadMode = quadroLoadContext.loadMode || 'full';
+                let allSaidas = quadroLoadContext.allSaidas || [];
+
+                if (isQuadroRegistroBloqueado(saida)) {
+                    showQuadroBloqueadoOverlay(card);
+                    return;
+                }
+                let kmHintList = allSaidas;
+                if (loadMode === 'day_shard') {
+                    try {
+                        kmHintList = await ensureQuadroFullSaidasForHints();
+                    } catch (e) {
+                        kmHintList = allSaidas;
+                    }
+                }
+                quadroKmFlowActive = true;
+                quadroReloadPendingAfterFlow = false;
+                const steps = [
+                    { field: 'kmSaida', label: 'KM Saída', type: 'text' },
+                    { field: 'kmChegada', label: 'KM Chegada', type: 'text' },
+                    { field: 'chegada', label: 'Chegada', type: 'time' }
+                ];
+                let currentStep = 0;
+
+                const startStep = () => {
+                    if (currentStep >= steps.length) return;
+                    const step = steps[currentStep];
+
+                    const overlay = document.createElement('div');
+                    overlay.className = 'card-edit-overlay';
+                    const box = document.createElement('div');
+                    box.className = 'card-edit-box';
+                    const title = document.createElement('div');
+                    title.className = 'card-edit-title';
+                    title.textContent = step.label;
+
+                    const input = document.createElement('input');
+                    input.className = 'card-edit-input';
+                    input.type = step.type === 'time' ? 'time' : 'text';
+
+                    let initialValue = '';
+                    if (step.field === 'kmSaida') {
+                        initialValue = saida.kmSaida || saida.km_saida || '';
+                        if (!initialValue) {
+                            const baseHora = getHoraSaida(saida) || '00:00';
+                            const prevKm = getPreviousKmChegada(saida.viatura, selectedDate, baseHora, kmHintList);
+                            if (prevKm !== null) initialValue = String(prevKm);
+                        }
+                    } else if (step.field === 'kmChegada') {
+                        initialValue = saida.kmChegada || saida.km_chegada || '';
+                    } else if (step.field === 'chegada') {
+                        if (saida.chegada) {
+                            initialValue = saida.chegada;
+                        } else {
+                            const now = new Date();
+                            const hh = String(now.getHours()).padStart(2, '0');
+                            const mi = String(now.getMinutes()).padStart(2, '0');
+                            initialValue = `${hh}:${mi}`;
+                        }
+                    }
+                    input.value = initialValue;
+
+                    const actions = document.createElement('div');
+                    actions.className = 'card-edit-actions';
+                    const btnCancel = document.createElement('button');
+                    btnCancel.className = 'card-edit-btn cancel';
+                    btnCancel.textContent = 'Cancelar';
+                    const btnOk = document.createElement('button');
+                    btnOk.className = 'card-edit-btn ok';
+                    btnOk.textContent = 'OK';
+                    actions.appendChild(btnCancel);
+                    actions.appendChild(btnOk);
+
+                    box.appendChild(title);
+                    box.appendChild(input);
+                    box.appendChild(actions);
+                    overlay.appendChild(box);
+                    card.appendChild(overlay);
+
+                    input.focus();
+
+                    const closeOverlay = () => {
+                        card.removeChild(overlay);
+                    };
+
+                    btnCancel.addEventListener('click', () => {
+                        closeOverlay();
+                        endQuadroKmFlow();
+                    });
+
+                    btnOk.addEventListener('click', async () => {
+                        let val = input.value.trim();
+                        if (step.field === 'kmSaida' || step.field === 'kmChegada') {
+                            val = formatKmValue(val);
+                            input.value = val;
+                        }
+                        const saidaId = saida.id;
+
+                        btnOk.disabled = true;
+                        btnCancel.disabled = true;
+                        const okBtnDefaultLabel = btnOk.textContent;
+                        btnOk.replaceChildren();
+                        const spinIcon = document.createElement('i');
+                        spinIcon.className = 'fas fa-spinner fa-spin';
+                        spinIcon.setAttribute('aria-hidden', 'true');
+                        btnOk.appendChild(spinIcon);
+                        btnOk.appendChild(document.createTextNode(' Enviando...'));
+
+                        try {
+                            await updateSaidaField(saidaId, step.field, val, saida);
+                            saida[step.field] = val;
+                            if (step.field === 'kmSaida') saida.km_saida = val;
+                            if (step.field === 'kmChegada') saida.km_chegada = val;
+
+                            const footerFields = card.querySelectorAll('.card-footer-field span.value');
+                            if (footerFields[currentStep]) {
+                                quadroSetFooterField(footerFields[currentStep], val);
+                            }
+
+                            card.className = getQuadroCardClassName(saida);
+
+                            closeOverlay();
+                            currentStep += 1;
+                            if (currentStep >= steps.length) {
+                                endQuadroKmFlow();
+                            } else {
+                                requestAnimationFrame(function () { startStep(); });
+                            }
+                        } catch (e) {
+                            console.error('QuadroDeSaidas: falha ao atualizar campo', step.field, e);
+                            endQuadroKmFlow();
+                            btnOk.disabled = false;
+                            btnCancel.disabled = false;
+                            btnOk.replaceChildren();
+                            btnOk.textContent = okBtnDefaultLabel;
+                        }
+                    });
+                };
+
+                startStep();
+            });
+
             dateInput.addEventListener('change', loadSaidasForSelectedDate);
 
+            // Item 10 — contrato completo: CONTRATO-QUADRO-SAIDAS-SYNC.md
             // Recarrega lista quando Saídas administrativas (SOT) ou outra aba alterar dados:
             // — postMessage refresh_all_data (iframe / mesma janela com pai)
-            // — evento storage (outra aba no mesmo site, após localStorage)
+            // — evento storage (outra aba no mesmo site, após localStorage; a aba que grava não recebe)
             // — BroadcastChannel sot_saidas_administrativas (qualquer contexto mesmo origin)
             let reloadInFlight = false;
             let reloadQueued = false;
             let reloadQuadroDebounceTimer = null;
+            /** Item 11: unsubscribe do onSnapshot do shard do dia (firebase-sot-firestore.mjs). */
+            let quadroDayShardUnsub = null;
+            let quadroDayShardWatchDate = null;
+
             function scheduleReloadQuadroFromExternal() {
                 if (quadroKmFlowActive) {
                     quadroReloadPendingAfterFlow = true;
@@ -1391,8 +2015,14 @@
                     reloadInFlight = true;
                     // Outra aba (SOT) gravou no Firestore; este contexto ainda pode ter cache de 60s.
                     try {
-                        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.invalidateQuadroSaidasCaches === 'function') {
+                            window.firebaseSot.invalidateQuadroSaidasCaches(dateInput && dateInput.value);
+                        } else if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
                             window.firebaseSot.invalidateCache('saidasAdministrativas');
+                            try {
+                                const d = dateInput && dateInput.value;
+                                if (d) window.firebaseSot.invalidateCache(SOT_QUADRO_DAY_DOC_PREFIX + String(d).slice(0, 10));
+                            } catch (e2) {}
                         }
                     } catch (e) {}
                     loadSaidasForSelectedDate()
@@ -1405,6 +2035,49 @@
                             }
                         });
                 }, 0);
+            }
+
+            /**
+             * Item 11: onSnapshot só em `saidasAdm_day_{data}` (custo baixo vs mestre).
+             * Primeira emissão do listener ignora-se (evita recarga duplicada após o get inicial).
+             */
+            function resyncQuadroDayShardListener() {
+                try {
+                    const d = dateInput && dateInput.value ? String(dateInput.value).slice(0, 10) : '';
+                    if (!window.firebaseSot || typeof window.firebaseSot.watchSaidasAdmDayShard !== 'function') {
+                        if (quadroDayShardUnsub) {
+                            quadroDayShardUnsub();
+                            quadroDayShardUnsub = null;
+                        }
+                        quadroDayShardWatchDate = null;
+                        return;
+                    }
+                    const authOk =
+                        typeof window.firebaseSot.authGateOk === 'function' && window.firebaseSot.authGateOk();
+                    if (!authOk) {
+                        if (quadroDayShardUnsub) {
+                            quadroDayShardUnsub();
+                            quadroDayShardUnsub = null;
+                        }
+                        quadroDayShardWatchDate = null;
+                        return;
+                    }
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+                    if (quadroDayShardWatchDate === d && quadroDayShardUnsub) return;
+                    if (quadroDayShardUnsub) {
+                        quadroDayShardUnsub();
+                        quadroDayShardUnsub = null;
+                    }
+                    quadroDayShardWatchDate = d;
+                    let skipFirstSnapshot = true;
+                    quadroDayShardUnsub = window.firebaseSot.watchSaidasAdmDayShard(d, function () {
+                        if (skipFirstSnapshot) {
+                            skipFirstSnapshot = false;
+                            return;
+                        }
+                        scheduleReloadQuadroFromExternal();
+                    });
+                } catch (e) {}
             }
 
             function endQuadroKmFlow() {
@@ -1439,10 +2112,25 @@
             // Quando detectar transição para logado, força reload sem cache.
             setInterval(function () {
                 const nowSignedIn = isGoogleSignedInNow();
+                if (lastKnownGoogleSignedIn && !nowSignedIn) {
+                    try {
+                        if (quadroDayShardUnsub) {
+                            quadroDayShardUnsub();
+                            quadroDayShardUnsub = null;
+                        }
+                        quadroDayShardWatchDate = null;
+                    } catch (e) {}
+                }
                 if (!lastKnownGoogleSignedIn && nowSignedIn) {
                     try {
-                        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.invalidateQuadroSaidasCaches === 'function') {
+                            window.firebaseSot.invalidateQuadroSaidasCaches(dateInput && dateInput.value);
+                        } else if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
                             window.firebaseSot.invalidateCache('saidasAdministrativas');
+                            try {
+                                const d = dateInput && dateInput.value;
+                                if (d) window.firebaseSot.invalidateCache(SOT_QUADRO_DAY_DOC_PREFIX + String(d).slice(0, 10));
+                            } catch (e2) {}
                         }
                     } catch (e) {}
                     scheduleReloadQuadroFromExternal();
