@@ -633,11 +633,11 @@
         </div>
     </div>
 
-    <!-- Firebase + serviços do SOT para dados sincronizados -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="Todas%20as%20abas/firebase-config.js"></script>
-    <script src="Todas%20as%20abas/firebase-sot-service.js"></script>
+    <!-- Firebase modular (mesma base do SOT5) -->
+    <script>
+      window.__sotFirestoreBoot = import(new URL('Todas as abas/firebase-sot-firestore.mjs', document.baseURI).href)
+        .then(function (m) { return m.installFirebaseSot(); });
+    </script>
     <script src="Todas%20as%20abas/api-service.js"></script>
     <script src="Todas%20as%20abas/data-service.js"></script>
     <script type="module" src="Todas%20as%20abas/firebase-auth.js"></script>
