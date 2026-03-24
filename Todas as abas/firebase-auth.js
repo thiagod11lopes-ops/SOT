@@ -170,6 +170,17 @@ function setUsuarioInfoVisibility(usuarioInfoEl, visible) {
   }
 }
 
+function shouldFallbackToRedirect(code, message) {
+  const c = String(code || "").toLowerCase();
+  const m = String(message || "").toLowerCase();
+  return (
+    c.includes("popup") ||
+    c.includes("blocked") ||
+    m.includes("popup") ||
+    m.includes("blocked")
+  );
+}
+
 function bindUIToDoc(targetDoc) {
   if (!targetDoc || boundToTargetDoc) return;
 
@@ -226,7 +237,7 @@ function bindUIToDoc(targetDoc) {
         const code = err && err.code ? err.code : "";
         const msg = err && err.message ? err.message : "";
         // Fallback quando popup é bloqueado pelo navegador.
-        if (code === "auth/popup-blocked" || code === "auth/cancelled-popup-request") {
+        if (shouldFallbackToRedirect(code, msg)) {
           try {
             await signInWithRedirect(auth, provider);
             return;
@@ -236,6 +247,14 @@ function bindUIToDoc(targetDoc) {
             alert("Falha ao entrar com Google.\n" + (rCode ? "Código: " + rCode + "\n" : "") + (rMsg ? rMsg : ""));
             return;
           }
+        }
+        if (String(code).toLowerCase().includes("unauthorized-domain")) {
+          alert(
+            "Falha ao entrar com Google.\n" +
+            "Domínio não autorizado no Firebase.\n" +
+            "Adicione este domínio em Authentication > Settings > Authorized domains."
+          );
+          return;
         }
         alert("Falha ao entrar com Google.\n" + (code ? "Código: " + code + "\n" : "") + (msg ? msg : ""));
       }
