@@ -18,6 +18,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -224,6 +225,18 @@ function bindUIToDoc(targetDoc) {
         console.error("Erro ao entrar com Google:", err);
         const code = err && err.code ? err.code : "";
         const msg = err && err.message ? err.message : "";
+        // Fallback quando popup é bloqueado pelo navegador.
+        if (code === "auth/popup-blocked" || code === "auth/cancelled-popup-request") {
+          try {
+            await signInWithRedirect(auth, provider);
+            return;
+          } catch (redirErr) {
+            const rCode = redirErr && redirErr.code ? redirErr.code : "";
+            const rMsg = redirErr && redirErr.message ? redirErr.message : "";
+            alert("Falha ao entrar com Google.\n" + (rCode ? "Código: " + rCode + "\n" : "") + (rMsg ? rMsg : ""));
+            return;
+          }
+        }
         alert("Falha ao entrar com Google.\n" + (code ? "Código: " + code + "\n" : "") + (msg ? msg : ""));
       }
     });
