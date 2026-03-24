@@ -4,17 +4,63 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - CADASTRO DE SAÍDAS</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-<!-- Versão mais recente e otimizada para melhor performance -->
+<!-- Tópico 14: jsPDF, AutoTable e Tesseract sob demanda (menos peso inicial no GitHub Pages) -->
+<script>
+(function () {
+  var lazy = {};
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { reject(new Error('Falha ao carregar: ' + src)); };
+      document.head.appendChild(s);
+    });
+  }
+  function cadastroJsPdfLibsReady() {
+    try {
+      if (!window.jspdf || !window.jspdf.jsPDF) return false;
+      var probe = new window.jspdf.jsPDF();
+      return typeof probe.autoTable === 'function';
+    } catch (e) {
+      return false;
+    }
+  }
+  window.loadCadastroJsPdfLibs = function () {
+    if (lazy.jspdfP) return lazy.jspdfP;
+    if (cadastroJsPdfLibsReady()) {
+      lazy.jspdfP = Promise.resolve();
+      return lazy.jspdfP;
+    }
+    if (window.jspdf && window.jspdf.jsPDF) {
+      lazy.jspdfP = loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
+      return lazy.jspdfP;
+    }
+    lazy.jspdfP = loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').then(function () {
+      if (cadastroJsPdfLibsReady()) return;
+      return loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
+    });
+    return lazy.jspdfP;
+  };
+  window.loadCadastroTesseract = function () {
+    if (lazy.tessP) return lazy.tessP;
+    if (typeof Tesseract !== 'undefined') {
+      lazy.tessP = Promise.resolve();
+      return lazy.tessP;
+    }
+    lazy.tessP = loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js');
+    return lazy.tessP;
+  };
+})();
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<!-- Biblioteca Tesseract.js para OCR -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 <script src="theme-listener.js"></script>
 <!-- Firestore modular + Auth (mesma sessão Google que index.html — iframes não tinham token → permission-denied) -->
 <script>
 window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
 </script>
+<!-- Scripts locais sem defer: devem rodar antes do <script> principal no fim do body -->
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="junta-saidas-service.js"></script>
@@ -161,6 +207,49 @@ color: var(--white);
 }
 .icon-btn-teste i { font-size: 16px; }
 .table-controls-title-row { display: flex; align-items: center; gap: 10px; }
+.table-controls-title-row .table-title { flex: 1; min-width: 0; }
+/* Tópico 12: estado visual de sincronização (Cadastrar Nova Saída) */
+.cadastro-sync-status-pill {
+display: inline-flex;
+align-items: center;
+gap: 8px;
+font-size: 13px;
+font-weight: 600;
+padding: 6px 12px;
+border-radius: 999px;
+border: 1px solid #cbd5e1;
+background: #f8fafc;
+color: #334155;
+white-space: nowrap;
+max-width: 100%;
+}
+.cadastro-sync-status-pill .cadastro-sync-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+background: #64748b;
+flex-shrink: 0;
+}
+.cadastro-sync-status-pill.is-loading .cadastro-sync-dot,
+.cadastro-sync-status-pill.is-saving .cadastro-sync-dot {
+animation: cadastro-sync-pulse 1s ease-in-out infinite;
+}
+@keyframes cadastro-sync-pulse {
+0%, 100% { opacity: 1; transform: scale(1); }
+50% { opacity: 0.45; transform: scale(0.92); }
+}
+.cadastro-sync-status-pill.is-loading { background: #eef4ff; color: #1d4ed8; border-color: #c7d7ff; }
+.cadastro-sync-status-pill.is-loading .cadastro-sync-dot { background: #1d4ed8; }
+.cadastro-sync-status-pill.is-saving { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.cadastro-sync-status-pill.is-saving .cadastro-sync-dot { background: #c2410c; }
+.cadastro-sync-status-pill.is-pending { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.cadastro-sync-status-pill.is-pending .cadastro-sync-dot { background: #d97706; }
+.cadastro-sync-status-pill.is-offline { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.cadastro-sync-status-pill.is-offline .cadastro-sync-dot { background: #64748b; }
+.cadastro-sync-status-pill.is-ok { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+.cadastro-sync-status-pill.is-ok .cadastro-sync-dot { background: #16a34a; }
+.cadastro-sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.cadastro-sync-status-pill.is-error .cadastro-sync-dot { background: #dc2626; }
 .counters-container {
 display: flex;
 flex-direction: column;
@@ -325,6 +414,11 @@ border: 1px solid #c3e6cb;
 color: #721c24;
 background-color: #f8d7da;
 border: 1px solid #f5c6cb;
+}
+.register-exit-form .warning {
+color: #856404;
+background-color: #fff3cd;
+border: 1px solid #ffeeba;
 }
 .config-section {
 background-color: var(--white);
@@ -713,6 +807,105 @@ color: var(--white);
 background-color: var(--gray);
 color: var(--dark-gray);
 }
+/* Tópico 13: toasts e confirmação (substitui alert/confirm) */
+#cadastroToastHost {
+position: fixed;
+z-index: 100050;
+left: 50%;
+bottom: 24px;
+transform: translateX(-50%);
+display: flex;
+flex-direction: column-reverse;
+align-items: center;
+gap: 10px;
+max-width: min(92vw, 420px);
+pointer-events: none;
+}
+.cadastro-toast {
+pointer-events: auto;
+padding: 12px 18px;
+border-radius: 10px;
+font-size: 15px;
+font-weight: 600;
+line-height: 1.4;
+box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+border: 1px solid transparent;
+opacity: 1;
+transform: translateY(0);
+transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.cadastro-toast--out {
+opacity: 0;
+transform: translateY(12px);
+}
+.cadastro-toast--success { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+.cadastro-toast--error { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.cadastro-toast--warning { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.cadastro-toast--info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+#cadastroConfirmModal {
+display: none;
+position: fixed;
+z-index: 100049;
+inset: 0;
+background: rgba(23,32,42,0.72);
+backdrop-filter: blur(4px);
+justify-content: center;
+align-items: flex-start;
+padding: 72px 16px 16px;
+}
+#cadastroConfirmModal.cadastro-confirm-open {
+display: flex !important;
+}
+#cadastroConfirmModal .cadastro-confirm-panel {
+background: var(--white);
+max-width: 440px;
+width: 100%;
+padding: 24px 22px;
+border-radius: 14px;
+box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+}
+#cadastroConfirmModal .cadastro-confirm-panel h2 {
+margin: 0 0 12px 0;
+font-size: 18px;
+color: var(--primary-blue);
+}
+#cadastroConfirmModal .cadastro-confirm-panel p {
+margin: 0 0 20px 0;
+font-size: 15px;
+line-height: 1.5;
+color: var(--dark-gray);
+}
+#cadastroConfirmModal .cadastro-confirm-actions {
+display: flex;
+justify-content: flex-end;
+gap: 10px;
+flex-wrap: wrap;
+}
+#cadastroConfirmModal .cadastro-confirm-actions button {
+padding: 10px 18px;
+border-radius: 8px;
+font-weight: bold;
+cursor: pointer;
+border: none;
+font-size: 15px;
+}
+#cadastroConfirmModal .cadastro-confirm-cancel {
+background: #e5e7eb;
+color: #374151;
+}
+#cadastroConfirmModal .cadastro-confirm-ok {
+background: var(--primary-blue);
+color: var(--white);
+}
+body[data-theme="dark"] .cadastro-toast--success { background: #052e16; color: #86efac; border-color: #166534; }
+body[data-theme="dark"] .cadastro-toast--error { background: #450a0a; color: #fca5a5; border-color: #991b1b; }
+body[data-theme="dark"] .cadastro-toast--warning { background: #422006; color: #fcd34d; border-color: #b45309; }
+body[data-theme="dark"] .cadastro-toast--info { background: #1e3a5f; color: #93c5fd; border-color: #2563eb; }
+body[data-theme="dark"] #cadastroConfirmModal .cadastro-confirm-panel {
+background: #1e293b;
+color: #e2e8f0;
+}
+body[data-theme="dark"] #cadastroConfirmModal .cadastro-confirm-panel p { color: #cbd5e1; }
 /* Modal de alerta de quilometragem */
 #kmAlertModal { display: none; position: fixed; z-index: 10002; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: flex-start; padding-top: 100px; }
 #kmAlertModal.show { display: flex; }
@@ -1024,6 +1217,12 @@ body[data-theme="dark"] .btn-primary:hover,
 body[data-theme="dark"] button[class*="btn"]:hover {
  background-color: #6c88c9 !important;
 }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-loading { background: #1e3a5f; color: #93c5fd; border-color: #3b82f6; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-saving { background: #422006; color: #fdba74; border-color: #ea580c; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-pending { background: #422006; color: #fcd34d; border-color: #d97706; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-offline { background: #1e293b; color: #94a3b8; border-color: #475569; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-ok { background: #052e16; color: #86efac; border-color: #16a34a; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-error { background: #450a0a; color: #fca5a5; border-color: #dc2626; }
 </style>
 </head>
 <body>
@@ -1042,6 +1241,10 @@ body[data-theme="dark"] button[class*="btn"]:hover {
 <div class="table-controls">
 <div class="table-controls-title-row">
 <h2 class="table-title" id="registerFormTitleRow">CADASTRAR NOVA SAÍDA</h2>
+<div id="cadastroSyncStatusPill" class="cadastro-sync-status-pill is-loading" role="status" aria-live="polite" title="Estado de sincronização dos cadastros com a nuvem">
+<span class="cadastro-sync-dot" aria-hidden="true"></span>
+<span id="cadastroSyncStatusText">Carregando dados...</span>
+</div>
 <button type="button" id="btnPreencherTeste" class="icon-btn-teste" title="Preencher formulário com dados aleatórios para teste (Data e Hora da Saída não são preenchidos)">
 <i class="fas fa-flask"></i>
 </button>
@@ -1610,7 +1813,81 @@ body[data-theme="dark"] button[class*="btn"]:hover {
 </div>
 </div>
 </div>
+<div id="cadastroToastHost" aria-live="polite" aria-relevant="additions text"></div>
+<div id="cadastroConfirmModal" role="presentation">
+<div class="cadastro-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="cadastroConfirmTitle" tabindex="-1">
+<h2 id="cadastroConfirmTitle">Confirmar</h2>
+<p id="cadastroConfirmMessage"></p>
+<div class="cadastro-confirm-actions">
+<button type="button" class="cadastro-confirm-cancel" id="cadastroConfirmCancel">Cancelar</button>
+<button type="button" class="cadastro-confirm-ok" id="cadastroConfirmOk">Confirmar</button>
+</div>
+</div>
+</div>
 <script>
+/** Tópico 13: avisos não bloqueantes e confirmação acessível (substitui alert/confirm). */
+window.showCadastroToast = function (message, type, durationMs) {
+  var host = document.getElementById('cadastroToastHost');
+  if (!host || message == null) return;
+  var t = type || 'info';
+  var el = document.createElement('div');
+  el.className = 'cadastro-toast cadastro-toast--' + t;
+  el.setAttribute('role', t === 'error' ? 'alert' : 'status');
+  el.textContent = String(message);
+  host.appendChild(el);
+  var ms = durationMs != null && durationMs > 0 ? durationMs : 4800;
+  setTimeout(function () {
+    el.classList.add('cadastro-toast--out');
+    setTimeout(function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }, 280);
+  }, ms);
+};
+window.showCadastroConfirm = function (message) {
+  return new Promise(function (resolve) {
+    var modal = document.getElementById('cadastroConfirmModal');
+    var msgEl = document.getElementById('cadastroConfirmMessage');
+    var panel = modal ? modal.querySelector('.cadastro-confirm-panel') : null;
+    var btnOk = document.getElementById('cadastroConfirmOk');
+    var btnCancel = document.getElementById('cadastroConfirmCancel');
+    if (!modal || !msgEl || !btnOk || !btnCancel) {
+      resolve(false);
+      return;
+    }
+    msgEl.textContent = String(message || '');
+    modal.classList.add('cadastro-confirm-open');
+    function cleanup(result) {
+      modal.classList.remove('cadastro-confirm-open');
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      document.removeEventListener('keydown', onKey);
+      resolve(result);
+    }
+    function onOk() {
+      cleanup(true);
+    }
+    function onCancel() {
+      cleanup(false);
+    }
+    function onBackdrop(e) {
+      if (e.target === modal) onCancel();
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancel();
+      }
+    }
+    btnOk.addEventListener('click', onOk);
+    btnCancel.addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    document.addEventListener('keydown', onKey);
+    setTimeout(function () {
+      btnOk.focus();
+    }, 0);
+  });
+};
 document.addEventListener('DOMContentLoaded', async () => {
 // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
 // Viaturas/motoristas vêm do Firebase em loadDataAndPopulateTables (evita lista local antiga antes da nuvem)
@@ -1684,8 +1961,643 @@ var ValidacaoCadastro = {
   validateRequired: function (el) {
     if (!el) return false;
     return el.value != null && String(el.value).trim() !== '';
+  },
+  isValidTimeHHmm: function (v) {
+    if (!v) return false;
+    var s = String(v).trim();
+    if (!/^\d{2}:\d{2}$/.test(s)) return false;
+    var hh = parseInt(s.slice(0, 2), 10);
+    var mm = parseInt(s.slice(3, 5), 10);
+    return hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59;
+  },
+  isValidISODate: function (v) {
+    if (!v) return false;
+    var s = String(v).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    var d = new Date(s + 'T00:00:00');
+    if (isNaN(d.getTime())) return false;
+    return d.toISOString().slice(0, 10) === s;
+  },
+  toMsFromDateTime: function (dateStr, timeStr) {
+    if (!this.isValidISODate(dateStr) || !this.isValidTimeHHmm(timeStr)) return NaN;
+    return new Date(String(dateStr).trim() + 'T' + String(timeStr).trim() + ':00').getTime();
   }
 };
+
+/** Tópico 7: bloqueia literais inválidos e normaliza texto antes de persistir. */
+function isInvalidLiteralCadastroText(s) {
+  if (s == null || s === '') return false;
+  var t = String(s).trim().toLowerCase();
+  return t === 'undefined' || t === 'null' || t === 'nan' || t === '[object object]';
+}
+
+function sanitizeCadastroField(raw, maxLen) {
+  maxLen = maxLen || 500;
+  var base = ValidacaoCadastro.sanitize(raw);
+  if (isInvalidLiteralCadastroText(base)) return '';
+  if (base.length > maxLen) return base.slice(0, maxLen);
+  return base;
+}
+
+/**
+ * Normaliza e valida o payload final do cadastro (única passagem antes de gravar).
+ * @param {object} input
+ * @param {{ skipDataSaidaISO?: boolean, dataSaidaEffective?: string }} options
+ */
+function normalizeCadastroFormPayload(input, options) {
+  options = options || {};
+  if (!input || typeof input !== 'object') {
+    return { ok: false, message: 'Dados do formulário inválidos.' };
+  }
+
+  var tipo = sanitizeCadastroField(input.tipo, 80);
+  if (tipo !== 'Administrativa' && tipo !== 'Ambulância') {
+    return { ok: false, message: 'Tipo de saída inválido.' };
+  }
+
+  var dataPedido = String(input.dataPedido || '').trim();
+  var horaPedido = String(input.horaPedido || '').trim();
+  var horaSaida = String(input.horaSaida || '').trim();
+  var dataSaidaRaw = String(input.dataSaida || '').trim();
+  var dataSaidaEff = (options.dataSaidaEffective != null && String(options.dataSaidaEffective).trim() !== '')
+    ? String(options.dataSaidaEffective).trim()
+    : dataSaidaRaw;
+
+  if (!ValidacaoCadastro.isValidISODate(dataPedido)) {
+    return { ok: false, message: 'Data do pedido inválida.' };
+  }
+  if (!ValidacaoCadastro.isValidTimeHHmm(horaPedido)) {
+    return { ok: false, message: 'Hora do pedido inválida. Use HH:MM.' };
+  }
+  if (!ValidacaoCadastro.isValidTimeHHmm(horaSaida)) {
+    return { ok: false, message: 'Hora da saída inválida. Use HH:MM.' };
+  }
+  if (!options.skipDataSaidaISO) {
+    if (!ValidacaoCadastro.isValidISODate(dataSaidaEff)) {
+      return { ok: false, message: 'Data da saída inválida.' };
+    }
+  }
+
+  if (isInvalidLiteralCadastroText(String(input.viatura || '')) || isInvalidLiteralCadastroText(String(input.motorista || ''))) {
+    return { ok: false, message: 'Viatura ou motorista contém valor inválido.' };
+  }
+
+  var setor = sanitizeCadastroField(input.setor, 500);
+  var ramal = sanitizeCadastroField(input.ramal, 120);
+  var cidade = sanitizeCadastroField(input.cidade, 200);
+  var bairro = sanitizeCadastroField(input.bairro, 500);
+  var objetivo = sanitizeCadastroField(input.objetivo, 500);
+  var numPassageiros = sanitizeCadastroField(input.numPassageiros, 30);
+  var responsavelPedido = sanitizeCadastroField(input.responsavelPedido, 500);
+  var om = sanitizeCadastroField(input.om, 200);
+  var viatura = sanitizeCadastroField(input.viatura, 80);
+  var motorista = sanitizeCadastroField(input.motorista, 200);
+  var hospital = sanitizeCadastroField(input.hospital, 500);
+
+  var kmSaida = input.kmSaida != null ? String(input.kmSaida).trim() : '';
+  var kmChegada = input.kmChegada != null ? String(input.kmChegada).trim() : '';
+  var chegada = input.chegada != null ? sanitizeCadastroField(input.chegada, 32) : '';
+
+  if (!setor || !cidade || !bairro || !objetivo || !viatura || !motorista) {
+    return { ok: false, message: 'Preencha todos os campos obrigatórios (texto inválido foi rejeitado).' };
+  }
+
+  if (kmSaida && !ValidacaoCadastro.validateKm(kmSaida)) {
+    return { ok: false, message: 'KM de saída inválido.' };
+  }
+  if (kmChegada && !ValidacaoCadastro.validateKm(kmChegada)) {
+    return { ok: false, message: 'KM de chegada inválido.' };
+  }
+  if (kmChegada && !kmSaida) {
+    return { ok: false, message: 'Preencha KM de saída antes do KM de chegada.' };
+  }
+  if (kmChegada && kmSaida) {
+    var kms = parseFloat(String(kmSaida).replace(/\./g, '').replace(',', '.'));
+    var kmc = parseFloat(String(kmChegada).replace(/\./g, '').replace(',', '.'));
+    if (!isNaN(kms) && !isNaN(kmc) && kmc <= kms) {
+      return { ok: false, message: 'KM de chegada deve ser maior que KM de saída.' };
+    }
+  }
+
+  if (!options.skipDataSaidaISO && ValidacaoCadastro.isValidISODate(dataSaidaEff)) {
+    var pedidoMs = ValidacaoCadastro.toMsFromDateTime(dataPedido, horaPedido);
+    var saidaMs = ValidacaoCadastro.toMsFromDateTime(dataSaidaEff, horaSaida);
+    if (!isNaN(pedidoMs) && !isNaN(saidaMs) && saidaMs < pedidoMs) {
+      return { ok: false, message: 'A saída não pode ocorrer antes do pedido.' };
+    }
+  }
+
+  var payload = {
+    tipo: tipo,
+    dataPedido: dataPedido,
+    horaPedido: horaPedido,
+    dataSaida: options.skipDataSaidaISO ? dataSaidaRaw : dataSaidaEff,
+    horaSaida: horaSaida,
+    setor: setor,
+    ramal: ramal,
+    cidade: cidade,
+    bairro: bairro,
+    destino: bairro,
+    objetivo: objetivo,
+    numPassageiros: numPassageiros,
+    responsavelPedido: responsavelPedido,
+    om: om,
+    viatura: viatura,
+    motorista: motorista,
+    hospital: hospital,
+    kmSaida: kmSaida,
+    kmChegada: kmChegada,
+    chegada: chegada
+  };
+
+  return { ok: true, payload: payload };
+}
+
+/** Tópico 8: metadados de auditoria e id estável para cadastro de saídas. */
+function cadastroSaidasNowIso() {
+  try { return new Date().toISOString(); } catch (e) { return ''; }
+}
+
+function cadastroSaidasUpdatedBy() {
+  try {
+    if (window.firebaseSot && typeof window.firebaseSot.getCurrentUserProfile === 'function') {
+      var u = window.firebaseSot.getCurrentUserProfile();
+      if (u && (u.email || u.uid || u.displayName)) return String(u.email || u.uid || u.displayName);
+    }
+  } catch (e) {}
+  return 'local-user';
+}
+
+function generateCadastroSaidaStableId(formData, dateToUse) {
+  try {
+    var seed = [
+      String(formData.tipo || ''),
+      String(dateToUse || ''),
+      String(formData.horaSaida || ''),
+      String(formData.viatura || ''),
+      String(formData.motorista || ''),
+      String(formData.setor || ''),
+      String(formData.cidade || ''),
+      String(formData.bairro || ''),
+      String(formData.objetivo || '').slice(0, 120)
+    ].join('|');
+    var h = btoa(unescape(encodeURIComponent(seed))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 28);
+    return 'saidas_' + h + '_' + String(Date.now());
+  } catch (e) {
+    return 'saida_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+  }
+}
+
+function touchCadastroSaidaMetadata(record, isNew) {
+  if (!record || typeof record !== 'object') return record;
+  var now = cadastroSaidasNowIso();
+  var who = cadastroSaidasUpdatedBy();
+  if (isNew) {
+    if (!record.createdAt) record.createdAt = now;
+    record.updatedAt = now;
+    record.updatedBy = who;
+  } else {
+    record.updatedAt = now;
+    record.updatedBy = who;
+    if (!record.createdAt) record.createdAt = now;
+  }
+  return record;
+}
+
+const cadastroActionLocks = new Set();
+const CADASTRO_OUTBOX_KEY = 'sot_cadastro_saidas_outbox_v1';
+/** Tópico 17: buffer circular de telemetria operacional (diagnóstico em produção). */
+var CADASTRO_TELEMETRY_LOG_KEY = 'sot_cadastro_saidas_telemetry_v1';
+var CADASTRO_TELEMETRY_MAX = 300;
+
+function logCadastroTelemetry(eventType, payload) {
+  var evt = {
+    at: new Date().toISOString(),
+    type: String(eventType || 'event'),
+    online: !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false),
+    payload: payload && typeof payload === 'object' ? payload : {}
+  };
+  try {
+    var raw = localStorage.getItem(CADASTRO_TELEMETRY_LOG_KEY);
+    var rows = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(rows)) rows = [];
+    rows.push(evt);
+    if (rows.length > CADASTRO_TELEMETRY_MAX) rows = rows.slice(-CADASTRO_TELEMETRY_MAX);
+    localStorage.setItem(CADASTRO_TELEMETRY_LOG_KEY, JSON.stringify(rows));
+  } catch (e) {}
+  try {
+    console.log('[SOT_TELEMETRY_CADASTRO]', evt);
+  } catch (e2) {}
+}
+
+let cadastroOutboxTimer = null;
+let cadastroOutboxFlushInFlight = false;
+async function runCadastroLocked(actionKey, fn) {
+  const key = String(actionKey || 'global');
+  if (cadastroActionLocks.has(key)) return { skipped: true, reason: 'locked', actionKey: key };
+  cadastroActionLocks.add(key);
+  try {
+    return await fn();
+  } finally {
+    cadastroActionLocks.delete(key);
+  }
+}
+
+function getCadastroOutbox() {
+  try {
+    var raw = localStorage.getItem(CADASTRO_OUTBOX_KEY);
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function setCadastroOutbox(payload) {
+  try {
+    if (!payload) localStorage.removeItem(CADASTRO_OUTBOX_KEY);
+    else localStorage.setItem(CADASTRO_OUTBOX_KEY, JSON.stringify(payload));
+  } catch (e) {}
+}
+
+function enqueueCadastroOutbox(adm, amb, reason) {
+  setCadastroOutbox({
+    type: 'replace_collections',
+    queuedAt: new Date().toISOString(),
+    reason: String(reason || 'pending_sync'),
+    saidasAdministrativas: Array.isArray(adm) ? adm : [],
+    saidasAmbulancias: Array.isArray(amb) ? amb : []
+  });
+  logCadastroTelemetry('outbox_enqueue', {
+    reason: String(reason || 'pending_sync'),
+    admCount: Array.isArray(adm) ? adm.length : 0,
+    ambCount: Array.isArray(amb) ? amb.length : 0
+  });
+}
+
+/** Tópico 12: última carga atingiu a nuvem (para texto “Sincronizado” vs só cache). */
+var cadastroRemoteLoadedLast = false;
+var cadastroSyncLoadDepth = 0;
+var cadastroSyncSaveDepth = 0;
+
+function setCadastroSyncUiState(mode, message, autoClearMs) {
+  var pill = document.getElementById('cadastroSyncStatusPill');
+  var text = document.getElementById('cadastroSyncStatusText');
+  if (!pill || !text) return;
+  if (setCadastroSyncUiState._t) {
+    clearTimeout(setCadastroSyncUiState._t);
+    setCadastroSyncUiState._t = null;
+  }
+  pill.setAttribute('aria-busy', mode === 'loading' || mode === 'saving' ? 'true' : 'false');
+  pill.classList.remove('is-loading', 'is-saving', 'is-pending', 'is-ok', 'is-offline', 'is-error');
+  if (mode === 'loading') {
+    pill.classList.add('is-loading');
+    text.textContent = message || 'Carregando dados...';
+  } else if (mode === 'saving') {
+    pill.classList.add('is-saving');
+    text.textContent = message || 'Salvando...';
+  } else if (mode === 'pending') {
+    pill.classList.add('is-pending');
+    text.textContent = message || 'Pendente de sincronização';
+  } else if (mode === 'offline') {
+    pill.classList.add('is-offline');
+    text.textContent = message || 'Offline';
+  } else if (mode === 'ok') {
+    pill.classList.add('is-ok');
+    text.textContent = message || 'Sincronizado';
+  } else if (mode === 'error') {
+    pill.classList.add('is-error');
+    text.textContent = message || 'Erro de sincronização';
+    if (autoClearMs != null && autoClearMs > 0) {
+      setCadastroSyncUiState._t = setTimeout(function () {
+        setCadastroSyncUiState._t = null;
+        refreshCadastroSyncStatusPill();
+      }, autoClearMs);
+    }
+  }
+}
+
+function refreshCadastroSyncStatusPill() {
+  var pill = document.getElementById('cadastroSyncStatusPill');
+  if (!pill) return;
+  if (cadastroSyncSaveDepth > 0) {
+    setCadastroSyncUiState('saving', 'Salvando...');
+    return;
+  }
+  if (cadastroSyncLoadDepth > 0) {
+    setCadastroSyncUiState('loading', 'Carregando dados...');
+    return;
+  }
+  if (setCadastroSyncUiState._t) return;
+  var online = typeof navigator === 'undefined' || navigator.onLine !== false;
+  var ob = getCadastroOutbox();
+  if (!online) {
+    if (ob) setCadastroSyncUiState('pending', 'Offline — alterações pendentes de envio');
+    else setCadastroSyncUiState('offline', 'Offline — dados locais');
+    return;
+  }
+  if (ob) {
+    setCadastroSyncUiState('pending', 'Pendente de sincronização com a nuvem');
+    return;
+  }
+  if (!cadastroRemoteLoadedLast) {
+    setCadastroSyncUiState('pending', 'Somente cache local (nuvem indisponível)');
+    return;
+  }
+  setCadastroSyncUiState('ok', 'Sincronizado');
+}
+
+async function flushCadastroOutbox() {
+  if (cadastroOutboxFlushInFlight) return false;
+  if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+    logCadastroTelemetry('outbox_skip_offline', { reason: 'navigator_offline' });
+    return false;
+  }
+  const out = getCadastroOutbox();
+  if (!out) return true;
+
+  var flushT0 = Date.now();
+  cadastroOutboxFlushInFlight = true;
+  try {
+    logCadastroTelemetry('outbox_flush_start', { queuedAt: out.queuedAt || null, reason: out.reason || null });
+    const persisted = await persistCadastroSaidasSnapshot(out.saidasAdministrativas, out.saidasAmbulancias);
+    var flushMs = Date.now() - flushT0;
+    if (persisted && persisted.status === 'success') {
+      setCadastroOutbox(null);
+      logCadastroTelemetry('outbox_flush_ok', { latencyMs: flushMs, persistStatus: 'success' });
+      return true;
+    }
+    logCadastroTelemetry('outbox_flush_retry', {
+      latencyMs: flushMs,
+      persistStatus: persisted && persisted.status ? persisted.status : 'unknown',
+      errors: persisted && persisted.errors ? persisted.errors.slice() : []
+    });
+    return false;
+  } catch (e) {
+    logCadastroTelemetry('outbox_flush_error', { message: e && e.message ? e.message : String(e) });
+    return false;
+  } finally {
+    cadastroOutboxFlushInFlight = false;
+    refreshCadastroSyncStatusPill();
+  }
+}
+
+function scheduleCadastroOutboxFlush(delayMs) {
+  if (cadastroOutboxTimer) clearTimeout(cadastroOutboxTimer);
+  cadastroOutboxTimer = setTimeout(function () {
+    cadastroOutboxTimer = null;
+    void flushCadastroOutbox();
+  }, typeof delayMs === 'number' ? delayMs : 1200);
+}
+
+/** Tópico 16: escrita remota exige sessão Google quando o Firebase está ativo no iframe. */
+var CADASTRO_AUTH_HINT =
+  'Faça login com Google no sistema para sincronizar com a nuvem. Os dados foram gravados apenas neste aparelho.';
+
+async function cadastroPrepareRemoteWriteAuth() {
+  try {
+    if (window.__sotFirestoreBoot) await window.__sotFirestoreBoot;
+  } catch (e) {}
+  if (!window.firebaseSot || typeof window.firebaseSot.authGateOk !== 'function') {
+    return true;
+  }
+  if (window.firebaseSot.authGateOk()) return true;
+  if (typeof dataService !== 'undefined' && typeof dataService.waitForGoogleAuthReady === 'function') {
+    try {
+      await dataService.waitForGoogleAuthReady(4500);
+    } catch (e) {}
+  }
+  return !!(window.firebaseSot.authGateOk && window.firebaseSot.authGateOk());
+}
+
+// Pipeline unico de persistencia da aba Cadastro de Saidas.
+// Centraliza escrita local + remota para evitar fluxos divergentes.
+async function persistCadastroSaidasSnapshot(nextSaidasAdm, nextSaidasAmb) {
+  var persistT0 = Date.now();
+  cadastroSyncSaveDepth++;
+  setCadastroSyncUiState('saving', 'Salvando...');
+  var adm = Array.isArray(nextSaidasAdm) ? nextSaidasAdm : [];
+  var amb = Array.isArray(nextSaidasAmb) ? nextSaidasAmb : [];
+  var result = {
+    status: 'success',
+    localOk: true,
+    remoteOk: true,
+    errors: [],
+    admCount: adm.length,
+    ambCount: amb.length
+  };
+  try {
+  function snapshotHash(items) {
+    try {
+      var arr = Array.isArray(items) ? items : [];
+      return String(JSON.stringify(arr)).length + ':' + arr.length;
+    } catch (e) {
+      return '0:0';
+    }
+  }
+  async function confirmRemoteSnapshot() {
+    if (!window.firebaseSot || typeof window.firebaseSot.get !== 'function') {
+      return { ok: false, reason: 'firebase_sot_unavailable' };
+    }
+    if (typeof window.firebaseSot.authGateOk === 'function' && !window.firebaseSot.authGateOk()) {
+      return { ok: false, reason: 'auth_not_ready' };
+    }
+    try {
+      var remoteAdm = await window.firebaseSot.get('saidasAdministrativas');
+      var remoteAmb = await window.firebaseSot.get('saidasAmbulancias');
+      var admOk = snapshotHash(remoteAdm) === snapshotHash(adm);
+      var ambOk = snapshotHash(remoteAmb) === snapshotHash(amb);
+      return { ok: !!(admOk && ambOk), reason: (admOk && ambOk) ? 'ok' : 'mismatch' };
+    } catch (e) {
+      return { ok: false, reason: 'remote_readback_failed' };
+    }
+  }
+
+  saidasAdministrativas = adm;
+  saidasAmbulancias = amb;
+
+  try {
+    localStorage.setItem('saidasAdministrativas', JSON.stringify(adm));
+    localStorage.setItem('saidasAmbulancias', JSON.stringify(amb));
+  } catch (e) {
+    result.localOk = false;
+    result.errors.push('local_cache_write_failed');
+  }
+
+  var authOkForWrite = await cadastroPrepareRemoteWriteAuth();
+  if (!authOkForWrite && window.firebaseSot && typeof window.firebaseSot.authGateOk === 'function') {
+    result.remoteOk = false;
+    result.errors.push('auth_required_sign_in');
+    result.userHint = CADASTRO_AUTH_HINT;
+  } else if (typeof dataService !== 'undefined') {
+    try {
+      if (typeof dataService.setSaidasAdministrativas === 'function') {
+        await dataService.setSaidasAdministrativas(adm);
+      }
+      if (typeof dataService.setSaidasAmbulancias === 'function') {
+        await dataService.setSaidasAmbulancias(amb);
+      }
+    } catch (e) {
+      result.remoteOk = false;
+      result.errors.push('remote_persist_failed');
+    }
+  } else {
+    result.remoteOk = false;
+    result.errors.push('data_service_unavailable');
+  }
+
+  // Tópico 3: confirmação remota obrigatória para considerar sucesso real.
+  // Evita falso-positivo quando a camada de serviço não propaga erro de escrita.
+  if (result.remoteOk) {
+    var confirmation = await confirmRemoteSnapshot();
+    if (!confirmation.ok) {
+      result.remoteOk = false;
+      result.errors.push('remote_not_confirmed:' + String(confirmation.reason || 'unknown'));
+    }
+  }
+
+  if (!result.remoteOk && result.localOk) result.status = 'pending_sync';
+  else if (!result.remoteOk && !result.localOk) result.status = 'failed';
+  else result.status = 'success';
+
+  if (result.status === 'pending_sync') {
+    enqueueCadastroOutbox(adm, amb, result.errors.join('|') || 'pending_sync');
+    scheduleCadastroOutboxFlush(2500);
+  } else if (result.status === 'success') {
+    setCadastroOutbox(null);
+  }
+
+  return result;
+  } finally {
+    var persistLatencyMs = Date.now() - persistT0;
+    var errCopy = (result.errors || []).slice();
+    logCadastroTelemetry('persist_snapshot', {
+      status: result.status,
+      latencyMs: persistLatencyMs,
+      localOk: result.localOk,
+      remoteOk: result.remoteOk,
+      admCount: result.admCount,
+      ambCount: result.ambCount,
+      errors: errCopy
+    });
+    if (result.status === 'success') {
+      logCadastroTelemetry('save_success', {
+        latencyMs: persistLatencyMs,
+        admCount: result.admCount,
+        ambCount: result.ambCount
+      });
+    } else if (result.status === 'failed') {
+      logCadastroTelemetry('save_error', { latencyMs: persistLatencyMs, errors: errCopy });
+    } else if (result.status === 'pending_sync') {
+      logCadastroTelemetry('save_pending', {
+        latencyMs: persistLatencyMs,
+        errors: errCopy,
+        queuePending: true
+      });
+    }
+    cadastroSyncSaveDepth--;
+    if (result.status === 'failed') {
+      setCadastroSyncUiState('error', 'Falha ao salvar', 4000);
+    } else {
+      refreshCadastroSyncStatusPill();
+    }
+  }
+}
+
+/** Tópico 15: avisar o shell (iframe) para recarregar outras abas após mutação nos cadastros. */
+function postCadastroRefreshToParent() {
+  try {
+    window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+  } catch (e) {}
+}
+
+function notifyCadastroImportPersist(importPersist, newCount) {
+  var n = typeof newCount === 'number' ? newCount : 0;
+  if (!importPersist) {
+    showCadastroToast('Falha ao persistir os dados importados. Tente novamente.', 'error');
+    return;
+  }
+  if (importPersist.status === 'success') {
+    showCadastroToast('Importação concluída! ' + n + ' registro(s) adicionado(s).', 'success');
+  } else if (importPersist.status === 'pending_sync') {
+    var importPendingMsg =
+      importPersist.userHint ||
+      'Importação local concluída! ' + n + ' registro(s) pendentes de sincronização.';
+    showCadastroToast(importPendingMsg, 'warning', importPersist.userHint ? 9000 : 6500);
+  } else {
+    showCadastroToast('Falha ao persistir os dados importados. Tente novamente.', 'error');
+  }
+}
+
+/** @returns {boolean} false se a exclusão não persistiu (mensagem já exibida). */
+function notifyCadastroRowDeletePersist(deletePersist) {
+  if (!deletePersist || deletePersist.status === 'failed') {
+    displayMessage('Falha ao excluir registro. Tente novamente.', 'error');
+    return false;
+  }
+  if (deletePersist.status === 'pending_sync') {
+    displayMessage(
+      deletePersist.userHint || 'Registro excluído localmente e pendente de sincronização.',
+      'error',
+      deletePersist.userHint ? 12000 : undefined
+    );
+  }
+  return true;
+}
+
+/** Após saveNewSaida com sucesso ou pendente (não chamar se failed). */
+function notifyCadastroSubmitPersistResult(persistResult, isEditing) {
+  if (persistResult && persistResult.status === 'pending_sync') {
+    displayMessage(
+      persistResult.userHint || 'Saída salva localmente e pendente de sincronização.',
+      'error',
+      persistResult.userHint ? 12000 : undefined
+    );
+  } else {
+    displayMessage(isEditing ? 'SAÍDA ATUALIZADA COM SUCESSO!' : 'SAÍDA CADASTRADA COM SUCESSO!', 'success');
+  }
+}
+
+function notifyCadastroMultiPersistResult(multiPersist, formData) {
+  if (!formData) return;
+  if (multiPersist.status === 'pending_sync') {
+    displayMessage(
+      multiPersist.userHint ||
+        '1 saída para \'' + formData.cidade + ' - ' + formData.bairro + '\' salva localmente e pendente de sincronização.',
+      'error',
+      multiPersist.userHint ? 12000 : undefined
+    );
+  } else {
+    displayMessage('1 saída para \'' + formData.cidade + ' - ' + formData.bairro + '\' cadastrada e sincronizada. Insira o próximo.', 'success');
+  }
+}
+
+/** Resumo de cadastro em série (texto + tipo para displayMessage). */
+function getSerialCadastroOutcomeDisplay(okCount, pendingCount, failCount, total, failedDates) {
+  var fd = Array.isArray(failedDates) ? failedDates : [];
+  if (failCount === total) {
+    return { text: 'Nenhuma saída em série foi salva. Verifique os dados, conexão ou login e tente novamente.', type: 'error' };
+  }
+  if (failCount > 0) {
+    var failSample = fd.slice(0, 5).join(', ');
+    if (fd.length > 5) failSample += '…';
+    return {
+      text: 'Cadastro em série parcial: ' + okCount + ' sincronizada(s), ' + pendingCount + ' pendente(s), ' + failCount + ' falha(s). Datas com falha: ' + failSample,
+      type: 'error'
+    };
+  }
+  if (pendingCount > 0 && okCount === 0) {
+    return { text: total + ' saída(s) salvas localmente e pendentes de sincronização com a nuvem.', type: 'error' };
+  }
+  if (pendingCount > 0) {
+    return { text: okCount + ' saída(s) sincronizada(s); ' + pendingCount + ' pendente(s) de sincronização.', type: 'error' };
+  }
+  if (okCount === total) {
+    return { text: okCount + ' SAÍDA(S) CADASTRADA(S) E SINCRONIZADA(S)!', type: 'success' };
+  }
+  return { text: 'Resumo: ' + okCount + ' de ' + total + ' processada(s). Verifique o histórico na tabela.', type: 'error' };
+}
 
 // ========== NORMALIZAÇÃO (compatibilidade com dados antigos/offline) ==========
 function parseDateToISO(value) {
@@ -1764,6 +2676,109 @@ function mergeById(primaryArr, secondaryArr, forcedTipo) {
   return Array.from(map.values());
 }
 
+/** Tópico 10: ms de updatedAt para política latest-wins (alinhado ao data-service). */
+function cadastroItemUpdatedMs(item) {
+  if (!item || typeof item !== 'object') return 0;
+  try {
+    var v = item.updatedAt || item._updatedAt || item.modifiedAt || item.updated_at;
+    if (v == null || v === '') return 0;
+    var d = Date.parse(String(v));
+    return isNaN(d) ? 0 : d;
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** Tópico 11: política de conflito explícita (empate → versão remota). */
+var CADASTRO_CONFLICT_POLICY = 'latest-wins';
+var CADASTRO_CONFLICT_LOG_KEY = 'sot_cadastro_conflict_log_v1';
+var CADASTRO_CONFLICT_LOG_MAX = 40;
+
+function appendCadastroConflictLog(entry) {
+  try {
+    if (!entry || typeof entry !== 'object') return;
+    var raw = localStorage.getItem(CADASTRO_CONFLICT_LOG_KEY);
+    var arr = [];
+    if (raw) {
+      try {
+        arr = JSON.parse(raw);
+      } catch (e) {
+        arr = [];
+      }
+    }
+    if (!Array.isArray(arr)) arr = [];
+    entry.ts = new Date().toISOString();
+    entry.policy = CADASTRO_CONFLICT_POLICY;
+    arr.push(entry);
+    if (arr.length > CADASTRO_CONFLICT_LOG_MAX) arr = arr.slice(-CADASTRO_CONFLICT_LOG_MAX);
+    localStorage.setItem(CADASTRO_CONFLICT_LOG_KEY, JSON.stringify(arr));
+  } catch (e) {}
+}
+
+/**
+ * Mescla remoto + cache local: por id, vence a revisão com updatedAt mais recente (CADASTRO_CONFLICT_POLICY).
+ * Ids só no local entram. Em empate de timestamp (0 vs 0), mantém o remoto.
+ * Retorna merged + ids afetados por tipo de resolução (tópico 11).
+ */
+function mergeSaidasCadastroLWWWithReport(remoteArr, localArr, forcedTipo) {
+  var remoteWonIds = [];
+  var localWonIds = [];
+  var localOnlyIds = [];
+  var map = new Map();
+  (Array.isArray(remoteArr) ? remoteArr : []).forEach(function (it) {
+    var n = normalizeSaida(it, forcedTipo);
+    var id = String(n.id || '');
+    if (id) map.set(id, n);
+  });
+  (Array.isArray(localArr) ? localArr : []).forEach(function (it) {
+    var n = normalizeSaida(it, forcedTipo);
+    var id = String(n.id || '');
+    if (!id) return;
+    if (!map.has(id)) {
+      map.set(id, n);
+      localOnlyIds.push(id);
+      return;
+    }
+    var rem = map.get(id);
+    var tLoc = cadastroItemUpdatedMs(n);
+    var tRem = cadastroItemUpdatedMs(rem);
+    if (tLoc > tRem) {
+      map.set(id, n);
+      localWonIds.push(id);
+    } else {
+      remoteWonIds.push(id);
+    }
+  });
+  return {
+    merged: Array.from(map.values()),
+    remoteWonIds: remoteWonIds,
+    localWonIds: localWonIds,
+    localOnlyIds: localOnlyIds
+  };
+}
+
+function mergeSaidasCadastroLWW(remoteArr, localArr, forcedTipo) {
+  return mergeSaidasCadastroLWWWithReport(remoteArr, localArr, forcedTipo).merged;
+}
+
+/** True se o merge difere do snapshot remoto (novo id ou cópia local mais recente). */
+function cadastroNeedPushSaidas(merged, remoteOnly) {
+  if (!Array.isArray(merged) || !Array.isArray(remoteOnly)) return false;
+  var remById = new Map();
+  remoteOnly.forEach(function (r) {
+    if (r && r.id != null && String(r.id) !== '') remById.set(String(r.id), r);
+  });
+  var i;
+  for (i = 0; i < merged.length; i++) {
+    var m = merged[i];
+    if (!m || m.id == null || String(m.id) === '') continue;
+    var sid = String(m.id);
+    if (!remById.has(sid)) return true;
+    if (cadastroItemUpdatedMs(m) > cadastroItemUpdatedMs(remById.get(sid))) return true;
+  }
+  return false;
+}
+
 // ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
 loadItensData();
 setTimeout(function () {
@@ -1781,7 +2796,24 @@ setTimeout(function () {
   adjustRegisterFormFields();
 }, 100);
 
-function downloadPdfTable(tableId, filename, titleText, dateInfo) {
+async function downloadPdfTable(tableId, filename, titleText, dateInfo) {
+try {
+  if (typeof loadCadastroJsPdfLibs === 'function') {
+    await loadCadastroJsPdfLibs();
+  }
+} catch (e) {
+  console.warn('Cadastro de Saídas: falha ao carregar jsPDF.', e);
+  if (typeof showCadastroToast === 'function') {
+    showCadastroToast('Não foi possível carregar o gerador de PDF. Verifique a conexão.', 'error');
+  }
+  return;
+}
+if (!window.jspdf || !window.jspdf.jsPDF) {
+  if (typeof showCadastroToast === 'function') {
+    showCadastroToast('Gerador de PDF indisponível.', 'error');
+  }
+  return;
+}
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'landscape' });
 doc.setFontSize(16);
@@ -1825,14 +2857,16 @@ link.href = URL.createObjectURL(csvFile);
 link.download = filename;
 link.click();
 }
-function importCsvData(event) {
+async function importCsvData(event) {
 const file = event.target.files[0];
 if (!file) return;
-const reader = new FileReader();
-reader.onload = async function(e) {
-const text = e.target.result;
+await runCadastroLocked('import_csv', async () => {
+const text = await file.text();
 const lines = text.split(/[\r\n]+/).filter(line => line.trim() !== '');
-if (lines.length <= 1) return alert("Arquivo CSV vazio ou inválido.");
+if (lines.length <= 1) {
+showCadastroToast('Arquivo CSV vazio ou inválido.', 'error');
+return;
+}
 const dataLines = lines.slice(1);
 const newSaidas = [];
 dataLines.forEach(line => {
@@ -1890,19 +2924,18 @@ newSaidas.push(saidaImportada);
 }
 });
 newSaidas.forEach(saida => {
+touchCadastroSaidaMetadata(saida, true);
 if (saida.tipo === 'Administrativa') {
 saidasAdministrativas.push(saida);
 } else if (saida.tipo === 'Ambulância') {
 saidasAmbulancias.push(saida);
 }
 });
-if (typeof dataService !== 'undefined' && dataService.setSaidasAdministrativas) await dataService.setSaidasAdministrativas(saidasAdministrativas); else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
-if (typeof dataService !== 'undefined' && dataService.setSaidasAmbulancias) await dataService.setSaidasAmbulancias(saidasAmbulancias); else localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+var importPersist = await persistCadastroSaidasSnapshot(saidasAdministrativas, saidasAmbulancias);
 await loadDataAndPopulateTables();
-alert(`Importação concluída! ${newSaidas.length} registros foram adicionados.`);
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-};
-reader.readAsText(file, 'UTF-8');
+notifyCadastroImportPersist(importPersist, newSaidas.length);
+postCadastroRefreshToParent();
+});
 event.target.value = '';
 }
 function attachEventListenersToRow(row) {
@@ -1913,22 +2946,24 @@ function isRowIncomplete(saida) {
 const fieldsToCheck = ['tipo', 'dataPedido', 'horaPedido', 'dataSaida', 'horaSaida', 'setor', 'destino', 'objetivo', 'viatura', 'motorista', 'kmSaida', 'kmChegada', 'chegada'];
 return fieldsToCheck.some(field => !saida[field]);
 }
-function handleDeleteRow(event) {
+async function handleDeleteRow(event) {
 const row = event.target.closest('tr');
 if (!row) return;
 const idToDelete = row.dataset.id;
 const tipoSaida = row.dataset.tipo;
-if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
+const delOk = await showCadastroConfirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.');
+if (!delOk) return;
+await runCadastroLocked('delete_row:' + String(idToDelete || ''), async () => {
 if (tipoSaida === 'Administrativa') {
 saidasAdministrativas = saidasAdministrativas.filter(i => i.id !== idToDelete);
-if (typeof dataService !== 'undefined' && dataService.setSaidasAdministrativas) dataService.setSaidasAdministrativas(saidasAdministrativas); else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
 } else if (tipoSaida === 'Ambulância') {
 saidasAmbulancias = saidasAmbulancias.filter(i => i.id !== idToDelete);
-if (typeof dataService !== 'undefined' && dataService.setSaidasAmbulancias) dataService.setSaidasAmbulancias(saidasAmbulancias); else localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
 }
-loadDataAndPopulateTables();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-}
+const deletePersist = await persistCadastroSaidasSnapshot(saidasAdministrativas, saidasAmbulancias);
+if (!notifyCadastroRowDeletePersist(deletePersist)) return;
+await loadDataAndPopulateTables();
+postCadastroRefreshToParent();
+});
 }
 function populateFormForEdit(saidaData) {
     if (!saidaData) return;
@@ -2228,7 +3263,7 @@ const tipoSaida = document.getElementById('registerTipoSaida').value;
 const fieldsToValidate = [
 { id: 'registerTipoSaida' }, { id: 'registerDataPedido' }, { id: 'registerHoraPedido' },
 { id: 'registerHoraSaida' }, { id: 'registerSetor' }, { id: 'registerCidade' },
-{ id: 'registerBairro' }
+{ id: 'registerBairro' }, { id: 'registerViatura' }, { id: 'registerMotorista' }
 ];
 if (tipoSaida === 'Ambulância') {
 fieldsToValidate.push({ id: 'registerObjetivoSelect' });
@@ -2250,6 +3285,35 @@ inputElement.classList.add('flash-red');
 if (!isValid) {
 displayMessage('PREENCHA OS CAMPOS OBRIGATÓRIOS!', 'error');
 return null;
+}
+
+const dataPedidoVal = (document.getElementById('registerDataPedido').value || '').trim();
+const horaPedidoVal = (document.getElementById('registerHoraPedido').value || '').trim();
+const dataSaidaVal = (document.getElementById('registerDataSaida').value || '').trim();
+const horaSaidaVal = (document.getElementById('registerHoraSaida').value || '').trim();
+if (!ValidacaoCadastro.isValidISODate(dataPedidoVal)) {
+  displayMessage('Data do pedido inválida.', 'error');
+  return null;
+}
+if (!ValidacaoCadastro.isValidTimeHHmm(horaPedidoVal)) {
+  displayMessage('Hora do pedido inválida. Use HH:MM.', 'error');
+  return null;
+}
+if (!isSerial && !ValidacaoCadastro.isValidISODate(dataSaidaVal)) {
+  displayMessage('Data da saída inválida.', 'error');
+  return null;
+}
+if (!ValidacaoCadastro.isValidTimeHHmm(horaSaidaVal)) {
+  displayMessage('Hora da saída inválida. Use HH:MM.', 'error');
+  return null;
+}
+if (!isSerial) {
+  const pedidoMs = ValidacaoCadastro.toMsFromDateTime(dataPedidoVal, horaPedidoVal);
+  const saidaMs = ValidacaoCadastro.toMsFromDateTime(dataSaidaVal, horaSaidaVal);
+  if (!isNaN(pedidoMs) && !isNaN(saidaMs) && saidaMs < pedidoMs) {
+    displayMessage('A saída não pode ocorrer antes do pedido.', 'error');
+    return null;
+  }
 }
 
 // Validar que Setor e Responsável pelo Pedido estão nos datalists
@@ -2304,30 +3368,58 @@ if (kmChegadaVal && !ValidacaoCadastro.validateKm(kmChegadaVal)) {
   displayMessage('KM de chegada inválido. Use um número positivo.', 'error');
   return null;
 }
-return {
-tipo: tipoSaida,
-dataPedido: document.getElementById('registerDataPedido').value,
-horaPedido: document.getElementById('registerHoraPedido').value,
-dataSaida: document.getElementById('registerDataSaida').value,
-horaSaida: document.getElementById('registerHoraSaida').value,
-setor: ValidacaoCadastro.sanitize(document.getElementById('registerSetor').value),
-ramal: ValidacaoCadastro.sanitize(document.getElementById('registerRamal').value),
-cidade: ValidacaoCadastro.sanitize(document.getElementById('registerCidade').value),
-bairro: ValidacaoCadastro.sanitize(document.getElementById('registerBairro').value),
-destino: ValidacaoCadastro.sanitize(document.getElementById('registerBairro').value),
-objetivo: objetivoValue,
-numPassageiros: ValidacaoCadastro.sanitize(document.getElementById('registerNumPassageiros').value),
-responsavelPedido: ValidacaoCadastro.sanitize(document.getElementById('registerResponsavelPedido').value),
-om: ValidacaoCadastro.sanitize(document.getElementById('registerOM').value),
-viatura: registerViaturaSelect.value,
-motorista: registerMotoristaSelect.value,
-hospital: ValidacaoCadastro.sanitize(document.getElementById('registerHospital').value),
-kmSaida: kmSaidaVal ? String(kmSaidaVal).trim() : '',
-kmChegada: kmChegadaVal ? String(kmChegadaVal).trim() : '',
-chegada: document.getElementById('registerChegada') ? ValidacaoCadastro.sanitize(document.getElementById('registerChegada').value) : ''
+if (kmChegadaVal) {
+  if (!kmSaidaVal) {
+    displayMessage('Preencha KM de saída antes do KM de chegada.', 'error');
+    return null;
+  }
+  var kmSaidaNum = parseFloat(String(kmSaidaVal).replace(/\./g, '').replace(',', '.'));
+  var kmChegadaNum = parseFloat(String(kmChegadaVal).replace(/\./g, '').replace(',', '.'));
+  if (!isNaN(kmSaidaNum) && !isNaN(kmChegadaNum) && kmChegadaNum <= kmSaidaNum) {
+    displayMessage('KM de chegada deve ser maior que KM de saída.', 'error');
+    return null;
+  }
+}
+var rawPayload = {
+  tipo: tipoSaida,
+  dataPedido: dataPedidoVal,
+  horaPedido: horaPedidoVal,
+  dataSaida: dataSaidaVal,
+  horaSaida: horaSaidaVal,
+  setor: document.getElementById('registerSetor').value,
+  ramal: document.getElementById('registerRamal').value,
+  cidade: document.getElementById('registerCidade').value,
+  bairro: document.getElementById('registerBairro').value,
+  objetivo: objetivoValue,
+  numPassageiros: document.getElementById('registerNumPassageiros').value,
+  responsavelPedido: document.getElementById('registerResponsavelPedido').value,
+  om: document.getElementById('registerOM').value,
+  viatura: registerViaturaSelect.value,
+  motorista: registerMotoristaSelect.value,
+  hospital: document.getElementById('registerHospital').value,
+  kmSaida: kmSaidaVal,
+  kmChegada: kmChegadaVal,
+  chegada: document.getElementById('registerChegada') ? document.getElementById('registerChegada').value : ''
 };
+var normalizedForm = normalizeCadastroFormPayload(rawPayload, { skipDataSaidaISO: isSerial });
+if (!normalizedForm.ok) {
+  displayMessage(normalizedForm.message, 'error');
+  return null;
+}
+return normalizedForm.payload;
 }
 async function saveNewSaida(formData, dateToUse = formData.dataSaida, forceCreate = false) {
+var dataSaidaEffSave = String(dateToUse != null ? dateToUse : (formData && formData.dataSaida) || '').trim();
+var normSave = normalizeCadastroFormPayload(formData, {
+  skipDataSaidaISO: false,
+  dataSaidaEffective: dataSaidaEffSave
+});
+if (!normSave.ok) {
+  if (typeof displayMessage === 'function') displayMessage(normSave.message, 'error');
+  return { status: 'failed', reason: 'normalize', message: normSave.message };
+}
+formData = normSave.payload;
+dateToUse = formData.dataSaida || dateToUse;
 let isUnplanned = false;
 if (formData.tipo !== 'Ambulância' && formData.dataPedido && formData.horaPedido && dateToUse) {
 const pedidoDateTime = new Date(`${formData.dataPedido}T${formData.horaPedido}`);
@@ -2342,6 +3434,8 @@ isUnplanned = true;
 const idToSave = saidaIdHiddenInput.value;
 const targetArrayName = formData.tipo === 'Administrativa' ? 'saidasAdministrativas' : 'saidasAmbulancias';
 let targetArray = JSON.parse(localStorage.getItem(targetArrayName)) || [];
+let admSnapshot = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+let ambSnapshot = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
 const existingIndex = (!forceCreate && idToSave) ? targetArray.findIndex(s => s.id === idToSave) : -1;
 let newSaida = null;
 
@@ -2368,10 +3462,11 @@ if (existingIndex !== -1) {
     delete saidaAtualizada.saidas_originais;
     delete saidaAtualizada.saidaJuntadaOriginal;
     
+    touchCadastroSaidaMetadata(saidaAtualizada, false);
     targetArray[existingIndex] = saidaAtualizada;
 } else {
 newSaida = {
-id: `saida_${Date.now()}_${Math.random()}`,
+id: generateCadastroSaidaStableId(formData, dateToUse),
 ...formData, dataSaida: dateToUse, saida: formData.horaSaida,
 kmSaida: formData.kmSaida || '', kmChegada: formData.kmChegada || '', chegada: formData.chegada || '', observacoes: '',
 isUnplanned, realizada: false,
@@ -2386,13 +3481,15 @@ data: dateToUse,
 horario: formData.horaSaida,
 motivo: formData.objetivo
 };
+touchCadastroSaidaMetadata(newSaida, true);
 targetArray.push(newSaida);
 }
-localStorage.setItem(targetArrayName, JSON.stringify(targetArray));
-if (typeof dataService !== 'undefined') {
-    if (targetArrayName === 'saidasAdministrativas') await dataService.setSaidasAdministrativas(targetArray);
-    else if (targetArrayName === 'saidasAmbulancias') await dataService.setSaidasAmbulancias(targetArray);
+if (targetArrayName === 'saidasAdministrativas') {
+    admSnapshot = targetArray;
+} else {
+    ambSnapshot = targetArray;
 }
+const persistResult = await persistCadastroSaidasSnapshot(admSnapshot, ambSnapshot);
 
 // Verificar se há saídas para juntar (para novas saídas administrativas ou após edição)
 if (formData.tipo === 'Administrativa' && typeof juntaSaidasService !== 'undefined' && juntaSaidasService) {
@@ -2490,6 +3587,7 @@ console.error('❌ Erro ao verificar junção de saídas:', error);
 }
 }, 200);
 }
+return persistResult;
 }
 // Limite de saídas: automático (RO no dia + 2) ou manual (aba Saídas Administrativas)
 function getRoCountForDateCadastro(dateStr) {
@@ -2665,6 +3763,7 @@ const btnPreencherTeste = document.getElementById('btnPreencherTeste');
 if (btnPreencherTeste) btnPreencherTeste.addEventListener('click', preencherFormularioTeste);
 
 submitNewSaidaBtn.addEventListener('click', async () => {
+await runCadastroLocked('submit_new_saida', async () => {
 const formData = validateAndGetFormData();
 if (!formData) return;
 const isEditing = !!saidaIdHiddenInput.value;
@@ -2677,7 +3776,10 @@ submitNewSaidaBtn.disabled = true;
 submitNewSaidaBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
 try {
-    await saveNewSaida(formData);
+    const persistResult = await saveNewSaida(formData);
+    if (!persistResult || persistResult.status === 'failed') {
+      throw new Error('persist_failed');
+    }
     populateSetorList();
     populateResponsavelList();
     updateFormFields(); // Atualizar campos com itens personalizados
@@ -2692,9 +3794,9 @@ try {
             console.warn('Não foi possível notificar o parent sobre a saída atualizada:', e);
         }
     }
-    displayMessage(isEditing ? 'SAÍDA ATUALIZADA COM SUCESSO!' : 'SAÍDA CADASTRADA COM SUCESSO!', 'success');
+    notifyCadastroSubmitPersistResult(persistResult, isEditing);
     clearRegisterForm();
-    window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+    postCadastroRefreshToParent();
 } catch (e) {
     console.error('Erro ao salvar saída:', e);
     displayMessage('Erro ao salvar saída. Tente novamente.', 'error');
@@ -2703,18 +3805,33 @@ try {
     submitNewSaidaBtn.innerHTML = originalText;
 }
 });
-multiSaidaBtn.addEventListener('click', () => {
+});
+multiSaidaBtn.addEventListener('click', async () => {
+await runCadastroLocked('multi_saida', async () => {
 const formData = validateAndGetFormData();
 if (!formData) return;
-saveNewSaida(formData, formData.dataSaida, true);
+// Tópico 9: um único persist por clique (operação atômica no cliente para este registro).
+var multiPersist;
+try {
+  multiPersist = await saveNewSaida(formData, formData.dataSaida, true);
+} catch (err) {
+  displayMessage('Falha ao cadastrar saída múltipla. Tente novamente.', 'error');
+  return;
+}
+if (!multiPersist || multiPersist.status === 'failed') {
+  displayMessage('Falha ao cadastrar (validação ou persistência). Nenhum registro foi confirmado.', 'error');
+  return;
+}
+await loadDataAndPopulateTables();
 populateSetorList();
 populateResponsavelList();
-displayMessage(`Saída para '${formData.cidade} - ${formData.bairro}' cadastrada. Insira o próximo.`, 'success');
+notifyCadastroMultiPersistResult(multiPersist, formData);
 document.getElementById('registerCidade').value = '';
 document.getElementById('registerBairro').value = '';
 document.getElementById('registerBairro').disabled = true;
 document.getElementById('registerCidade').focus();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+postCadastroRefreshToParent();
+});
 });
 function clearRegisterForm() {
 saidaIdHiddenInput.value = '';
@@ -2729,10 +3846,16 @@ el.value = '';
 });
 adjustRegisterFormFields();
 }
-function displayMessage(message, type) {
+function displayMessage(message, type, durationMs) {
 registerMessage.textContent = message;
 registerMessage.className = `message ${type}`;
-setTimeout(() => { registerMessage.textContent = ''; registerMessage.className = 'message'; }, 5000);
+var ms = durationMs != null && durationMs > 0 ? durationMs : 5000;
+if (displayMessage._hideTimer) clearTimeout(displayMessage._hideTimer);
+displayMessage._hideTimer = setTimeout(function () {
+  registerMessage.textContent = '';
+  registerMessage.className = 'message';
+  displayMessage._hideTimer = null;
+}, ms);
 }
 function formatDateToDDMMYYYY(dateString) {
 if (!dateString) return '';
@@ -3087,6 +4210,10 @@ let remoteLoaded = false;
 try { lsSaidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]'); } catch (e) { lsSaidasAdm = []; }
 try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); } catch (e) { lsSaidasAmb = []; }
 
+cadastroSyncLoadDepth++;
+setCadastroSyncUiState('loading', 'Carregando dados...');
+var cadastroLoadT0 = Date.now();
+try {
 if (typeof dataService !== 'undefined') {
     try {
         if (typeof dataService.waitForAPICheck === 'function') {
@@ -3156,14 +4283,69 @@ if (typeof dataService !== 'undefined') {
     motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
 }
 
-// Normalizar e mesclar com offline somente se NÃO carregamos remoto com sucesso.
-// Se remoto carregou (Firebase/API), ele é fonte da verdade, mesmo quando vier [].
+// Tópico 10: snapshot remoto antes do merge (para LWW e decisão de push)
+var remoteOnlyAdm = null;
+var remoteOnlyAmb = null;
 if (remoteLoaded) {
-    saidasAdministrativas = mergeById(saidasAdministrativas, [], 'Administrativa');
-    saidasAmbulancias = mergeById(saidasAmbulancias, [], 'Ambulância');
+  remoteOnlyAdm = (Array.isArray(saidasAdministrativas) ? saidasAdministrativas : []).slice();
+  remoteOnlyAmb = (Array.isArray(saidasAmbulancias) ? saidasAmbulancias : []).slice();
+}
+
+// Normalizar e mesclar: com remoto, une cache local por id + updatedAt (latest wins).
+if (remoteLoaded) {
+  var repAdm = mergeSaidasCadastroLWWWithReport(remoteOnlyAdm, lsSaidasAdm, 'Administrativa');
+  var repAmb = mergeSaidasCadastroLWWWithReport(remoteOnlyAmb, lsSaidasAmb, 'Ambulância');
+  saidasAdministrativas = repAdm.merged;
+  saidasAmbulancias = repAmb.merged;
+
+  var rwAll = repAdm.remoteWonIds.concat(repAmb.remoteWonIds);
+  var lwAll = repAdm.localWonIds.concat(repAmb.localWonIds);
+  var loAll = repAdm.localOnlyIds.concat(repAmb.localOnlyIds);
+  if (rwAll.length || lwAll.length || loAll.length) {
+    console.info('[SOT Cadastro Saídas][conflito]', {
+      policy: CADASTRO_CONFLICT_POLICY,
+      remoteWonCount: rwAll.length,
+      localWonCount: lwAll.length,
+      localOnlyCount: loAll.length,
+      remoteWonIds: rwAll,
+      localWonIds: lwAll,
+      localOnlyIds: loAll
+    });
+    appendCadastroConflictLog({
+      remoteWonIds: rwAll,
+      localWonIds: lwAll,
+      localOnlyIds: loAll
+    });
+    logCadastroTelemetry('merge_conflict_lww', {
+      policy: typeof CADASTRO_CONFLICT_POLICY !== 'undefined' ? CADASTRO_CONFLICT_POLICY : 'latest-wins',
+      remoteWonCount: rwAll.length,
+      localWonCount: lwAll.length,
+      localOnlyCount: loAll.length,
+      remoteWonSample: rwAll.slice(0, 8),
+      localWonSample: lwAll.slice(0, 8),
+      localOnlySample: loAll.slice(0, 8)
+    });
+    var parts = [];
+    if (rwAll.length) parts.push('nuvem prevaleceu em ' + rwAll.length + ' registro(s)');
+    if (lwAll.length) parts.push('cache local prevaleceu em ' + lwAll.length + ' registro(s)');
+    if (loAll.length) parts.push(loAll.length + ' só no cache local foram incluídos');
+    var sample = rwAll.concat(lwAll, loAll).slice(0, 5).join(', ');
+    var more = rwAll.length + lwAll.length + loAll.length > 5 ? '…' : '';
+    var msg =
+      'Sincronização (' +
+      CADASTRO_CONFLICT_POLICY +
+      '): ' +
+      parts.join('; ') +
+      '. IDs (amostra): ' +
+      sample +
+      more;
+    if (typeof displayMessage === 'function') {
+      displayMessage(msg, 'warning', 14000);
+    }
+  }
 } else {
-    saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
-    saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
+  saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
+  saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
 }
 
 // Persistir cache normalizado
@@ -3172,23 +4354,21 @@ try {
   localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
 } catch (e) {}
 
-// Se havia dados offline que não estavam no remoto, tenta subir (sem bloquear a UI)
+// Tópico 10: enviar à nuvem só se o merge trouxe novidade vs snapshot remoto (sem heurística length>=)
 try {
-  if (typeof dataService !== 'undefined') {
-    // heurística simples: se local tem mais itens, tentar sincronizar
-    if (Array.isArray(lsSaidasAdm) && lsSaidasAdm.length > 0 && saidasAdministrativas.length >= lsSaidasAdm.length) {
-      dataService.setSaidasAdministrativas(saidasAdministrativas).catch(function(){});
+  if (remoteLoaded && typeof dataService !== 'undefined') {
+    if (cadastroNeedPushSaidas(saidasAdministrativas, remoteOnlyAdm)) {
+      dataService.setSaidasAdministrativas(saidasAdministrativas).catch(function () {});
     }
-    if (Array.isArray(lsSaidasAmb) && lsSaidasAmb.length > 0 && saidasAmbulancias.length >= lsSaidasAmb.length) {
-      dataService.setSaidasAmbulancias(saidasAmbulancias).catch(function(){});
+    if (cadastroNeedPushSaidas(saidasAmbulancias, remoteOnlyAmb)) {
+      dataService.setSaidasAmbulancias(saidasAmbulancias).catch(function () {});
     }
-  } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
-    // fallback direto no firebase
-    if (Array.isArray(lsSaidasAdm) && lsSaidasAdm.length > 0 && saidasAdministrativas.length >= lsSaidasAdm.length) {
-      window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas).catch(function(){});
+  } else if (remoteLoaded && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+    if (cadastroNeedPushSaidas(saidasAdministrativas, remoteOnlyAdm)) {
+      window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas).catch(function () {});
     }
-    if (Array.isArray(lsSaidasAmb) && lsSaidasAmb.length > 0 && saidasAmbulancias.length >= lsSaidasAmb.length) {
-      window.firebaseSot.set('saidasAmbulancias', saidasAmbulancias).catch(function(){});
+    if (cadastroNeedPushSaidas(saidasAmbulancias, remoteOnlyAmb)) {
+      window.firebaseSot.set('saidasAmbulancias', saidasAmbulancias).catch(function () {});
     }
   }
 } catch (e) {}
@@ -3208,6 +4388,16 @@ filterTodasSaidasTable();
 updateUnplannedExitsTable();
 populateRegisterSaidaSelects();
 updateFormFields(); // Atualizar campos com itens personalizados
+} finally {
+cadastroSyncLoadDepth--;
+cadastroRemoteLoadedLast = remoteLoaded;
+refreshCadastroSyncStatusPill();
+logCadastroTelemetry('load_data', {
+  latencyMs: Date.now() - cadastroLoadT0,
+  remoteLoaded: remoteLoaded,
+  outboxPending: !!getCadastroOutbox()
+});
+}
 }
 function showSubTab(tabIdToShow) {
 subTabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.subTab === tabIdToShow));
@@ -3328,27 +4518,29 @@ incompletosCounter.style.textDecoration = showingOnlyIncomplete ? 'underline' : 
 incompletosCounter.style.fontWeight = showingOnlyIncomplete ? 'bold' : 'normal';
 filterTodasSaidasTable();
 });
-todasSaidasPdfBtn.addEventListener('click', () => {
+todasSaidasPdfBtn.addEventListener('click', function () {
 const dateInfo = filterTodasSaidasDateInput.value ? `Data: ${formatDateToDDMMYYYY(filterTodasSaidasDateInput.value)}` : 'Todas as Datas';
-downloadPdfTable('todasSaidasTable', 'Relatorio_Saidas_Cadastradas', 'Relatório de Saídas Cadastradas', dateInfo);
+void downloadPdfTable('todasSaidasTable', 'Relatorio_Saidas_Cadastradas', 'Relatório de Saídas Cadastradas', dateInfo);
 });
 todasSaidasExcelBtn.addEventListener('click', () => {
 exportTableToCSV('todasSaidasTable', `Relatorio_Saidas_Cadastradas.csv`);
 });
 todasSaidasImportInput.addEventListener('change', importCsvData);
-unplannedExitsPdfBtn.addEventListener('click', () => {
+unplannedExitsPdfBtn.addEventListener('click', function () {
 const month = filterUnplannedMonthSelect.options[filterUnplannedMonthSelect.selectedIndex].text;
 const year = filterUnplannedYearSelect.value;
-downloadPdfTable('unplannedExitsTable', 'Relatorio_Saidas_Nao_Programadas', 'Relatório de Saídas Não Programadas', `Período: ${month} / ${year}`);
+void downloadPdfTable('unplannedExitsTable', 'Relatorio_Saidas_Nao_Programadas', 'Relatório de Saídas Não Programadas', `Período: ${month} / ${year}`);
 });
 deleteAllBtn.addEventListener('click', () => {
-if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
+void runCadastroLocked('delete_all', async () => {
+const wipeOk = await showCadastroConfirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.');
+if (!wipeOk) return;
 localStorage.removeItem('saidasAdministrativas');
 localStorage.removeItem('saidasAmbulancias');
-loadDataAndPopulateTables();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-alert("Todos os dados foram excluídos.");
-}
+await loadDataAndPopulateTables();
+postCadastroRefreshToParent();
+showCadastroToast('Todos os dados foram excluídos.', 'success');
+});
 });
 function generateCalendar(year, month) {
 calendarGrid.innerHTML = '';
@@ -3392,15 +4584,45 @@ generateCalendar(calendarDate.getFullYear(), calendarDate.getMonth());
 });
 cancelSerialRegisterBtn.addEventListener('click', () => calendarModal.style.display = 'none');
 closeCalendarModal.addEventListener('click', () => calendarModal.style.display = 'none');
-confirmSerialRegisterBtn.addEventListener('click', () => {
-if (selectedDates.size === 0) return alert('Nenhuma data selecionada!');
+confirmSerialRegisterBtn.addEventListener('click', async () => {
+await runCadastroLocked('serial_register', async () => {
+if (selectedDates.size === 0) {
+showCadastroToast('Nenhuma data selecionada!', 'warning');
+return;
+}
 const formData = validateAndGetFormData(true);
 if (!formData) return calendarModal.style.display = 'none';
-Array.from(selectedDates).sort().forEach(dateString => saveNewSaida(formData, dateString, true));
+const dates = Array.from(selectedDates).sort();
+let okCount = 0;
+let pendingCount = 0;
+let failCount = 0;
+const failedDates = [];
+const pendingDates = [];
+for (const dateString of dates) {
+  try {
+    const serialPersist = await saveNewSaida(formData, dateString, true);
+    if (serialPersist && serialPersist.status === 'success') {
+      okCount++;
+    } else if (serialPersist && serialPersist.status === 'pending_sync') {
+      pendingCount++;
+      pendingDates.push(dateString);
+    } else {
+      failCount++;
+      failedDates.push(dateString);
+    }
+  } catch (err) {
+    failCount++;
+    failedDates.push(dateString);
+  }
+}
 calendarModal.style.display = 'none';
-displayMessage(`${selectedDates.size} SAÍDA(S) CADASTRADA(S)!`, 'success');
+const total = dates.length;
+await loadDataAndPopulateTables();
+var serialOutcome = getSerialCadastroOutcomeDisplay(okCount, pendingCount, failCount, total, failedDates);
+displayMessage(serialOutcome.text, serialOutcome.type);
 clearRegisterForm();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+postCadastroRefreshToParent();
+});
 });
 // Dados da saída pendente para preencher após o usuário clicar OK no modal de confirmação
 var pendingEditSaidaData = null;
@@ -3428,7 +4650,31 @@ window.addEventListener('sot-firebase-auth-changed', function (ev) {
         void loadDataAndPopulateTables().then(function () {
             setTimeout(function () { adjustRegisterFormFields(); }, 0);
         });
+        scheduleCadastroOutboxFlush(500);
     }
+});
+
+window.addEventListener('online', function () {
+  scheduleCadastroOutboxFlush(300);
+  refreshCadastroSyncStatusPill();
+});
+
+window.addEventListener('offline', function () {
+  refreshCadastroSyncStatusPill();
+});
+
+document.addEventListener('visibilitychange', function () {
+  if (!document.hidden) {
+    scheduleCadastroOutboxFlush(0);
+    refreshCadastroSyncStatusPill();
+  }
+});
+
+window.addEventListener('focus', function () {
+  if (!document.hidden) {
+    scheduleCadastroOutboxFlush(0);
+    refreshCadastroSyncStatusPill();
+  }
 });
 
 // Botão OK do modal "Todos os campos serão preenchidos com os dados da saída"
@@ -3497,6 +4743,7 @@ applyEditButtonHighlight(targetRow.querySelector('.edit-row-btn'));
 }, 150);
 }
 await loadDataAndPopulateTables();
+scheduleCadastroOutboxFlush(800);
 setTimeout(function () {
     adjustRegisterFormFields();
 }, 0);
@@ -3507,6 +4754,11 @@ setTimeout(() => {
 initItensTabs();
 }, 200);
 }
+
+setInterval(function () {
+  if (document.hidden) return;
+  if (getCadastroOutbox()) scheduleCadastroOutboxFlush(0);
+}, 20000);
 });
 
 // Função global para inicializar as abas dos itens
@@ -4473,37 +5725,41 @@ function addOMRow() {
 
 // Funções para remover itens
 function removeSetor(index) {
-    if (confirm('Deseja realmente remover este setor?')) {
+    void showCadastroConfirm('Deseja realmente remover este setor?').then(function (ok) {
+        if (!ok) return;
         itensPersonalizados.setores.splice(index, 1);
         saveItensData();
         renderSetoresTable();
         updateFormFields();
-    }
+    });
 }
 
 function removeResponsavel(index) {
-    if (confirm('Deseja realmente remover este responsável?')) {
+    void showCadastroConfirm('Deseja realmente remover este responsável?').then(function (ok) {
+        if (!ok) return;
         itensPersonalizados.responsaveis.splice(index, 1);
         saveItensData();
         renderResponsaveisTable();
         updateFormFields();
-    }
+    });
 }
 
 function removeCidade(index) {
     const cidade = itensPersonalizados.cidades[index];
-    if (confirm(`Deseja realmente remover a cidade "${cidade}"? Isso também removerá todos os bairros associados.`)) {
+    void showCadastroConfirm('Deseja realmente remover a cidade "' + cidade + '"? Isso também removerá todos os bairros associados.').then(function (ok) {
+        if (!ok) return;
         delete itensPersonalizados.bairros[cidade];
         itensPersonalizados.cidades.splice(index, 1);
         saveItensData();
         renderCidadesTable();
         renderBairrosTable();
         updateFormFields();
-    }
+    });
 }
 
 function removeBairro(cidade, index) {
-    if (confirm('Deseja realmente remover este bairro?')) {
+    void showCadastroConfirm('Deseja realmente remover este bairro?').then(function (ok) {
+        if (!ok) return;
         itensPersonalizados.bairros[cidade].splice(index, 1);
         if (itensPersonalizados.bairros[cidade].length === 0) {
             delete itensPersonalizados.bairros[cidade];
@@ -4511,34 +5767,37 @@ function removeBairro(cidade, index) {
         saveItensData();
         renderBairrosTable();
         updateFormFields();
-    }
+    });
 }
 
 function removeObjetivo(index) {
-    if (confirm('Deseja realmente remover este objetivo?')) {
+    void showCadastroConfirm('Deseja realmente remover este objetivo?').then(function (ok) {
+        if (!ok) return;
         itensPersonalizados.objetivos.splice(index, 1);
         saveItensData();
         renderObjetivosTable();
         updateFormFields();
-    }
+    });
 }
 
 function removeHospital(index) {
-    if (confirm('Deseja realmente remover este hospital?')) {
+    void showCadastroConfirm('Deseja realmente remover este hospital?').then(function (ok) {
+        if (!ok) return;
         itensPersonalizados.hospitais.splice(index, 1);
         saveItensData();
         renderHospitaisTable();
-        populateHospitalList(); // Atualizar campo Hospital de Destino no formulário
-    }
+        populateHospitalList();
+    });
 }
 
 function removeOM(index) {
-    if (confirm('Deseja realmente remover esta OM?')) {
+    void showCadastroConfirm('Deseja realmente remover esta OM?').then(function (ok) {
+        if (!ok) return;
         itensPersonalizados.oms.splice(index, 1);
         saveItensData();
         renderOMsTable();
-        populateOMList(); // Atualizar campo OM no formulário
-    }
+        populateOMList();
+    });
 }
 
 // Função específica para popular o campo OM (datalist)
@@ -4714,7 +5973,7 @@ function openAddItemModal(type) {
     
     // Verificar se há valor no campo
     if (!fieldValue) {
-        alert(`Por favor, preencha o campo ${fieldLabel} antes de cadastrar.`);
+        showCadastroToast('Por favor, preencha o campo ' + fieldLabel + ' antes de cadastrar.', 'warning');
         return;
     }
     
@@ -4726,22 +5985,22 @@ function openAddItemModal(type) {
     // Verificar se o item já existe
     if (type === 'setor') {
         if (itensPersonalizados && itensPersonalizados.setores && itensPersonalizados.setores.includes(fieldValue)) {
-            alert('Este setor já está cadastrado.');
+            showCadastroToast('Este setor já está cadastrado.', 'info');
             return;
         }
     } else if (type === 'responsavel') {
         if (itensPersonalizados && itensPersonalizados.responsaveis && itensPersonalizados.responsaveis.includes(fieldValue)) {
-            alert('Este responsável já está cadastrado.');
+            showCadastroToast('Este responsável já está cadastrado.', 'info');
             return;
         }
     } else if (type === 'om') {
         if (itensPersonalizados && itensPersonalizados.oms && itensPersonalizados.oms.includes(fieldValue)) {
-            alert('Esta OM já está cadastrada.');
+            showCadastroToast('Esta OM já está cadastrada.', 'info');
             return;
         }
     } else if (type === 'hospital') {
         if (itensPersonalizados && itensPersonalizados.hospitais && itensPersonalizados.hospitais.includes(fieldValue)) {
-            alert('Este hospital já está cadastrado.');
+            showCadastroToast('Este hospital já está cadastrado.', 'info');
             return;
         }
     }
@@ -4795,7 +6054,7 @@ function confirmAddItem() {
                 populateSetorList();
             }
             updateFormFields();
-            alert('Setor cadastrado com sucesso!');
+            showCadastroToast('Setor cadastrado com sucesso!', 'success');
         }
     } else if (pendingItemType === 'responsavel') {
         if (!itensPersonalizados.responsaveis) {
@@ -4809,7 +6068,7 @@ function confirmAddItem() {
                 populateResponsavelList();
             }
             updateFormFields();
-            alert('Responsável cadastrado com sucesso!');
+            showCadastroToast('Responsável cadastrado com sucesso!', 'success');
         }
     } else if (pendingItemType === 'om') {
         if (!itensPersonalizados.oms) {
@@ -4823,7 +6082,7 @@ function confirmAddItem() {
                 populateOMList();
             }
             updateFormFields();
-            alert('OM cadastrada com sucesso!');
+            showCadastroToast('OM cadastrada com sucesso!', 'success');
         }
     } else if (pendingItemType === 'hospital') {
         if (!itensPersonalizados.hospitais) {
@@ -4833,8 +6092,8 @@ function confirmAddItem() {
             itensPersonalizados.hospitais.push(pendingItemValue);
             saveItensData();
             renderHospitaisTable();
-            populateHospitalList(); // Atualizar campo Hospital de Destino no formulário
-            alert('Hospital cadastrado com sucesso!');
+            populateHospitalList();
+            showCadastroToast('Hospital cadastrado com sucesso!', 'success');
         }
     }
     
@@ -4997,10 +6256,20 @@ async function processDocumentFile(file) {
         if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
             text = await file.text();
         } else if (file.type.startsWith('image/')) {
-            // Para imagens, usar OCR
+            try {
+                if (typeof loadCadastroTesseract === 'function') {
+                    await loadCadastroTesseract();
+                }
+            } catch (loadErr) {
+                console.warn('Cadastro de Saídas: falha ao carregar Tesseract.', loadErr);
+                showProcessMessage('Não foi possível carregar o OCR. Verifique a conexão.', 'error');
+                return;
+            }
+            if (typeof Tesseract === 'undefined') {
+                showProcessMessage('OCR indisponível neste navegador.', 'error');
+                return;
+            }
             const imageUrl = URL.createObjectURL(file);
-            
-            // Usar Tesseract.js para OCR
             const { data: { text: ocrText } } = await Tesseract.recognize(
                 imageUrl,
                 'por', // Português
@@ -5427,7 +6696,9 @@ function fillFormWithExtractedData() {
     
     if (!extractedData) {
         console.error('Nenhum dado extraído disponível');
-        alert('Nenhum dado extraído. Por favor, processe o documento primeiro.');
+        if (typeof showCadastroToast === 'function') {
+            showCadastroToast('Nenhum dado extraído. Por favor, processe o documento primeiro.', 'warning');
+        }
         return;
     }
     
