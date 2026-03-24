@@ -8,9 +8,9 @@
 <script>
 window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
 </script>
-<script src="data-service.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+<script src="data-service.js?v=20260319-1" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
 :root {
@@ -104,6 +104,37 @@ main { margin: 20px 10px; }
   border-radius: 50%;
   animation: pulse-dot 2s ease-in-out infinite;
 }
+.sync-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid #d7dce5;
+  background: #f5f7fb;
+  color: #475569;
+}
+.sync-status-pill .sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+.sync-status-pill.is-loading .sync-dot,
+.sync-status-pill.is-saving .sync-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+.sync-status-pill.is-loading { background: #eef4ff; color: #1d4ed8; border-color: #c7d7ff; }
+.sync-status-pill.is-loading .sync-dot { background: #1d4ed8; }
+.sync-status-pill.is-saving { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.sync-status-pill.is-saving .sync-dot { background: #c2410c; }
+.sync-status-pill.is-offline { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.sync-status-pill.is-offline .sync-dot { background: #64748b; }
+.sync-status-pill.is-ok { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+.sync-status-pill.is-ok .sync-dot { background: #16a34a; }
+.sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.sync-status-pill.is-error .sync-dot { background: #dc2626; }
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.9); }
@@ -368,13 +399,98 @@ body[data-theme="dark"] .counter-badge {
   background: linear-gradient(135deg, #3d5a9e 0%, #4a69bd 100%);
   border-color: rgba(255, 255, 255, 0.2);
 }
+.amb-notice {
+position: fixed;
+top: 14px;
+right: 14px;
+z-index: 10050;
+display: none;
+max-width: 360px;
+padding: 10px 12px;
+border-radius: 10px;
+font-size: 13px;
+font-weight: 600;
+box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+border: 1px solid transparent;
+}
+.amb-notice.show { display: block; }
+.amb-notice.info { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.amb-notice.success { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+.amb-notice.error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+
+/* Responsividade operacional: prioriza leitura e toque em telas pequenas */
+@media (max-width: 900px) {
+  main { margin: 10px 6px; }
+  .tab-content { padding: 12px; }
+  .table-controls { flex-direction: column; align-items: stretch; gap: 8px; }
+  .table-title { font-size: 18px; text-align: center; }
+  .toolbar-actions {
+    justify-content: center;
+    padding: 8px;
+    gap: 6px;
+  }
+  .btn-action {
+    min-width: 104px;
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+  .counter-badge {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+  .date-filter-container {
+    padding: 10px;
+    gap: 8px;
+    justify-content: center;
+  }
+  .date-filter-container input[type="date"] {
+    width: 100%;
+    max-width: 100%;
+  }
+  table { min-width: 860px; }
+  th, td { padding: 8px; font-size: 13px; }
+  .action-buttons button, .action-buttons label {
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+  .obs-modal-content { width: 96%; padding: 16px; max-width: 96%; }
+}
+
+@media (max-width: 520px) {
+  .btn-action {
+    min-width: 92px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .btn-action i { font-size: 13px; }
+  .action-buttons { gap: 4px; }
+  .action-buttons button, .action-buttons label {
+    padding: 8px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+  }
+  .amb-notice {
+    top: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+    font-size: 12px;
+  }
+}
 </style>
 </head>
 <body>
+<div id="ambNotice" class="amb-notice info" role="status" aria-live="polite"></div>
 <main>
 <div id="saidasAmbulanciasSection" class="tab-content active">
 <div class="table-controls">
 <h2 class="table-title">SAÍDAS DE AMBULÂNCIAS</h2>
+<div id="syncStatusPillAmb" class="sync-status-pill is-loading" title="Status de sincronização da agenda">
+  <span class="sync-dot" aria-hidden="true"></span>
+  <span id="syncStatusTextAmb">Carregando dados...</span>
+</div>
 <div class="toolbar-actions">
 <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
 <button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
@@ -417,7 +533,7 @@ body[data-theme="dark"] .counter-badge {
 </div>
 </div>
 
-<script src="theme-listener.js"></script>
+<script src="theme-listener.js?v=20260319-1" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 let saidasAmbulancias = [];
@@ -442,9 +558,146 @@ const motorista2Select = document.getElementById('motorista2Select');
 const divisaoTransporteSelect = document.getElementById('divisaoTransporteSelect');
 const toggleSignaturesBtn = document.getElementById('toggleSignaturesBtn');
 const signaturesContainer = document.querySelector('.assinaturas-container-geral');
+const syncStatusPillAmb = document.getElementById('syncStatusPillAmb');
+const syncStatusTextAmb = document.getElementById('syncStatusTextAmb');
 const speechSynthesizer = window.speechSynthesis;
 let isSpeaking = false;
 let alertedVehicles = new Set();
+let ambNoticeTimer = null;
+
+function showAmbNotice(message, type) {
+const el = document.getElementById('ambNotice');
+if (!el) return;
+el.className = 'amb-notice show ' + (type || 'info');
+el.textContent = String(message || '');
+if (ambNoticeTimer) clearTimeout(ambNoticeTimer);
+ambNoticeTimer = setTimeout(() => {
+el.classList.remove('show');
+}, 3200);
+}
+const DEBUG_AMB = false;
+function ambDebug() {
+if (!DEBUG_AMB) return;
+try { console.log.apply(console, arguments); } catch (e) {}
+}
+const AMB_HEALTH_KEY = 'sot_amb_health_metrics_v1';
+const AMB_HEALTH_MAX_EVENTS = 300;
+const AMB_HEALTH_REMOTE_KEY = 'sot_amb_health_last_v1';
+let ambHealthMirrorTimer = null;
+let ambHealthMirrorInFlight = false;
+
+function readAmbHealth() {
+try {
+const raw = localStorage.getItem(AMB_HEALTH_KEY);
+const parsed = raw ? JSON.parse(raw) : null;
+if (!parsed || typeof parsed !== 'object') return { counters: {}, events: [] };
+if (!parsed.counters || typeof parsed.counters !== 'object') parsed.counters = {};
+if (!Array.isArray(parsed.events)) parsed.events = [];
+return parsed;
+} catch (e) {
+return { counters: {}, events: [] };
+}
+}
+
+function writeAmbHealth(m) {
+try { localStorage.setItem(AMB_HEALTH_KEY, JSON.stringify(m)); } catch (e) {}
+}
+
+function buildAmbHealthSummary() {
+const m = readAmbHealth();
+const events = Array.isArray(m.events) ? m.events : [];
+const tail = events.slice(-8).map(function (ev) {
+return {
+at: ev && ev.at ? ev.at : '',
+type: ev && ev.type ? ev.type : 'event',
+online: !!(ev && ev.online),
+payload: ev && ev.payload && typeof ev.payload === 'object' ? ev.payload : {}
+};
+});
+return {
+version: 1,
+at: new Date().toISOString(),
+page: 'Saidasdeambulancias2',
+online: !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false),
+counters: m.counters && typeof m.counters === 'object' ? m.counters : {},
+lastEvents: tail
+};
+}
+
+async function flushAmbHealthMirror() {
+if (ambHealthMirrorInFlight) return false;
+if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return false;
+if (typeof dataService === 'undefined' || typeof dataService.saveConfiguracao !== 'function') return false;
+ambHealthMirrorInFlight = true;
+try {
+await dataService.saveConfiguracao(AMB_HEALTH_REMOTE_KEY, JSON.stringify(buildAmbHealthSummary()), 'json');
+return true;
+} catch (e) {
+return false;
+} finally {
+ambHealthMirrorInFlight = false;
+}
+}
+
+function scheduleAmbHealthMirror(delayMs) {
+if (ambHealthMirrorTimer) clearTimeout(ambHealthMirrorTimer);
+ambHealthMirrorTimer = setTimeout(function () {
+ambHealthMirrorTimer = null;
+void flushAmbHealthMirror();
+}, typeof delayMs === 'number' ? delayMs : 3000);
+}
+
+function trackAmbHealth(type, payload) {
+const metrics = readAmbHealth();
+const t = String(type || 'event');
+metrics.counters[t] = (metrics.counters[t] || 0) + 1;
+metrics.events.push({
+at: new Date().toISOString(),
+type: t,
+online: !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false),
+payload: payload && typeof payload === 'object' ? payload : {}
+});
+if (metrics.events.length > AMB_HEALTH_MAX_EVENTS) {
+metrics.events = metrics.events.slice(metrics.events.length - AMB_HEALTH_MAX_EVENTS);
+}
+writeAmbHealth(metrics);
+if (t.indexOf('error') !== -1 || t.indexOf('conflict') !== -1 || t.indexOf('outbox_flush') !== -1) {
+scheduleAmbHealthMirror(800);
+}
+}
+let currentSyncStateAmb = 'loading';
+let syncStateBackToOkTimerAmb = null;
+
+function setSyncUiStateAmb(state, message, autoBackToOkMs) {
+currentSyncStateAmb = state || currentSyncStateAmb;
+if (!syncStatusPillAmb || !syncStatusTextAmb) return;
+syncStatusPillAmb.classList.remove('is-loading', 'is-saving', 'is-offline', 'is-ok', 'is-error');
+if (currentSyncStateAmb === 'saving') {
+    syncStatusPillAmb.classList.add('is-saving');
+    syncStatusTextAmb.textContent = message || 'Salvando...';
+} else if (currentSyncStateAmb === 'offline') {
+    syncStatusPillAmb.classList.add('is-offline');
+    syncStatusTextAmb.textContent = message || 'Offline';
+} else if (currentSyncStateAmb === 'error') {
+    syncStatusPillAmb.classList.add('is-error');
+    syncStatusTextAmb.textContent = message || 'Erro de sincronização';
+} else if (currentSyncStateAmb === 'ok') {
+    syncStatusPillAmb.classList.add('is-ok');
+    syncStatusTextAmb.textContent = message || 'Sincronizado';
+} else {
+    syncStatusPillAmb.classList.add('is-loading');
+    syncStatusTextAmb.textContent = message || 'Carregando dados...';
+}
+if (syncStateBackToOkTimerAmb) {
+    clearTimeout(syncStateBackToOkTimerAmb);
+    syncStateBackToOkTimerAmb = null;
+}
+if (typeof autoBackToOkMs === 'number' && autoBackToOkMs > 0) {
+    syncStateBackToOkTimerAmb = setTimeout(function () {
+        if (currentSyncStateAmb === 'error') setSyncUiStateAmb('ok', 'Sincronizado');
+    }, autoBackToOkMs);
+}
+}
 
 // NOVOS ELEMENTOS PARA MODAL DE PROBLEMAS
 const problemasModal = document.getElementById('problemasModal');
@@ -506,6 +759,8 @@ const todayFormatted = `${year}-${month}-${day}`;
 filterDateAmbInput.value = todayFormatted;
 }
 async function loadAllData() {
+const loadStart = Date.now();
+setSyncUiStateAmb('loading', 'Carregando dados...');
 try {
     let remoteLoadedSaidas = false;
     let remoteLoadedFrota = false;
@@ -564,24 +819,274 @@ if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = [];
 if (!Array.isArray(frotaData)) frotaData = [];
 if (!Array.isArray(motoristasCadastrados)) motoristasCadastrados = [];
 loadViaturasComProblemas();
-console.log('Dados carregados:', { saidasAmbulancias: saidasAmbulancias.length, frotaData: frotaData.length, motoristasCadastrados: motoristasCadastrados.length });
+ambDebug('Dados carregados:', { saidasAmbulancias: saidasAmbulancias.length, frotaData: frotaData.length, motoristasCadastrados: motoristasCadastrados.length });
+trackAmbHealth('load_success', {
+elapsedMs: Date.now() - loadStart,
+saidas: Array.isArray(saidasAmbulancias) ? saidasAmbulancias.length : 0
+});
+setSyncUiStateAmb('ok', 'Sincronizado');
 } catch (error) {
 console.error('Erro ao carregar dados:', error);
 saidasAmbulancias = saidasAmbulancias || [];
 frotaData = frotaData || [];
 motoristasCadastrados = motoristasCadastrados || [];
+trackAmbHealth('load_error', { elapsedMs: Date.now() - loadStart, message: error && error.message ? error.message : String(error) });
+if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+setSyncUiStateAmb('offline', 'Offline (usando cache local)');
+} else {
+setSyncUiStateAmb('error', 'Falha ao carregar dados', 3000);
+}
 }
 }
 async function saveData() {
+const saveStart = Date.now();
+if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) setSyncUiStateAmb('offline', 'Offline (salvo localmente)');
+else setSyncUiStateAmb('saving', 'Salvando...');
 try {
 localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') await dataService.setSaidasAmbulancias(saidasAmbulancias);
+if (await shouldBlockAmbEmptyWrite(saidasAmbulancias)) {
+setSyncUiStateAmb('error', 'Bloqueado: tentativa de limpeza acidental', 3500);
+return false;
+}
+let remoteOk = true;
+if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
+    try {
+        await dataService.setSaidasAmbulancias(saidasAmbulancias);
+        trackAmbHealth('remote_save_success', { elapsedMs: Date.now() - saveStart });
+    } catch (e) {
+        remoteOk = false;
+        trackAmbHealth('remote_save_error', { elapsedMs: Date.now() - saveStart, message: e && e.message ? e.message : String(e) });
+        enqueueAmbOutboxSnapshot(saidasAmbulancias, 'remote_set_failed');
+    }
+}
+if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+setSyncUiStateAmb('offline', 'Offline');
+enqueueAmbOutboxSnapshot(saidasAmbulancias, 'offline_save');
+trackAmbHealth('save_offline', { elapsedMs: Date.now() - saveStart });
+} else if (!remoteOk) {
+setSyncUiStateAmb('offline', 'Pendente de sincronização');
+} else {
+setSyncUiStateAmb('ok', 'Sincronizado');
+clearAmbOutboxIfMatches(saidasAmbulancias);
+trackAmbHealth('save_success', { elapsedMs: Date.now() - saveStart });
+}
 return true;
 } catch (error) {
 console.error('Erro ao salvar dados:', error);
-alert('Erro ao salvar dados. Verifique o espaço de armazenamento do navegador.');
+enqueueAmbOutboxSnapshot(saidasAmbulancias, 'save_exception');
+trackAmbHealth('save_error', { elapsedMs: Date.now() - saveStart, message: error && error.message ? error.message : String(error) });
+if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) setSyncUiStateAmb('offline', 'Offline (pendente de sincronização)');
+else setSyncUiStateAmb('error', 'Falha ao sincronizar', 3500);
+showAmbNotice('Falha ao salvar. Verifique conexão e tente novamente.', 'error');
 return false;
 }
+}
+
+const AMB_OUTBOX_KEY = 'sot_amb_outbox_v1';
+let ambOutboxFlushInFlight = false;
+let ambOutboxFlushTimer = null;
+let ambAllowEmptyWriteUntil = 0;
+
+function authorizeAmbExplicitClear(ms) {
+ambAllowEmptyWriteUntil = Date.now() + (typeof ms === 'number' ? ms : 120000);
+}
+
+function hasAmbExplicitClearAuthorization() {
+return Date.now() < Number(ambAllowEmptyWriteUntil || 0);
+}
+
+async function shouldBlockAmbEmptyWrite(list) {
+if (Array.isArray(list) && list.length > 0) return false;
+if (hasAmbExplicitClearAuthorization()) return false;
+try {
+if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+    const remoteNow = await window.firebaseSot.get('saidasAmbulancias');
+    if (Array.isArray(remoteNow) && remoteNow.length > 0) return true;
+}
+} catch (e) {
+return true;
+}
+return false;
+}
+
+function getAmbOutbox() {
+try {
+const raw = localStorage.getItem(AMB_OUTBOX_KEY);
+const parsed = raw ? JSON.parse(raw) : null;
+if (!parsed || typeof parsed !== 'object') return null;
+if (!Array.isArray(parsed.items)) return null;
+return parsed;
+} catch (e) { return null; }
+}
+
+function setAmbOutbox(payload) {
+try {
+if (!payload) localStorage.removeItem(AMB_OUTBOX_KEY);
+else localStorage.setItem(AMB_OUTBOX_KEY, JSON.stringify(payload));
+} catch (e) {}
+}
+
+function buildAmbSnapshotHash(items) {
+try { return String(JSON.stringify(items || [])).length + ':' + (items || []).length; } catch (e) { return '0:0'; }
+}
+
+function enqueueAmbOutboxSnapshot(items, reason) {
+const snap = Array.isArray(items) ? items : [];
+setAmbOutbox({
+type: 'replace_collection',
+key: 'saidasAmbulancias',
+queuedAt: new Date().toISOString(),
+reason: String(reason || 'unknown'),
+hash: buildAmbSnapshotHash(snap),
+items: snap
+});
+trackAmbHealth('outbox_enqueue', { reason: String(reason || ''), size: snap.length });
+}
+
+function clearAmbOutboxIfMatches(items) {
+const out = getAmbOutbox();
+if (!out) return;
+if (out.hash === buildAmbSnapshotHash(items)) setAmbOutbox(null);
+}
+
+async function flushAmbOutbox() {
+if (ambOutboxFlushInFlight) return false;
+if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return false;
+const out = getAmbOutbox();
+if (!out || !Array.isArray(out.items)) return true;
+if (typeof dataService === 'undefined' || typeof dataService.setSaidasAmbulancias !== 'function') return false;
+ambOutboxFlushInFlight = true;
+setSyncUiStateAmb('saving', 'Sincronizando pendências...');
+try {
+await dataService.setSaidasAmbulancias(out.items);
+setAmbOutbox(null);
+setSyncUiStateAmb('ok', 'Sincronizado');
+trackAmbHealth('outbox_flush_success', { size: Array.isArray(out.items) ? out.items.length : 0 });
+return true;
+} catch (e) {
+setSyncUiStateAmb('offline', 'Pendente de sincronização');
+trackAmbHealth('outbox_flush_error', { message: e && e.message ? e.message : String(e) });
+return false;
+} finally {
+ambOutboxFlushInFlight = false;
+}
+}
+
+function scheduleAmbOutboxFlush(delayMs) {
+if (ambOutboxFlushTimer) clearTimeout(ambOutboxFlushTimer);
+ambOutboxFlushTimer = setTimeout(() => {
+ambOutboxFlushTimer = null;
+void flushAmbOutbox();
+}, typeof delayMs === 'number' ? delayMs : 1200);
+}
+
+function nowIsoAmb() {
+    try { return new Date().toISOString(); } catch (e) { return ''; }
+}
+
+function getUpdatedByAmb() {
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.getCurrentUserProfile === 'function') {
+            var u = window.firebaseSot.getCurrentUserProfile();
+            if (u && (u.email || u.uid || u.displayName)) return String(u.email || u.uid || u.displayName);
+        }
+    } catch (e) {}
+    return 'local-user';
+}
+
+function touchAmbRowsByIds(ids) {
+    var idList = Array.isArray(ids) ? ids.map(function (x) { return String(x); }).filter(Boolean) : [];
+    var who = getUpdatedByAmb();
+    idList.forEach(function (sid) {
+        var idx = saidasAmbulancias.findIndex(function (item) { return String(item.id) === sid; });
+        if (idx !== -1) {
+            saidasAmbulancias[idx].updatedAt = nowIsoAmb();
+            saidasAmbulancias[idx].updatedBy = who;
+        }
+    });
+    return idList;
+}
+
+function getAmbUpdatedMs(item) {
+    if (!item || !item.updatedAt) return 0;
+    try {
+        var t = Date.parse(String(item.updatedAt));
+        return Number.isFinite(t) ? t : 0;
+    } catch (e) { return 0; }
+}
+
+function sameAmbContent(a, b) {
+    try { return JSON.stringify(a || {}) === JSON.stringify(b || {}); } catch (e) { return false; }
+}
+
+async function resolveAmbConflictsLatestWins(idList) {
+    const ids = Array.isArray(idList) ? idList.map(x => String(x)) : [];
+    if (!ids.length) return ids;
+    let remote = null;
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+            const r = await window.firebaseSot.get('saidasAmbulancias');
+            if (Array.isArray(r)) remote = r;
+        }
+    } catch (e) {}
+    if (!Array.isArray(remote)) return ids;
+
+    const conflicted = [];
+    ids.forEach((sid) => {
+        const localIdx = saidasAmbulancias.findIndex(s => String(s.id) === sid);
+        if (localIdx === -1) return;
+        const localRow = saidasAmbulancias[localIdx];
+        const remoteRow = remote.find(r => String((r && r.id) || '') === sid);
+        if (!remoteRow) return;
+        const localMs = getAmbUpdatedMs(localRow);
+        const remoteMs = getAmbUpdatedMs(remoteRow);
+        if (remoteMs > localMs && !sameAmbContent(localRow, remoteRow)) {
+            saidasAmbulancias[localIdx] = remoteRow;
+            conflicted.push(sid);
+        }
+    });
+
+    if (conflicted.length) {
+        try { localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias)); } catch (e) {}
+        setSyncUiStateAmb('error', 'Conflito detectado: versão mais recente mantida em ' + conflicted.length + ' registro(s).', 4500);
+        trackAmbHealth('conflict_latest_wins', { total: conflicted.length, ids: conflicted });
+        try { populateTables(); } catch (e) {}
+    }
+    return ids.filter(sid => !conflicted.includes(sid));
+}
+
+// Pipeline único de escrita para reduzir duplicação e inconsistência entre handlers.
+const ambulanciaWritePipeline = {
+    async persistAndRefresh(options) {
+        const opts = options || {};
+        const writableIds = await resolveAmbConflictsLatestWins(opts.ids || []);
+        touchAmbRowsByIds(writableIds);
+        const ok = await saveData();
+        if (!ok) return false;
+        if (opts.row) {
+            try { atualizarEstiloDaLinha(opts.row); } catch (e) {}
+        }
+        if (opts.repopulateTables) {
+            try { populateTables(); } catch (e) {}
+        }
+        try { window.parent.postMessage({ type: 'refresh_all_data' }, '*'); } catch (e) {}
+        return true;
+    }
+};
+
+// Proteção anti-duplo clique: idempotência por chave de ação.
+const ambulanciaActionLocks = new Set();
+async function runAmbulanciaLocked(actionKey, fn) {
+    const key = String(actionKey || '');
+    if (!key) return false;
+    if (ambulanciaActionLocks.has(key)) return false;
+    ambulanciaActionLocks.add(key);
+    try {
+        await fn();
+        return true;
+    } finally {
+        ambulanciaActionLocks.delete(key);
+    }
 }
 function populateMotoristaSelects(motoristas) {
 const selects = [
@@ -663,9 +1168,9 @@ return group;
 });
 }
 function getLastKmChegadaAmb(placa) {
-    console.log('Getting last KM for placa:', placa);
+    ambDebug('Getting last KM for placa:', placa);
     const allSaidas = [...saidasAmbulancias].filter(s => s.viatura === placa);
-    console.log('Filtered saidas:', allSaidas.length);
+    ambDebug('Filtered saidas:', allSaidas.length);
     allSaidas.sort((a, b) => {
         const dateA = new Date(a.dataSaida + 'T' + (a.saida || '00:00'));
         const dateB = new Date(b.dataSaida + 'T' + (b.saida || '00:00'));
@@ -673,20 +1178,19 @@ function getLastKmChegadaAmb(placa) {
     });
     // Primeiro, tenta encontrar o último KM CHEGADA válido
     for (let s of allSaidas) {
-        console.log('Checking kmChegada:', s.kmChegada, s.kmChegada && s.kmChegada.trim() !== '');
+        ambDebug('Checking kmChegada:', s.kmChegada, s.kmChegada && s.kmChegada.trim() !== '');
         if (s.kmChegada && s.kmChegada.trim() !== '') return s.kmChegada;
     }
     // Se não encontrou, usa o último KM SAÍDA válido
     for (let s of allSaidas) {
-        console.log('Checking kmSaida:', s.kmSaida, s.kmSaida && s.kmSaida.trim() !== '');
+        ambDebug('Checking kmSaida:', s.kmSaida, s.kmSaida && s.kmSaida.trim() !== '');
         if (s.kmSaida && s.kmSaida.trim() !== '') return s.kmSaida;
     }
-    console.log('No last KM found');
+    ambDebug('No last KM found');
     return '';
 }
 function populateTables() {
 alertedVehicles.clear();
-loadAllData();
 const filterDateAmb = filterDateAmbInput.value;
 let filteredSaidasAmb = filterDateAmb ? saidasAmbulancias.filter(s => s.dataSaida === filterDateAmb) : saidasAmbulancias;
 filteredSaidasAmb.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
@@ -757,16 +1261,16 @@ if (timeInput) {
 timeInput.addEventListener('change', handleTimeInputChange);
 }
 row.querySelector('td[contenteditable="true"][data-key="kmSaida"]')?.addEventListener('focus', (e) => {
-    console.log('Focus on KM SAÍDA triggered');
+    ambDebug('Focus on KM SAÍDA triggered');
     if (e.target.textContent.trim() === '') {
-        console.log('KM SAÍDA is empty');
+        ambDebug('KM SAÍDA is empty');
         const placa = row.querySelector('td').textContent.trim();
-        console.log('Placa:', placa);
+        ambDebug('Placa:', placa);
         const lastKm = getLastKmChegadaAmb(placa);
-        console.log('Last KM:', lastKm);
+        ambDebug('Last KM:', lastKm);
         e.target.textContent = lastKm;
     } else {
-        console.log('KM SAÍDA is not empty');
+        ambDebug('KM SAÍDA is not empty');
     }
 });
 }
@@ -778,15 +1282,20 @@ const row = cell.closest('tr');
 const ids = row.dataset.id.split(',');
 const originalValue = cell.dataset.originalValue;
 
-// Verifica se o valor original era "ASD" ou se a célula está vazia
+// Edição sensível de motorista: exige autenticação Google ativa.
 if (originalValue === 'ASD' || originalValue === '') {
-// Solicita a senha antes de permitir a edição
-const senha = prompt('Digite a senha para editar o motorista:');
-    
-// Verifica se a senha está correta
-const senhaCorreta = localStorage.getItem('adminPassword') || '1234';
-    
-if (senha === senhaCorreta) {
+let userProfile = null;
+try {
+    if (window.firebaseSot && typeof window.firebaseSot.getCurrentUserProfile === 'function') {
+        userProfile = window.firebaseSot.getCurrentUserProfile();
+    }
+} catch (e) {}
+if (!userProfile || !(userProfile.uid || userProfile.email)) {
+    showAmbNotice('Faça login com Google para editar o motorista.', 'error');
+    return;
+}
+
+if (confirm('Confirmar edição sensível de motorista como ' + (userProfile.email || userProfile.displayName || userProfile.uid) + '?')) {
 // Permite a edição
 cell.contentEditable = 'true';
         
@@ -803,7 +1312,7 @@ sel.addRange(range);
 }, 10);
         
 // Adiciona event listener para salvar quando perder o foco
-const saveEdit = () => {
+const saveEdit = async () => {
 cell.contentEditable = 'false';
 const newValue = cell.textContent.trim();
             
@@ -818,8 +1327,7 @@ saidasAmbulancias[index].motorista = newValue;
 }
 });
             
-saveData();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+await ambulanciaWritePipeline.persistAndRefresh({ ids: ids, row: row, repopulateTables: false });
             
 // Remove o event listener
 cell.removeEventListener('blur', saveEdit);
@@ -830,25 +1338,40 @@ cell.removeEventListener('keydown', handleKeyDown);
 const handleKeyDown = (e) => {
 if (e.key === 'Enter') {
 e.preventDefault();
-saveEdit();
+void saveEdit();
 }
 };
         
 cell.addEventListener('blur', saveEdit);
 cell.addEventListener('keydown', handleKeyDown);
-} else if (senha !== null) {
-// Se a senha foi digitada e está incorreta
-alert('Senha incorreta!');
+} else {
+showAmbNotice('Edição cancelada.', 'info');
 }
 }
 }
 
-function handleTimeInputChange(event) {
+async function handleTimeInputChange(event) {
 const input = event.target;
 const row = input.closest('tr');
 const ids = row.dataset.id.split(',');
 const keyToUpdate = input.dataset.key;
-const valueToSave = input.value;
+const normalizedTime = normalizeAndValidateAmbValue('chegada', input.value);
+if (!normalizedTime.ok) {
+    showAmbNotice(normalizedTime.message, 'error');
+    input.value = '';
+    return;
+}
+const valueToSave = normalizedTime.value;
+// Regra crítica: não permitir CHEGADA sem KM SAÍDA preenchido.
+const idxRef = saidasAmbulancias.findIndex(item => item.id === ids[0]);
+if (idxRef !== -1) {
+    const kmSaidaRef = String(saidasAmbulancias[idxRef].kmSaida || '').trim();
+    if (!kmSaidaRef && valueToSave) {
+        showAmbNotice('Preencha o KM Saída antes de informar a hora de chegada.', 'error');
+        input.value = saidasAmbulancias[idxRef].chegada || '';
+        return;
+    }
+}
 let updated = false;
 ids.forEach(id => {
 const index = saidasAmbulancias.findIndex(item => item.id === id);
@@ -857,9 +1380,8 @@ saidasAmbulancias[index][keyToUpdate] = valueToSave;
 updated = true;
 }
 });
-if (updated && saveData()) {
-atualizarEstiloDaLinha(row);
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+if (updated) {
+await ambulanciaWritePipeline.persistAndRefresh({ ids: ids, row: row, repopulateTables: false });
 }
 }
 function handleViewRow(event) {
@@ -977,16 +1499,63 @@ function formatKm(value) {
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function handleCellEdit(event) {
+function sanitizeTextValue(raw) {
+    var txt = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+    var lower = txt.toLowerCase();
+    if (lower === 'undefined' || lower === 'null' || lower === 'nan') return '';
+    return txt;
+}
+
+function isValidTimeHHmm(v) {
+    if (v === '') return true;
+    if (!/^\d{2}:\d{2}$/.test(v)) return false;
+    var p = v.split(':');
+    var h = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
+
+function kmDigitsOnly(v) {
+    return String(v == null ? '' : v).replace(/[^\d]/g, '');
+}
+
+function normalizeAndValidateAmbValue(key, rawValue) {
+    var val = sanitizeTextValue(rawValue);
+    if (key === 'kmSaida' || key === 'kmChegada') {
+        if (val === '') return { ok: true, value: '' };
+        var digits = kmDigitsOnly(val);
+        if (!/^\d+$/.test(digits)) return { ok: false, message: 'Valor inválido para KM. Use apenas números.' };
+        var num = parseInt(digits, 10);
+        if (!Number.isFinite(num) || num < 0) return { ok: false, message: 'KM deve ser numérico e não negativo.' };
+        return { ok: true, value: formatKm(String(num)) };
+    }
+    if (key === 'chegada' || key === 'saida' || key === 'hora' || key === 'horaSaida' || key === 'horaPedido') {
+        if (!isValidTimeHHmm(val)) return { ok: false, message: 'Hora inválida. Use o formato HH:MM.' };
+        return { ok: true, value: val };
+    }
+    if (val.length > 220) return { ok: false, message: 'Texto muito longo. Limite de 220 caracteres.' };
+    return { ok: true, value: val };
+}
+
+async function handleCellEdit(event) {
 const cell = event.target;
 const row = cell.closest('tr');
 const ids = row.dataset.id.split(',');
 const keyToUpdate = cell.dataset.key;
 let valueToSave = cell.textContent.trim();
+if (!keyToUpdate) return;
 
 // Formatar KM se for kmSaida ou kmChegada
 if (keyToUpdate === 'kmSaida' || keyToUpdate === 'kmChegada') {
-    valueToSave = formatKm(valueToSave);
+    const normalizedKm = normalizeAndValidateAmbValue(keyToUpdate, valueToSave);
+    if (!normalizedKm.ok) {
+        showAmbNotice(normalizedKm.message, 'error');
+        const oldItem = saidasAmbulancias.find(item => item.id === ids[0]);
+        const oldVal = oldItem ? (oldItem[keyToUpdate] || '') : '';
+        cell.textContent = oldVal ? formatKm(String(oldVal)) : '';
+        return;
+    }
+    valueToSave = normalizedKm.value;
     cell.textContent = valueToSave; // Atualizar a célula também
 }
 
@@ -997,6 +1566,11 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
         const kmSaidaStr = saidaData.kmSaida ? saidaData.kmSaida.replace(/\./g, '') : '';
         const kmChegadaStr = valueToSave.replace(/\./g, '');
         
+        if (!kmSaidaStr && kmChegadaStr) {
+            showAmbNotice('Preencha o KM Saída antes do KM Chegada.', 'error');
+            cell.textContent = '';
+            return;
+        }
         if (kmSaidaStr && kmChegadaStr) {
             const kmSaida = parseFloat(kmSaidaStr);
             const kmChegada = parseFloat(kmChegadaStr);
@@ -1021,6 +1595,16 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
     }
 }
 
+const normalizedGeneric = normalizeAndValidateAmbValue(keyToUpdate, valueToSave);
+if (!normalizedGeneric.ok) {
+    showAmbNotice(normalizedGeneric.message, 'error');
+    const oldItem = saidasAmbulancias.find(item => item.id === ids[0]);
+    cell.textContent = oldItem ? sanitizeTextValue(oldItem[keyToUpdate] || '') : '';
+    return;
+}
+valueToSave = normalizedGeneric.value;
+cell.textContent = valueToSave;
+
 let updated = false;
 ids.forEach(id => {
 const index = saidasAmbulancias.findIndex(item => item.id === id);
@@ -1029,9 +1613,8 @@ saidasAmbulancias[index][keyToUpdate] = valueToSave;
 updated = true;
 }
 });
-if (updated && saveData()) {
-atualizarEstiloDaLinha(row);
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+if (updated) {
+await ambulanciaWritePipeline.persistAndRefresh({ ids: ids, row: row, repopulateTables: false });
 }
 
 // Novo: Preencher CHEGADA automaticamente se KM CHEGADA foi preenchido
@@ -1047,22 +1630,31 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
                 const index = saidasAmbulancias.findIndex(item => item.id === id);
                 if (index !== -1) saidasAmbulancias[index].chegada = currentTime;
             });
-            saveData();
-            atualizarEstiloDaLinha(row);
+            await ambulanciaWritePipeline.persistAndRefresh({ ids: ids, row: row, repopulateTables: false });
         }
     }
 }
 }
-function handleDeleteRow(event) {
+async function handleDeleteRow(event) {
 const row = event.target.closest('tr');
 if (!row) return;
 if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 const idsToRemove = row.dataset.id.split(',');
-saidasAmbulancias = saidasAmbulancias.filter(item => !idsToRemove.includes(item.id));
-if (saveData()) {
-populateTables();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+const totalAntes = Array.isArray(saidasAmbulancias) ? saidasAmbulancias.length : 0;
+const totalRemovidos = saidasAmbulancias.filter(item => idsToRemove.includes(item.id)).length;
+const vaiZerarLista = totalAntes > 0 && (totalAntes - totalRemovidos) === 0;
+if (vaiZerarLista) {
+const confirmacaoForte = prompt('Atenção: esta ação vai apagar TODAS as saídas de ambulâncias do Firebase.\nDigite APAGAR TUDO para confirmar.');
+if (confirmacaoForte !== 'APAGAR TUDO') {
+    showAmbNotice('Exclusão total cancelada.', 'info');
+    return;
 }
+authorizeAmbExplicitClear(180000);
+}
+await runAmbulanciaLocked('delete:' + row.dataset.id, async function () {
+saidasAmbulancias = saidasAmbulancias.filter(item => !idsToRemove.includes(item.id));
+await ambulanciaWritePipeline.persistAndRefresh({ repopulateTables: true });
+});
 }
 }
 function handleObsButtonClick(event) {
@@ -1184,7 +1776,7 @@ doc.save(`Relatorio_Saidas_Ambulancias_${filterDateAmbInput.value || 'Geral'}.pd
 toggleSignaturesBtn.addEventListener('click', () => {
 signaturesContainer.style.display = signaturesContainer.style.display === 'none' ? 'flex' : 'none';
 });
-saveObsBtn.addEventListener('click', () => {
+saveObsBtn.addEventListener('click', async () => {
 if (currentObsContext && currentObsContext.ids.length > 0) {
 const newObs = obsTextarea.value.trim();
 const idToUpdate = currentObsContext.ids[0];
@@ -1192,11 +1784,11 @@ const index = saidasAmbulancias.findIndex(item => item.id === idToUpdate);
 if (index !== -1) {
 saidasAmbulancias[index].observacoes = newObs;
 }
-if (saveData()) {
-populateTables();
+await runAmbulanciaLocked('obs:' + idToUpdate, async function () {
+if (await ambulanciaWritePipeline.persistAndRefresh({ ids: [idToUpdate], repopulateTables: true })) {
 closeAndResetObsModal();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 }
+});
 }
 });
 cancelObsBtn.addEventListener('click', closeAndResetObsModal);
@@ -1218,10 +1810,7 @@ problemasModal.querySelector('.close-button').addEventListener('click', closePro
 
 window.addEventListener('message', (event) => {
 if (event.data?.type === 'refresh_data' || event.data.type === 'refresh_all_data') {
-setDateToToday();
-loadAllData();
-populateTables();
-populateMotoristaSelects(motoristasCadastrados);
+scheduleAmbUnifiedReload({ resetDate: true, reason: 'message_refresh' }, 100);
 }
 // NOVO: LISTENER PARA ATUALIZAÇÃO DE VIATURAS COM PROBLEMAS
 else if (event.data?.type === 'viaturas_problemas_update') {
@@ -1263,7 +1852,7 @@ function openPrintModal() {
     const allDates = [...new Set(saidasAmbulancias.map(s => s.dataSaida).filter(Boolean))];
     
     if (allDates.length === 0) {
-        alert('Não há saídas cadastradas para imprimir.');
+        showAmbNotice('Não há saídas cadastradas para imprimir.', 'info');
         return;
     }
     
@@ -1414,7 +2003,7 @@ function confirmMotoristasSelection() {
     const motorista2 = motorista2Select ? motorista2Select.value : '';
     
     if (!motorista1 || !motorista2) {
-        alert('Por favor, selecione os dois motoristas.');
+        showAmbNotice('Selecione os dois motoristas para continuar.', 'error');
         return;
     }
     
@@ -1555,7 +2144,7 @@ function generatePrintHTML(selectedDates, motoristasPorData) {
 
 function printSelectedDates() {
     if (selectedDatesSet.size === 0) {
-        alert('Selecione pelo menos uma data para imprimir.');
+        showAmbNotice('Selecione pelo menos uma data para imprimir.', 'error');
         return;
     }
     
@@ -1572,7 +2161,7 @@ function printSelectedDates() {
     
     // Validar se todas as datas têm motoristas selecionados
     if (datasIncompletas.length > 0) {
-        alert(`Por favor, selecione os dois motoristas para as seguintes datas:\n${datasIncompletas.join('\n')}`);
+        showAmbNotice('Selecione os dois motoristas para todas as datas escolhidas.', 'error');
         return;
     }
     
@@ -1637,11 +2226,54 @@ motoristasModal.addEventListener('click', (e) => {
 
 // Função para inicializar e atualizar dados
 let refreshTimeout = null;
+let ambReloadInFlight = false;
+let ambReloadQueued = false;
+let ambReloadTimer = null;
+let ambReloadOpts = { resetDate: true };
+let ambReloadLastReason = '';
+let ambReloadLastRunAt = 0;
+let ambReloadLastRequestAt = 0;
+
+async function runAmbUnifiedReload() {
+if (ambReloadInFlight) {
+    ambReloadQueued = true;
+    return;
+}
+ambReloadInFlight = true;
+try {
+    if (ambReloadOpts && ambReloadOpts.resetDate) setDateToToday();
+    await loadAllData();
+    populateTables();
+    populateMotoristaSelects(motoristasCadastrados);
+    ambReloadLastRunAt = Date.now();
+} catch (e) {
+    console.warn('Saídas Ambulâncias: falha em recarga unificada.', e);
+} finally {
+    ambReloadInFlight = false;
+    if (ambReloadQueued) {
+        ambReloadQueued = false;
+        scheduleAmbUnifiedReload({ resetDate: false }, 120);
+    }
+}
+}
+
+function scheduleAmbUnifiedReload(options, delayMs) {
+if (ambReloadTimer) clearTimeout(ambReloadTimer);
+ambReloadOpts = Object.assign({ resetDate: false }, options || {});
+ambReloadLastReason = String(ambReloadOpts.reason || '');
+ambReloadLastRequestAt = Date.now();
+ambReloadTimer = setTimeout(() => {
+    ambReloadTimer = null;
+    // Cooldown curto para evitar cascata de múltiplos eventos equivalentes.
+    if ((Date.now() - ambReloadLastRunAt) < 120 && (Date.now() - ambReloadLastRequestAt) < 200) {
+        return;
+    }
+    void runAmbUnifiedReload();
+}, typeof delayMs === 'number' ? delayMs : 120);
+}
+
 function initializeAndRefresh() {
-setDateToToday();
-loadAllData();
-populateTables();
-populateMotoristaSelects(motoristasCadastrados);
+scheduleAmbUnifiedReload({ resetDate: true, reason: 'init' }, 0);
 }
 
 // Função com debounce para evitar múltiplas chamadas
@@ -1650,27 +2282,106 @@ if (refreshTimeout) {
 clearTimeout(refreshTimeout);
 }
 refreshTimeout = setTimeout(() => {
-initializeAndRefresh();
+scheduleAmbUnifiedReload({ resetDate: false, reason: 'debounced_refresh' }, 0);
 refreshTimeout = null;
 }, 100);
 }
 
+// Recarregamento robusto após autenticação tardia (mobile/iframe):
+// evita estado "logado mas com dados antigos".
+let ambPostLoginRefreshTimer = null;
+function scheduleAmbPostLoginRefresh() {
+if (ambPostLoginRefreshTimer) clearTimeout(ambPostLoginRefreshTimer);
+ambPostLoginRefreshTimer = setTimeout(async () => {
+    ambPostLoginRefreshTimer = null;
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+            window.firebaseSot.invalidateCache('saidasAmbulancias');
+            window.firebaseSot.invalidateCache('viaturasCadastradas');
+            window.firebaseSot.invalidateCache('motoristasCadastrados');
+        }
+    } catch (e) {}
+    scheduleAmbUnifiedReload({ resetDate: false, reason: 'post_login' }, 80);
+}, 300);
+}
+
 // Inicializar ao carregar
 initializeAndRefresh();
+trackAmbHealth('page_init', {});
+
+window.addEventListener('sot-firebase-auth-changed', (ev) => {
+if (ev && ev.detail && ev.detail.signedIn) {
+    scheduleAmbPostLoginRefresh();
+    trackAmbHealth('auth_signed_in', {});
+    scheduleAmbHealthMirror(500);
+}
+});
+window.addEventListener('online', () => {
+setSyncUiStateAmb('loading', 'Conexão restabelecida. Sincronizando...');
+trackAmbHealth('browser_online', {});
+scheduleAmbOutboxFlush(300);
+scheduleAmbHealthMirror(1200);
+});
+window.addEventListener('offline', () => {
+setSyncUiStateAmb('offline', 'Offline');
+trackAmbHealth('browser_offline', {});
+});
 
 // Atualizar quando a página se torna visível (quando a aba é aberta)
 document.addEventListener('visibilitychange', () => {
 if (!document.hidden) {
-debouncedRefresh();
+scheduleAmbUnifiedReload({ resetDate: false, reason: 'visibility' }, 90);
+scheduleAmbOutboxFlush(0);
 }
 });
 
 // Também atualizar quando a janela recebe foco (mas apenas se estiver visível)
 window.addEventListener('focus', () => {
 if (!document.hidden) {
-debouncedRefresh();
+scheduleAmbUnifiedReload({ resetDate: false, reason: 'focus' }, 120);
+scheduleAmbOutboxFlush(0);
 }
 });
+
+window.addEventListener('error', function (ev) {
+trackAmbHealth('window_error', {
+message: ev && ev.message ? ev.message : 'error',
+source: ev && ev.filename ? ev.filename : '',
+line: ev && ev.lineno ? ev.lineno : 0
+});
+});
+
+window.addEventListener('unhandledrejection', function (ev) {
+const reason = ev && ev.reason ? (ev.reason.message || String(ev.reason)) : 'unhandledrejection';
+trackAmbHealth('unhandled_rejection', { reason: reason });
+});
+
+window.getAmbHealthMetrics = function () {
+return readAmbHealth();
+};
+window.clearAmbHealthMetrics = function () {
+writeAmbHealth({ counters: {}, events: [] });
+};
+
+window.addEventListener('storage', (ev) => {
+if (!ev || ev.key !== 'saidasAmbulancias') return;
+scheduleAmbUnifiedReload({ resetDate: false, reason: 'storage' }, 180);
+});
+
+if (typeof BroadcastChannel !== 'undefined') {
+try {
+const ambBc = new BroadcastChannel('sot_saidas_ambulancias');
+ambBc.onmessage = function () {
+scheduleAmbUnifiedReload({ resetDate: false, reason: 'broadcast_channel' }, 160);
+};
+} catch (e) {}
+}
+
+setInterval(() => {
+if (document.hidden) return;
+if (getAmbOutbox()) scheduleAmbOutboxFlush(0);
+scheduleAmbHealthMirror(1500);
+}, 20000);
 });
 </script>
 
@@ -1801,7 +2512,7 @@ function closeKmAlertModal() {
 }
 
 // Função para apagar KM CHEGADA
-function clearKmChegada() {
+async function clearKmChegada() {
     if (!kmAlertCanClear) {
         return;
     }
@@ -1828,15 +2539,9 @@ function clearKmChegada() {
         
         // Salvar os dados se houver atualização
         if (updated) {
-            if (typeof saveData === 'function') {
-                saveData();
-            }
-            if (typeof atualizarEstiloDaLinha === 'function') {
-                atualizarEstiloDaLinha(kmAlertRow);
-            }
-            if (window.parent && window.parent.postMessage) {
-                window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-            }
+            await runAmbulanciaLocked('clearKmChegada:' + (kmAlertRow && kmAlertRow.dataset ? kmAlertRow.dataset.id : ''), async function () {
+                await ambulanciaWritePipeline.persistAndRefresh({ ids: kmAlertIds, row: kmAlertRow, repopulateTables: false });
+            });
         }
     } catch (error) {
         console.error('Erro ao apagar KM CHEGADA:', error);
