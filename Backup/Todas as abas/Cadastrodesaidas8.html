@@ -11,10 +11,10 @@
 <!-- Biblioteca Tesseract.js para OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
 <script src="theme-listener.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
+<!-- Firestore modular + Auth (mesma sessão Google que index.html — iframes não tinham token → permission-denied) -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+</script>
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="junta-saidas-service.js"></script>
@@ -1611,38 +1611,11 @@ body[data-theme="dark"] button[class*="btn"]:hover {
 </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-// Carregar itens personalizados primeiro
-loadItensData();
-// Atualizar campos do formulário com os itens carregados (com pequeno delay para garantir que o DOM está pronto)
-setTimeout(() => {
-    updateFormFields();
-    
-    // Preencher automaticamente data e hora do pedido com valores atuais
-    const dataPedidoInput = document.getElementById('registerDataPedido');
-    const horaPedidoInput = document.getElementById('registerHoraPedido');
-    
-    if (dataPedidoInput && !dataPedidoInput.value) {
-        const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const dia = String(hoje.getDate()).padStart(2, '0');
-        dataPedidoInput.value = `${ano}-${mes}-${dia}`;
-    }
-    
-    if (horaPedidoInput && !horaPedidoInput.value) {
-        const agora = new Date();
-        const horas = String(agora.getHours()).padStart(2, '0');
-        const minutos = String(agora.getMinutes()).padStart(2, '0');
-        horaPedidoInput.value = `${horas}:${minutos}`;
-    }
-    
-    // Garantir que o botão de carregar documento apareça se tipo for Ambulância
-    adjustRegisterFormFields();
-}, 100);
-
-let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+document.addEventListener('DOMContentLoaded', async () => {
+// ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
+// Viaturas/motoristas vêm do Firebase em loadDataAndPopulateTables (evita lista local antiga antes da nuvem)
+let viaturasCadastradas = [];
+let motoristasCadastrados = [];
 let saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
 let saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
 const subTabButtons = document.querySelectorAll('#registerSaidaSection .sub-tab-button');
@@ -1688,6 +1661,126 @@ const cancelSerialRegisterBtn = document.getElementById('cancelSerialRegisterBtn
 let calendarDate = new Date();
 let selectedDates = new Set();
 let showingOnlyIncomplete = false;
+
+// ========== UTILITÁRIOS: VALIDAÇÃO E DEBOUNCE ==========
+function debounce(fn, ms) {
+  var t;
+  return function () {
+    var a = arguments;
+    clearTimeout(t);
+    t = setTimeout(function () { fn.apply(this, a); }, ms);
+  };
+}
+var ValidacaoCadastro = {
+  sanitize: function (str) {
+    if (str == null) return '';
+    return String(str).trim().replace(/\s+/g, ' ').slice(0, 500);
+  },
+  validateKm: function (val) {
+    if (val == null || String(val).trim() === '') return true;
+    var n = parseFloat(String(val).replace(',', '.'));
+    return !isNaN(n) && n >= 0 && n < 10000000;
+  },
+  validateRequired: function (el) {
+    if (!el) return false;
+    return el.value != null && String(el.value).trim() !== '';
+  }
+};
+
+// ========== NORMALIZAÇÃO (compatibilidade com dados antigos/offline) ==========
+function parseDateToISO(value) {
+  if (!value) return '';
+  var s = String(value).trim();
+  if (!s) return '';
+  // Já está em ISO (YYYY-MM-DD)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  // DD/MM/YYYY
+  var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return m[3] + '-' + String(m[2]).padStart(2, '0') + '-' + String(m[1]).padStart(2, '0');
+  // tenta Date()
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  return '';
+}
+
+function normalizeSaida(raw, forcedTipo) {
+  var s = raw && typeof raw === 'object' ? { ...raw } : {};
+  var tipo = (s.tipo || forcedTipo || '').toString().trim();
+  if (!tipo) tipo = forcedTipo || '';
+  s.tipo = tipo;
+
+  // Datas: garantir dataSaida/dataPedido no formato ISO
+  if (!s.dataSaida) s.dataSaida = s.data || s.data_saida || s['Data'] || s['DATA'] || '';
+  if (!s.dataPedido) s.dataPedido = s.dataPedido || s.data_pedido || '';
+  s.dataSaida = parseDateToISO(s.dataSaida);
+  s.dataPedido = parseDateToISO(s.dataPedido);
+
+  // Hora
+  if (!s.horaSaida) s.horaSaida = s.saida || s.horario || s.hora || '';
+  if (!s.saida) s.saida = s.horaSaida || '';
+
+  // Destino/Bairro/Hospital (compat)
+  if (!s.bairro) s.bairro = s.endereco_bairro || s['Bairro'] || '';
+  if (!s.destino) s.destino = s.destino || s.bairro || '';
+  if (!s.hospital) s.hospital = s.hospitalDestino || s['Hospital de Destino'] || s.hospital || '';
+
+  // IDs (evitar itens "invisíveis" por não terem id)
+  if (!s.id) s.id = s._id || s.uuid || s.key || '';
+  if (!s.id) {
+    // fallback determinístico para não duplicar fácil
+    var seed = [
+      s.tipo || '',
+      s.dataSaida || '',
+      s.horaSaida || '',
+      s.viatura || s.viatura_id || '',
+      s.motorista || s.motorista_id || '',
+      s.bairro || '',
+      s.hospital || ''
+    ].join('|');
+    s.id = 'norm_' + btoa(unescape(encodeURIComponent(seed))).slice(0, 32);
+  }
+
+  // kmSaida/kmChegada: manter strings como no SOT
+  if (s.kmSaida == null) s.kmSaida = '';
+  if (s.kmChegada == null) s.kmChegada = '';
+  if (s.chegada == null) s.chegada = s.chegada || '';
+
+  return s;
+}
+
+function mergeById(primaryArr, secondaryArr, forcedTipo) {
+  var map = new Map();
+  (Array.isArray(primaryArr) ? primaryArr : []).forEach(function (it) {
+    var n = normalizeSaida(it, forcedTipo);
+    map.set(String(n.id), n);
+  });
+  (Array.isArray(secondaryArr) ? secondaryArr : []).forEach(function (it) {
+    var n = normalizeSaida(it, forcedTipo);
+    var id = String(n.id);
+    if (!map.has(id)) map.set(id, n);
+  });
+  return Array.from(map.values());
+}
+
+// ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
+loadItensData();
+setTimeout(function () {
+  updateFormFields();
+  var dataPedidoInput = document.getElementById('registerDataPedido');
+  var horaPedidoInput = document.getElementById('registerHoraPedido');
+  if (dataPedidoInput && !dataPedidoInput.value) {
+    var hoje = new Date();
+    dataPedidoInput.value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-' + String(hoje.getDate()).padStart(2, '0');
+  }
+  if (horaPedidoInput && !horaPedidoInput.value) {
+    var agora = new Date();
+    horaPedidoInput.value = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+  }
+  adjustRegisterFormFields();
+}, 100);
+
 function downloadPdfTable(tableId, filename, titleText, dateInfo) {
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'landscape' });
@@ -1825,7 +1918,7 @@ const row = event.target.closest('tr');
 if (!row) return;
 const idToDelete = row.dataset.id;
 const tipoSaida = row.dataset.tipo;
-if (confirm('Tem certeza que deseja excluir esta saída?')) {
+if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 if (tipoSaida === 'Administrativa') {
 saidasAdministrativas = saidasAdministrativas.filter(i => i.id !== idToDelete);
 if (typeof dataService !== 'undefined' && dataService.setSaidasAdministrativas) dataService.setSaidasAdministrativas(saidasAdministrativas); else localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
@@ -1963,14 +2056,20 @@ function getPlacasInoperantesRDV() {
 }
 
 function populateRegisterSaidaSelects() {
-    registerViaturaSelect.innerHTML = '<option value="">-- Selecione a Viatura --</option>';
-    registerMotoristaSelect.innerHTML = '<option value="">-- Selecione o Motorista --</option>';
+    // Sempre usar o nó atual do DOM (evita referência obsoleta se algo recriar o formulário)
+    var vSel = document.getElementById('registerViatura');
+    var mSel = document.getElementById('registerMotorista');
+    if (!vSel || !mSel) return;
+    vSel.innerHTML = '<option value="">-- Selecione a Viatura --</option>';
+    mSel.innerHTML = '<option value="">-- Selecione o Motorista --</option>';
     const selectedType = registerTipoSaidaSelect.value;
     const placasInoperantesRDV = getPlacasInoperantesRDV();
     viaturasCadastradas.forEach(vtr => {
+        const placaRaw = (vtr && vtr.placa != null) ? String(vtr.placa).trim() : '';
+        if (!placaRaw || placaRaw.toLowerCase() === 'undefined' || placaRaw.toLowerCase() === 'null') return;
         const option = document.createElement('option');
-        option.value = vtr.placa;
-        let optionText = vtr.placa;
+        option.value = placaRaw;
+        let optionText = placaRaw;
         if (vtr.modelo) {
             optionText += ` (${vtr.modelo})`;
         } else if (vtr.tipo) {
@@ -1978,7 +2077,7 @@ function populateRegisterSaidaSelects() {
         }
         option.textContent = optionText;
         const inoperanteFrota = !!vtr.inoperante;
-        const inoperanteRDV = placasInoperantesRDV.has(vtr.placa);
+        const inoperanteRDV = placasInoperantesRDV.has(placaRaw);
         const tipoNaoAmb = selectedType === 'Ambulância' && vtr.tipo !== 'Ambulância';
         if (inoperanteFrota || inoperanteRDV || tipoNaoAmb) {
             option.disabled = true;
@@ -1987,10 +2086,12 @@ function populateRegisterSaidaSelects() {
                 option.textContent = (optionText.trim()) + ' (Inoperante)';
             }
         }
-        registerViaturaSelect.appendChild(option);
+        vSel.appendChild(option);
     });
     motoristasCadastrados.forEach(mot => {
-        registerMotoristaSelect.add(new Option(mot.nome, mot.nome));
+        const nomeRaw = (mot && mot.nome != null) ? String(mot.nome).trim() : '';
+        if (!nomeRaw || nomeRaw.toLowerCase() === 'undefined' || nomeRaw.toLowerCase() === 'null') return;
+        mSel.add(new Option(nomeRaw, nomeRaw));
     });
 }
 // Função para obter a última quilometragem de chegada de uma ambulância
@@ -2188,30 +2289,42 @@ if (omValue) {
     }
 }
 
-const objetivoValue = tipoSaida === 'Ambulância' 
-? document.getElementById('registerObjetivoSelect').value 
-: document.getElementById('registerObjetivo').value;
+var objetivoValue = tipoSaida === 'Ambulância'
+  ? document.getElementById('registerObjetivoSelect').value
+  : document.getElementById('registerObjetivo').value;
+var kmSaidaEl = document.getElementById('registerKmSaida');
+var kmChegadaEl = document.getElementById('registerKmChegada');
+var kmSaidaVal = kmSaidaEl ? kmSaidaEl.value : '';
+var kmChegadaVal = kmChegadaEl ? kmChegadaEl.value : '';
+if (kmSaidaVal && !ValidacaoCadastro.validateKm(kmSaidaVal)) {
+  displayMessage('KM de saída inválido. Use um número positivo.', 'error');
+  return null;
+}
+if (kmChegadaVal && !ValidacaoCadastro.validateKm(kmChegadaVal)) {
+  displayMessage('KM de chegada inválido. Use um número positivo.', 'error');
+  return null;
+}
 return {
 tipo: tipoSaida,
 dataPedido: document.getElementById('registerDataPedido').value,
 horaPedido: document.getElementById('registerHoraPedido').value,
 dataSaida: document.getElementById('registerDataSaida').value,
 horaSaida: document.getElementById('registerHoraSaida').value,
-setor: document.getElementById('registerSetor').value,
-ramal: document.getElementById('registerRamal').value,
-cidade: document.getElementById('registerCidade').value,
-bairro: document.getElementById('registerBairro').value,
-destino: document.getElementById('registerBairro').value,
+setor: ValidacaoCadastro.sanitize(document.getElementById('registerSetor').value),
+ramal: ValidacaoCadastro.sanitize(document.getElementById('registerRamal').value),
+cidade: ValidacaoCadastro.sanitize(document.getElementById('registerCidade').value),
+bairro: ValidacaoCadastro.sanitize(document.getElementById('registerBairro').value),
+destino: ValidacaoCadastro.sanitize(document.getElementById('registerBairro').value),
 objetivo: objetivoValue,
-numPassageiros: document.getElementById('registerNumPassageiros').value,
-responsavelPedido: document.getElementById('registerResponsavelPedido').value,
-om: document.getElementById('registerOM').value,
+numPassageiros: ValidacaoCadastro.sanitize(document.getElementById('registerNumPassageiros').value),
+responsavelPedido: ValidacaoCadastro.sanitize(document.getElementById('registerResponsavelPedido').value),
+om: ValidacaoCadastro.sanitize(document.getElementById('registerOM').value),
 viatura: registerViaturaSelect.value,
 motorista: registerMotoristaSelect.value,
-hospital: document.getElementById('registerHospital').value,
-kmSaida: document.getElementById('registerKmSaida') ? document.getElementById('registerKmSaida').value : '',
-kmChegada: document.getElementById('registerKmChegada') ? document.getElementById('registerKmChegada').value : '',
-chegada: document.getElementById('registerChegada') ? document.getElementById('registerChegada').value : ''
+hospital: ValidacaoCadastro.sanitize(document.getElementById('registerHospital').value),
+kmSaida: kmSaidaVal ? String(kmSaidaVal).trim() : '',
+kmChegada: kmChegadaVal ? String(kmChegadaVal).trim() : '',
+chegada: document.getElementById('registerChegada') ? ValidacaoCadastro.sanitize(document.getElementById('registerChegada').value) : ''
 };
 }
 async function saveNewSaida(formData, dateToUse = formData.dataSaida, forceCreate = false) {
@@ -2557,24 +2670,38 @@ if (!formData) return;
 const isEditing = !!saidaIdHiddenInput.value;
 const saidaId = saidaIdHiddenInput.value;
 const dataSaidaForFilter = formData.dataSaida || formData.dataPedido || '';
-await saveNewSaida(formData);
-populateSetorList();
-populateResponsavelList();
-updateFormFields(); // Atualizar campos com itens personalizados
-if (isEditing && formData.tipo === 'Administrativa' && window.parent && dataSaidaForFilter) {
-    try {
-        window.parent.postMessage({
-            type: 'saida_administrativa_atualizada',
-            id: saidaId,
-            dataSaida: dataSaidaForFilter
-        }, '*');
-    } catch (e) {
-        console.warn('Não foi possível notificar o parent sobre a saída atualizada:', e);
+
+// Animação de carregamento no botão
+const originalText = submitNewSaidaBtn.innerHTML;
+submitNewSaidaBtn.disabled = true;
+submitNewSaidaBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+try {
+    await saveNewSaida(formData);
+    populateSetorList();
+    populateResponsavelList();
+    updateFormFields(); // Atualizar campos com itens personalizados
+    if (isEditing && formData.tipo === 'Administrativa' && window.parent && dataSaidaForFilter) {
+        try {
+            window.parent.postMessage({
+                type: 'saida_administrativa_atualizada',
+                id: saidaId,
+                dataSaida: dataSaidaForFilter
+            }, '*');
+        } catch (e) {
+            console.warn('Não foi possível notificar o parent sobre a saída atualizada:', e);
+        }
     }
+    displayMessage(isEditing ? 'SAÍDA ATUALIZADA COM SUCESSO!' : 'SAÍDA CADASTRADA COM SUCESSO!', 'success');
+    clearRegisterForm();
+    window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+} catch (e) {
+    console.error('Erro ao salvar saída:', e);
+    displayMessage('Erro ao salvar saída. Tente novamente.', 'error');
+} finally {
+    submitNewSaidaBtn.disabled = false;
+    submitNewSaidaBtn.innerHTML = originalText;
 }
-displayMessage(isEditing ? 'SAÍDA ATUALIZADA COM SUCESSO!' : 'SAÍDA CADASTRADA COM SUCESSO!', 'success');
-clearRegisterForm();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
 });
 multiSaidaBtn.addEventListener('click', () => {
 const formData = validateAndGetFormData();
@@ -2764,6 +2891,7 @@ if (futurasSaidasCounter) {
 futurasSaidasCounter.textContent = `Saídas Futuras: ${futureCount}`;
 }
 }
+var filterTodasSaidasTableDebounced = debounce(filterTodasSaidasTable, 150);
 function updateUnplannedExitsTable() {
 unplannedExitsTableBody.innerHTML = '';
 const filterMonth = filterUnplannedMonthSelect.value;
@@ -2952,24 +3080,119 @@ if (responsavelInput) {
 }
 }
 async function loadDataAndPopulateTables() {
+// Também considerar registros offline (localStorage) para não "sumirem"
+var lsSaidasAdm = [];
+var lsSaidasAmb = [];
+let remoteLoaded = false;
+try { lsSaidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]'); } catch (e) { lsSaidasAdm = []; }
+try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); } catch (e) { lsSaidasAmb = []; }
+
 if (typeof dataService !== 'undefined') {
     try {
+        if (typeof dataService.waitForAPICheck === 'function') {
+            await dataService.waitForAPICheck();
+        }
+        if (typeof dataService.waitForGoogleAuthReady === 'function') {
+            await dataService.waitForGoogleAuthReady(15000);
+        }
+        // dataService: Firestore primeiro (viaturas/motoristas normalizados como array)
         saidasAdministrativas = await dataService.getSaidasAdministrativas();
         saidasAmbulancias = (await dataService.getSaidasAmbulancias()) || [];
-        viaturasCadastradas = await dataService.getViaturas();
-        motoristasCadastrados = await dataService.getMotoristas();
+        var _v = await dataService.getViaturas();
+        var _m = await dataService.getMotoristas();
+        viaturasCadastradas = Array.isArray(_v) ? _v : [];
+        motoristasCadastrados = Array.isArray(_m) ? _m : [];
+        try {
+            localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas));
+            localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados));
+        } catch (e) {}
+        remoteLoaded = true;
     } catch (e) {
-        saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-        saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
-        viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+        console.warn('Cadastro de Saídas: falha ao carregar via dataService, usando localStorage.', e);
+        saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+        saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+        viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+    }
+} else if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+    // Sem dataService: Firebase (principal) + localStorage (complemento por id)
+    var _merge = (window.sotDataMerge && window.sotDataMerge.mergeArraysCloudPrimary) || function (c, l) {
+        var a = Array.isArray(c) ? c : [], b = Array.isArray(l) ? l : [], m = new Map();
+        a.forEach(function (it) { if (it && it.id != null && it.id !== '') m.set(String(it.id), it); });
+        b.forEach(function (it) { if (it && it.id != null && it.id !== '' && !m.has(String(it.id))) m.set(String(it.id), it); });
+        return Array.from(m.values());
+    };
+    var _lsArr = (window.sotDataMerge && window.sotDataMerge.readLocalStorageArrayAlways) || function (key) {
+        try { var r = localStorage.getItem(key); if (!r) return []; var v = JSON.parse(r); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    };
+    try {
+        const fbSaidasAdm = await window.firebaseSot.get('saidasAdministrativas');
+        const fbSaidasAmb = await window.firebaseSot.get('saidasAmbulancias');
+        saidasAdministrativas = _merge(Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [], _lsArr('saidasAdministrativas'), 'id');
+        saidasAmbulancias = _merge(Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [], _lsArr('saidasAmbulancias'), 'id');
+        const fbV = await window.firebaseSot.get('viaturasCadastradas');
+        const fbM = await window.firebaseSot.get('motoristasCadastrados');
+        viaturasCadastradas = _merge(Array.isArray(fbV) ? fbV : [], _lsArr('viaturasCadastradas'), 'id');
+        motoristasCadastrados = _merge(Array.isArray(fbM) ? fbM : [], _lsArr('motoristasCadastrados'), 'id');
+        remoteLoaded = true;
+        try {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+            localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas));
+            localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados));
+        } catch (e) {}
+    } catch (e) {
+        console.warn('Cadastro de Saídas: falha ao carregar de Firebase, usando localStorage.', e);
+        saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+        saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+        viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
     }
 } else {
-saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
-viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
+    // Fallback final: apenas localStorage
+    saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+    saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+    viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+    motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
 }
+
+// Normalizar e mesclar com offline somente se NÃO carregamos remoto com sucesso.
+// Se remoto carregou (Firebase/API), ele é fonte da verdade, mesmo quando vier [].
+if (remoteLoaded) {
+    saidasAdministrativas = mergeById(saidasAdministrativas, [], 'Administrativa');
+    saidasAmbulancias = mergeById(saidasAmbulancias, [], 'Ambulância');
+} else {
+    saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
+    saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
+}
+
+// Persistir cache normalizado
+try {
+  localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+  localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
+} catch (e) {}
+
+// Se havia dados offline que não estavam no remoto, tenta subir (sem bloquear a UI)
+try {
+  if (typeof dataService !== 'undefined') {
+    // heurística simples: se local tem mais itens, tentar sincronizar
+    if (Array.isArray(lsSaidasAdm) && lsSaidasAdm.length > 0 && saidasAdministrativas.length >= lsSaidasAdm.length) {
+      dataService.setSaidasAdministrativas(saidasAdministrativas).catch(function(){});
+    }
+    if (Array.isArray(lsSaidasAmb) && lsSaidasAmb.length > 0 && saidasAmbulancias.length >= lsSaidasAmb.length) {
+      dataService.setSaidasAmbulancias(saidasAmbulancias).catch(function(){});
+    }
+  } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+    // fallback direto no firebase
+    if (Array.isArray(lsSaidasAdm) && lsSaidasAdm.length > 0 && saidasAdministrativas.length >= lsSaidasAdm.length) {
+      window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas).catch(function(){});
+    }
+    if (Array.isArray(lsSaidasAmb) && lsSaidasAmb.length > 0 && saidasAmbulancias.length >= lsSaidasAmb.length) {
+      window.firebaseSot.set('saidasAmbulancias', saidasAmbulancias).catch(function(){});
+    }
+  }
+} catch (e) {}
+
 loadItensData(); // Carregar itens personalizados
 populateAllYearFilters();
 populateCidadeFilter();
@@ -2990,11 +3213,12 @@ function showSubTab(tabIdToShow) {
 subTabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.subTab === tabIdToShow));
 subTabContents.forEach(content => content.classList.toggle('active', content.id === tabIdToShow));
 }
+// ========== EVENT LISTENERS ==========
 subTabButtons.forEach(button => {
 button.addEventListener('click', () => {
 const tabId = button.dataset.subTab;
 showSubTab(tabId);
-if (tabId === 'todasSaidasContent') {
+if (tabId === 'todasSaidasContent' || tabId === 'registerFormContent') {
 loadDataAndPopulateTables();
 } else if (tabId === 'cadastrarItensContent') {
 // Recarregar dados existentes e atualizar tabelas
@@ -3018,15 +3242,14 @@ setTimeout(() => {
 });
 const filterTodasSaidasOM = document.getElementById('filterTodasSaidasOM');
 const filterTodasSaidasHospital = document.getElementById('filterTodasSaidasHospital');
-[filterTodasSaidasDateInput, filterTodasSaidasMonthSelect, filterTodasSaidasYearSelect, filterTodasSaidasCidade, filterTodasSaidasBairro, filterTodasSaidasMotorista, filterTodasSaidasViatura, filterTypeAdmCheckbox, filterTypeAmbCheckbox].forEach(el => el && el.addEventListener('change', filterTodasSaidasTable));
-if (filterTodasSaidasOM) filterTodasSaidasOM.addEventListener('change', filterTodasSaidasTable);
-if (filterTodasSaidasHospital) filterTodasSaidasHospital.addEventListener('change', filterTodasSaidasTable);
+[filterTodasSaidasDateInput, filterTodasSaidasMonthSelect, filterTodasSaidasYearSelect, filterTodasSaidasCidade, filterTodasSaidasBairro, filterTodasSaidasMotorista, filterTodasSaidasViatura, filterTypeAdmCheckbox, filterTypeAmbCheckbox].forEach(function (el) {
+  if (el) el.addEventListener('change', filterTodasSaidasTableDebounced);
+});
+if (filterTodasSaidasOM) filterTodasSaidasOM.addEventListener('change', filterTodasSaidasTableDebounced);
+if (filterTodasSaidasHospital) filterTodasSaidasHospital.addEventListener('change', filterTodasSaidasTableDebounced);
 [filterUnplannedMonthSelect, filterUnplannedYearSelect].forEach(el => el.addEventListener('change', updateUnplannedExitsTable));
 registerTipoSaidaSelect.addEventListener('change', adjustRegisterFormFields);
-// Garantir que o botão apareça na inicialização se tipo for Ambulância
-setTimeout(() => {
-    adjustRegisterFormFields();
-}, 200);
+// adjustRegisterFormFields() roda APÓS loadDataAndPopulateTables() para não repopular selects com viaturas/motoristas ainda vazios (corrida com setTimeout 200 ms).
 registerViaturaSelect.addEventListener('change', () => {
     // Atualizar KM SAÍDA automaticamente quando viatura for selecionada (apenas para Ambulância)
     if (registerTipoSaidaSelect.value === 'Ambulância') {
@@ -3119,7 +3342,7 @@ const year = filterUnplannedYearSelect.value;
 downloadPdfTable('unplannedExitsTable', 'Relatorio_Saidas_Nao_Programadas', 'Relatório de Saídas Não Programadas', `Período: ${month} / ${year}`);
 });
 deleteAllBtn.addEventListener('click', () => {
-if (confirm("Tem certeza que deseja EXCLUIR TODOS os registros de saídas? Esta ação não pode ser desfeita.")) {
+if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 localStorage.removeItem('saidasAdministrativas');
 localStorage.removeItem('saidasAmbulancias');
 loadDataAndPopulateTables();
@@ -3200,6 +3423,14 @@ loadDataAndPopulateTables();
 }
 });
 
+window.addEventListener('sot-firebase-auth-changed', function (ev) {
+    if (ev && ev.detail && ev.detail.signedIn) {
+        void loadDataAndPopulateTables().then(function () {
+            setTimeout(function () { adjustRegisterFormFields(); }, 0);
+        });
+    }
+});
+
 // Botão OK do modal "Todos os campos serão preenchidos com os dados da saída"
 var confirmarPreencherEdicaoOkBtn = document.getElementById('confirmarPreencherEdicaoOk');
 var confirmarPreencherEdicaoModal = document.getElementById('confirmarPreencherEdicaoModal');
@@ -3265,7 +3496,10 @@ applyEditButtonHighlight(targetRow.querySelector('.edit-row-btn'));
 }
 }, 150);
 }
-loadDataAndPopulateTables();
+await loadDataAndPopulateTables();
+setTimeout(function () {
+    adjustRegisterFormFields();
+}, 0);
 
 // Inicializar abas dos itens se a aba já estiver ativa
 if (document.getElementById('cadastrarItensContent') && document.getElementById('cadastrarItensContent').classList.contains('active')) {

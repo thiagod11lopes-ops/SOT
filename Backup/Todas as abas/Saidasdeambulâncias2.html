@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - SAÍDAS DE AMBULÂNCIAS</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
+<!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+</script>
 <script src="data-service.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
@@ -507,29 +507,59 @@ filterDateAmbInput.value = todayFormatted;
 }
 async function loadAllData() {
 try {
+    let remoteLoadedSaidas = false;
+    let remoteLoadedFrota = false;
+    let remoteLoadedMotoristas = false;
+
 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
 await dataService.waitForAPICheck();
-if (dataService.useFirebase || dataService.apiAvailable) {
-const s = await dataService.getSaidasAmbulancias();
-const v = await dataService.getViaturas();
-const m = await dataService.getMotoristas();
-if (Array.isArray(s)) { saidasAmbulancias = s; localStorage.setItem('saidasAmbulancias', JSON.stringify(s)); }
-if (Array.isArray(v)) { frotaData = v; localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); }
-if (Array.isArray(m)) { motoristasCadastrados = m; localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); }
+            if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                await dataService.waitForGoogleAuthReady(15000);
+            }
+            // Não exigir apiAvailable: com SOT_FORCE_FIREBASE_ONLY ele fica false mesmo com Firebase OK
+            const s = await dataService.getSaidasAmbulancias();
+            const v = await dataService.getViaturas();
+            const m = await dataService.getMotoristas();
+
+            remoteLoadedSaidas = true;
+            remoteLoadedFrota = true;
+            remoteLoadedMotoristas = true;
+
+            if (Array.isArray(s)) {
+                saidasAmbulancias = s;
+            } else {
+                saidasAmbulancias = [];
+            }
+            try { localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias)); } catch (e) {}
+
+            if (Array.isArray(v)) {
+                frotaData = v;
+            } else {
+                frotaData = [];
+            }
+            try { localStorage.setItem('viaturasCadastradas', JSON.stringify(frotaData)); } catch (e) {}
+
+            if (Array.isArray(m)) {
+                motoristasCadastrados = m;
+            } else {
+                motoristasCadastrados = [];
+            }
+            try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
 }
-}
-if (!Array.isArray(saidasAmbulancias) || saidasAmbulancias.length === 0) {
-const storedSaidas = localStorage.getItem('saidasAmbulancias');
-saidasAmbulancias = storedSaidas ? JSON.parse(storedSaidas) : [];
-}
-if (!Array.isArray(frotaData) || frotaData.length === 0) {
-const storedFrota = localStorage.getItem('viaturasCadastradas');
-frotaData = storedFrota ? JSON.parse(storedFrota) : [];
-}
-if (!Array.isArray(motoristasCadastrados) || motoristasCadastrados.length === 0) {
-const storedMotoristas = localStorage.getItem('motoristasCadastrados');
-motoristasCadastrados = storedMotoristas ? JSON.parse(storedMotoristas) : [];
-}
+    // Quando Firebase/API devolve [] (lista vazia), isso é um resultado válido.
+    // Então não devemos “voltar” para localStorage.
+    if (!remoteLoadedSaidas) {
+        const storedSaidas = localStorage.getItem('saidasAmbulancias');
+        saidasAmbulancias = storedSaidas ? JSON.parse(storedSaidas) : [];
+    }
+    if (!remoteLoadedFrota) {
+        const storedFrota = localStorage.getItem('viaturasCadastradas');
+        frotaData = storedFrota ? JSON.parse(storedFrota) : [];
+    }
+    if (!remoteLoadedMotoristas) {
+        const storedMotoristas = localStorage.getItem('motoristasCadastrados');
+        motoristasCadastrados = storedMotoristas ? JSON.parse(storedMotoristas) : [];
+    }
 if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = [];
 if (!Array.isArray(frotaData)) frotaData = [];
 if (!Array.isArray(motoristasCadastrados)) motoristasCadastrados = [];
@@ -1026,7 +1056,7 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
 function handleDeleteRow(event) {
 const row = event.target.closest('tr');
 if (!row) return;
-if (confirm('Tem certeza que deseja excluir esta(s) linha(s)?')) {
+if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 const idsToRemove = row.dataset.id.split(',');
 saidasAmbulancias = saidasAmbulancias.filter(item => !idsToRemove.includes(item.id));
 if (saveData()) {

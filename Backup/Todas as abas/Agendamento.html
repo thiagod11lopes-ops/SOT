@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendamento de Saídas Administrativas - SOT</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="firebase-sot-service.js"></script>
+    <!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+    <script>
+    window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+    </script>
     <script src="api-service.js"></script>
     <script src="data-service.js"></script>
     <style>
@@ -1110,8 +1110,14 @@
                 
                 // Contar agendamentos existentes
                 let todasSaidas = [];
-                if (typeof dataService !== 'undefined' && isAPIOnline) {
-                    todasSaidas = await dataService.getSaidasAdministrativas();
+                if (typeof dataService !== 'undefined') {
+                    try {
+                        // dataService já prioriza API/Firebase antes de localStorage
+                        todasSaidas = await dataService.getSaidasAdministrativas();
+                    } catch (e) {
+                        console.warn('Agendamento: falha ao carregar saídas via dataService, usando localStorage.', e);
+                        todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    }
                 } else {
                     todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                 }
@@ -1263,8 +1269,13 @@
                 
                 // Contar agendamentos no período
                 let todasSaidas = [];
-                if (typeof dataService !== 'undefined' && isAPIOnline) {
-                    todasSaidas = await dataService.getSaidasAdministrativas();
+                if (typeof dataService !== 'undefined') {
+                    try {
+                        todasSaidas = await dataService.getSaidasAdministrativas();
+                    } catch (e) {
+                        console.warn('Agendamento: falha ao carregar saídas via dataService para verificação de horário, usando localStorage.', e);
+                        todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    }
                 } else {
                     todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                 }
@@ -1424,11 +1435,18 @@
                     agendadoViaFrontend: true // Flag para identificar que foi agendado via este frontend
                 };
 
-                // Salvar usando dataService ou localStorage direto
-                if (typeof dataService !== 'undefined' && isAPIOnline) {
-                    await dataService.saveSaidaAdministrativa(novaSaida);
+                // Salvar usando dataService (Firebase/API) como principal, com fallback para localStorage
+                if (typeof dataService !== 'undefined') {
+                    try {
+                        await dataService.saveSaidaAdministrativa(novaSaida);
+                    } catch (e) {
+                        console.warn('Agendamento: falha ao salvar via dataService, salvando apenas em localStorage.', e);
+                        const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                        saidas.push(novaSaida);
+                        localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+                    }
                 } else {
-                    // Salvar no localStorage
+                    // Sem dataService: salvar no localStorage
                     const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                     saidas.push(novaSaida);
                     localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));

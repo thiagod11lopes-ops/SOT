@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - ESCALA</title>
+<!-- Firestore modular (iframe aninhado em Frota): mesma sessão Google / IndexedDB da origem -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -750,6 +754,7 @@ const deleteRowBtn = document.getElementById('deleteRow');
 const colorColumnGrayBtn = document.getElementById('colorColumnGray');
 const tabButtons = document.querySelectorAll('.tab-buttons .tab-button');
 let currentRightClickedRow = null;
+function requestSyncToFirebase() { try { window.top.postMessage({ type: 'request_sync' }, '*'); } catch (e) {} }
 let currentRightClickedCell = null;
 let isEditing = false;
 let isVacationMode = false;
@@ -772,25 +777,45 @@ function populateFilters(targetMonthSelect, targetYearSelect, showAll = false) {
 const dataAtual = new Date();
 const anoAtual = dataAtual.getFullYear().toString();
 const mesAtual = String(dataAtual.getMonth() + 1).padStart(2, '0');
-const years = new Set();
-const months = new Set();
-const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
-years.add(anoAtual);
-months.add(mesAtual);
-if (existingKeys.length === 0 || showAll) {
-for (let i = dataAtual.getFullYear() - 2; i <= dataAtual.getFullYear() + 2; i++) years.add(i.toString());
-for (let i = 1; i <= 12; i++) months.add(String(i).padStart(2, '0'));
-} else {
-existingKeys.forEach(key => {
-const [year, month] = key.split('-');
-years.add(year);
-months.add(month);
-});
+
+// Guarda seleção atual (se existir) para tentar preservá-la
+const previousYear = targetYearSelect ? targetYearSelect.value : '';
+const previousMonth = targetMonthSelect ? targetMonthSelect.value : '';
+
+// Novo comportamento:
+// - Permite selecionar praticamente QUALQUER ano, independentemente das escalas já existentes.
+// - Faixa ampla, ex.: de (anoAtual - 50) até (anoAtual + 50).
+const years = [];
+for (let i = dataAtual.getFullYear() - 50; i <= dataAtual.getFullYear() + 50; i++) {
+years.push(i.toString());
 }
-const sortedYears = Array.from(years).sort((a, b) => b - a);
-const sortedMonths = Array.from(months).sort();
+
+// Meses sempre de 01 a 12
+const months = [];
+for (let i = 1; i <= 12; i++) {
+months.push(String(i).padStart(2, '0'));
+}
+
+const sortedYears = years.sort((a, b) => b - a);
+const sortedMonths = months; // já em ordem crescente de 01 a 12
+
 targetYearSelect.innerHTML = sortedYears.map(year => `<option value="${year}">${year}</option>`).join('');
 targetMonthSelect.innerHTML = sortedMonths.map(month => `<option value="${month}" ${month === mesAtual ? 'selected' : ''}>${getMonthName(month)}</option>`).join('');
+
+// Restaura o ano escolhido pelo usuário, se ainda existir na lista;
+// caso contrário, mantém o ano atual como padrão.
+if (previousYear && years.includes(previousYear)) {
+  targetYearSelect.value = previousYear;
+} else {
+  targetYearSelect.value = anoAtual;
+}
+
+// Para o mês, tentamos preservar o selecionado, senão usamos o mês atual.
+if (previousMonth && months.includes(previousMonth)) {
+  targetMonthSelect.value = previousMonth;
+} else {
+  targetMonthSelect.value = mesAtual;
+}
 }
 function createDriverSelect(selectedValue) {
 const select = document.createElement('select');
@@ -1141,6 +1166,7 @@ const escalaData = JSON.parse(localStorage.getItem(dataKey));
 if (escalaData && escalaData.members[memberIndex]) {
 escalaData.members[memberIndex][0] = event.target.value;
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 }
 }
 function isDateEqual(date1, date2) {
@@ -1220,6 +1246,7 @@ member[numDays + 3] = 'INFINITA';
 }
 });
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 }
 }
 function updateDntTableInDOM(dntMembers) {
@@ -1270,6 +1297,7 @@ if (escalaData) {
 const numDays = new Date(year, month, 0).getDate();
 synchronizeDntTable(escalaData, numDays, month, year);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 const tablesContainer = createTable(escalaData, month, year);
 escalaContent.appendChild(tablesContainer);
 escalaMonthYear.textContent = `${getMonthName(month).toUpperCase()} DE ${year}`;
@@ -1466,6 +1494,7 @@ escalaData.members = newMembersData;
 const numDays = new Date(filterYear.value, filterMonth.value, 0).getDate();
 synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 renderEscala(filterMonth.value, filterYear.value);
 alert("Dados importados com sucesso!");
 };
@@ -1490,6 +1519,7 @@ escalaData.grayColumns.splice(indexInArray, 1);
 escalaData.grayColumns.push(dayIndexStr);
 }
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 if (contextMenu) contextMenu.style.display = 'none';
 renderEscala(filterMonth.value, filterYear.value);
 }
@@ -1607,6 +1637,13 @@ if (filterYear && filterYear.value === y && filterMonth && filterMonth.value ===
 renderEscala(filterMonth.value, filterYear.value);
 }
 }
+// Ao receber refresh (ex.: após sincronização online), recarregar escala do localStorage
+if (e.data && (e.data.type === 'refresh_all_data' || e.data.type === 'refresh_data')) {
+if (filterYear && filterMonth && filterYear.value && filterMonth.value) {
+populateFilters(filterMonth, filterYear);
+renderEscala(filterMonth.value, filterYear.value);
+}
+}
 });
 
 // --- Event Listeners ---
@@ -1642,6 +1679,7 @@ newMembers = Array.from({ length: NUM_LINHAS_VAZIAS }, () => Array(numDays + 4).
 const newEscala = { members: newMembers, dntMembers: [], grayColumns: [] };
 synchronizeDntTable(newEscala, numDays, createModalMonth.value, createModalYear.value);
 localStorage.setItem(dataKey, JSON.stringify(newEscala));
+requestSyncToFirebase();
 populateFilters(filterMonth, filterYear);
 filterMonth.value = month; filterYear.value = year;
 isEditing = true; isVacationMode = false;
@@ -1696,6 +1734,7 @@ const insertIndex = position === 'above' ? rowIndex : rowIndex + 1;
 escalaData.members.splice(insertIndex, 0, newMember);
 synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 if (contextMenu) contextMenu.style.display = 'none';
 renderEscala(filterMonth.value, filterYear.value);
 }
@@ -1710,6 +1749,7 @@ escalaData.members.splice(parseInt(firstCell.dataset.memberIndex, 10), 1);
 const numDaysDel = new Date(filterYear.value, filterMonth.value, 0).getDate();
 synchronizeDntTable(escalaData, numDaysDel, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 if (contextMenu) contextMenu.style.display = 'none';
 renderEscala(filterMonth.value, filterYear.value);
 }
@@ -1755,6 +1795,7 @@ escalaData.members[memberIndex][numDays + 2] = serviceCount;
 escalaData.members[memberIndex][numDays + 3] = escalaData.members[memberIndex][numDays + 1] === 'INFINITA' ? 'INFINITA' : routineCount;
 synchronizeDntTable(escalaData, numDays, filterMonth.value, filterYear.value);
 localStorage.setItem(dataKey, JSON.stringify(escalaData));
+requestSyncToFirebase();
 const row = cell.closest('tr');
 if(row && isEditing) {
 const chCell = row.cells[row.cells.length - 3];
@@ -1831,15 +1872,67 @@ targetCell.focus();
 break;
 }
 }
-// Inicialização
-loadDrivers();
-populateFilters(filterMonth, filterYear);
-const dataAtual = new Date();
-filterYear.value = dataAtual.getFullYear();
-filterMonth.value = String(dataAtual.getMonth() + 1).padStart(2, '0');
-renderEscala(filterMonth.value, filterYear.value);
-setActiveTab('editScaleBtn');
-updateEditButtonText();
+// Inicialização com Firebase como fonte principal para a Escala
+(async function initializeEscala() {
+  // 1) Tenta carregar TODAS as escalas do Firebase e sobrescrever o localStorage.
+  if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+    try {
+      const fbEscala = await window.firebaseSot.get('escalaData');
+      if (fbEscala && typeof fbEscala === 'object') {
+        Object.keys(fbEscala).forEach(key => {
+          if (/^\d{4}-\d{2}$/.test(key)) {
+            try {
+              localStorage.setItem(key, JSON.stringify(fbEscala[key]));
+            } catch (e) {
+              console.warn('Escala: falha ao salvar escala do Firebase no localStorage para chave', key, e);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      console.warn('Escala: falha ao carregar escalaData do Firebase, usando apenas localStorage.', e);
+    }
+  }
+
+  // 2) Carrega motoristas e popula selects de mês/ano (agora já alinhados com Firebase).
+  loadDrivers();
+  populateFilters(filterMonth, filterYear);
+
+  // 3) Seleciona sempre a escala mais recente disponível (sem pular para o futuro).
+  (function selectLatestScale() {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const currentKey = `${currentYear}-${currentMonth}`;
+
+    const existingKeys = Object.keys(localStorage).filter(key => key.match(/^\d{4}-\d{2}$/));
+
+    let targetKey = null;
+
+    if (existingKeys.includes(currentKey)) {
+      targetKey = currentKey;
+    } else if (existingKeys.length > 0) {
+      const sortedKeys = existingKeys.sort(); // YYYY-MM
+      const pastOrCurrentKeys = sortedKeys.filter(k => k <= currentKey);
+      if (pastOrCurrentKeys.length > 0) {
+        targetKey = pastOrCurrentKeys[pastOrCurrentKeys.length - 1];
+      } else {
+        targetKey = sortedKeys[0];
+      }
+    }
+
+    if (targetKey) {
+      const [year, month] = targetKey.split('-');
+      filterYear.value = year;
+      filterMonth.value = month;
+    }
+  })();
+
+  // 4) Renderiza a escala com base no que veio do Firebase/localStorage.
+  renderEscala(filterMonth.value, filterYear.value);
+  setActiveTab('editScaleBtn');
+  updateEditButtonText();
+})();
 filterMonth.addEventListener('change', () => {
 isEditing = false; isVacationMode = false;
 renderEscala(filterMonth.value, filterYear.value);

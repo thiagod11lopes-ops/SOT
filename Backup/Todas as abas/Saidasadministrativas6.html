@@ -8,10 +8,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js" defer></script>
 <script src="theme-listener.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
+<!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+</script>
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
 <script src="junta-saidas-service.js"></script>
@@ -212,12 +212,21 @@ z-index: 1;
 .km-alert-confirm-btn:hover { background-color: var(--secondary-blue); }
 .km-alert-cancel-btn { background-color: #6c757d; color: var(--white); }
 .km-alert-cancel-btn:hover { background-color: #5a6268; }
+/* Confirmação antes de sincronizar KM / chegada com o Quadro de Saídas */
+#confirmQuadroSyncModal { display: none; position: fixed; z-index: 10003; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.55); justify-content: center; align-items: flex-start; padding-top: 90px; }
+#confirmQuadroSyncModal.show { display: flex; }
+#confirmQuadroSyncModal .km-alert-modal-content { text-align: left; max-width: 520px; }
+#confirmQuadroSyncModal #confirmQuadroSyncMessage { white-space: pre-line; text-align: left; }
+#confirmQuadroSyncModal h3 { text-align: center; }
 textarea#obsTextarea { width: 100%; height: 150px; box-sizing: border-box; }
 .assinatura-container-geral { display: none; flex-direction: column; align-items: center; gap: 20px; margin-top: 25px; padding: 20px; background-color: var(--light-gray-bg); border: 1px solid var(--gray); border-radius: 8px; }
 .assinatura-box { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .assinatura-box select { width: 250px; padding: 8px; border: 1px solid #ccc; border-radius: 5-px; font-size: 14px; }
 .assinatura-box label { font-weight: bold; font-size: 14px; color: var(--dark-gray); }
 .saida-realizada { background-color: #dbe4ff !important; }
+/* KM Saída preenchido; removida quando KM Chegada e hora Chegada estiverem preenchidos */
+.saida-iniciada { background-color: rgba(34, 197, 94, 0.22) !important; }
+tbody tr.saida-iniciada:nth-child(even) { background-color: rgba(34, 197, 94, 0.26) !important; }
 @keyframes piscarVermelho { 0% { background-color: inherit; } 50% { background-color: rgba(250, 0, 0, 0.2); } 100% { background-color: inherit; } }
 .alarme-oleo-piscando { animation: piscarVermelho 1.5s infinite; }
 .quadro-e-lembretes-wrapper {
@@ -390,6 +399,39 @@ border: 1px solid rgba(0,0,0,0.2);
 .status-dot.green { background-color: var(--edit-green); }
 .status-dot.orange { background-color: var(--orange); }
 .status-dot.red { background-color: var(--delete-red); }
+.sync-status-pill {
+display: inline-flex;
+align-items: center;
+gap: 8px;
+padding: 8px 12px;
+border-radius: 999px;
+font-size: 12px;
+font-weight: 700;
+letter-spacing: 0.01em;
+border: 1px solid #d7dce5;
+background: #f5f7fb;
+color: #475569;
+}
+.sync-status-pill .sync-dot {
+width: 8px;
+height: 8px;
+border-radius: 50%;
+background: #94a3b8;
+}
+.sync-status-pill.is-loading .sync-dot,
+.sync-status-pill.is-saving .sync-dot {
+animation: pulse-dot 1.2s ease-in-out infinite;
+}
+.sync-status-pill.is-loading { background: #eef4ff; color: #1d4ed8; border-color: #c7d7ff; }
+.sync-status-pill.is-loading .sync-dot { background: #1d4ed8; }
+.sync-status-pill.is-saving { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.sync-status-pill.is-saving .sync-dot { background: #c2410c; }
+.sync-status-pill.is-offline { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+.sync-status-pill.is-offline .sync-dot { background: #64748b; }
+.sync-status-pill.is-ok { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+.sync-status-pill.is-ok .sync-dot { background: #16a34a; }
+.sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.sync-status-pill.is-error .sync-dot { background: #dc2626; }
 .config-input-group {
 display: grid;
 grid-template-columns: 1fr 80px;
@@ -547,6 +589,10 @@ body[data-theme="dark"] .counter-badge {
 <span>Tarde:</span>
 <div class="status-dot" id="statusTarde"></div>
 </div>
+</div>
+<div id="syncStatusPill" class="sync-status-pill is-loading" title="Status de sincronização da agenda">
+<span class="sync-dot" aria-hidden="true"></span>
+<span id="syncStatusText">Carregando dados...</span>
 </div>
 <div class="toolbar-actions">
 <button type="button" id="showSvcRoBtn" class="btn-action btn-svc" title="Serviço / Rotina">SVC/RO</button>
@@ -731,6 +777,7 @@ body[data-theme="dark"] .counter-badge {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+// ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
 let saidasAdministrativas = [];
 let motoristasCadastrados = [];
 let frotaData = [];
@@ -754,6 +801,8 @@ const choiceModalContent = document.getElementById('choiceModalContent');
 const choiceModalTitle = document.getElementById('choiceModalTitle');
 const configStatusModal = document.getElementById('configStatusModal');
 const saidasStatusContainer = document.getElementById('saidasStatusContainer');
+const syncStatusPill = document.getElementById('syncStatusPill');
+const syncStatusText = document.getElementById('syncStatusText');
 const greenLimitInputManha = document.getElementById('greenLimitInputManha');
 const orangeLimitInputManha = document.getElementById('orangeLimitInputManha');
 const greenLimitInputTarde = document.getElementById('greenLimitInputTarde');
@@ -762,6 +811,45 @@ const saveConfigBtn = document.getElementById('saveConfigBtn');
 const cancelConfigBtn = document.getElementById('cancelConfigBtn');
 const speechSynthesizer = window.speechSynthesis;
 let cachedFemaleVoicePtBR = null;
+let currentSyncState = 'loading';
+let syncStateBackToOkTimer = null;
+
+function setSyncUiState(state, message, autoBackToOkMs) {
+    currentSyncState = state || currentSyncState;
+    if (!syncStatusPill || !syncStatusText) return;
+    syncStatusPill.classList.remove('is-loading', 'is-saving', 'is-offline', 'is-ok', 'is-error');
+    switch (currentSyncState) {
+        case 'saving':
+            syncStatusPill.classList.add('is-saving');
+            syncStatusText.textContent = message || 'Salvando...';
+            break;
+        case 'offline':
+            syncStatusPill.classList.add('is-offline');
+            syncStatusText.textContent = message || 'Offline (fila local ativa)';
+            break;
+        case 'error':
+            syncStatusPill.classList.add('is-error');
+            syncStatusText.textContent = message || 'Erro de sincronizacao';
+            break;
+        case 'ok':
+            syncStatusPill.classList.add('is-ok');
+            syncStatusText.textContent = message || 'Sincronizado';
+            break;
+        default:
+            syncStatusPill.classList.add('is-loading');
+            syncStatusText.textContent = message || 'Carregando dados...';
+            break;
+    }
+    if (syncStateBackToOkTimer) {
+        clearTimeout(syncStateBackToOkTimer);
+        syncStateBackToOkTimer = null;
+    }
+    if (typeof autoBackToOkMs === 'number' && autoBackToOkMs > 0) {
+        syncStateBackToOkTimer = setTimeout(function () {
+            if (currentSyncState === 'error') setSyncUiState('ok', 'Sincronizado');
+        }, autoBackToOkMs);
+    }
+}
 function cacheFemaleVoice() {
 const voices = speechSynthesizer.getVoices();
 const ptBR = voices.filter(v => v.lang === 'pt-BR' || v.lang === 'pt_BR');
@@ -802,6 +890,19 @@ const svcRoList = document.getElementById('svcRoList');
 // ===== ESCALA: helpers e renderização =====
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
+// ========== UTILITÁRIOS: VALIDAÇÃO E DEBOUNCE ==========
+function debounce(fn, ms) {
+  var t;
+  return function () { clearTimeout(t); t = setTimeout(function () { fn.apply(this, arguments); }, ms); };
+}
+var ValidacaoSaidasAdm = {
+  sanitizeObs: function (str) {
+    if (str == null) return '';
+    return String(str).replace(/\s+/g, ' ').trim().slice(0, 2000);
+  }
+};
+
+// ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
 function populateMonthYearFilters() {
     const now = new Date();
     const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
@@ -1199,51 +1300,593 @@ const todayFormatted = `${today.getFullYear()}-${String(today.getMonth() + 1).pa
 filterDateAdmInput.value = todayFormatted;
 }
 async function loadState() {
+    setSyncUiState('loading', 'Carregando dados...');
     try {
-        // IMPORTANTE: Sempre carregar TODAS as saídas do localStorage/API
-        // As saídas devem espelhar exatamente o que está cadastrado na sub-aba "Saídas Cadastradas"
-        // NÃO filtrar ou remover saídas baseado em avisos de junção removidos
-        
-        // Usar dataService para carregar dados
-        if (typeof dataService !== 'undefined') {
-            saidasAdministrativas = await dataService.getSaidasAdministrativas();
-            motoristasCadastrados = await dataService.getMotoristas();
-            frotaData = await dataService.getViaturas();
-        } else {
-            // Fallback para localStorage - carregar TODAS as saídas sem filtros
-            const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-            saidasAdministrativas = [...todasSaidas]; // Criar cópia para garantir que não seja modificada
-            console.log(`[loadState] Carregadas ${saidasAdministrativas.length} saídas administrativas do localStorage`);
-            motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
-            frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+        // Fonte única da verdade da tela: dataService.
+        // O próprio dataService gerencia Firebase/Auth/cache de forma centralizada.
+        if (typeof dataService === 'undefined') {
+            throw new Error('dataService não carregado');
+        }
+        if (typeof dataService.waitForAPICheck === 'function') {
+            await dataService.waitForAPICheck();
+        }
+        if (typeof dataService.waitForGoogleAuthReady === 'function') {
+            await dataService.waitForGoogleAuthReady(15000);
+        }
+        saidasAdministrativas = await dataService.getSaidasAdministrativas();
+        motoristasCadastrados = await dataService.getMotoristas();
+        frotaData = await dataService.getViaturas();
+        loadViaturasComProblemas();
+        setSyncUiState('ok', 'Sincronizado');
+    } catch (error) {
+        console.error('Erro ao carregar estado via dataService:', error);
+        // Fallback controlado: apenas para manter a UI funcional em indisponibilidade momentânea.
+        try {
+            const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+            saidasAdministrativas = Array.isArray(todasSaidas) ? [...todasSaidas] : [];
+            motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+            frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+        } catch (e2) {
+            saidasAdministrativas = [];
+            motoristasCadastrados = [];
+            frotaData = [];
         }
         loadViaturasComProblemas();
-    } catch (error) {
-        console.error('Erro ao carregar estado:', error);
-        // Fallback para localStorage - carregar TODAS as saídas sem filtros
-        const todasSaidas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-        saidasAdministrativas = [...todasSaidas]; // Criar cópia para garantir que não seja modificada
-        console.log(`[loadState - Error] Carregadas ${saidasAdministrativas.length} saídas administrativas do localStorage`);
-        motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
-        frotaData = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-        loadViaturasComProblemas();
+        if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+            setSyncUiState('offline', 'Offline (usando cache local)');
+        } else {
+            setSyncUiState('error', 'Falha ao carregar dados', 3000);
+        }
+    }
+    saidasAdministrativas = normalizeSaidasAdmMetadata(saidasAdministrativas);
+    saidasAdmLastFullReadAt = Date.now();
+}
+
+/** Aviso para QuadroDeSaidas (outras abas / BroadcastChannel) e iframes do SOT */
+var SOT_SAIDAS_ADM_BC = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('sot_saidas_administrativas') : null;
+function broadcastSaidasAdministrativasUpdated() {
+    try {
+        if (SOT_SAIDAS_ADM_BC) SOT_SAIDAS_ADM_BC.postMessage({ type: 'saidas_updated', t: Date.now() });
+    } catch (e) {}
+}
+/** immediateSync=true: SOT5 roda sync Firebase na hora (sem espera 800 ms) — KM / chegada */
+function notifySaidasAdministrativasChanged(immediateSync) {
+    broadcastSaidasAdministrativasUpdated();
+    try { window.parent.postMessage({ type: 'refresh_all_data' }, '*'); } catch (e) {}
+    try {
+        window.top.postMessage({ type: 'request_sync', immediate: !!immediateSync }, '*');
+    } catch (e) {}
+}
+
+// Coordenador único de recarga: evita cascata de loadState/populate em canais paralelos.
+var saidasAdmReloadTimer = null;
+var saidasAdmReloadInFlight = false;
+var saidasAdmReloadQueued = false;
+var saidasAdmReloadNeedSelectRefresh = false;
+var saidasAdmReloadLastRequestMs = 0;
+var saidasAdmLastFullReadAt = 0;
+var SAIDAS_ADM_READ_FRESHNESS_MS = 2500;
+var saidasAdmReloadLastReason = '';
+
+async function runSaidasAdmUnifiedReload() {
+    if (saidasAdmReloadInFlight) {
+        saidasAdmReloadQueued = true;
+        return;
+    }
+    saidasAdmReloadInFlight = true;
+    try {
+        var shouldReadRemote = true;
+        if ((Date.now() - saidasAdmLastFullReadAt) < SAIDAS_ADM_READ_FRESHNESS_MS) {
+            if (saidasAdmReloadLastReason === 'storage_event' || saidasAdmReloadLastReason === 'broadcast_channel' || saidasAdmReloadLastReason === 'message_focus') {
+                shouldReadRemote = false;
+            }
+        }
+        if (shouldReadRemote) {
+            await loadState();
+            saidasAdmLastFullReadAt = Date.now();
+        }
+        populateTables();
+        if (saidasAdmReloadNeedSelectRefresh) {
+            populateDivisaoTransporteSelect(motoristasCadastrados);
+        }
+    } catch (e) {
+        console.warn('Saídas Administrativas: recarga unificada falhou.', e);
+    } finally {
+        saidasAdmReloadInFlight = false;
+        saidasAdmReloadNeedSelectRefresh = false;
+        if (saidasAdmReloadQueued) {
+            saidasAdmReloadQueued = false;
+            scheduleSaidasAdmUnifiedReload('queued', { debounceMs: 120 });
+        }
     }
 }
 
+function scheduleSaidasAdmUnifiedReload(reason, options) {
+    var opts = options || {};
+    var debounceMs = typeof opts.debounceMs === 'number' ? opts.debounceMs : 220;
+    var needSelectRefresh = !!opts.needSelectRefresh;
+    if (needSelectRefresh) saidasAdmReloadNeedSelectRefresh = true;
+    saidasAdmReloadLastReason = String(reason || '');
+    saidasAdmReloadLastRequestMs = Date.now();
+    if (saidasAdmReloadTimer) clearTimeout(saidasAdmReloadTimer);
+    saidasAdmReloadTimer = setTimeout(function () {
+        saidasAdmReloadTimer = null;
+        if (Date.now() - saidasAdmReloadLastRequestMs < 60) {
+            scheduleSaidasAdmUnifiedReload(reason, opts);
+            return;
+        }
+        void runSaidasAdmUnifiedReload();
+    }, debounceMs);
+}
+
 async function saveState() {
+    if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+        setSyncUiState('offline', 'Offline (salvo localmente)');
+    } else {
+        setSyncUiState('saving', 'Salvando...');
+    }
     try {
+        saidasAdministrativas = normalizeSaidasAdmMetadata(saidasAdministrativas);
+        var wipeBlocked = await shouldBlockSaidasAdmEmptyWrite(saidasAdministrativas);
+        if (wipeBlocked) {
+            console.warn('Saídas Administrativas: bloqueada gravação vazia por proteção anti-wipe.');
+            setSyncUiState('error', 'Bloqueado: tentativa de limpeza acidental', 3500);
+            return;
+        }
         // Sincronizar com Firebase (e localStorage) quando dataService disponível
         if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
             await dataService.setSaidasAdministrativas(saidasAdministrativas);
+        } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+            // Sem dataService, grava direto no Firebase como fonte principal
+            await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
+            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
         } else {
+            // Fallback final: apenas localStorage
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
         }
     } catch (error) {
         console.error('Erro ao salvar estado:', error);
         try {
-            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
+                await dataService.setSaidasAdministrativas(saidasAdministrativas);
+            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
+                try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
+            } else {
+                localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            }
         } catch (e) {
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+        }
+        if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+            setSyncUiState('offline', 'Offline (pendente de sincronizacao)');
+        } else {
+            setSyncUiState('error', 'Falha ao sincronizar', 3500);
+        }
+        broadcastSaidasAdministrativasUpdated();
+        return;
+    }
+    if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+        setSyncUiState('offline', 'Offline (fila local ativa)');
+    } else {
+        setSyncUiState('ok', 'Sincronizado');
+    }
+    broadcastSaidasAdministrativasUpdated();
+}
+
+// Auto-save com debounce: evita chamar Firebase a cada edição de célula
+let autoSaveTimeoutId = null;
+let autoSavePending = false;
+var saidasAdmAllowEmptyWriteUntil = 0;
+
+function nowIsoSaidasAdm() {
+    try { return new Date().toISOString(); } catch (e) { return ''; }
+}
+
+function getSaidasAdmUpdatedBy() {
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.getCurrentUserProfile === 'function') {
+            var u = window.firebaseSot.getCurrentUserProfile();
+            if (u && (u.email || u.uid || u.displayName)) return String(u.email || u.uid || u.displayName);
+        }
+    } catch (e) {}
+    try {
+        if (typeof dataService !== 'undefined' && typeof dataService.getCurrentUserProfile === 'function') {
+            var p = dataService.getCurrentUserProfile();
+            if (p && (p.email || p.uid || p.displayName)) return String(p.email || p.uid || p.displayName);
+        }
+    } catch (e) {}
+    return 'local-user';
+}
+
+function generateSaidasAdmStableId() {
+    try {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return 'saida_adm_' + window.crypto.randomUUID();
+        }
+    } catch (e) {}
+    return 'saida_adm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+function touchSaidaAdmRecord(item) {
+    if (!item || typeof item !== 'object') return item;
+    if (!item.id || String(item.id).trim() === '') item.id = generateSaidasAdmStableId();
+    item.updatedAt = nowIsoSaidasAdm();
+    if (!item.updatedBy || String(item.updatedBy).trim() === '') {
+        item.updatedBy = getSaidasAdmUpdatedBy();
+    }
+    return item;
+}
+
+function getSaidaAdmUpdatedMs(item) {
+    if (!item || !item.updatedAt) return 0;
+    try {
+        var t = Date.parse(String(item.updatedAt));
+        return Number.isFinite(t) ? t : 0;
+    } catch (e) { return 0; }
+}
+
+function sameSaidaAdmContent(a, b) {
+    try {
+        return JSON.stringify(a || {}) === JSON.stringify(b || {});
+    } catch (e) {
+        return false;
+    }
+}
+
+function normalizeSaidasAdmMetadata(list) {
+    var arr = Array.isArray(list) ? list : [];
+    var seen = Object.create(null);
+    return arr.map(function (raw) {
+        var item = raw && typeof raw === 'object' ? raw : {};
+        if (!item.id || String(item.id).trim() === '') item.id = generateSaidasAdmStableId();
+        var sid = String(item.id);
+        if (seen[sid]) {
+            item.id = generateSaidasAdmStableId();
+            sid = String(item.id);
+        }
+        seen[sid] = true;
+        if (!item.updatedAt) item.updatedAt = nowIsoSaidasAdm();
+        if (!item.updatedBy) item.updatedBy = getSaidasAdmUpdatedBy();
+        return item;
+    });
+}
+
+function hasSaidasAdmExplicitClearAuthorization() {
+    return Date.now() < Number(saidasAdmAllowEmptyWriteUntil || 0);
+}
+
+function authorizeSaidasAdmExplicitClear(ms) {
+    saidasAdmAllowEmptyWriteUntil = Date.now() + (typeof ms === 'number' ? ms : 120000);
+}
+
+async function shouldBlockSaidasAdmEmptyWrite(list) {
+    if (Array.isArray(list) && list.length > 0) return false;
+    if (hasSaidasAdmExplicitClearAuthorization()) return false;
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+            var remoteNow = await window.firebaseSot.get('saidasAdministrativas');
+            if (Array.isArray(remoteNow) && remoteNow.length > 0) return true;
+        }
+    } catch (e) {
+        // Em dúvida (falha de rede/auth), protege por padrão.
+        return true;
+    }
+    return false;
+}
+
+function scheduleAutoSave() {
+    autoSavePending = true;
+    if (autoSaveTimeoutId) {
+        clearTimeout(autoSaveTimeoutId);
+    }
+    autoSaveTimeoutId = setTimeout(async () => {
+        try {
+            if (!autoSavePending) return;
+            autoSavePending = false;
+            autoSaveTimeoutId = null;
+            await saveState();
+        } catch (e) {
+            console.warn('Saídas Administrativas: falha no auto-save:', e);
+        }
+    }, 30000); // 30 segundos
+}
+
+/** Grava Firebase/API já ao alterar KM/chegada — evita Quadro e sync usarem remoto desatualizado. */
+function persistSaidasAdministrativasImmediate() {
+    if (autoSaveTimeoutId) {
+        clearTimeout(autoSaveTimeoutId);
+        autoSaveTimeoutId = null;
+    }
+    autoSavePending = false;
+    saveState().catch(function (e) {
+        console.warn('Saídas Administrativas: falha ao gravar imediato (KM/chegada):', e);
+    });
+}
+
+// Outbox offline-first (upserts por id) para reduzir perda em quedas de rede/auth.
+var SAIDAS_ADM_OUTBOX_KEY = 'sot_saidas_adm_outbox_v1';
+var SAIDAS_ADM_SYNC_LOG_KEY = 'sot_saidas_adm_sync_log_v1';
+var saidasAdmOutboxFlushTimer = null;
+var saidasAdmOutboxFlushing = false;
+
+function logSaidasAdmSync(eventType, payload) {
+    var evt = {
+        at: new Date().toISOString(),
+        type: String(eventType || 'event'),
+        online: !(typeof navigator !== 'undefined' && navigator && navigator.onLine === false),
+        payload: payload && typeof payload === 'object' ? payload : {}
+    };
+    try {
+        var raw = localStorage.getItem(SAIDAS_ADM_SYNC_LOG_KEY);
+        var rows = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(rows)) rows = [];
+        rows.push(evt);
+        // Mantém buffer circular com os últimos 300 eventos.
+        if (rows.length > 300) rows = rows.slice(rows.length - 300);
+        localStorage.setItem(SAIDAS_ADM_SYNC_LOG_KEY, JSON.stringify(rows));
+    } catch (e) {}
+    try { console.log('[SOT_SYNC_ADM]', evt); } catch (e2) {}
+}
+
+function readSaidasAdmOutbox() {
+    try {
+        var raw = localStorage.getItem(SAIDAS_ADM_OUTBOX_KEY);
+        var parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeSaidasAdmOutbox(list) {
+    try {
+        localStorage.setItem(SAIDAS_ADM_OUTBOX_KEY, JSON.stringify(Array.isArray(list) ? list : []));
+    } catch (e) {
+        console.warn('Saídas Administrativas: falha ao salvar outbox local.', e);
+    }
+}
+
+function enqueueSaidasAdmOutboxUpserts(ids) {
+    var idList = Array.isArray(ids) ? ids.map(function (x) { return String(x); }).filter(Boolean) : [];
+    if (!idList.length) return;
+    var now = Date.now();
+    var current = readSaidasAdmOutbox();
+    idList.forEach(function (sid) {
+        var idx = current.findIndex(function (op) { return op && op.type === 'upsert' && String(op.id) === sid; });
+        var op = { type: 'upsert', id: sid, queuedAt: now };
+        if (idx >= 0) current[idx] = op;
+        else current.push(op);
+    });
+    writeSaidasAdmOutbox(current);
+    logSaidasAdmSync('outbox_enqueue', { ids: idList, queueSize: current.length });
+}
+
+async function flushSaidasAdmOutbox() {
+    if (saidasAdmOutboxFlushing) return false;
+    if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+        setSyncUiState('offline', 'Offline (fila local ativa)');
+        logSaidasAdmSync('outbox_skip_offline', { reason: 'navigator_offline' });
+        return false;
+    }
+    if (typeof dataService === 'undefined' || typeof dataService.saveSaidaAdministrativa !== 'function') {
+        logSaidasAdmSync('outbox_skip_no_dataservice', {});
+        return false;
+    }
+
+    var queue = readSaidasAdmOutbox();
+    if (!queue.length) return true;
+
+    saidasAdmOutboxFlushing = true;
+    setSyncUiState('saving', 'Sincronizando fila...');
+    logSaidasAdmSync('outbox_flush_start', { queueSize: queue.length });
+    var hadAck = false;
+    var ackCount = 0;
+    try {
+        for (var i = 0; i < queue.length; i++) {
+            var op = queue[i];
+            if (!op || op.type !== 'upsert' || !op.id) continue;
+            var row = saidasAdministrativas.find(function (s) { return String(s.id) === String(op.id); });
+            if (!row) {
+                // registro removido localmente; remove da fila para não travar processamento.
+                queue.splice(i, 1);
+                i--;
+                writeSaidasAdmOutbox(queue);
+                logSaidasAdmSync('outbox_drop_missing_row', { id: op.id, queueSize: queue.length });
+                continue;
+            }
+            await dataService.saveSaidaAdministrativa(row); // ACK remoto
+            queue.splice(i, 1);
+            i--;
+            hadAck = true;
+            ackCount++;
+            writeSaidasAdmOutbox(queue);
+            logSaidasAdmSync('outbox_ack', { id: op.id, queueRemaining: queue.length });
+        }
+    } catch (e) {
+        console.warn('Saídas Administrativas: flush do outbox interrompido; manter fila para retry.', e);
+        setSyncUiState('error', 'Erro ao sincronizar fila', 3500);
+        logSaidasAdmSync('outbox_flush_error', { message: e && e.message ? e.message : String(e), queueRemaining: queue.length });
+        return false;
+    } finally {
+        saidasAdmOutboxFlushing = false;
+    }
+
+    if (hadAck) notifySaidasAdministrativasChanged(true);
+    if (readSaidasAdmOutbox().length > 0) {
+        setSyncUiState('saving', 'Pendencias de sincronizacao...');
+    } else {
+        setSyncUiState('ok', 'Sincronizado');
+    }
+    logSaidasAdmSync('outbox_flush_done', { ackCount: ackCount, queueRemaining: readSaidasAdmOutbox().length });
+    return true;
+}
+
+async function resolveSaidasAdmConflictsLatestWins(idList) {
+    var ids = Array.isArray(idList) ? idList.slice() : [];
+    if (!ids.length) return ids;
+    var remoteList = null;
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+            var fb = await window.firebaseSot.get('saidasAdministrativas');
+            if (Array.isArray(fb)) remoteList = fb;
+        }
+    } catch (e) {}
+    if (!Array.isArray(remoteList)) return ids;
+
+    var conflicted = [];
+    for (var i = 0; i < ids.length; i++) {
+        var sid = String(ids[i]);
+        var localIdx = saidasAdministrativas.findIndex(function (s) { return String(s.id) === sid; });
+        if (localIdx === -1) continue;
+        var localRow = saidasAdministrativas[localIdx];
+        var remoteRow = remoteList.find(function (r) { return String((r && r.id) || '') === sid; });
+        if (!remoteRow) continue;
+
+        var localMs = getSaidaAdmUpdatedMs(localRow);
+        var remoteMs = getSaidaAdmUpdatedMs(remoteRow);
+        if (remoteMs > localMs && !sameSaidaAdmContent(localRow, remoteRow)) {
+            saidasAdministrativas[localIdx] = remoteRow;
+            conflicted.push(sid);
+        }
+    }
+
+    if (conflicted.length) {
+        try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
+        setSyncUiState('error', 'Conflito detectado: versão mais recente mantida em ' + conflicted.length + ' registro(s).', 4500);
+        logSaidasAdmSync('conflict_latest_wins', { ids: conflicted, total: conflicted.length });
+        try { populateTables(); } catch (e) {}
+    }
+
+    return ids.filter(function (sid) { return conflicted.indexOf(String(sid)) === -1; });
+}
+
+function scheduleSaidasAdmOutboxFlush(delayMs) {
+    if (saidasAdmOutboxFlushTimer) clearTimeout(saidasAdmOutboxFlushTimer);
+    saidasAdmOutboxFlushTimer = setTimeout(function () {
+        saidasAdmOutboxFlushTimer = null;
+        void flushSaidasAdmOutbox();
+    }, typeof delayMs === 'number' ? delayMs : 1200);
+}
+
+window.addEventListener('online', function () {
+    setSyncUiState('loading', 'Conexao restabelecida. Sincronizando...');
+    scheduleSaidasAdmOutboxFlush(300);
+});
+window.addEventListener('offline', function () {
+    setSyncUiState('offline', 'Offline (fila local ativa)');
+});
+var saidasAdmOutboxSweepIntervalId = null;
+function startSaidasAdmOutboxSweep() {
+    if (saidasAdmOutboxSweepIntervalId) return;
+    saidasAdmOutboxSweepIntervalId = setInterval(function () {
+        if (document.visibilityState !== 'visible') return;
+        if (readSaidasAdmOutbox().length > 0) scheduleSaidasAdmOutboxFlush(0);
+    }, 20000);
+}
+function stopSaidasAdmOutboxSweep() {
+    if (!saidasAdmOutboxSweepIntervalId) return;
+    clearInterval(saidasAdmOutboxSweepIntervalId);
+    saidasAdmOutboxSweepIntervalId = null;
+}
+
+/** Persistência granular: tenta salvar somente registros alterados (por id). */
+async function persistSaidasAdministrativasByIds(ids, immediateSync) {
+    var idList = Array.isArray(ids) ? ids.map(function (x) { return String(x); }) : [];
+    if (!idList.length) {
+        if (immediateSync) persistSaidasAdministrativasImmediate();
+        else scheduleAutoSave();
+        return;
+    }
+    idList = await resolveSaidasAdmConflictsLatestWins(idList);
+    if (!idList.length) return;
+    for (var j = 0; j < idList.length; j++) {
+        var rowToTouch = saidasAdministrativas.find(function (s) { return String(s.id) === idList[j]; });
+        if (rowToTouch) touchSaidaAdmRecord(rowToTouch);
+    }
+    enqueueSaidasAdmOutboxUpserts(idList);
+    try {
+        var ok = await flushSaidasAdmOutbox();
+        if (ok) return;
+    } catch (e) {
+        console.warn('Saídas Administrativas: persistência granular caiu para fallback.', e);
+        logSaidasAdmSync('persist_granular_error', { message: e && e.message ? e.message : String(e), ids: idList });
+    }
+    scheduleSaidasAdmOutboxFlush(immediateSync ? 500 : 2500);
+    logSaidasAdmSync('persist_granular_fallback', { ids: idList, immediateSync: !!immediateSync });
+    if (immediateSync) persistSaidasAdministrativasImmediate();
+    else scheduleAutoSave();
+}
+
+// Utilitário único para operações críticas de atualização + persistência + sincronização.
+var saidasAdmCriticalOps = {
+    updateRowsByIds: function (ids, mutator) {
+        var idList = Array.isArray(ids) ? ids.map(function (x) { return String(x); }).filter(Boolean) : [];
+        idList.forEach(function (id) {
+            var idx = saidasAdministrativas.findIndex(function (item) { return String(item.id) === id; });
+            if (idx !== -1 && typeof mutator === 'function') mutator(saidasAdministrativas[idx], idx);
+        });
+        return idList;
+    },
+    writeLocalCache: function () {
+        try {
+            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
+            return true;
+        } catch (e) {
+            console.warn('Saídas Administrativas: falha ao atualizar cache local de saídas.', e);
+            return false;
+        }
+    },
+    persistByIds: function (ids, immediateSync) {
+        return persistSaidasAdministrativasByIds(ids, !!immediateSync);
+    }
+};
+
+/** Modal: confirmar gravação e aviso ao Quadro de Saídas (BroadcastChannel / Firebase). */
+var pendingQuadroSyncConfirm = null;
+function openConfirmQuadroSyncModal(message, onConfirm, onCancel) {
+    var modal = document.getElementById('confirmQuadroSyncModal');
+    var msgEl = document.getElementById('confirmQuadroSyncMessage');
+    pendingQuadroSyncConfirm = { onConfirm: onConfirm, onCancel: onCancel };
+    if (msgEl) msgEl.textContent = message || '';
+    if (modal) {
+        modal.classList.add('show');
+        try { modal.scrollTop = 0; } catch (e) {}
+    }
+}
+function hideConfirmQuadroSyncModal() {
+    var modal = document.getElementById('confirmQuadroSyncModal');
+    if (modal) modal.classList.remove('show');
+}
+/** Grava KM no estado, persiste e notifica o Quadro; opcional segundo modal para hora de chegada. */
+function commitKmFieldsFromModal(ids, keyToUpdate, valueToSave, row) {
+    var idList = saidasAdmCriticalOps.updateRowsByIds(ids, function (rowItem) {
+        rowItem[keyToUpdate] = valueToSave;
+        if (keyToUpdate === 'kmSaida') rowItem.km_saida = valueToSave;
+        if (keyToUpdate === 'kmChegada') rowItem.km_chegada = valueToSave;
+    });
+    saidasAdmCriticalOps.writeLocalCache();
+    void saidasAdmCriticalOps.persistByIds(idList, true);
+    if (row) atualizarEstiloDaLinha(row);
+
+    if (keyToUpdate === 'kmChegada' && valueToSave !== '' && row) {
+        var timeInput = row.querySelector('input[data-key="chegada"]');
+        if (timeInput && !timeInput.value) {
+            var now = new Date();
+            var currentTime = now.toTimeString().slice(0, 5);
+            openConfirmQuadroSyncModal(
+                'Preencher automaticamente a hora de chegada com ' + currentTime + ' e atualizar o Quadro de Saídas?\n\nOK = confirmar\nCancelar = informar a hora manualmente depois',
+                function () {
+                    timeInput.value = currentTime;
+                    var timeIds = saidasAdmCriticalOps.updateRowsByIds(ids, function (rowItem) {
+                        rowItem.chegada = currentTime;
+                    });
+                    saidasAdmCriticalOps.writeLocalCache();
+                    void saidasAdmCriticalOps.persistByIds(timeIds, true);
+                    atualizarEstiloDaLinha(row);
+                },
+                function () { /* mantém chegada vazia para preenchimento manual */ }
+            );
         }
     }
 }
@@ -1278,6 +1921,17 @@ noticeList.appendChild(li);
 });
 } else { noticeList.innerHTML = '<li>Nenhum aviso no momento.</li>'; }
 }
+/** Mesma regra do QuadroDeSaidas: iniciada com KM Saída; cancela quando KM Chegada e hora Chegada preenchidos. */
+function isSaidaAdministrativaIniciada(saida) {
+    if (!saida) return false;
+    const kmS = String(saida.kmSaida ?? saida.km_saida ?? '').trim();
+    const kmC = String(saida.kmChegada ?? saida.km_chegada ?? '').trim();
+    const cheg = String(saida.chegada ?? '').trim();
+    if (!kmS) return false;
+    if (kmC.length > 0 && cheg.length > 0) return false;
+    return true;
+}
+
 function atualizarEstiloDaLinha(row) {
 const ids = row.dataset.id.split(',');
 if (!ids[0]) return;
@@ -1296,7 +1950,13 @@ if (!alertedVehiclesOil.has(placa)) { playOilChangeAlert(placa); alertedVehicles
 }
 }
 row.classList.toggle('alarme-oleo-piscando', alarmeOleoAtivo);
-if (!alarmeOleoAtivo) { row.classList.toggle('saida-realizada', !!(saidaPrincipal.kmSaida && saidaPrincipal.kmChegada && saidaPrincipal.chegada)); }
+if (!alarmeOleoAtivo) {
+    const completa = !!(saidaPrincipal.kmSaida && saidaPrincipal.kmChegada && saidaPrincipal.chegada);
+    row.classList.toggle('saida-realizada', completa);
+    row.classList.toggle('saida-iniciada', isSaidaAdministrativaIniciada(saidaPrincipal));
+} else {
+    row.classList.remove('saida-iniciada');
+}
 }
 function formatarListaComE(itens) {
 if (!itens || itens.length === 0) return '';
@@ -2205,7 +2865,7 @@ async function separarSetorPorDuploClique(saidaJuntadaId, setorData) {
         
         // Atualizar tabela
         populateTables();
-        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        notifySaidasAdministrativasChanged();
         
         console.log('✅ Setor separado com sucesso via duplo clique!');
     } catch (error) {
@@ -2449,6 +3109,7 @@ cell.addEventListener('blur', handleCellEdit);
 const timeInput = row.querySelector('input[type="time"]');
 if (timeInput) {
 timeInput.addEventListener('change', handleTimeInputChange);
+timeInput.addEventListener('blur', handleTimeInputChange);
 }
 row.querySelector('td[contenteditable="true"][data-key="kmSaida"]')?.addEventListener('focus', (e) => {
 if (e.target.textContent.trim() === '') {
@@ -2460,71 +3121,169 @@ e.target.textContent = getLastKmChegadaAdm(placa);
 function handleTimeInputChange(event) {
 const input = event.target;
 const row = input.closest('tr');
-const ids = row.dataset.id.split(',');
+if (!row) return;
+const ids = row.dataset.id.split(',').filter(Boolean);
 const keyToUpdate = input.dataset.key;
-const valueToSave = input.value;
-ids.forEach(id => {
-const index = saidasAdministrativas.findIndex(item => item.id === id);
-if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
-});
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
-atualizarEstiloDaLinha(row);
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+if (keyToUpdate !== 'chegada') return;
+const normalizedTime = normalizeAndValidateEditableValue('chegada', input.value);
+if (!normalizedTime.ok) {
+    alert(normalizedTime.message);
+    input.value = '';
+    return;
+}
+const valueToSave = normalizedTime.value;
+const idx0 = saidasAdministrativas.findIndex(item => item.id === ids[0]);
+const oldVal = idx0 !== -1 ? (saidasAdministrativas[idx0].chegada || '') : '';
+if (valueToSave === oldVal) return;
+var dedupeKey = (row.dataset.id || '') + '|' + keyToUpdate;
+if (handleTimeInputChange._lastDedupe === dedupeKey && handleTimeInputChange._lastVal === valueToSave) return;
+handleTimeInputChange._lastDedupe = dedupeKey;
+handleTimeInputChange._lastVal = valueToSave;
+const placa = (row.querySelector('td') && row.querySelector('td').textContent.trim()) || '';
+openConfirmQuadroSyncModal(
+    'Confirmar hora de chegada: ' + (valueToSave || '(vazio)') + '\n\nViatura: ' + placa + '\n\nAo clicar em OK, os dados serão gravados e o Quadro de Saídas será atualizado.',
+    function () {
+        const idList = saidasAdmCriticalOps.updateRowsByIds(ids, function (rowItem) {
+            rowItem[keyToUpdate] = valueToSave;
+        });
+        saidasAdmCriticalOps.writeLocalCache();
+        void saidasAdmCriticalOps.persistByIds(idList, true);
+        atualizarEstiloDaLinha(row);
+    },
+    function () {
+        input.value = oldVal;
+        handleTimeInputChange._lastVal = oldVal;
+    }
+);
 }
 function formatKm(value) {
     let num = value.replace(/,/g, '').replace(/\./g, '');
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+function kmDigitsOnly(s) {
+    return String(s == null ? '' : s).replace(/\./g, '').replace(/,/g, '').trim();
+}
+
+function sanitizeTextValue(raw) {
+    var txt = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
+    var lower = txt.toLowerCase();
+    if (lower === 'undefined' || lower === 'null' || lower === 'nan') return '';
+    return txt;
+}
+
+function isValidTimeHHmm(v) {
+    if (v === '') return true;
+    if (!/^\d{2}:\d{2}$/.test(v)) return false;
+    var p = v.split(':');
+    var h = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10);
+    return h >= 0 && h <= 23 && m >= 0 && m <= 59;
+}
+
+function normalizeAndValidateEditableValue(key, rawValue) {
+    var val = sanitizeTextValue(rawValue);
+    if (key === 'kmSaida' || key === 'kmChegada') {
+        if (val === '') return { ok: true, value: '' };
+        var digits = kmDigitsOnly(val);
+        if (!/^\d+$/.test(digits)) return { ok: false, message: 'Valor inválido para KM. Use apenas números.' };
+        var num = parseInt(digits, 10);
+        if (!Number.isFinite(num) || num < 0) return { ok: false, message: 'KM deve ser numérico e não negativo.' };
+        return { ok: true, value: formatKm(String(num)) };
+    }
+    if (key === 'chegada' || key === 'saida' || key === 'hora' || key === 'horaSaida' || key === 'horaPedido') {
+        if (!isValidTimeHHmm(val)) return { ok: false, message: 'Hora inválida. Use o formato HH:MM.' };
+        return { ok: true, value: val };
+    }
+    if (val.length > 220) return { ok: false, message: 'Texto muito longo. Limite de 220 caracteres.' };
+    return { ok: true, value: val };
+}
+
 function handleCellEdit(event) {
 const cell = event.target;
 const row = cell.closest('tr');
-const ids = row.dataset.id.split(',');
+const ids = row.dataset.id.split(',').filter(Boolean);
 const keyToUpdate = cell.dataset.key;
 let valueToSave = cell.textContent.trim();
+if (!keyToUpdate) return;
 
-// Formatar KM se for kmSaida ou kmChegada
+// KM Saída / KM Chegada: validar, confirmar em modal e só então gravar + avisar o Quadro de Saídas
 if (keyToUpdate === 'kmSaida' || keyToUpdate === 'kmChegada') {
-    valueToSave = formatKm(valueToSave);
-    cell.textContent = valueToSave; // Atualizar a célula também
-}
-
-// Validação de quilometragem ANTES de salvar
-if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
+    const normalizedKm = normalizeAndValidateEditableValue(keyToUpdate, valueToSave);
+    if (!normalizedKm.ok) {
+        alert(normalizedKm.message);
+        const firstOld = saidasAdministrativas.find(item => item.id === ids[0]);
+        const oldVal = firstOld ? (firstOld[keyToUpdate] || '') : '';
+        cell.textContent = oldVal ? formatKm(String(oldVal).trim()) : '';
+        return;
+    }
+    valueToSave = normalizedKm.value;
+    cell.textContent = valueToSave;
     const saidaData = saidasAdministrativas.find(item => item.id === ids[0]);
-    if (saidaData) {
+    if (keyToUpdate === 'kmChegada' && valueToSave !== '' && saidaData) {
         const kmSaidaStr = saidaData.kmSaida ? saidaData.kmSaida.replace(/\./g, '') : '';
         const kmChegadaStr = valueToSave.replace(/\./g, '');
-        
         if (kmSaidaStr && kmChegadaStr) {
             const kmSaida = parseFloat(kmSaidaStr);
             const kmChegada = parseFloat(kmChegadaStr);
-            
             if (!isNaN(kmSaida) && !isNaN(kmChegada)) {
-                // Verificar se KM chegada <= KM saída
                 if (kmChegada <= kmSaida) {
                     showKmAlertModal('Quilometragem de chegada incorreta, verifique o preenchimento novamente.');
-                    // Reverter o valor
                     const oldValue = saidaData.kmChegada || '';
                     cell.textContent = oldValue ? formatKm(oldValue) : '';
-                    return; // Não salvar se a validação falhar
-                }
-                
-                // Verificar se a distância percorrida é maior que 110km
-                const distancia = kmChegada - kmSaida;
-                if (distancia > 110) {
-                    showKmAlertModal('Quilometragem alta, está certo desse preenchimento?', cell, row, ids, true);
+                    return;
                 }
             }
         }
     }
+    const first = saidaData || saidasAdministrativas.find(item => item.id === ids[0]);
+    const oldRaw = first ? (first[keyToUpdate] || '') : '';
+    if (kmDigitsOnly(valueToSave) === kmDigitsOnly(oldRaw)) {
+        atualizarEstiloDaLinha(row);
+        return;
+    }
+    let distanciaWarn = '';
+    if (keyToUpdate === 'kmChegada' && valueToSave !== '' && first) {
+        const ks = (first.kmSaida || '').replace(/\./g, '');
+        const kc = valueToSave.replace(/\./g, '');
+        if (ks && kc) {
+            const kmSaida = parseFloat(ks);
+            const kmChegada = parseFloat(kc);
+            if (!isNaN(kmSaida) && !isNaN(kmChegada) && (kmChegada - kmSaida) > 110) {
+                distanciaWarn = '\n\nAtenção: distância percorrida superior a 110 km.';
+            }
+        }
+    }
+    const placa = (row.querySelector('td') && row.querySelector('td').textContent.trim()) || '';
+    const label = keyToUpdate === 'kmSaida' ? 'KM Saída' : 'KM Chegada';
+    const msg = 'Confirmar ' + label + ': ' + (valueToSave || '(vazio)') + '\n\nViatura: ' + placa + distanciaWarn + '\n\nAo clicar em OK, os dados serão gravados e o Quadro de Saídas será atualizado.';
+    openConfirmQuadroSyncModal(msg, function () {
+        commitKmFieldsFromModal(ids, keyToUpdate, valueToSave, row);
+    }, function () {
+        const oldVal = first ? (first[keyToUpdate] || '') : '';
+        cell.textContent = oldVal ? formatKm(String(oldVal).trim()) : '';
+    });
+    return;
 }
 
-ids.forEach(id => {
-const index = saidasAdministrativas.findIndex(item => item.id === id);
-if (index !== -1) saidasAdministrativas[index][keyToUpdate] = valueToSave;
+const normalizedGeneric = normalizeAndValidateEditableValue(keyToUpdate, valueToSave);
+if (!normalizedGeneric.ok) {
+    alert(normalizedGeneric.message);
+    const firstOld = saidasAdministrativas.find(item => item.id === ids[0]);
+    const oldVal = firstOld ? (firstOld[keyToUpdate] || '') : '';
+    cell.textContent = sanitizeTextValue(oldVal);
+    return;
+}
+valueToSave = normalizedGeneric.value;
+cell.textContent = valueToSave;
+
+const updatedIds = saidasAdmCriticalOps.updateRowsByIds(ids, function (rowItem) {
+rowItem[keyToUpdate] = valueToSave;
+if (keyToUpdate === 'kmSaida') { rowItem.km_saida = valueToSave; }
+if (keyToUpdate === 'kmChegada') { rowItem.km_chegada = valueToSave; }
 });
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+saidasAdmCriticalOps.writeLocalCache();
+void saidasAdmCriticalOps.persistByIds(updatedIds, false);
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos
@@ -2564,26 +3323,7 @@ if (keyToUpdate === 'destino' || keyToUpdate === 'bairro' || keyToUpdate === 'se
     populateTables();
 }
 
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-
-// Novo: Preencher CHEGADA automaticamente se KM CHEGADA foi preenchido
-if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
-    const timeInput = row.querySelector('input[data-key="chegada"]');
-    if (timeInput && !timeInput.value) {
-        const now = new Date();
-        const currentTime = now.toTimeString().slice(0, 5); // HH:MM
-        if (confirm(`Confirmar hora de chegada: ${currentTime}?`)) {
-            timeInput.value = currentTime;
-            // Salvar também a chegada
-            ids.forEach(id => {
-                const index = saidasAdministrativas.findIndex(item => item.id === id);
-                if (index !== -1) saidasAdministrativas[index].chegada = currentTime;
-            });
-            if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
-            atualizarEstiloDaLinha(row);
-        }
-    }
-}
+notifySaidasAdministrativasChanged(false);
 }
 
 // Função para manipular a edição de motorista com senha
@@ -2633,8 +3373,7 @@ saidasAdministrativas[index].motorista = newValue;
 }
 });
             
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+void persistSaidasAdministrativasByIds(ids, false);
             
 // Remove o event listener
 cell.removeEventListener('blur', saveEdit);
@@ -2839,7 +3578,7 @@ async function desagruparParaEdicao(saidaJuntada, indice, setor, destinoObj) {
         populateTables();
         
         // Notificar parent window
-        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+        notifySaidasAdministrativasChanged();
         
         console.log('✅ Saída juntada desagrupada para edição');
     } catch (error) {
@@ -3173,8 +3912,19 @@ if (saidaData) {
 }
 async function handleDeleteRow(event) {
 event.stopPropagation();
-if (confirm('Tem certeza que deseja excluir esta(s) saída(s)?')) {
+if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
 const idsToRemove = event.target.closest('tr').dataset.id.split(',');
+const totalAntes = Array.isArray(saidasAdministrativas) ? saidasAdministrativas.length : 0;
+const totalRemovidos = saidasAdministrativas.filter(item => idsToRemove.includes(item.id)).length;
+const vaiZerarLista = totalAntes > 0 && (totalAntes - totalRemovidos) === 0;
+if (vaiZerarLista) {
+    const confirmacaoForte = prompt('Atenção: esta ação vai apagar TODAS as saídas administrativas do Firebase.\nDigite APAGAR TUDO para confirmar.');
+    if (confirmacaoForte !== 'APAGAR TUDO') {
+        alert('Exclusão total cancelada.');
+        return;
+    }
+    authorizeSaidasAdmExplicitClear(180000);
+}
 try {
 // Deletar da API se disponível
 if (typeof api !== 'undefined' && typeof dataService !== 'undefined' && dataService.apiAvailable) {
@@ -3189,11 +3939,11 @@ console.warn('Erro ao deletar da API, continuando:', error);
 saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
 await saveState(); 
 populateTables();
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+notifySaidasAdministrativasChanged();
 } catch (error) {
 console.error('Erro ao deletar saída:', error);
 saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+persistSaidasAdministrativasImmediate();
 populateTables();
 }
 }
@@ -3392,17 +4142,17 @@ if (!isHidden) {
 lembretesHeader.classList.remove('header-piscando');
 }
 });
-obsModal.querySelector('#saveObsBtn').onclick = () => {
+obsModal.querySelector('#saveObsBtn').onclick = function () {
 if (currentObsContext && currentObsContext.ids.length > 0) {
-const newObs = obsTextarea.value.trim();
-currentObsContext.ids.forEach(id => {
+var newObs = ValidacaoSaidasAdm.sanitizeObs(obsTextarea.value);
+currentObsContext.ids.forEach(function (id) {
 const index = saidasAdministrativas.findIndex(item => item.id === id);
 if (index !== -1) {
 saidasAdministrativas[index].observacoes = newObs;
 }
 });
 saveState(); populateTables(); obsModal.style.display = 'none';
-window.parent.postMessage({ type: 'refresh_all_data' }, '*');
+notifySaidasAdministrativasChanged();
 }
 };
 obsModal.querySelector('.close-button').onclick = () => obsModal.style.display = 'none';
@@ -3422,7 +4172,7 @@ closeBtn.onclick = () => closeViewSaidaModal();
 closeProblemasBtn.addEventListener('click', closeProblemasModal);
 problemasModal.querySelector('.close-button').addEventListener('click', closeProblemasModal);
 
-filterDateAdmInput.addEventListener('change', populateTables);
+filterDateAdmInput.addEventListener('change', debounce(populateTables, 120));
 showSvcRoBtn.addEventListener('click', toggleSvcRoDisplay);
 
 // Função para exibir o nome do próximo integrante do PSO
@@ -3903,17 +4653,14 @@ saidasTableBody.classList.toggle('table-locked', isSystemLocked);
 saidasStatusContainer.classList.toggle('locked', isSystemLocked);
 }
 else if (event.data?.type === 'refresh_data' || event.data?.type === 'refresh_all_data') { 
-await loadState(); 
-populateTables(); 
-populateDivisaoTransporteSelect(motoristasCadastrados); 
+scheduleSaidasAdmUnifiedReload('message_refresh', { needSelectRefresh: true, debounceMs: 180 });
 }
 else if (event.data?.type === 'focus_saida_administrativa') {
 const { date, id } = event.data;
 if (date) {
     filterDateAdmInput.value = date;
 }
-await loadState();
-populateTables();
+scheduleSaidasAdmUnifiedReload('message_focus', { debounceMs: 80 });
 }
 else if (event.data?.type === 'new_saida_administrativa' || event.data?.type === 'save_saida_administrativa') {
 // Nova saída criada, salvar na API
@@ -3944,8 +4691,7 @@ try {
 // }
 
 // Apenas recarregar a tabela para exibir o aviso de saídas próximas
-await loadState();
-populateTables();
+scheduleSaidasAdmUnifiedReload('post_new_saida', { debounceMs: 100 });
 } catch (error) {
 console.error('❌ Erro ao verificar junção de saídas:', error);
 }
@@ -3958,7 +4704,7 @@ populateTables();
 } catch (error) {
 console.error('Erro ao salvar nova saída:', error);
 saidasAdministrativas.push(saida);
-if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+persistSaidasAdministrativasImmediate();
 populateTables();
 }
 }
@@ -3970,6 +4716,31 @@ else if (event.data?.type === 'viaturas_problemas_update') {
 loadViaturasComProblemas();
 populateTables();
 }
+});
+if (SOT_SAIDAS_ADM_BC) {
+    SOT_SAIDAS_ADM_BC.onmessage = function (evt) {
+        if (evt && evt.data && evt.data.type === 'saidas_updated') {
+            scheduleSaidasAdmUnifiedReload('broadcast_channel', { debounceMs: 200 });
+        }
+    };
+}
+window.addEventListener('storage', function (ev) {
+    if (!ev || !ev.key) return;
+    if (ev.key === 'saidasAdministrativas') {
+        scheduleSaidasAdmUnifiedReload('storage_event', { debounceMs: 260 });
+    }
+});
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') {
+        startSaidasAdmOutboxSweep();
+        startLembretesAlarmWatcher();
+        attachUserActivityListeners();
+        scheduleSaidasAdmUnifiedReload('tab_visible', { debounceMs: 120, needSelectRefresh: false });
+    } else {
+        stopLembretesAlarmWatcher();
+        detachUserActivityListeners();
+        stopSaidasAdmOutboxSweep();
+    }
 });
 function clearDailyAlarmStates() {
 const today = new Date().toISOString().split('T')[0];
@@ -3991,9 +4762,42 @@ populateDivisaoTransporteSelect(motoristasCadastrados);
 })();
 populateNotices();
 clearDailyAlarmStates();
-setInterval(checkLembretesAlarms, 5000);
+var lembretesAlarmIntervalId = null;
+function startLembretesAlarmWatcher() {
+    if (lembretesAlarmIntervalId) return;
+    lembretesAlarmIntervalId = setInterval(checkLembretesAlarms, 5000);
+}
+function stopLembretesAlarmWatcher() {
+    if (!lembretesAlarmIntervalId) return;
+    clearInterval(lembretesAlarmIntervalId);
+    lembretesAlarmIntervalId = null;
+}
 window.parent.postMessage({ type: 'request_lembretes_data' }, '*');
-['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'].forEach(e => document.addEventListener(e, () => window.parent.postMessage({ type: 'user_activity' }, '*')));
+var userActivityEvents = ['mousemove', 'mousedown', 'keypress', 'scroll', 'touchstart'];
+var userActivityHandler = function () {
+    window.parent.postMessage({ type: 'user_activity' }, '*');
+};
+var userActivityAttached = false;
+function attachUserActivityListeners() {
+    if (userActivityAttached) return;
+    userActivityEvents.forEach(function (e) { document.addEventListener(e, userActivityHandler); });
+    userActivityAttached = true;
+}
+function detachUserActivityListeners() {
+    if (!userActivityAttached) return;
+    userActivityEvents.forEach(function (e) { document.removeEventListener(e, userActivityHandler); });
+    userActivityAttached = false;
+}
+if (document.visibilityState === 'visible') {
+    startLembretesAlarmWatcher();
+    attachUserActivityListeners();
+    startSaidasAdmOutboxSweep();
+}
+window.addEventListener('beforeunload', function () {
+    stopLembretesAlarmWatcher();
+    detachUserActivityListeners();
+    stopSaidasAdmOutboxSweep();
+});
 
 // Variáveis globais para armazenar contexto do modal
 let kmAlertCell = null;
@@ -4039,13 +4843,13 @@ function clearKmChegada() {
             const index = saidasAdministrativas.findIndex(item => item.id === id);
             if (index !== -1) {
                 saidasAdministrativas[index].kmChegada = '';
+                saidasAdministrativas[index].km_chegada = '';
             }
         });
         
         // Salvar os dados
-        if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') { dataService.setSaidasAdministrativas(saidasAdministrativas); } else { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); }
+        void persistSaidasAdministrativasByIds(kmAlertIds, true);
         atualizarEstiloDaLinha(kmAlertRow);
-        window.parent.postMessage({ type: 'refresh_all_data' }, '*');
     }
 }
 
@@ -4086,6 +4890,38 @@ if (modal) {
         }
     });
 }
+
+// Modal KM/chegada (markup do modal fica no HTML depois deste bloco; DOMContentLoaded já inclui no DOM)
+setTimeout(function setupConfirmQuadroSyncModal() {
+    function runCancel() {
+        var p = pendingQuadroSyncConfirm;
+        pendingQuadroSyncConfirm = null;
+        hideConfirmQuadroSyncModal();
+        if (p && typeof p.onCancel === 'function') {
+            try { p.onCancel(); } catch (e) {}
+        }
+    }
+    function runOk() {
+        var p = pendingQuadroSyncConfirm;
+        pendingQuadroSyncConfirm = null;
+        hideConfirmQuadroSyncModal();
+        if (p && typeof p.onConfirm === 'function') {
+            try { p.onConfirm(); } catch (e) { console.warn('confirmQuadroSync OK:', e); }
+        }
+    }
+    var okBtn = document.getElementById('confirmQuadroSyncOk');
+    var cancelBtn = document.getElementById('confirmQuadroSyncCancel');
+    var closeX = document.getElementById('confirmQuadroSyncCloseBtn');
+    var syncModal = document.getElementById('confirmQuadroSyncModal');
+    if (okBtn) okBtn.addEventListener('click', runOk);
+    if (cancelBtn) cancelBtn.addEventListener('click', runCancel);
+    if (closeX) closeX.addEventListener('click', runCancel);
+    if (syncModal) {
+        syncModal.addEventListener('click', function (e) {
+            if (e.target === syncModal) runCancel();
+        });
+    }
+}, 0);
 });
 </script>
 
@@ -4098,6 +4934,19 @@ if (modal) {
         <div class="km-alert-modal-buttons">
             <button id="kmAlertConfirmBtn" class="km-alert-confirm-btn">Sim</button>
             <button id="kmAlertCancelBtn" class="km-alert-cancel-btn">Não</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmação antes de gravar KM / chegada e atualizar o Quadro de Saídas -->
+<div id="confirmQuadroSyncModal" class="km-alert-modal" style="z-index: 10003;">
+    <div class="km-alert-modal-content">
+        <span id="confirmQuadroSyncCloseBtn" class="close-button">&times;</span>
+        <h3>Confirmar alteração</h3>
+        <p id="confirmQuadroSyncMessage"></p>
+        <div class="km-alert-modal-buttons">
+            <button type="button" id="confirmQuadroSyncOk" class="km-alert-confirm-btn">OK</button>
+            <button type="button" id="confirmQuadroSyncCancel" class="km-alert-cancel-btn">Cancelar</button>
         </div>
     </div>
 </div>

@@ -38,16 +38,63 @@ Siga estes passos para usar o Firebase no SOT. Com o Firebase configurado:
 
 ---
 
-## Passo 4: Regras do Firestore (permitir leitura/escrita)
+## Passo 4: Regras do Firestore
 
 1. Ainda em **Firestore Database**, abra a aba **“Regras”** (Rules).
-2. Substitua as regras atuais por estas (permite leitura e escrita na coleção dos usuários do agendamento):
+
+### Modo produção (recomendado) — exige login Google (Firebase Auth)
+
+O SOT **só lê/grava `sot_data` depois do login Google** (`firebase-auth.js` + `firebase-sot-firestore.mjs` no `SOT5`).  
+Para produção, use regras com:
+
+- autenticação obrigatória (`request.auth != null`);
+- validação da estrutura dos documentos críticos (`items` + `updatedAt`);
+- proteção anti-wipe (bloqueia sobrescrever lista remota não-vazia com `[]`);
+- bloqueio de `delete` no documento inteiro em `sot_data`.
+
+Use o arquivo `firestore.rules` na raiz do projeto (copie e cole no Firebase Console > Firestore > Regras).
+
+Trecho principal:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+
+    match /sot_agendamento_usuarios/{document=**} {
+      allow read, write: if isSignedIn();
+    }
+    match /sot_google_audit_logs/{document=**} {
+      allow read, write: if isSignedIn();
+    }
+    match /sot_data/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn(); // validações completas no arquivo firestore.rules
+      allow delete: if false;
+    }
+  }
+}
+```
+
+2. Clique em **“Publicar”**.
+
+> **Importante:** A coleção **`sot_google_audit_logs`** precisa de um `match` explícito (como acima); caso contrário o padrão é **negar** tudo.
+
+> **Páginas fora do `SOT5`:** quem usa `firebase-sot-service.js` (compat) sem login na mesma origem não conseguirá ler/gravar `sot_data` com essas regras. Para testes locais sem Auth, use `window.SOT_FIRESTORE_REQUIRE_AUTH = false` no console (não recomendado em produção).
+
+### Modo teste (somente desenvolvimento)
+
+Para testar sem login, você pode usar `if true` (qualquer um com o projeto pode ler/escrever — **não use em produção**):
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /sot_agendamento_usuarios/{document=**} {
+      allow read, write: if true;
+    }
+    match /sot_google_audit_logs/{document=**} {
       allow read, write: if true;
     }
     match /sot_data/{document=**} {
@@ -59,7 +106,7 @@ service cloud.firestore {
 
 3. Clique em **“Publicar”**.
 
-> **Segurança:** `if true` deixa qualquer um que tiver o link do app ler/escrever. Para produção, depois você pode restringir (por exemplo com Firebase Auth).
+> **Segurança:** Em produção use sempre **`request.auth != null`** e o fluxo de login Google do SOT.
 
 ---
 

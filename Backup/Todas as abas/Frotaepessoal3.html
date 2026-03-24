@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - FROTA E PESSOAL</title>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="firebase-sot-service.js"></script>
+    <!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+    <script>
+    window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+    </script>
     <script src="data-service.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
@@ -367,36 +367,118 @@
     <script src="theme-listener.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            let viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
-            let motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados')) || [];
-            let psoFila = JSON.parse(localStorage.getItem('psoFila')) || [];
+            // ========== VARIÁVEIS E REFERÊNCIAS DOM ==========
+            // dataService: nuvem (principal) + localStorage (complementa por id, sem apagar um ao outro)
+            let viaturasCadastradas = [];
+            let motoristasCadastrados = [];
+            let psoFila = [];
+
             try {
                 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                     await dataService.waitForAPICheck();
-                    if (dataService.useFirebase || dataService.apiAvailable) {
-                        const v = await dataService.getViaturas();
-                        const m = await dataService.getMotoristas();
-                        if (Array.isArray(v)) { viaturasCadastradas = v; localStorage.setItem('viaturasCadastradas', JSON.stringify(v)); }
-                        if (Array.isArray(m)) { motoristasCadastrados = m; localStorage.setItem('motoristasCadastrados', JSON.stringify(m)); }
+                    if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                        await dataService.waitForGoogleAuthReady(15000);
+                    }
+                    if (typeof dataService.getViaturas === 'function' && typeof dataService.getMotoristas === 'function') {
+                        viaturasCadastradas = await dataService.getViaturas();
+                        motoristasCadastrados = await dataService.getMotoristas();
+                        try { localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas)); } catch (e) {}
+                        try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
                     }
                 }
-            } catch (e) { console.warn('Frota e Pessoal: falha ao carregar do Firebase', e); }
+            } catch (e) {
+                console.warn('Frota e Pessoal: falha ao carregar via dataService', e);
+                try {
+                    viaturasCadastradas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+                    motoristasCadastrados = JSON.parse(localStorage.getItem('motoristasCadastrados') || '[]');
+                } catch (e2) {
+                    viaturasCadastradas = [];
+                    motoristasCadastrados = [];
+                }
+            }
+
+            // PSO sempre carregado do localStorage (não tem integração dedicada no dataService)
+            try {
+                psoFila = JSON.parse(localStorage.getItem('psoFila') || '[]');
+            } catch (e) {
+                psoFila = [];
+            }
             
             const subTabButtons = document.querySelectorAll('.sub-tab-button');
             const subTabContents = document.querySelectorAll('.sub-tab-content');
             const frotaTableBody = document.querySelector('#frotaTable tbody');
             const pessoalTableBody = document.querySelector('#pessoalTable tbody');
             
+            // ========== UTILITÁRIOS DE VALIDAÇÃO ==========
+            var ValidacaoFrota = {
+                sanitizePlaca: function (v) {
+                    if (v == null) return '';
+                    return String(v).trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 15);
+                },
+                sanitizeNome: function (v) {
+                    if (v == null) return '';
+                    return String(v).replace(/\s+/g, ' ').trim().slice(0, 200);
+                },
+                validateAno: function (v) {
+                    if (v == null || String(v).trim() === '') return true;
+                    var n = parseInt(String(v).trim(), 10);
+                    return !isNaN(n) && n >= 1900 && n <= 2100;
+                },
+                validateKm: function (v) {
+                    if (v == null || String(v).trim() === '') return true;
+                    var n = parseFloat(String(v).replace(',', '.'));
+                    return !isNaN(n) && n >= 0 && n < 10000000;
+                }
+            };
+
             const saveData = async (key, data) => {
-                localStorage.setItem(key, JSON.stringify(data));
+                // Sempre tenta salvar primeiro via dataService (Firebase/API)
                 try {
                     if (typeof dataService !== 'undefined') {
-                        if (key === 'viaturasCadastradas' && dataService.saveViaturas) await dataService.saveViaturas(data);
-                        else if (key === 'motoristasCadastrados' && dataService.saveMotoristas) await dataService.saveMotoristas(data);
+                        if (key === 'viaturasCadastradas' && dataService.saveViaturas) {
+                            await dataService.saveViaturas(data);
+                        } else if (key === 'motoristasCadastrados' && dataService.saveMotoristas) {
+                            await dataService.saveMotoristas(data);
+                        }
                     }
-                } catch (e) { console.warn('Frota e Pessoal: falha ao salvar no Firebase', e); }
+                } catch (e) {
+                    console.warn('Frota e Pessoal: falha ao salvar via dataService', e);
+                }
+
+                // Em qualquer caso, mantém cópia em localStorage para cache/offline
+                try {
+                    localStorage.setItem(key, JSON.stringify(data));
+                } catch (e) {
+                    console.warn('Frota e Pessoal: falha ao salvar no localStorage', e);
+                }
+
                 window.parent.postMessage({ type: 'refresh_all_data' }, '*');
             };
+
+            /**
+             * Remove linhas sem dado essencial: viaturas sem placa, motoristas sem nome.
+             * KM atual só lista viaturas cadastradas — ao limpar viaturas vazias, some da KM também.
+             */
+            const aplicarRemocaoLinhasSemDados = async () => {
+                const nV0 = viaturasCadastradas.length;
+                const nM0 = motoristasCadastrados.length;
+                viaturasCadastradas = (viaturasCadastradas || []).filter(function (v) {
+                    if (!v || typeof v !== 'object') return false;
+                    return ValidacaoFrota.sanitizePlaca(v.placa).length > 0;
+                });
+                motoristasCadastrados = (motoristasCadastrados || []).filter(function (m) {
+                    if (!m || typeof m !== 'object') return false;
+                    return ValidacaoFrota.sanitizeNome(m.nome).length > 0;
+                });
+                if (viaturasCadastradas.length !== nV0) {
+                    await saveData('viaturasCadastradas', viaturasCadastradas);
+                }
+                if (motoristasCadastrados.length !== nM0) {
+                    await saveData('motoristasCadastrados', motoristasCadastrados);
+                }
+            };
+
+            await aplicarRemocaoLinhasSemDados();
 
             const handleUpdate = (id, key, value, dataType) => {
                 const dataArray = dataType === 'viatura' ? viaturasCadastradas : motoristasCadastrados;
@@ -413,11 +495,21 @@
                 const key = cell.dataset.key;
                 if (!key) return;
                 const index = viaturasCadastradas.findIndex(item => item.id === rowId);
-                if (index !== -1) {
-                    const valueToSave = cell.textContent.trim();
-                    viaturasCadastradas[index][key] = valueToSave;
-                    saveData('viaturasCadastradas', viaturasCadastradas);
+                if (index === -1) return;
+                var raw = cell.textContent.trim();
+                var valueToSave = raw;
+                if (key === 'placa') {
+                    valueToSave = ValidacaoFrota.sanitizePlaca(raw);
+                    cell.textContent = valueToSave;
+                } else if (key === 'ano' && raw !== '') {
+                    if (!ValidacaoFrota.validateAno(raw)) return;
+                    valueToSave = raw;
+                } else if ((key === 'trocaOleoKm' || key === 'proxTrocaKm' || key === 'correiaDentadaKm') && raw !== '') {
+                    if (!ValidacaoFrota.validateKm(raw)) return;
+                    valueToSave = raw;
                 }
+                viaturasCadastradas[index][key] = valueToSave;
+                saveData('viaturasCadastradas', viaturasCadastradas);
             };
 
             const handleFrotaCheckboxChange = (event) => {
@@ -510,7 +602,9 @@
                      `;
                      
                      row.querySelector('td[contenteditable="true"]').addEventListener('blur', () => {
-                        handleUpdate(membro.id, 'nome', row.cells[0].textContent, 'motorista');
+                        var nomeVal = ValidacaoFrota.sanitizeNome(row.cells[0].textContent);
+                        row.cells[0].textContent = nomeVal;
+                        handleUpdate(membro.id, 'nome', nomeVal, 'motorista');
                      });
 
                      row.querySelector('.delete-row-btn').addEventListener('click', () => {
@@ -568,6 +662,13 @@
                             let value = values[index] ? values[index].trim() : '';
                             if (value === 'true') value = true;
                             if (value === 'false') value = false;
+                            if (dataType === 'viatura') {
+                                if (header === 'placa') value = ValidacaoFrota.sanitizePlaca(value);
+                                else if (header === 'ano' && value !== '' && !ValidacaoFrota.validateAno(value)) value = '';
+                                else if ((header === 'trocaOleoKm' || header === 'proxTrocaKm' || header === 'correiaDentadaKm') && value !== '' && !ValidacaoFrota.validateKm(value)) value = '';
+                            } else if (dataType === 'motorista' && header === 'nome') {
+                                value = ValidacaoFrota.sanitizeNome(value);
+                            }
                             obj[header] = value;
                         });
                         if (!obj.id) {
@@ -591,6 +692,7 @@
                 reader.readAsText(file, 'UTF-8');
             }
 
+            // ========== EVENT LISTENERS ==========
             document.getElementById('exportViaturaBtn').addEventListener('click', () => {
                 const headers = ['id', 'placa', 'tipo', 'ano', 'trocaOleoKm', 'confirma', 'proxTrocaKm', 'operante', 'inoperante', 'correiaDentadaKm'];
                 exportToCSV(viaturasCadastradas, 'viaturas.csv', headers);
@@ -632,7 +734,7 @@
                     
                     // Atualizar tabela de KM Atual quando a aba for ativada
                     if (tabId === 'kmAtualContent') {
-                        populateKmAtualTable();
+                        void populateKmAtualTable();
                     }
                     // Atualizar tabela PSO quando a aba for ativada
                     if (tabId === 'psoContent') {
@@ -908,7 +1010,7 @@
             
             populateFrotaTable();
             populatePessoalTable();
-            populateKmAtualTable();
+            await populateKmAtualTable();
             populatePsoTable();
             
             // Configurar event listeners para PSO
@@ -1004,16 +1106,46 @@
             });
             
             // Função para carregar e exibir quilometragem atual das viaturas
-            function populateKmAtualTable() {
+            async function populateKmAtualTable() {
                 const kmAtualTableBody = document.getElementById('kmAtualTableBody');
                 if (!kmAtualTableBody) return;
                 
-                // Buscar todas as viaturas cadastradas
-                const viaturas = JSON.parse(localStorage.getItem('viaturasCadastradas')) || [];
+                // Preferir array em memória (já mesclado com Firebase); file:// costuma ter LS cheio, https muitas vezes não.
+                let viaturas = Array.isArray(viaturasCadastradas) && viaturasCadastradas.length
+                    ? viaturasCadastradas
+                    : [];
+                if (!viaturas.length) {
+                    try {
+                        viaturas = JSON.parse(localStorage.getItem('viaturasCadastradas') || '[]');
+                    } catch (e) {
+                        viaturas = [];
+                    }
+                }
                 
-                // Buscar todas as saídas (administrativas e ambulâncias)
-                const saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
-                const saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias')) || [];
+                let saidasAdministrativas = [];
+                let saidasAmbulancias = [];
+                if (typeof dataService !== 'undefined' && dataService.getSaidasAdministrativas && dataService.getSaidasAmbulancias) {
+                    try {
+                        saidasAdministrativas = await dataService.getSaidasAdministrativas();
+                        saidasAmbulancias = await dataService.getSaidasAmbulancias();
+                    } catch (e) {
+                        console.warn('KM Atual: falha ao buscar saídas via dataService', e);
+                    }
+                }
+                if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = [];
+                if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = [];
+                if (!saidasAdministrativas.length && !saidasAmbulancias.length) {
+                    try {
+                        saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    } catch (e) {
+                        saidasAdministrativas = [];
+                    }
+                    try {
+                        saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+                    } catch (e) {
+                        saidasAmbulancias = [];
+                    }
+                }
                 const todasSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
                 
                 // Criar um mapa para armazenar a última quilometragem lançada de cada viatura
@@ -1095,14 +1227,58 @@
             // Atualizar tabela de KM Atual quando os dados mudarem
             window.addEventListener('storage', function(e) {
                 if (e.key === 'saidasAdministrativas' || e.key === 'saidasAmbulancias' || e.key === 'viaturasCadastradas') {
-                    populateKmAtualTable();
+                    void populateKmAtualTable();
+                }
+            });
+
+            const reloadFrotaAfterSignIn = async () => {
+                if (typeof dataService === 'undefined' || typeof dataService.getViaturas !== 'function') return;
+                try {
+                    await dataService.waitForAPICheck();
+                    if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                        await dataService.waitForGoogleAuthReady(8000);
+                    }
+                    viaturasCadastradas = await dataService.getViaturas();
+                    motoristasCadastrados = await dataService.getMotoristas();
+                    try { localStorage.setItem('viaturasCadastradas', JSON.stringify(viaturasCadastradas)); } catch (e) {}
+                    try { localStorage.setItem('motoristasCadastrados', JSON.stringify(motoristasCadastrados)); } catch (e) {}
+                    await aplicarRemocaoLinhasSemDados();
+                    populateFrotaTable();
+                    populatePessoalTable();
+                    await populateKmAtualTable();
+                } catch (err) {
+                    console.warn('Frota: recarregar após login Firebase', err);
+                }
+            };
+
+            window.addEventListener('sot-firebase-auth-changed', function (ev) {
+                if (ev && ev.detail && ev.detail.signedIn) {
+                    void reloadFrotaAfterSignIn();
                 }
             });
             
             // Escutar mensagens de atualização
             window.addEventListener('message', function(e) {
-                if (e.data && e.data.type === 'refresh_all_data') {
-                    populateKmAtualTable();
+                if (e.data && (e.data.type === 'refresh_all_data' || e.data.type === 'refresh_data')) {
+                    void populateKmAtualTable();
+                    if (typeof integrantesEscalaPao !== 'undefined') {
+                        integrantesEscalaPao = JSON.parse(localStorage.getItem('integrantesEscalaPao') || '[]');
+                        feriadosEscalaPao = JSON.parse(localStorage.getItem('feriadosEscalaPao') || '[]');
+                        historicoEscalaPao = JSON.parse(localStorage.getItem('historicoEscalaPao') || '[]');
+                        ultimoIndiceEscala = parseInt(localStorage.getItem('ultimoIndiceEscala'), 10) || 0;
+                        puladosEscalaPao = JSON.parse(localStorage.getItem('puladosEscalaPao') || '{}');
+                        escalaPaoInsercoes = JSON.parse(localStorage.getItem('escalaPaoInsercoes') || '[]');
+                        diasExcluidosEscalaPao = JSON.parse(localStorage.getItem('diasExcluidosEscalaPao') || '[]');
+                        var escalaPaoEl = document.getElementById('escalaPaoContent');
+                        if (escalaPaoEl && escalaPaoEl.classList.contains('active') && typeof atualizarCalendarios === 'function') {
+                            atualizarCalendarios();
+                            if (typeof atualizarHistorico === 'function') atualizarHistorico();
+                        }
+                    }
+                    var escalaIframe = document.querySelector('#escalaContent iframe');
+                    if (escalaIframe && escalaIframe.contentWindow) {
+                        escalaIframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+                    }
                 }
                 if (e.data && e.data.type === 'escala_cell_marks_updated') {
                     var escalaIframe = document.querySelector('#escalaContent iframe');
@@ -1238,6 +1414,7 @@
                 localStorage.setItem('escalaPaoInsercoes', JSON.stringify(escalaPaoInsercoes));
                 localStorage.setItem('diasExcluidosEscalaPao', JSON.stringify(diasExcluidosEscalaPao));
                 try { window.parent.postMessage({ type: 'escala_pao_updated' }, '*'); } catch (err) {}
+                try { window.parent.postMessage({ type: 'request_sync' }, '*'); } catch (err) {}
             };
             
             // Função para normalizar data (apenas dia, mês, ano, sem hora)

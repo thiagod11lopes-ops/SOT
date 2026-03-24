@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Usuários do Agendamento - SOT</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
+    <script>
+        window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+    </script>
+    <script src="data-service.js"></script>
     <style>
         :root {
             --primary-blue: #4a69bd;
@@ -148,13 +149,13 @@
             var tbody = document.getElementById('usuariosAgendamentoBody');
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div></td></tr>';
-            if (typeof window.firebaseDb !== 'undefined') {
+            if (window.firebaseSot && typeof window.firebaseSot.listAgendamentoUsuarios === 'function') {
                 try {
-                    var snapshot = await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).get();
+                    var snapshotRows = await window.firebaseSot.listAgendamentoUsuarios();
                     window.sotUsuariosFirestoreOk = true;
                     var usuarios = [];
-                    snapshot.forEach(function(doc) {
-                        var d = doc.data();
+                    snapshotRows.forEach(function(doc) {
+                        var d = doc || {};
                         usuarios.push({
                             id: doc.id,
                             login: d.login,
@@ -213,14 +214,12 @@
                 document.getElementById('usuarioSetor').value = '';
                 loadFromLocalStorage();
             }
-            if (window.sotUsuariosFirestoreOk === true && typeof window.firebaseDb !== 'undefined' && typeof firebase !== 'undefined') {
+            if (window.sotUsuariosFirestoreOk === true && window.firebaseSot && typeof window.firebaseSot.saveAgendamentoUsuario === 'function') {
                 try {
-                    await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).set({
+                    await window.firebaseSot.saveAgendamentoUsuario(docId, {
                         login: login,
                         senha: senha,
-                        setor: setor,
-                        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                        setor: setor
                     });
                     showMessage('Usuário cadastrado com sucesso.', 'success');
                     document.getElementById('usuarioLogin').value = '';
@@ -236,6 +235,10 @@
             } else {
                 salvarNoLocalERenderizar();
             }
+        });
+        window.sotUsuariosFirestoreOk = false;
+        window.addEventListener('sot-firebase-auth-changed', function () {
+            loadUsuariosAgendamento();
         });
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', loadUsuariosAgendamento);

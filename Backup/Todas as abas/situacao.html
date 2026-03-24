@@ -544,22 +544,92 @@ const day = String(now.getDate()).padStart(2, '0');
 return `${year}-${month}-${day}`;
 }
 
-function loadData() {
+async function loadData() {
 try {
-inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+// Preferir sempre dataService/Firebase para carregar vistorias
+if (typeof dataService !== 'undefined' && typeof dataService.getVistorias === 'function') {
+    try {
+        inspections = await dataService.getVistorias();
+        if (Array.isArray(inspections)) {
+            try { localStorage.setItem('vistorias', JSON.stringify(inspections)); } catch (e) {}
+        } else {
+            inspections = [];
+        }
+    } catch (e) {
+        console.warn('Situação: falha ao carregar vistorias via dataService, usando localStorage.', e);
+        inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+    }
+} else if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+    // Sem dataService, tentar direto do Firebase
+    try {
+        const fbVistorias = await window.firebaseSot.get('vistoriasRealizadas');
+        inspections = Array.isArray(fbVistorias) ? fbVistorias : [];
+        try { localStorage.setItem('vistorias', JSON.stringify(inspections)); } catch (e) {}
+    } catch (e) {
+        console.warn('Situação: falha ao carregar vistorias do Firebase, usando localStorage.', e);
+        inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+    }
+} else {
+    // Fallback final: apenas localStorage
+    inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+}
 } catch (e) {
 console.error('Erro ao carregar vistorias:', e);
 inspections = [];
 }
 }
 
-function saveData() {
+async function saveData() {
 try {
-localStorage.setItem('vistorias', JSON.stringify(inspections));
+// Sempre tenta salvar primeiro no Firebase via firebaseSot ou dataService
+let savedRemotely = false;
+if (typeof dataService !== 'undefined' && typeof dataService.setVistorias === 'function') {
+    try {
+        await dataService.setVistorias(inspections);
+        savedRemotely = true;
+    } catch (e) {
+        console.warn('Situação: falha ao salvar vistorias via dataService', e);
+    }
+}
+if (!savedRemotely && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+    try {
+        await window.firebaseSot.set('vistoriasRealizadas', inspections);
+        savedRemotely = true;
+    } catch (e) {
+        console.warn('Situação: falha ao salvar vistorias diretamente no Firebase', e);
+    }
+}
+// Em qualquer caso, manter cópia em localStorage
+try {
+    localStorage.setItem('vistorias', JSON.stringify(inspections));
+} catch (e) {
+    console.error('Erro ao salvar vistorias no localStorage:', e);
+}
 } catch (e) {
 console.error('Erro ao salvar vistorias:', e);
 alert('Erro ao salvar alterações!');
 }
+}
+
+// Auto-save com debounce: evita chamar Firebase a cada clique na Situação
+let autoSaveTimeoutId = null;
+let autoSavePending = false;
+
+function scheduleAutoSaveSituacao() {
+    autoSavePending = true;
+    if (autoSaveTimeoutId) {
+        clearTimeout(autoSaveTimeoutId);
+    }
+    autoSaveTimeoutId = setTimeout(async () => {
+        try {
+            if (!autoSavePending) return;
+            autoSavePending = false;
+            autoSaveTimeoutId = null;
+            await saveData();
+        } catch (e) {
+            console.warn('Situação: falha no auto-save de vistorias:', e);
+        }
+    }, 30000); // 30 segundos
 }
 
 function loadValidInspectionItems() {
@@ -792,7 +862,7 @@ res.nota === currentEditData.nota
 
 if (resultado) {
 resultado.nota = newNota;
-saveData();
+scheduleAutoSaveSituacao();
 closeEditModal();
 populateFilters();
 populateStatusTable();
@@ -823,7 +893,7 @@ if (resultado) {
 resultado.resolvido = true;
 resultado.dataResolucao = getCurrentDate(); // ADICIONA DATA DE RESOLUÇÃO
 console.log('Item resolvido:', resultado);
-saveData();
+scheduleAutoSaveSituacao();
 populateFilters();
 populateStatusTable();
 alert('Anotação marcada como resolvida! Verifique o Histórico para ver o item traçado.');

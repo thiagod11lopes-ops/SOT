@@ -1003,7 +1003,7 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
 function handleDeleteRow(event) {
 const row = event.target.closest('tr');
 if (!row) return;
-if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
+if (confirm('Tem certeza que deseja excluir esta(s) linha(s)?')) {
 const idsToRemove = row.dataset.id.split(',');
 saidasAmbulancias = saidasAmbulancias.filter(item => !idsToRemove.includes(item.id));
 if (saveData()) {

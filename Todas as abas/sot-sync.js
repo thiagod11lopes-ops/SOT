@@ -29,6 +29,24 @@
         });
     }
 
+    function stableKeyForItem(item, idField) {
+        if (!item || typeof item !== 'object') return null;
+        var id = item[idField || 'id'] || item.id || item._id || item.uuid || item.key;
+        if (id != null && String(id).trim() !== '') return 'id:' + String(id).trim();
+        // Fallback para evitar duplicação quando não há id estável.
+        var sig = [
+            item.tipo || '',
+            item.dataSaida || item.dataPedido || item.data || '',
+            item.horaSaida || item.hora || item.saida || '',
+            item.viatura || '',
+            item.motorista || '',
+            item.setor || '',
+            item.destino || item.hospital || item.objetivo || ''
+        ].join('|').toLowerCase();
+        if (!sig.replace(/\|/g, '').trim()) return null;
+        return 'sig:' + sig;
+    }
+
     function mergeArraysById(local, remote, idField) {
         idField = idField || 'id';
         if (!Array.isArray(local)) local = [];
@@ -38,12 +56,12 @@
         // Isso impede que uma versão antiga no localStorage sobrescreva o Firebase
         // quando ocorrer sincronização após atualizações no app.
         remote.forEach(function(item) {
-            var id = item && item[idField];
-            if (id != null) byId.set(String(id), item);
+            var key = stableKeyForItem(item, idField);
+            if (key) byId.set(key, item);
         });
         local.forEach(function(item) {
-            var id = item && item[idField];
-            if (id != null && !byId.has(String(id))) byId.set(String(id), item);
+            var key = stableKeyForItem(item, idField);
+            if (key && !byId.has(key)) byId.set(key, item);
         });
         return Array.from(byId.values());
     }

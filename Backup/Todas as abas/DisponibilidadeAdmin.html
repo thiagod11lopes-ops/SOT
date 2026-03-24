@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuração de Disponibilidade - Administrador</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="firebase-config.js"></script>
-    <script src="firebase-sot-service.js"></script>
+    <!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+    <script>
+    window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+    </script>
     <script src="api-service.js"></script>
     <script src="data-service.js"></script>
     <style>
@@ -1498,13 +1498,24 @@
         }
 
         // Função para carregar disponibilidades
-        function loadDisponibilidades() {
+        async function loadDisponibilidades() {
             try {
+                // Preferir sempre dataService/Firebase para carregar saídas (agendamentos)
+                let saidas = [];
+                if (typeof dataService !== 'undefined' && typeof dataService.getSaidasAdministrativas === 'function') {
+                    try {
+                        saidas = await dataService.getSaidasAdministrativas();
+                    } catch (e) {
+                        console.warn('Disponibilidade: falha ao carregar saídas via dataService, usando localStorage.', e);
+                        saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                    }
+                } else {
+                    saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+                }
+
+                // Disponibilidades ainda são mantidas em localStorage (estrutura própria desta aba)
                 const stored = localStorage.getItem('disponibilidadeViaturas');
                 const disponibilidades = stored ? JSON.parse(stored) : {};
-                
-                // Carregar agendamentos para calcular vagas ocupadas
-                const saidas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
                 
                 const keys = Object.keys(disponibilidades).sort();
                 
@@ -1918,7 +1929,7 @@
         // Ouvir mensagens do sistema principal (SOT5)
         window.addEventListener('message', function(event) {
             // Atualizar dados quando solicitado
-            if (event.data?.type === 'refresh_all_data') {
+            if (event.data?.type === 'refresh_all_data' || event.data?.type === 'refresh_data') {
                 setTimeout(() => {
                     loadDisponibilidades();
                     loadAgendamentosPendentes();
@@ -2175,15 +2186,11 @@
             if (!tbody) return;
             tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div></td></tr>';
             try {
-                if (typeof window.firebaseDb === 'undefined') {
-                    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Firebase não configurado. Edite firebase-config.js com as credenciais do seu projeto.</p></div></td></tr>';
+                if (!window.firebaseSot || typeof window.firebaseSot.listAgendamentoUsuarios !== 'function') {
+                    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Firebase indisponível no momento. Faça login com Google e tente novamente.</p></div></td></tr>';
                     return;
                 }
-                const snapshot = await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).get();
-                const usuarios = [];
-                snapshot.forEach(doc => {
-                    usuarios.push({ id: doc.id, ...doc.data() });
-                });
+                const usuarios = await window.firebaseSot.listAgendamentoUsuarios();
                 usuarios.sort((a, b) => {
                     const ta = a.criadoEm && a.criadoEm.toDate ? a.criadoEm.toDate().getTime() : 0;
                     const tb = b.criadoEm && b.criadoEm.toDate ? b.criadoEm.toDate().getTime() : 0;
@@ -2215,8 +2222,8 @@
                 showMessage('Preencha login, senha e setor.', 'error');
                 return;
             }
-            if (typeof window.firebaseDb === 'undefined') {
-                showMessage('Firebase não configurado. Edite firebase-config.js.', 'error');
+            if (!window.firebaseSot || typeof window.firebaseSot.saveAgendamentoUsuario !== 'function') {
+                showMessage('Firebase indisponível no momento. Faça login com Google.', 'error');
                 return;
             }
             const docId = loginToDocId(login);
@@ -2225,12 +2232,10 @@
                 return;
             }
             try {
-                await window.firebaseDb.collection(COL_USUARIOS_AGENDAMENTO).doc(docId).set({
+                await window.firebaseSot.saveAgendamentoUsuario(docId, {
                     login: login,
                     senha: senha,
-                    setor: setor,
-                    criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    setor: setor
                 });
                 showMessage('Usuário cadastrado com sucesso.', 'success');
                 document.getElementById('usuarioLogin').value = '';
@@ -2241,6 +2246,9 @@
                 console.error(err);
                 showMessage('Erro ao cadastrar usuário: ' + (err.message || err), 'error');
             }
+        });
+        window.addEventListener('sot-firebase-auth-changed', function () {
+            loadUsuariosAgendamento();
         });
 
         // Abrir modal para completar agendamento

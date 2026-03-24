@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vistoria de Viaturas - Sistema Integrado</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
+<!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+</script>
 <script src="data-service.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.21/jspdf.plugin.autotable.min.js"></script>
@@ -659,11 +659,22 @@ console.error('Erro ao salvar itens de vistoria:', e);
 }
 
 async function renderCalendar() {
+// Garante que o calendário SEMPRE tente renderizar,
+// mesmo que haja erro ao carregar dados ou na escala.
+try {
+try {
 await loadData();
+} catch (e) {
+console.error('Vistoria: erro ao carregar dados dentro de renderCalendar, prosseguindo assim mesmo.', e);
+}
 const year = currentDate.getFullYear();
 const month = currentDate.getMonth();
 const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 monthYearHeader.textContent = `${monthNames[month]} de ${year}`;
+if (!calendarGrid) {
+console.error('Vistoria: elemento .calendar-grid não encontrado.');
+return;
+}
 calendarGrid.innerHTML = ``;
 ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].forEach(day => {
 const weekdayEl = document.createElement('span');
@@ -686,7 +697,13 @@ dayCell.setAttribute('data-date', dateString);
 if (new Date(year, month, day).toDateString() === new Date().toDateString()) {
 dayCell.classList.add('today');
 }
-const driversOnDuty = getDriversOnDutyForDate(dateString);
+let driversOnDuty = [];
+try {
+driversOnDuty = getDriversOnDutyForDate(dateString) || [];
+} catch (e) {
+console.error('Vistoria: erro em getDriversOnDutyForDate para', dateString, e);
+driversOnDuty = [];
+}
 const totalRequiredInspections = driversOnDuty.reduce((sum, driver) => sum + (driver.viaturas ? driver.viaturas.length : 0), 0);
 if (totalRequiredInspections > 0) {
 const inspectionsOnDay = inspections.filter(i => i.data === dateString && i.tipo !== 'administrativa');
@@ -700,6 +717,9 @@ dayCell.classList.add('daily-goal-not-met');
 }
 }
 calendarGrid.appendChild(dayCell);
+}
+} catch (e) {
+console.error('Vistoria: erro inesperado ao renderizar o calendário.', e);
 }
 }
 
@@ -1245,42 +1265,88 @@ addSituationPageToPdfWithFilter(doc, vehiclePlate, imprimirItems);
 }
 
 async function loadData() {
-var gotMotoristas = false, gotVistorias = false;
-try {
-if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
-await dataService.waitForAPICheck();
-if (dataService.useFirebase && window.firebaseSot && window.firebaseSot.get) {
-var fbVistorias = await window.firebaseSot.get('vistoriasRealizadas');
-var fbMotoristas = await window.firebaseSot.get('motoristasVistoria');
-if (Array.isArray(fbVistorias)) {
-inspections = fbVistorias;
-localStorage.setItem('vistorias', JSON.stringify(fbVistorias));
-gotVistorias = true;
-}
-if (Array.isArray(fbMotoristas)) {
-inspectionDrivers = fbMotoristas;
-localStorage.setItem('motoristasVistoria', JSON.stringify(fbMotoristas));
-gotMotoristas = true;
-}
-}
-if (!gotVistorias && typeof dataService !== 'undefined' && typeof dataService.getVistorias === 'function') {
-var v = await dataService.getVistorias();
-if (Array.isArray(v)) {
-inspections = v;
-localStorage.setItem('vistorias', JSON.stringify(v));
-gotVistorias = true;
-}
-}
-} catch (e) { console.warn('Vistoria: falha ao carregar do Firebase', e); }
-if (!gotMotoristas) inspectionDrivers = JSON.parse(localStorage.getItem('motoristasVistoria') || '[]');
-if (!gotVistorias) inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+    var gotMotoristas = false, gotVistorias = false;
+
+    // Tenta carregar de API/Firebase quando disponível, mas sem quebrar a tela em caso de erro
+    if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+        try {
+            await dataService.waitForAPICheck();
+            if (dataService.useFirebase && window.firebaseSot && window.firebaseSot.get) {
+                try {
+                    var fbVistorias = await window.firebaseSot.get('vistoriasRealizadas');
+                    var fbMotoristas = await window.firebaseSot.get('motoristasVistoria');
+                    if (Array.isArray(fbVistorias)) {
+                        inspections = fbVistorias;
+                        localStorage.setItem('vistorias', JSON.stringify(fbVistorias));
+                        gotVistorias = true;
+                    }
+                    if (Array.isArray(fbMotoristas)) {
+                        inspectionDrivers = fbMotoristas;
+                        localStorage.setItem('motoristasVistoria', JSON.stringify(fbMotoristas));
+                        gotMotoristas = true;
+                    }
+                } catch (e) {
+                    console.warn('Vistoria: falha ao carregar dados do Firebase', e);
+                }
+            }
+
+            if (!gotVistorias && typeof dataService.getVistorias === 'function') {
+                try {
+                    var v = await dataService.getVistorias();
+                    if (Array.isArray(v)) {
+                        inspections = v;
+                        localStorage.setItem('vistorias', JSON.stringify(v));
+                        gotVistorias = true;
+                    }
+                } catch (e) {
+                    console.warn('Vistoria: falha ao carregar vistorias via dataService', e);
+                }
+            }
+        } catch (e) {
+            console.warn('Vistoria: falha geral ao usar dataService', e);
+        }
+    }
+
+    // Fallback seguro para localStorage
+    if (!gotMotoristas) {
+        try {
+            inspectionDrivers = JSON.parse(localStorage.getItem('motoristasVistoria') || '[]');
+        } catch (e) {
+            console.warn('Vistoria: dados corrompidos em motoristasVistoria, limpando storage.', e);
+            localStorage.removeItem('motoristasVistoria');
+            inspectionDrivers = [];
+        }
+    }
+
+    if (!gotVistorias) {
+        try {
+            inspections = JSON.parse(localStorage.getItem('vistorias') || '[]');
+        } catch (e) {
+            console.warn('Vistoria: dados corrompidos em vistorias, limpando storage.', e);
+            localStorage.removeItem('vistorias');
+            inspections = [];
+        }
+    }
 }
 
-function saveData() {
-localStorage.setItem('vistorias', JSON.stringify(inspections));
-if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
-window.firebaseSot.set('vistoriasRealizadas', inspections).catch(function() {});
-}
+async function saveData() {
+  // Sempre tenta gravar primeiro no Firebase como fonte principal
+  if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+    try {
+      await window.firebaseSot.set('vistoriasRealizadas', inspections);
+    } catch (e) {
+      console.warn('Vistoria: falha ao salvar vistorias no Firebase, mantendo apenas no localStorage.', e);
+    }
+  }
+  // Em qualquer caso, mantém cópia local para modo offline/cache
+  try {
+    localStorage.setItem('vistorias', JSON.stringify(inspections));
+  } catch (e) {
+    console.warn('Vistoria: falha ao salvar vistorias no localStorage.', e);
+  }
+  try {
+    window.top.postMessage({ type: 'request_sync' }, '*');
+  } catch (e) {}
 }
 
 async function refreshUIAndData() { saveData(); await loadData(); checklistContainer.classList.add('hidden'); initialFormContainer.classList.remove('hidden'); await renderCalendar(); }
@@ -1855,9 +1921,17 @@ renderCalendar();
 
 // INICIALIZAÇÃO COM CORREÇÃO (carrega dados do Firebase quando disponível)
 (async function initializeApp() {
+try {
 await loadData();
+} catch (e) {
+console.error('Vistoria: erro ao carregar dados na inicialização, prosseguindo apenas com o calendário.', e);
+}
 saveChecklistItemsToLocalStorage();
+try {
 await renderCalendar();
+} catch (e) {
+console.error('Vistoria: erro ao renderizar calendário na inicialização.', e);
+}
 })();
 });
 </script>

@@ -31,17 +31,20 @@
 --warning-orange: #ffc107;
 --export-excel: #21a221;
 --import-blue: #007bff;
+--modal-overlay: rgba(0, 0, 0, 0.55);
+--modal-bg: #fff;
+--modal-radius: 12px;
+--modal-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
 }
-body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: var(--light-gray-bg); }
+html { overflow-y: auto; scroll-behavior: smooth; }
 body {
+font-family: 'Arial', sans-serif;
+margin: 0;
+padding: 0;
+background-color: var(--light-gray-bg);
 overflow: auto;
-}
-html, body {
 scroll-behavior: smooth;
 height: 100%;
-}
-html {
-overflow-y: auto;
 }
 .top-bar {
 display: flex;
@@ -187,7 +190,7 @@ height: 70px;
 border: 6px solid rgba(74,105,189,0.18);
 border-top-color: var(--primary-blue);
 border-radius: 50%;
-animation: spinLoader 2.4s ease-in-out forwards;
+animation: spinLoader 1s linear infinite;
 transition: opacity 0.4s ease, transform 0.4s ease;
 }
 .update-message {
@@ -260,13 +263,74 @@ box-shadow: none;
 100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes spinLoader {
-0% { transform: rotate(0deg) scale(1); opacity: 1; }
-70% { transform: rotate(540deg) scale(1); opacity: 1; }
-100% { transform: rotate(720deg) scale(0.6); opacity: 0; }
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
 }
 .update-loader.is-complete {
 opacity: 0;
 transform: scale(0.5);
+}
+.firebase-summary-modal {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(0, 0, 0, 0.55);
+z-index: 4000;
+align-items: center;
+justify-content: center;
+padding: 18px;
+}
+.firebase-summary-modal.active { display: flex; }
+.firebase-summary-card {
+background: #fff;
+border-radius: 12px;
+width: 100%;
+max-width: 560px;
+box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+padding: 20px;
+}
+.firebase-summary-title {
+margin: 0 0 8px 0;
+font-size: 20px;
+color: var(--primary-blue);
+}
+.firebase-summary-subtitle {
+margin: 0 0 14px 0;
+font-size: 14px;
+color: #555;
+}
+.firebase-summary-list {
+list-style: none;
+margin: 0;
+padding: 0;
+display: grid;
+gap: 8px;
+}
+.firebase-summary-item {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 10px 12px;
+border: 1px solid #e2e8f0;
+border-radius: 8px;
+background: #f8fafc;
+font-size: 14px;
+}
+.firebase-summary-item .ok { color: #1f8b4c; font-weight: bold; }
+.firebase-summary-item .fail { color: #b42318; font-weight: bold; }
+.firebase-summary-actions {
+display: flex;
+justify-content: flex-end;
+margin-top: 14px;
+}
+.firebase-summary-actions button {
+background: var(--primary-blue);
+color: #fff;
+border: none;
+border-radius: 8px;
+padding: 10px 18px;
+font-weight: bold;
+cursor: pointer;
 }
 header {
 background-color: var(--white);
@@ -385,6 +449,32 @@ justify-content: center;
 display: block;
 }
 
+#google-login-container {
+display: flex;
+flex-direction: column;
+align-items: flex-end;
+justify-content: center;
+background-color: #f1f3f5;
+padding: 8px 12px;
+border-radius: 8px;
+border: 1px solid var(--gray);
+box-shadow: 0 2px 6px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Dentro do index.html o login fica na barra superior; evita botão duplicado sem listener */
+html.sot-in-iframe #google-login-container {
+display: none !important;
+}
+#google-login-container #btn-login {
+white-space: nowrap;
+}
+
+#google-login-container #usuario-info p {
+margin: 0 0 8px 0;
+font-size: 13px;
+color: var(--dark-gray);
+}
+
 /* Modal Escala de Pão - Calendário */
 .modal-escala-pao { display: none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; }
 .modal-escala-pao.active { display: flex; }
@@ -464,27 +554,27 @@ font-weight: bold;
 pointer-events: none;
 z-index: 1;
 }
-/* Modal de Backup */
+/* Modais: overlay e conteúdo padronizados */
 #backupModal {
 display: none;
 position: fixed;
 z-index: 9999;
-left: 0;
-top: 0;
+inset: 0;
 width: 100%;
 height: 100%;
-background-color: rgba(0, 0, 0, 0.6);
-animation: fadeIn 0.3s;
+background-color: var(--modal-overlay);
+animation: fadeIn 0.25s ease;
 }
 #backupModalContent {
-background-color: #fff;
+background-color: var(--modal-bg);
 margin: 15% auto;
-padding: 30px;
-border-radius: 12px;
+padding: 28px 32px;
+border-radius: var(--modal-radius);
 width: 400px;
-box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+max-width: 90vw;
+box-shadow: var(--modal-shadow);
 text-align: center;
-animation: slideDown 0.3s;
+animation: slideDown 0.3s ease;
 }
 #backupModalContent h2 {
 color: #dc3545;
@@ -1351,14 +1441,19 @@ margin: 20px 0;
 </style>
 </head>
 <body>
+<script>
+try {
+if (window.top !== window) document.documentElement.classList.add('sot-in-iframe');
+} catch (e) {}
+</script>
 <div id="updateOverlay" class="update-overlay" aria-hidden="true" hidden>
 <div class="update-card">
 <div class="update-logo">
 <img src="mascotedoblo.png" alt="Mascote SOT">
 </div>
 <div class="update-message">
-<strong>Bem-vindo ao SOT</strong>
-<span>Sistema de Organização de Transporte 10.1</span>
+<strong id="updateOverlayTitle">Bem-vindo ao SOT</strong>
+<span id="updateOverlaySubtitle">Sistema de Organização de Transporte 10.1</span>
 </div>
 <div class="update-loader" aria-hidden="true"></div>
 </div>
@@ -1393,8 +1488,29 @@ margin: 20px 0;
 <div id="lock-container">
 <div id="lock-icon-container" title="Clique para desbloquear com senha; duplo clique para desbloquear sem senha"></div>
 </div>
+<div id="google-login-container">
+<button id="btn-login" style="padding: 10px 20px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 4px; font-weight: bold;">
+  Entrar com Google
+</button>
+
+<div id="usuario-info" style="margin-top: 20px; display: none;">
+  <p>Bem-vindo, <span id="nome-usuario"></span>!</p>
+  <button id="btn-sair">Sair</button>
+</div>
+</div>
 </div>
 </header>
+
+<div id="firebaseSummaryModal" class="firebase-summary-modal" aria-hidden="true">
+<div class="firebase-summary-card">
+<h3 class="firebase-summary-title">Resumo do Firebase</h3>
+<p class="firebase-summary-subtitle">Abas com dados carregados da nuvem nesta inicialização:</p>
+<ul id="firebaseSummaryList" class="firebase-summary-list"></ul>
+<div class="firebase-summary-actions">
+<button type="button" id="firebaseSummaryCloseBtn">Fechar</button>
+</div>
+</div>
+</div>
 
 <!-- Modal Escala de Pão - Calendário do mês -->
 <div id="escalaPaoModal" class="modal-escala-pao">
@@ -1421,15 +1537,15 @@ margin: 20px 0;
 <button class="tab-button protected" data-tab-id="equipamentos-suprimentos" onclick="changeTab(event, 'equipamentos-suprimentos')">Equipamentos e Suprimentos</button>
 <button class="tab-button protected" data-tab-id="configuracoes" onclick="changeTab(event, 'configuracoes')">Configurações</button>
 </div>
-<div id="cadastro-saidas" class="tab-content"><iframe id="iframe-cadastro-saidas" src="Cadastrodesaidas8.html"></iframe></div>
-<div id="saidas-administrativas" class="tab-content active"><iframe id="iframe-saidas-administrativas" src="Saidasadministrativas6.html"></iframe></div>
-<div id="saidas-ambulancias" class="tab-content"><iframe id="iframe-saidas-ambulancias" src="Saidasdeambulâncias2.html"></iframe></div>
-<div id="vistoria" class="tab-content"><iframe src="VistoriaRDV.html" title="Vistoria e RDV"></iframe></div>
-<div id="frota-pessoal" class="tab-content"><iframe id="iframe-frota-pessoal" src="Frotaepessoal3.html"></iframe></div>
-<div id="estatistica" class="tab-content"><iframe src="Estatistica4.html"></iframe></div>
-<div id="avisos" class="tab-content"><iframe src="Avisos.html"></iframe></div>
-<div id="equipamentos-suprimentos" class="tab-content"><iframe id="iframe-equipamentos-suprimentos" src="EquipamentoseSuprimentos.html"></iframe></div>
-<div id="configuracoes" class="tab-content"><iframe id="iframe-configuracoes" src="Configuracoes.html"></iframe></div>
+<div id="cadastro-saidas" class="tab-content"><iframe id="iframe-cadastro-saidas" data-src="Cadastrodesaidas8.html?v=20260319-1" title="Cadastro de Saídas"></iframe></div>
+<div id="saidas-administrativas" class="tab-content active"><iframe id="iframe-saidas-administrativas" data-src="Saidasadministrativas6.html?v=20260319-1" src="Saidasadministrativas6.html?v=20260319-1" title="Saídas Administrativas"></iframe></div>
+<div id="saidas-ambulancias" class="tab-content"><iframe id="iframe-saidas-ambulancias" data-src="Saidasdeambulâncias2.html?v=20260319-1" title="Saídas de Ambulâncias"></iframe></div>
+<div id="vistoria" class="tab-content"><iframe id="iframe-vistoria" data-src="VistoriaRDV.html?v=20260319-1" title="Vistoria e RDV"></iframe></div>
+<div id="frota-pessoal" class="tab-content"><iframe id="iframe-frota-pessoal" data-src="Frotaepessoal3.html?v=20260319-1" title="Frota e Pessoal"></iframe></div>
+<div id="estatistica" class="tab-content"><iframe id="iframe-estatistica" data-src="Estatistica4.html?v=20260319-1" title="Estatística"></iframe></div>
+<div id="avisos" class="tab-content"><iframe id="iframe-avisos" data-src="Avisos.html?v=20260319-1" title="Avisos"></iframe></div>
+<div id="equipamentos-suprimentos" class="tab-content"><iframe id="iframe-equipamentos-suprimentos" data-src="EquipamentoseSuprimentos.html?v=20260319-1" title="Equipamentos e Suprimentos"></iframe></div>
+<div id="configuracoes" class="tab-content"><iframe id="iframe-configuracoes" data-src="Configuracoes.html?v=20260319-1" title="Configurações"></iframe></div>
 </main>
 <!-- Modal de Backup -->
 <div id="backupModal">
@@ -1915,6 +2031,80 @@ renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
 const SOT5_BUILD_ID = '2025-11-09-anim-v1';
 const updateOverlay = document.getElementById('updateOverlay');
 const updateLoader = document.querySelector('.update-loader');
+const SOT_HEALTH_KEY = 'sot_health_metrics_v1';
+const SOT_HEALTH_MAX_EVENTS = 400;
+const sotPageBootAt = Date.now();
+
+function readSotHealthMetrics() {
+try {
+var raw = localStorage.getItem(SOT_HEALTH_KEY);
+var parsed = raw ? JSON.parse(raw) : null;
+if (!parsed || typeof parsed !== 'object') {
+return { counters: {}, events: [], lastFlushAt: null };
+}
+if (!parsed.counters || typeof parsed.counters !== 'object') parsed.counters = {};
+if (!Array.isArray(parsed.events)) parsed.events = [];
+return parsed;
+} catch (e) {
+return { counters: {}, events: [], lastFlushAt: null };
+}
+}
+
+function writeSotHealthMetrics(m) {
+try { localStorage.setItem(SOT_HEALTH_KEY, JSON.stringify(m)); } catch (e) {}
+}
+
+function trackSotHealth(eventType, payload) {
+var metrics = readSotHealthMetrics();
+var t = String(eventType || 'event');
+metrics.counters[t] = (metrics.counters[t] || 0) + 1;
+metrics.events.push({
+at: new Date().toISOString(),
+type: t,
+online: !(navigator && navigator.onLine === false),
+payload: payload && typeof payload === 'object' ? payload : {}
+});
+if (metrics.events.length > SOT_HEALTH_MAX_EVENTS) {
+metrics.events = metrics.events.slice(metrics.events.length - SOT_HEALTH_MAX_EVENTS);
+}
+writeSotHealthMetrics(metrics);
+try { console.log('[SOT_HEALTH]', t, payload || {}); } catch (e) {}
+}
+
+async function runSyncWithHealth(tag, immediate) {
+if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return false;
+var start = Date.now();
+try {
+await window.SOTSync.sync(!!immediate, { afterSync: function() {} });
+trackSotHealth('sync_success', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate });
+return true;
+} catch (e) {
+trackSotHealth('sync_error', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate, message: e && e.message ? e.message : String(e) });
+throw e;
+}
+}
+
+window.addEventListener('error', function (ev) {
+try {
+trackSotHealth('window_error', {
+message: ev && ev.message ? ev.message : 'error',
+source: ev && ev.filename ? ev.filename : '',
+line: ev && ev.lineno ? ev.lineno : 0
+});
+} catch (e) {}
+});
+
+window.addEventListener('unhandledrejection', function (ev) {
+try {
+var reason = ev && ev.reason ? (ev.reason.message || String(ev.reason)) : 'unhandledrejection';
+trackSotHealth('unhandled_rejection', { reason: reason });
+} catch (e) {}
+});
+const updateOverlayTitle = document.getElementById('updateOverlayTitle');
+const updateOverlaySubtitle = document.getElementById('updateOverlaySubtitle');
+const firebaseSummaryModal = document.getElementById('firebaseSummaryModal');
+const firebaseSummaryList = document.getElementById('firebaseSummaryList');
+const firebaseSummaryCloseBtn = document.getElementById('firebaseSummaryCloseBtn');
 const THEME_ID_KEY = 'sot_theme_id';
 const THEME_VARS_KEY = 'sot_theme_variables';
 
@@ -1944,17 +2134,12 @@ const currentId = localStorage.getItem(THEME_ID_KEY) || '';
 if (document.body) {
 document.body.dataset.theme = currentId;
 }
-document.querySelectorAll('iframe').forEach(iframe => {
-if (!iframe) return;
+getAllTabIframes().forEach(function(iframe) {
 try {
-const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-if (iframeDoc) {
-applyThemeVarsToDoc(iframeDoc, vars);
-}
-iframe.contentWindow?.postMessage?.({ type: 'apply_theme', themeVariables: vars, themeId: currentId }, '*');
-} catch (error) {
-console.warn('Não foi possível aplicar tema ao iframe:', iframe.id || iframe.src, error);
-}
+var iframeDoc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+if (iframeDoc) applyThemeVarsToDoc(iframeDoc, vars);
+if (iframe.contentWindow && iframe.contentWindow.postMessage) iframe.contentWindow.postMessage({ type: 'apply_theme', themeVariables: vars, themeId: currentId }, '*');
+} catch (err) {}
 });
 }
 
@@ -1963,20 +2148,16 @@ const storedVars = getStoredThemeVars();
 if (storedVars) {
 applyThemeAcrossApp(storedVars);
 }
-document.querySelectorAll('iframe').forEach(iframe => {
-iframe.addEventListener('load', () => {
-const vars = getStoredThemeVars();
+getAllTabIframes().forEach(function(iframe) {
+iframe.addEventListener('load', function() {
+var vars = getStoredThemeVars();
 if (!vars) return;
 try {
-const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-if (iframeDoc) {
-applyThemeVarsToDoc(iframeDoc, vars);
-}
-const themeId = localStorage.getItem(THEME_ID_KEY) || '';
-iframe.contentWindow?.postMessage?.({ type: 'apply_theme', themeVariables: vars, themeId }, '*');
-} catch (error) {
-console.warn('Erro ao aplicar tema após carregar iframe:', iframe.id || iframe.src, error);
-}
+var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+if (doc) applyThemeVarsToDoc(doc, vars);
+var themeId = localStorage.getItem(THEME_ID_KEY) || '';
+if (iframe.contentWindow && iframe.contentWindow.postMessage) iframe.contentWindow.postMessage({ type: 'apply_theme', themeVariables: vars, themeId: themeId }, '*');
+} catch (e) {}
 });
 });
 }
@@ -2020,23 +2201,162 @@ updateOverlay.setAttribute('hidden', 'true');
 }
 if (updateOverlay) {
 showUpdateOverlay();
-console.log('Exibindo animação de boas-vindas do SOT5.');
-const openSystemAfterLoad = () => {
-localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
-const fullscreenPromise = requestFullscreenSafe();
-hideUpdateOverlay();
-fullscreenPromise.then(() => {
-console.log('Modo tela cheia solicitado ao entrar no SOT5.');
-});
+console.log('Exibindo carregamento inicial com status real do Firebase.');
+
+const setOverlayStatus = (title, subtitle, state) => {
+    if (updateOverlayTitle) updateOverlayTitle.textContent = title || '';
+    if (updateOverlaySubtitle) updateOverlaySubtitle.textContent = subtitle || '';
+    if (updateOverlayTitle) {
+        if (state === 'success') updateOverlayTitle.style.color = '#1f8b4c';
+        else if (state === 'error') updateOverlayTitle.style.color = '#b42318';
+        else updateOverlayTitle.style.color = 'var(--primary-blue)';
+    }
 };
-if (updateLoader) {
-updateLoader.addEventListener('animationend', () => {
-updateLoader.classList.add('is-complete');
-openSystemAfterLoad();
-}, { once: true });
-} else {
-setTimeout(openSystemAfterLoad, 800);
+
+const waitForServices = async (timeoutMs) => {
+    const start = Date.now();
+    while ((Date.now() - start) < timeoutMs) {
+        if (window.SOTSync && typeof window.SOTSync.sync === 'function' &&
+            typeof dataService !== 'undefined' && dataService && typeof dataService.waitForAPICheck === 'function') {
+            return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 120));
+    }
+    return false;
+};
+
+const finishOverlay = (state) => {
+    if (updateLoader) updateLoader.classList.add('is-complete');
+    localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
+    const delay = state === 'success' ? 700 : 1800;
+    setTimeout(() => {
+        hideUpdateOverlay();
+        requestFullscreenSafe().then(() => {
+            console.log('Modo tela cheia solicitado ao entrar no SOT5.');
+        });
+    }, delay);
+};
+
+const runInitialFirebaseLoad = async () => {
+    trackSotHealth('initial_load_start', {});
+    setOverlayStatus('Carregando dados do Firebase...', 'Aguarde enquanto sincronizamos os dados do sistema.', 'loading');
+    try {
+        const ready = await waitForServices(12000);
+        if (!ready) throw new Error('Serviços de sincronização não ficaram disponíveis a tempo.');
+
+        dataService.setPreferLocalStorage(false);
+        await dataService.waitForAPICheck();
+        if (!dataService.useFirebase) throw new Error('Firebase não está disponível no momento.');
+
+        if (window.__sotWaitUntilSignedIn && typeof window.__sotWaitUntilSignedIn === 'function') {
+            setOverlayStatus('Login Google necessário', 'Use «Entrar com Google» na barra superior (ou acima) e aguarde.', 'loading');
+            const signedIn = await window.__sotWaitUntilSignedIn(300000);
+            if (!signedIn) throw new Error('É necessário entrar com Google para carregar e sincronizar os dados na nuvem.');
+        }
+
+        setOverlayStatus('Carregando dados do Firebase...', 'Sincronizando com a nuvem…', 'loading');
+        await runSyncWithHealth('initial_firebase_load', true);
+
+        const summarizeFirebaseLoads = async function () {
+            const checks = [
+                { nome: 'Saídas Administrativas', fn: function () { return dataService.getSaidasAdministrativas(); } },
+                { nome: 'Saídas de Ambulâncias', fn: function () { return dataService.getSaidasAmbulancias(); } },
+                { nome: 'Frota (Viaturas)', fn: function () { return dataService.getViaturas(); } },
+                { nome: 'Pessoal (Motoristas)', fn: function () { return dataService.getMotoristas(); } }
+            ];
+            const out = [];
+            for (const item of checks) {
+                try {
+                    const v = await item.fn();
+                    const ok = Array.isArray(v);
+                    out.push({ nome: item.nome, ok: ok, qtd: ok ? v.length : 0 });
+                } catch (e) {
+                    out.push({ nome: item.nome, ok: false, qtd: 0 });
+                }
+            }
+            // Cadastro de Saídas depende desses conjuntos estarem disponíveis.
+            const baseOk = out.filter(function (x) { return x.ok; }).length >= 3;
+            out.push({ nome: 'Cadastro de Saídas (base)', ok: baseOk, qtd: 0 });
+            return out;
+        };
+
+        const showFirebaseSummaryModal = function (items) {
+            if (!firebaseSummaryModal || !firebaseSummaryList) return;
+            firebaseSummaryList.innerHTML = '';
+            (items || []).forEach(function (item) {
+                var li = document.createElement('li');
+                li.className = 'firebase-summary-item';
+                var left = document.createElement('span');
+                left.textContent = item.nome;
+                var right = document.createElement('span');
+                right.className = item.ok ? 'ok' : 'fail';
+                right.textContent = item.ok ? ('OK' + (item.qtd >= 0 ? ' (' + item.qtd + ')' : '')) : 'Falha';
+                li.appendChild(left);
+                li.appendChild(right);
+                firebaseSummaryList.appendChild(li);
+            });
+            firebaseSummaryModal.classList.add('active');
+            firebaseSummaryModal.setAttribute('aria-hidden', 'false');
+        };
+
+        // Garante que todas as abas reflitam os dados sincronizados na inicialização.
+        try {
+            getAllTabIframes().forEach(function(iframe) {
+                var src = iframe.getAttribute('data-src') || iframe.getAttribute('src');
+                if (src) {
+                    iframe.setAttribute('src', src);
+                }
+            });
+        } catch (reloadErr) {
+            console.warn('Falha ao recarregar iframes após sync inicial:', reloadErr);
+        }
+
+        try {
+            const summary = await summarizeFirebaseLoads();
+            setTimeout(function () { showFirebaseSummaryModal(summary); }, 1000);
+        } catch (summaryErr) {
+            console.warn('Falha ao montar resumo de carga Firebase:', summaryErr);
+        }
+
+        setOverlayStatus('Dados carregados com sucesso', 'Sistema atualizado com dados do Firebase.', 'success');
+        trackSotHealth('initial_load_success', { elapsedMs: Date.now() - sotPageBootAt });
+        finishOverlay('success');
+    } catch (e) {
+        console.error('Falha no carregamento inicial do Firebase:', e);
+        trackSotHealth('initial_load_error', { elapsedMs: Date.now() - sotPageBootAt, message: e && e.message ? e.message : String(e) });
+        setOverlayStatus('Falha ao carregar dados da nuvem', 'Verifique conexão/regras do Firebase. O sistema seguirá com os dados disponíveis.', 'error');
+        finishOverlay('error');
+    }
+};
+
+setTimeout(runInitialFirebaseLoad, 0);
+
+if (firebaseSummaryCloseBtn && firebaseSummaryModal) {
+firebaseSummaryCloseBtn.addEventListener('click', function () {
+    firebaseSummaryModal.classList.remove('active');
+    firebaseSummaryModal.setAttribute('aria-hidden', 'true');
+});
+firebaseSummaryModal.addEventListener('click', function (ev) {
+    if (ev.target === firebaseSummaryModal) {
+        firebaseSummaryModal.classList.remove('active');
+        firebaseSummaryModal.setAttribute('aria-hidden', 'true');
+    }
+});
 }
+
+// Se o usuário fizer login Google depois que a página já carregou, sincroniza com a nuvem.
+window.addEventListener('sot-firebase-auth-changed', function (ev) {
+    try {
+        if (!ev.detail || !ev.detail.signedIn) return;
+        if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
+        if (window._sot_postLoginSyncScheduled) return;
+        window._sot_postLoginSyncScheduled = true;
+        setTimeout(function () {
+            window._sot_postLoginSyncScheduled = false;
+            runSyncWithHealth('post_login_sync', true).catch(function () {});
+        }, 800);
+    } catch (e) {}
+});
 }
 function getPassword() {
 if (!localStorage.getItem('adminPassword')) {
@@ -2047,10 +2367,8 @@ return localStorage.getItem('adminPassword');
 function updatePasswordDisplay() {
 }
 function broadcastLockState(locked) {
-document.querySelectorAll('iframe').forEach(iframe => {
-if (iframe.contentWindow) {
-iframe.contentWindow.postMessage({ type: 'lock_state_change', locked: locked }, '*');
-}
+getAllTabIframes().forEach(function(iframe) {
+try { if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'lock_state_change', locked: locked }, '*'); } catch (e) {}
 });
 }
 function updateLockState(notify = true) {
@@ -2068,12 +2386,12 @@ changeTab({ currentTarget: firstSafeTabButton }, firstSafeTabButton.dataset.tabI
 }
 }
 } else {
-// Se sistema desbloqueado e não há aba ativa, ativar primeira aba (Disponibilidade)
-const activeTabButton = document.querySelector('.tab-button.active');
+// Se sistema desbloqueado e não há aba ativa, ativar primeira aba (Saídas Administrativas)
+var activeTabButton = document.querySelector('.tab-button.active');
 if (!activeTabButton || !activeTabButton.classList.contains('active')) {
-const primeiraAba = document.querySelector('.tab-button[data-tab-id="disponibilidade"]');
+var primeiraAba = document.querySelector('.tab-button[data-tab-id="saidas-administrativas"]');
 if (primeiraAba) {
-changeTab({ currentTarget: primeiraAba }, 'disponibilidade');
+changeTab({ currentTarget: primeiraAba }, 'saidas-administrativas');
 }
 }
 }
@@ -2135,6 +2453,22 @@ document.addEventListener('keydown', (e) => {
 });
 
 function showPasswordPrompt() {
+    // Se estiver logado com Google, desbloqueia sem pedir senha (fallback continua funcionando).
+    try {
+        if (window.top && window.top._sot_google_signed_in) {
+            isLocked = false;
+            updateLockState(false);
+            resetInactivityTimer();
+            setTimeout(function() {
+                if (typeof requestFullscreenSafe === 'function') requestFullscreenSafe();
+                if (typeof updateMaximizeState === 'function') {
+                    updateMaximizeState();
+                }
+            }, 0);
+            return;
+        }
+    } catch (e) {}
+
 const overlay = document.createElement('div');
 overlay.style.cssText = `position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;`;
 const modal = document.createElement('div');
@@ -2167,46 +2501,44 @@ confirmBtn.addEventListener('click', () => {
  modal.querySelector('#cancelBtn').addEventListener('click', () => document.body.removeChild(overlay));
  passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') confirmBtn.click(); });
 }
+function getAllTabIframes() {
+return document.querySelectorAll('.tab-content iframe');
+}
+function ensureIframeLoaded(tabContent) {
+if (!tabContent) return;
+var iframe = tabContent.querySelector('iframe');
+if (!iframe) return;
+var dataSrc = iframe.getAttribute('data-src');
+if (!dataSrc) return;
+var currentSrc = iframe.getAttribute('src') || iframe.src || '';
+if (!currentSrc || currentSrc === 'about:blank' || currentSrc.indexOf(dataSrc) === -1) {
+iframe.src = dataSrc;
+}
+}
 function changeTab(evt, tabId) {
-document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
-const activeTabContent = document.getElementById(tabId);
+document.querySelectorAll('.tab-content').forEach(function(tab) { tab.classList.remove('active'); });
+document.querySelectorAll('.tab-button').forEach(function(btn) { btn.classList.remove('active'); });
+var activeTabContent = document.getElementById(tabId);
+if (!activeTabContent) return;
 activeTabContent.classList.add('active');
-evt.currentTarget.classList.add('active');
-const iframe = activeTabContent.querySelector('iframe');
-if(iframe) {
-// Função para enviar mensagem de atualização
-const sendRefreshMessage = () => {
+if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+ensureIframeLoaded(activeTabContent);
+var iframe = activeTabContent.querySelector('iframe');
+if (iframe) {
+function sendRefresh() {
 try {
-if (iframe.contentWindow) {
-iframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+} catch (e) {}
 }
-} catch (e) {
-console.warn('Não foi possível enviar mensagem para o iframe:', e);
-}
-};
-// Recarregar o iframe
-const currentSrc = iframe.src;
-iframe.src = '';
-iframe.src = currentSrc;
-// Quando o iframe carregar, enviar mensagem para atualizar dados
-iframe.addEventListener('load', function refreshIframeData() {
-setTimeout(() => {
-sendRefreshMessage();
-}, 200);
-// Remover o listener após o primeiro uso
-iframe.removeEventListener('load', refreshIframeData);
+iframe.addEventListener('load', function onLoad() {
+iframe.removeEventListener('load', onLoad);
+setTimeout(sendRefresh, 150);
 }, { once: true });
-// Se o iframe já estiver carregado (caso não dispare o evento load), tentar enviar após um pequeno delay
-setTimeout(() => {
+setTimeout(function() {
 try {
-if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
-sendRefreshMessage();
-}
-} catch (e) {
-// Ignorar erro de cross-origin se houver
-}
-}, 300);
+if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') sendRefresh();
+} catch (e) {}
+}, 200);
 }
 }
 window.addEventListener('message', function(event) {
@@ -2238,6 +2570,25 @@ resetInactivityTimer();
 }
 if (event.data?.type === 'escala_pao_updated') {
 updateEscalaPaoAmanha();
+}
+if (event.data?.type === 'request_sync') {
+var runSOTSyncNow = function() {
+if (window._requestSyncTimeout) {
+clearTimeout(window._requestSyncTimeout);
+window._requestSyncTimeout = null;
+}
+if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
+runSyncWithHealth('request_sync_message', true).catch(function(){});
+}
+};
+if (event.data && event.data.immediate) {
+runSOTSyncNow();
+} else if (!window._requestSyncTimeout) {
+window._requestSyncTimeout = setTimeout(function() {
+window._requestSyncTimeout = null;
+runSOTSyncNow();
+}, 800);
+}
 }
 // Foco em Saídas Administrativas após edição via Cadastro de Saídas — atualização imediata da aba
 if (event.data?.type === 'saida_administrativa_atualizada') {
@@ -2302,12 +2653,9 @@ cadastroIframe.removeEventListener('load', onLoad);
 }
 }
 }
-// Atualização de lembretes - retransmite para todos os iframes
 if (event.data?.type === 'lembretes_update') {
-document.querySelectorAll('iframe').forEach(iframe => {
-if (iframe.contentWindow && iframe.contentWindow !== event.source) {
-iframe.contentWindow.postMessage(event.data, '*');
-}
+getAllTabIframes().forEach(function(iframe) {
+try { if (iframe.contentWindow && iframe.contentWindow !== event.source) iframe.contentWindow.postMessage(event.data, '*'); } catch (e) {}
 });
 }
 // Solicitação de dados de lembretes
@@ -2321,20 +2669,19 @@ data: lembretesAtivos
 }, '*');
 }
 }
-// Atualização de avisos - retransmite para todos os iframes
 if (event.data?.type === 'avisos_update') {
-document.querySelectorAll('iframe').forEach(iframe => {
-if (iframe.contentWindow && iframe.contentWindow !== event.source) {
-iframe.contentWindow.postMessage(event.data, '*');
-}
+getAllTabIframes().forEach(function(iframe) {
+try { if (iframe.contentWindow && iframe.contentWindow !== event.source) iframe.contentWindow.postMessage(event.data, '*'); } catch (e) {}
 });
 }
-// Refresh de dados - retransmite para todos os iframes
 if (event.data?.type === 'refresh_all_data') {
-document.querySelectorAll('iframe').forEach(iframe => {
+getAllTabIframes().forEach(function(iframe) {
+try {
 if (iframe.contentWindow && iframe.contentWindow !== event.source) {
+iframe.contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
 iframe.contentWindow.postMessage({ type: 'refresh_data' }, '*');
 }
+} catch (e) {}
 });
 }
 });
@@ -2357,17 +2704,15 @@ updatePasswordDisplay();
 updateLockState(false);
 updateEscalaPaoAmanha();
 
-// Se sistema estiver desbloqueado, garantir que a aba Disponibilidade está ativa (primeira aba)
+// Se sistema estiver desbloqueado, garantir que a aba Saídas Administrativas está ativa (aba padrão)
 if (!isLocked) {
-const disponibilidadeTab = document.querySelector('.tab-button[data-tab-id="disponibilidade"]');
-const disponibilidadeContent = document.getElementById('disponibilidade');
-if (disponibilidadeTab && disponibilidadeContent) {
-// Remover active de outras abas
-document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-// Ativar aba Disponibilidade
-disponibilidadeTab.classList.add('active');
-disponibilidadeContent.classList.add('active');
+var defaultTabBtn = document.querySelector('.tab-button[data-tab-id="saidas-administrativas"]');
+var defaultTabContent = document.getElementById('saidas-administrativas');
+if (defaultTabBtn && defaultTabContent) {
+document.querySelectorAll('.tab-button').forEach(function (btn) { btn.classList.remove('active'); });
+document.querySelectorAll('.tab-content').forEach(function (content) { content.classList.remove('active'); });
+defaultTabBtn.classList.add('active');
+defaultTabContent.classList.add('active');
 }
 }
 
@@ -2386,7 +2731,6 @@ document.body.style.transformOrigin = 'top left';
 document.body.style.width = `${100 / zoomLevel}%`;
 document.body.style.height = `${100 / zoomLevel}%`;
 localStorage.setItem('zoomLevel', zoomLevel.toString());
-console.log('Zoom aplicado:', Math.round(zoomLevel * 100) + '%');
 }
 function zoomIn() {
 if (zoomLevel < maxZoom) {
@@ -2500,11 +2844,14 @@ console.log('Sistema de zoom ativado! Use Ctrl + ou Ctrl - para ajustar.');
     data.members[memberIndex][dayIndex] = newVal;
     try {
       localStorage.setItem(dataKey, JSON.stringify(data));
-      document.querySelectorAll('iframe').forEach(function(iframe) {
-        try {
-          if (iframe.contentWindow)
-            iframe.contentWindow.postMessage({ type: 'escala_data_updated', year: y, month: m }, '*');
-        } catch (err) {}
+      if (!window._requestSyncTimeout && window.SOTSync && typeof window.SOTSync.sync === 'function') {
+        window._requestSyncTimeout = setTimeout(function() {
+          window._requestSyncTimeout = null;
+          runSyncWithHealth('escala_cell_edit', true).catch(function(){});
+        }, 800);
+      }
+      getAllTabIframes().forEach(function(iframe) {
+        try { if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'escala_data_updated', year: y, month: m }, '*'); } catch (err) {}
       });
     } catch (err) { console.warn('Erro ao salvar célula da escala:', err); }
   }
@@ -2652,11 +2999,8 @@ console.log('Sistema de zoom ativado! Use Ctrl + ou Ctrl - para ajustar.');
             try {
               localStorage.setItem(CELL_MARKS_KEY, JSON.stringify(store));
             } catch (e) { console.warn('Erro ao salvar X na escala:', e); }
-            document.querySelectorAll('iframe').forEach(function(iframe) {
-              try {
-                if (iframe.contentWindow)
-                  iframe.contentWindow.postMessage({ type: 'escala_cell_marks_updated' }, '*');
-              } catch (err) {}
+            getAllTabIframes().forEach(function(iframe) {
+              try { if (iframe.contentWindow) iframe.contentWindow.postMessage({ type: 'escala_cell_marks_updated' }, '*'); } catch (err) {}
             });
           });
           
@@ -2721,6 +3065,105 @@ const dataUltimoBackup = new Date(ultimoBackup).toDateString();
 return hoje === dataUltimoBackup;
 }
 
+// ---------- Backup automático periódico (versionado) ----------
+var SOT_AUTO_BACKUP_INDEX_KEY = '_sotAutoBackupIndexV1';
+var SOT_AUTO_BACKUP_PREFIX = '_sotAutoBackup_';
+var SOT_AUTO_BACKUP_MAX_VERSOES = 24; // ~12h se rodar a cada 30 min
+var SOT_AUTO_BACKUP_INTERVAL_MS = 30 * 60 * 1000;
+var sotAutoBackupTimer = null;
+
+function getAutoBackupIndex() {
+  try {
+    var raw = localStorage.getItem(SOT_AUTO_BACKUP_INDEX_KEY);
+    var parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) { return []; }
+}
+
+function setAutoBackupIndex(list) {
+  try { localStorage.setItem(SOT_AUTO_BACKUP_INDEX_KEY, JSON.stringify(Array.isArray(list) ? list : [])); } catch (e) {}
+}
+
+function simpleHashString(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function collectLocalStorageForBackup() {
+  var data = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (!key) continue;
+    if (key === '_ultimoBackupData') continue;
+    if (key === SOT_AUTO_BACKUP_INDEX_KEY) continue;
+    if (key.indexOf(SOT_AUTO_BACKUP_PREFIX) === 0) continue;
+    data[key] = localStorage.getItem(key);
+  }
+  return data;
+}
+
+async function espelharAutoBackupNoFirebase(entry) {
+  try {
+    var enabled = localStorage.getItem('_sotAutoBackupRemoteEnabled') === '1';
+    if (!enabled) return;
+    if (typeof dataService === 'undefined' || typeof dataService.saveConfiguracao !== 'function') return;
+    await dataService.saveConfiguracao('sot_auto_backup_latest', JSON.stringify(entry), 'json');
+  } catch (e) {
+    console.warn('Auto-backup remoto (opcional) falhou:', e);
+  }
+}
+
+async function runAutoBackup(reason) {
+  try {
+    if (document.visibilityState !== 'visible') return;
+    var payload = collectLocalStorageForBackup();
+    var now = new Date();
+    var iso = now.toISOString();
+    var compact = JSON.stringify(payload);
+    var hash = simpleHashString(compact);
+    var sizeBytes = compact.length;
+    var key = SOT_AUTO_BACKUP_PREFIX + iso;
+    var entry = {
+      key: key,
+      createdAt: iso,
+      reason: reason || 'interval',
+      hash: hash,
+      sizeBytes: sizeBytes,
+      itemsCount: Object.keys(payload).length
+    };
+
+    localStorage.setItem(key, JSON.stringify({
+      meta: entry,
+      data: payload
+    }));
+
+    var idx = getAutoBackupIndex();
+    idx.push(entry);
+    while (idx.length > SOT_AUTO_BACKUP_MAX_VERSOES) {
+      var old = idx.shift();
+      try { if (old && old.key) localStorage.removeItem(old.key); } catch (e) {}
+    }
+    setAutoBackupIndex(idx);
+    await espelharAutoBackupNoFirebase(entry);
+    console.log('[SOT_AUTO_BACKUP] criado', entry);
+  } catch (e) {
+    console.warn('[SOT_AUTO_BACKUP] falhou', e);
+  }
+}
+
+function startAutoBackupScheduler() {
+  if (sotAutoBackupTimer) clearInterval(sotAutoBackupTimer);
+  sotAutoBackupTimer = setInterval(function () {
+    runAutoBackup('interval');
+  }, SOT_AUTO_BACKUP_INTERVAL_MS);
+  // rodada inicial curta após carga
+  setTimeout(function () { runAutoBackup('startup'); }, 2 * 60 * 1000);
+}
+
 // Função para fazer backup: primeiro sincroniza (local ↔ Firebase), depois gera e baixa o JSON
 async function fazerBackupCompleto() {
 var btn = document.getElementById('backupModalBtn');
@@ -2730,7 +3173,7 @@ if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spi
 try {
 // 1) Sincronizar dados (localStorage ↔ Firebase) antes do backup, para ter tudo atualizado
 if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
-await window.SOTSync.sync(true, { afterSync: function() {} });
+await runSyncWithHealth('manual_backup', true);
 }
 } catch (e) { console.warn('Sincronização no backup:', e); }
 
@@ -2743,12 +3186,7 @@ const horaFormatada = timestamp.toLocaleTimeString('pt-BR').replace(/:/g, '-');
 const nomeArquivo = `SOT_Backup_${dataFormatada}.json`;
 
 // Coletar todos os dados do localStorage (exceto a chave de controle de backup)
-for (let i = 0; i < localStorage.length; i++) {
-const key = localStorage.key(i);
-if (key !== '_ultimoBackupData') {
-backupData[key] = localStorage.getItem(key);
-}
-}
+Object.assign(backupData, collectLocalStorageForBackup());
 
 // Adicionar informações do backup
 backupData._backupInfo = JSON.stringify({
@@ -2787,6 +3225,7 @@ if (!jaFezBackupHoje()) {
 document.getElementById('backupModal').style.display = 'block';
 }
 }, 1000); // Aguarda 1 segundo após o carregamento
+startAutoBackupScheduler();
 });
 
 // Event listener do botão de backup
@@ -3522,25 +3961,47 @@ updateMaximizeState();
 })();
 </script>
 
-<!-- Firebase + sincronização automática (local ↔ nuvem) quando online -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
-<!-- SISTEMA DE CONTROLE POR VOZ -->
-<script src="api-service.js"></script>
-<script src="data-service.js"></script>
-<script src="sot-sync.js"></script>
-<script src="controle-voz.js"></script>
+<!-- Firebase: Firestore modular + Auth (mesma sessão que index.html / firebase-auth.js) -->
 <script>
-// Verificação automática: sincroniza localStorage ↔ Firebase ao carregar e a cada 10 min quando online
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) {
+  return m.installFirebaseSot();
+});
+</script>
+
+<!-- SISTEMA DE CONTROLE POR VOZ -->
+<script src="api-service.js?v=20260319-1"></script>
+<script src="data-service.js?v=20260319-1"></script>
+<script src="sot-sync.js?v=20260319-1"></script>
+<script src="controle-voz.js?v=20260319-1"></script>
+<script>
+// Verificação automática: sincroniza localStorage ↔ Firebase e avisa as abas (Escala, etc.) para recarregar
 (function() {
+  function broadcastRefreshToIframes() {
+    try {
+      var iframes = document.querySelectorAll('.tab-content iframe');
+      for (var i = 0; i < iframes.length; i++) {
+        try {
+          if (iframes[i].contentWindow) iframes[i].contentWindow.postMessage({ type: 'refresh_all_data' }, '*');
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
   function run() {
-    if (window.SOTSync && typeof window.SOTSync.runAutoSync === 'function') window.SOTSync.runAutoSync();
+    if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
+    var started = Date.now();
+    runSyncWithHealth('periodic_sync', true)
+      .then(function () { broadcastRefreshToIframes(); })
+      .catch(function () {})
+      .finally(function () {
+        trackSotHealth('periodic_sync_cycle', { elapsedMs: Date.now() - started });
+      });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(run, 2000); });
   else setTimeout(run, 2000);
   setInterval(run, window.SOTSync && window.SOTSync.AUTO_SYNC_INTERVAL_MS ? window.SOTSync.AUTO_SYNC_INTERVAL_MS : 600000);
+  window.addEventListener('online', function() {
+    setTimeout(run, 1500);
+  });
 })();
 </script>
 <script>

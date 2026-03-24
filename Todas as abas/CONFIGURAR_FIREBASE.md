@@ -44,20 +44,34 @@ Siga estes passos para usar o Firebase no SOT. Com o Firebase configurado:
 
 ### Modo produção (recomendado) — exige login Google (Firebase Auth)
 
-O SOT **só lê/grava `sot_data` depois do login Google** (`firebase-auth.js` + `firebase-sot-firestore.mjs` no `SOT5`). Use regras que exijam `request.auth != null`:
+O SOT **só lê/grava `sot_data` depois do login Google** (`firebase-auth.js` + `firebase-sot-firestore.mjs` no `SOT5`).  
+Para produção, use regras com:
+
+- autenticação obrigatória (`request.auth != null`);
+- validação da estrutura dos documentos críticos (`items` + `updatedAt`);
+- proteção anti-wipe (bloqueia sobrescrever lista remota não-vazia com `[]`);
+- bloqueio de `delete` no documento inteiro em `sot_data`.
+
+Use o arquivo `firestore.rules` na raiz do projeto (copie e cole no Firebase Console > Firestore > Regras).
+
+Trecho principal:
 
 ```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedIn() { return request.auth != null; }
+
     match /sot_agendamento_usuarios/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
     match /sot_google_audit_logs/{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
-    match /sot_data/{document=**} {
-      allow read, write: if request.auth != null;
+    match /sot_data/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn(); // validações completas no arquivo firestore.rules
+      allow delete: if false;
     }
   }
 }

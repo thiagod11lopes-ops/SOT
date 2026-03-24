@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SISTEMA DE ORGANIZAÇÃO DE TRANSPORTE - ESTATÍSTICAS</title>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="firebase-sot-service.js"></script>
+<!-- Firestore modular + Auth (mesma sessão Google que index.html) -->
+<script>
+window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
+</script>
 <script src="data-service.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
@@ -850,14 +850,12 @@ let saidasAdministrativas, saidasAmbulancias, abastecimentosData;
 try {
 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
 await dataService.waitForAPICheck();
-if (dataService.useFirebase || dataService.apiAvailable) {
 saidasAdministrativas = await dataService.getSaidasAdministrativas();
 saidasAmbulancias = await dataService.getSaidasAmbulancias();
 abastecimentosData = await dataService.getAbastecimentos();
 if (Array.isArray(saidasAdministrativas)) localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
 if (Array.isArray(saidasAmbulancias)) localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
 if (Array.isArray(abastecimentosData)) localStorage.setItem('abastecimentos', JSON.stringify(abastecimentosData));
-}
 }
 } catch (e) { console.warn('Estatística: falha ao carregar do Firebase', e); }
 if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas')) || [];
@@ -963,7 +961,7 @@ ctx.restore();
 }
 };
 Chart.register(barChartDataLabelsPlugin);
-const allSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
+let allSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
 let currentPage = 1;
 const rowsPerPage = 25;
 let monthlyExitsChart, destinationKmChart, sectorKmChart, unscheduledExitsChart, fuelChart;
@@ -2819,6 +2817,45 @@ reader.readAsText(file);
 // Limpar o input para permitir importar o mesmo arquivo novamente
 event.target.value = '';
 });
+}
+
+// Atualização em tempo real quando KM saída/chegada ou hora chegada mudam (SOT / Quadro / sync)
+async function sotRefreshEstatisticasSaidasData() {
+try {
+if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+await dataService.waitForAPICheck();
+try {
+const s = await dataService.getSaidasAdministrativas();
+const a = await dataService.getSaidasAmbulancias();
+const ab = await dataService.getAbastecimentos();
+if (Array.isArray(s)) { saidasAdministrativas = s; localStorage.setItem('saidasAdministrativas', JSON.stringify(s)); }
+if (Array.isArray(a)) { saidasAmbulancias = a; localStorage.setItem('saidasAmbulancias', JSON.stringify(a)); }
+if (Array.isArray(ab)) { abastecimentosData = ab; localStorage.setItem('abastecimentos', JSON.stringify(ab)); }
+} catch (err) { console.warn('Estatísticas: falha ao recarregar dados remotos', err); }
+}
+} catch (e) { console.warn('Estatísticas: refresh', e); }
+if (!Array.isArray(saidasAdministrativas)) saidasAdministrativas = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]');
+if (!Array.isArray(saidasAmbulancias)) saidasAmbulancias = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]');
+if (!Array.isArray(abastecimentosData)) abastecimentosData = JSON.parse(localStorage.getItem('abastecimentos') || '[]');
+allSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
+populateFilters();
+updateQuantitativeTable();
+updateRankingTable();
+if (typeof renderSaidasTable === 'function') renderSaidasTable();
+if (typeof window.updateManagementBoard === 'function') window.updateManagementBoard();
+}
+window.sotRefreshEstatisticasSaidasData = sotRefreshEstatisticasSaidasData;
+
+window.addEventListener('message', function (ev) {
+if (ev.data && (ev.data.type === 'refresh_all_data' || ev.data.type === 'refresh_data')) {
+sotRefreshEstatisticasSaidasData().catch(function () {});
+}
+});
+if (typeof BroadcastChannel !== 'undefined') {
+try {
+var _bcEstSaidas = new BroadcastChannel('sot_saidas_administrativas');
+_bcEstSaidas.onmessage = function () { sotRefreshEstatisticasSaidasData().catch(function () {}); };
+} catch (e) {}
 }
 
 // Renderizar a tabela inicialmente

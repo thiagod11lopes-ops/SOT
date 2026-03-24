@@ -3279,7 +3279,7 @@ window.parent.postMessage({ type: 'edit_saida', data: saidaData }, '*');
 }
 async function handleDeleteRow(event) {
 event.stopPropagation();
-if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
+if (confirm('Tem certeza que deseja excluir esta(s) saída(s)?')) {
 const idsToRemove = event.target.closest('tr').dataset.id.split(',');
 try {
 // Deletar da API se disponível

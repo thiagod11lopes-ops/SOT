@@ -1537,15 +1537,15 @@ if (window.top !== window) document.documentElement.classList.add('sot-in-iframe
 <button class="tab-button protected" data-tab-id="equipamentos-suprimentos" onclick="changeTab(event, 'equipamentos-suprimentos')">Equipamentos e Suprimentos</button>
 <button class="tab-button protected" data-tab-id="configuracoes" onclick="changeTab(event, 'configuracoes')">Configurações</button>
 </div>
-<div id="cadastro-saidas" class="tab-content"><iframe id="iframe-cadastro-saidas" data-src="Cadastrodesaidas8.html" title="Cadastro de Saídas"></iframe></div>
-<div id="saidas-administrativas" class="tab-content active"><iframe id="iframe-saidas-administrativas" data-src="Saidasadministrativas6.html" src="Saidasadministrativas6.html" title="Saídas Administrativas"></iframe></div>
-<div id="saidas-ambulancias" class="tab-content"><iframe id="iframe-saidas-ambulancias" data-src="Saidasdeambulâncias2.html" title="Saídas de Ambulâncias"></iframe></div>
-<div id="vistoria" class="tab-content"><iframe id="iframe-vistoria" data-src="VistoriaRDV.html" title="Vistoria e RDV"></iframe></div>
-<div id="frota-pessoal" class="tab-content"><iframe id="iframe-frota-pessoal" data-src="Frotaepessoal3.html" title="Frota e Pessoal"></iframe></div>
-<div id="estatistica" class="tab-content"><iframe id="iframe-estatistica" data-src="Estatistica4.html" title="Estatística"></iframe></div>
-<div id="avisos" class="tab-content"><iframe id="iframe-avisos" data-src="Avisos.html" title="Avisos"></iframe></div>
-<div id="equipamentos-suprimentos" class="tab-content"><iframe id="iframe-equipamentos-suprimentos" data-src="EquipamentoseSuprimentos.html" title="Equipamentos e Suprimentos"></iframe></div>
-<div id="configuracoes" class="tab-content"><iframe id="iframe-configuracoes" data-src="Configuracoes.html" title="Configurações"></iframe></div>
+<div id="cadastro-saidas" class="tab-content"><iframe id="iframe-cadastro-saidas" data-src="Cadastrodesaidas8.html?v=20260319-1" title="Cadastro de Saídas"></iframe></div>
+<div id="saidas-administrativas" class="tab-content active"><iframe id="iframe-saidas-administrativas" data-src="Saidasadministrativas6.html?v=20260319-1" src="Saidasadministrativas6.html?v=20260319-1" title="Saídas Administrativas"></iframe></div>
+<div id="saidas-ambulancias" class="tab-content"><iframe id="iframe-saidas-ambulancias" data-src="Saidasdeambulâncias2.html?v=20260319-1" title="Saídas de Ambulâncias"></iframe></div>
+<div id="vistoria" class="tab-content"><iframe id="iframe-vistoria" data-src="VistoriaRDV.html?v=20260319-1" title="Vistoria e RDV"></iframe></div>
+<div id="frota-pessoal" class="tab-content"><iframe id="iframe-frota-pessoal" data-src="Frotaepessoal3.html?v=20260319-1" title="Frota e Pessoal"></iframe></div>
+<div id="estatistica" class="tab-content"><iframe id="iframe-estatistica" data-src="Estatistica4.html?v=20260319-1" title="Estatística"></iframe></div>
+<div id="avisos" class="tab-content"><iframe id="iframe-avisos" data-src="Avisos.html?v=20260319-1" title="Avisos"></iframe></div>
+<div id="equipamentos-suprimentos" class="tab-content"><iframe id="iframe-equipamentos-suprimentos" data-src="EquipamentoseSuprimentos.html?v=20260319-1" title="Equipamentos e Suprimentos"></iframe></div>
+<div id="configuracoes" class="tab-content"><iframe id="iframe-configuracoes" data-src="Configuracoes.html?v=20260319-1" title="Configurações"></iframe></div>
 </main>
 <!-- Modal de Backup -->
 <div id="backupModal">
@@ -2031,6 +2031,75 @@ renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
 const SOT5_BUILD_ID = '2025-11-09-anim-v1';
 const updateOverlay = document.getElementById('updateOverlay');
 const updateLoader = document.querySelector('.update-loader');
+const SOT_HEALTH_KEY = 'sot_health_metrics_v1';
+const SOT_HEALTH_MAX_EVENTS = 400;
+const sotPageBootAt = Date.now();
+
+function readSotHealthMetrics() {
+try {
+var raw = localStorage.getItem(SOT_HEALTH_KEY);
+var parsed = raw ? JSON.parse(raw) : null;
+if (!parsed || typeof parsed !== 'object') {
+return { counters: {}, events: [], lastFlushAt: null };
+}
+if (!parsed.counters || typeof parsed.counters !== 'object') parsed.counters = {};
+if (!Array.isArray(parsed.events)) parsed.events = [];
+return parsed;
+} catch (e) {
+return { counters: {}, events: [], lastFlushAt: null };
+}
+}
+
+function writeSotHealthMetrics(m) {
+try { localStorage.setItem(SOT_HEALTH_KEY, JSON.stringify(m)); } catch (e) {}
+}
+
+function trackSotHealth(eventType, payload) {
+var metrics = readSotHealthMetrics();
+var t = String(eventType || 'event');
+metrics.counters[t] = (metrics.counters[t] || 0) + 1;
+metrics.events.push({
+at: new Date().toISOString(),
+type: t,
+online: !(navigator && navigator.onLine === false),
+payload: payload && typeof payload === 'object' ? payload : {}
+});
+if (metrics.events.length > SOT_HEALTH_MAX_EVENTS) {
+metrics.events = metrics.events.slice(metrics.events.length - SOT_HEALTH_MAX_EVENTS);
+}
+writeSotHealthMetrics(metrics);
+try { console.log('[SOT_HEALTH]', t, payload || {}); } catch (e) {}
+}
+
+async function runSyncWithHealth(tag, immediate) {
+if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return false;
+var start = Date.now();
+try {
+await window.SOTSync.sync(!!immediate, { afterSync: function() {} });
+trackSotHealth('sync_success', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate });
+return true;
+} catch (e) {
+trackSotHealth('sync_error', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate, message: e && e.message ? e.message : String(e) });
+throw e;
+}
+}
+
+window.addEventListener('error', function (ev) {
+try {
+trackSotHealth('window_error', {
+message: ev && ev.message ? ev.message : 'error',
+source: ev && ev.filename ? ev.filename : '',
+line: ev && ev.lineno ? ev.lineno : 0
+});
+} catch (e) {}
+});
+
+window.addEventListener('unhandledrejection', function (ev) {
+try {
+var reason = ev && ev.reason ? (ev.reason.message || String(ev.reason)) : 'unhandledrejection';
+trackSotHealth('unhandled_rejection', { reason: reason });
+} catch (e) {}
+});
 const updateOverlayTitle = document.getElementById('updateOverlayTitle');
 const updateOverlaySubtitle = document.getElementById('updateOverlaySubtitle');
 const firebaseSummaryModal = document.getElementById('firebaseSummaryModal');
@@ -2169,6 +2238,7 @@ const finishOverlay = (state) => {
 };
 
 const runInitialFirebaseLoad = async () => {
+    trackSotHealth('initial_load_start', {});
     setOverlayStatus('Carregando dados do Firebase...', 'Aguarde enquanto sincronizamos os dados do sistema.', 'loading');
     try {
         const ready = await waitForServices(12000);
@@ -2185,7 +2255,7 @@ const runInitialFirebaseLoad = async () => {
         }
 
         setOverlayStatus('Carregando dados do Firebase...', 'Sincronizando com a nuvem…', 'loading');
-        await window.SOTSync.sync(true, { afterSync: function() {} });
+        await runSyncWithHealth('initial_firebase_load', true);
 
         const summarizeFirebaseLoads = async function () {
             const checks = [
@@ -2249,9 +2319,11 @@ const runInitialFirebaseLoad = async () => {
         }
 
         setOverlayStatus('Dados carregados com sucesso', 'Sistema atualizado com dados do Firebase.', 'success');
+        trackSotHealth('initial_load_success', { elapsedMs: Date.now() - sotPageBootAt });
         finishOverlay('success');
     } catch (e) {
         console.error('Falha no carregamento inicial do Firebase:', e);
+        trackSotHealth('initial_load_error', { elapsedMs: Date.now() - sotPageBootAt, message: e && e.message ? e.message : String(e) });
         setOverlayStatus('Falha ao carregar dados da nuvem', 'Verifique conexão/regras do Firebase. O sistema seguirá com os dados disponíveis.', 'error');
         finishOverlay('error');
     }
@@ -2281,7 +2353,7 @@ window.addEventListener('sot-firebase-auth-changed', function (ev) {
         window._sot_postLoginSyncScheduled = true;
         setTimeout(function () {
             window._sot_postLoginSyncScheduled = false;
-            window.SOTSync.sync(true, { afterSync: function () {} });
+            runSyncWithHealth('post_login_sync', true).catch(function () {});
         }, 800);
     } catch (e) {}
 });
@@ -2506,7 +2578,7 @@ clearTimeout(window._requestSyncTimeout);
 window._requestSyncTimeout = null;
 }
 if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
-window.SOTSync.sync(true, { afterSync: function() {} });
+runSyncWithHealth('request_sync_message', true).catch(function(){});
 }
 };
 if (event.data && event.data.immediate) {
@@ -2775,7 +2847,7 @@ console.log('Sistema de zoom ativado! Use Ctrl + ou Ctrl - para ajustar.');
       if (!window._requestSyncTimeout && window.SOTSync && typeof window.SOTSync.sync === 'function') {
         window._requestSyncTimeout = setTimeout(function() {
           window._requestSyncTimeout = null;
-          window.SOTSync.sync(true, { afterSync: function() {} });
+          runSyncWithHealth('escala_cell_edit', true).catch(function(){});
         }, 800);
       }
       getAllTabIframes().forEach(function(iframe) {
@@ -2993,6 +3065,105 @@ const dataUltimoBackup = new Date(ultimoBackup).toDateString();
 return hoje === dataUltimoBackup;
 }
 
+// ---------- Backup automático periódico (versionado) ----------
+var SOT_AUTO_BACKUP_INDEX_KEY = '_sotAutoBackupIndexV1';
+var SOT_AUTO_BACKUP_PREFIX = '_sotAutoBackup_';
+var SOT_AUTO_BACKUP_MAX_VERSOES = 24; // ~12h se rodar a cada 30 min
+var SOT_AUTO_BACKUP_INTERVAL_MS = 30 * 60 * 1000;
+var sotAutoBackupTimer = null;
+
+function getAutoBackupIndex() {
+  try {
+    var raw = localStorage.getItem(SOT_AUTO_BACKUP_INDEX_KEY);
+    var parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) { return []; }
+}
+
+function setAutoBackupIndex(list) {
+  try { localStorage.setItem(SOT_AUTO_BACKUP_INDEX_KEY, JSON.stringify(Array.isArray(list) ? list : [])); } catch (e) {}
+}
+
+function simpleHashString(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function collectLocalStorageForBackup() {
+  var data = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (!key) continue;
+    if (key === '_ultimoBackupData') continue;
+    if (key === SOT_AUTO_BACKUP_INDEX_KEY) continue;
+    if (key.indexOf(SOT_AUTO_BACKUP_PREFIX) === 0) continue;
+    data[key] = localStorage.getItem(key);
+  }
+  return data;
+}
+
+async function espelharAutoBackupNoFirebase(entry) {
+  try {
+    var enabled = localStorage.getItem('_sotAutoBackupRemoteEnabled') === '1';
+    if (!enabled) return;
+    if (typeof dataService === 'undefined' || typeof dataService.saveConfiguracao !== 'function') return;
+    await dataService.saveConfiguracao('sot_auto_backup_latest', JSON.stringify(entry), 'json');
+  } catch (e) {
+    console.warn('Auto-backup remoto (opcional) falhou:', e);
+  }
+}
+
+async function runAutoBackup(reason) {
+  try {
+    if (document.visibilityState !== 'visible') return;
+    var payload = collectLocalStorageForBackup();
+    var now = new Date();
+    var iso = now.toISOString();
+    var compact = JSON.stringify(payload);
+    var hash = simpleHashString(compact);
+    var sizeBytes = compact.length;
+    var key = SOT_AUTO_BACKUP_PREFIX + iso;
+    var entry = {
+      key: key,
+      createdAt: iso,
+      reason: reason || 'interval',
+      hash: hash,
+      sizeBytes: sizeBytes,
+      itemsCount: Object.keys(payload).length
+    };
+
+    localStorage.setItem(key, JSON.stringify({
+      meta: entry,
+      data: payload
+    }));
+
+    var idx = getAutoBackupIndex();
+    idx.push(entry);
+    while (idx.length > SOT_AUTO_BACKUP_MAX_VERSOES) {
+      var old = idx.shift();
+      try { if (old && old.key) localStorage.removeItem(old.key); } catch (e) {}
+    }
+    setAutoBackupIndex(idx);
+    await espelharAutoBackupNoFirebase(entry);
+    console.log('[SOT_AUTO_BACKUP] criado', entry);
+  } catch (e) {
+    console.warn('[SOT_AUTO_BACKUP] falhou', e);
+  }
+}
+
+function startAutoBackupScheduler() {
+  if (sotAutoBackupTimer) clearInterval(sotAutoBackupTimer);
+  sotAutoBackupTimer = setInterval(function () {
+    runAutoBackup('interval');
+  }, SOT_AUTO_BACKUP_INTERVAL_MS);
+  // rodada inicial curta após carga
+  setTimeout(function () { runAutoBackup('startup'); }, 2 * 60 * 1000);
+}
+
 // Função para fazer backup: primeiro sincroniza (local ↔ Firebase), depois gera e baixa o JSON
 async function fazerBackupCompleto() {
 var btn = document.getElementById('backupModalBtn');
@@ -3002,7 +3173,7 @@ if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spi
 try {
 // 1) Sincronizar dados (localStorage ↔ Firebase) antes do backup, para ter tudo atualizado
 if (window.SOTSync && typeof window.SOTSync.sync === 'function') {
-await window.SOTSync.sync(true, { afterSync: function() {} });
+await runSyncWithHealth('manual_backup', true);
 }
 } catch (e) { console.warn('Sincronização no backup:', e); }
 
@@ -3015,12 +3186,7 @@ const horaFormatada = timestamp.toLocaleTimeString('pt-BR').replace(/:/g, '-');
 const nomeArquivo = `SOT_Backup_${dataFormatada}.json`;
 
 // Coletar todos os dados do localStorage (exceto a chave de controle de backup)
-for (let i = 0; i < localStorage.length; i++) {
-const key = localStorage.key(i);
-if (key !== '_ultimoBackupData') {
-backupData[key] = localStorage.getItem(key);
-}
-}
+Object.assign(backupData, collectLocalStorageForBackup());
 
 // Adicionar informações do backup
 backupData._backupInfo = JSON.stringify({
@@ -3059,6 +3225,7 @@ if (!jaFezBackupHoje()) {
 document.getElementById('backupModal').style.display = 'block';
 }
 }, 1000); // Aguarda 1 segundo após o carregamento
+startAutoBackupScheduler();
 });
 
 // Event listener do botão de backup
@@ -3802,10 +3969,10 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
 </script>
 
 <!-- SISTEMA DE CONTROLE POR VOZ -->
-<script src="api-service.js"></script>
-<script src="data-service.js"></script>
-<script src="sot-sync.js"></script>
-<script src="controle-voz.js"></script>
+<script src="api-service.js?v=20260319-1"></script>
+<script src="data-service.js?v=20260319-1"></script>
+<script src="sot-sync.js?v=20260319-1"></script>
+<script src="controle-voz.js?v=20260319-1"></script>
 <script>
 // Verificação automática: sincroniza localStorage ↔ Firebase e avisa as abas (Escala, etc.) para recarregar
 (function() {
@@ -3821,7 +3988,13 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
   }
   function run() {
     if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
-    window.SOTSync.sync(true, { afterSync: broadcastRefreshToIframes });
+    var started = Date.now();
+    runSyncWithHealth('periodic_sync', true)
+      .then(function () { broadcastRefreshToIframes(); })
+      .catch(function () {})
+      .finally(function () {
+        trackSotHealth('periodic_sync_cycle', { elapsedMs: Date.now() - started });
+      });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(run, 2000); });
   else setTimeout(run, 2000);

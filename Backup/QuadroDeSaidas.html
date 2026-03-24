@@ -102,6 +102,49 @@
             font-size: 13px;
         }
 
+        .header-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .google-login-shell {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .google-login-shell #btn-login {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 999px;
+            background: #4285f4;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .google-login-shell #btn-sair {
+            padding: 5px 9px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.35);
+            color: #e5e7eb;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .google-login-shell #usuario-info {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
         .subtitle {
             font-size: 13px;
             color: var(--muted);
@@ -215,6 +258,7 @@
         }
 
         .card {
+            position: relative;
             border-radius: 16px;
             padding: 10px 12px 10px;
             background: var(--bg-elevated);
@@ -224,6 +268,53 @@
             flex-direction: column;
             gap: 6px;
             margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        /* Tarja esmaecida "REALIZADA" na transversal */
+        .card-realizada::before {
+            content: "REALIZADA";
+            position: absolute;
+            top: 12px;
+            right: -55px;
+            transform: rotate(35deg);
+            padding: 4px 60px;
+            background: rgba(56, 189, 248, 0.16);
+            border: 1px solid rgba(125, 211, 252, 0.4);
+            color: rgba(226, 232, 240, 0.9);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            text-align: center;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Saída com KM Saída preenchido; some quando KM Chegada e hora Chegada estiverem preenchidos */
+        .card-iniciada {
+            border: 1px solid rgba(34, 197, 94, 0.7);
+            box-shadow: 0 16px 36px rgba(15, 23, 42, 0.85), 0 0 0 1px rgba(34, 197, 94, 0.2);
+        }
+
+        /* Mesma posição e ângulo da tarja REALIZADA (Finalizada) */
+        .card-iniciada::after {
+            content: "INICIADA";
+            position: absolute;
+            top: 12px;
+            right: -55px;
+            transform: rotate(35deg);
+            padding: 4px 60px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(74, 222, 128, 0.55);
+            color: rgba(220, 252, 231, 0.95);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            text-align: center;
+            z-index: 6;
+            pointer-events: none;
         }
 
         .card-header {
@@ -329,6 +420,118 @@
             color: #e5e7eb;
         }
 
+        .card-footer {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px dashed rgba(148, 163, 184, 0.4);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .card-footer-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .card-footer-field label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .card-footer-field span.value {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Overlay de edição passo a passo (KM Saída, KM Chegada, Chegada) */
+        .card-edit-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .card-edit-box {
+            background: rgba(15, 23, 42, 1);
+            border-radius: 12px;
+            padding: 12px 14px;
+            border: 1px solid rgba(148, 163, 184, 0.85);
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
+            min-width: 220px;
+            max-width: 260px;
+        }
+
+        .card-edit-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .card-edit-input {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.8);
+            background: rgba(15, 23, 42, 0.96);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .card-edit-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .card-edit-btn {
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+        }
+
+        .card-edit-btn.cancel {
+            background: rgba(148, 163, 184, 0.18);
+            color: var(--muted);
+        }
+
+        .card-edit-btn.ok {
+            background: rgba(56, 189, 248, 0.18);
+            color: #e5f0ff;
+            border: 1px solid rgba(56, 189, 248, 0.7);
+        }
+
+        .card-edit-blocked-msg {
+            font-size: 13px;
+            line-height: 1.45;
+            color: #e5e7eb;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .card-edit-blocked-msg strong {
+            color: #fbbf24;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
         .footer-info {
             margin-top: 2px;
             font-size: 10px;
@@ -380,13 +583,22 @@
                     QUADRO DE SAÍDAS
                     <span>MÓVEL</span>
                 </div>
-                <div class="sot-badge">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>SOT</span>
+                <div class="header-right">
+                    <div class="sot-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>SOT</span>
+                    </div>
+                    <div id="google-login-shell" class="google-login-shell">
+                        <button type="button" id="btn-login">Entrar com Google</button>
+                        <div id="usuario-info">
+                            <strong id="nome-usuario"></strong>
+                            <button type="button" id="btn-sair">Sair</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="subtitle">
-                Visualização apenas — <strong>Saídas Administrativas</strong> do dia selecionado.
+                <strong>Saídas Administrativas</strong> do dia. Após preencher KM Saída, KM Chegada e Chegada, o registro fica bloqueado aqui — alterações só no sistema SOT completo.
             </div>
             <div class="filter-card">
                 <div class="filter-label">
@@ -421,13 +633,14 @@
         </div>
     </div>
 
-    <!-- Firebase + serviços do SOT para dados sincronizados -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-    <script src="Todas%20as%20abas/firebase-config.js"></script>
-    <script src="Todas%20as%20abas/firebase-sot-service.js"></script>
-    <script src="Todas%20as%20abas/api-service.js"></script>
-    <script src="Todas%20as%20abas/data-service.js"></script>
+    <!-- Firebase modular (mesma base do SOT5) -->
+    <script>
+      window.__sotFirestoreBoot = import(new URL('Todas as abas/firebase-sot-firestore.mjs', document.baseURI).href)
+        .then(function (m) { return m.installFirebaseSot(); });
+    </script>
+    <script src="Todas%20as%20abas/api-service.js?v=20260319-1"></script>
+    <script src="Todas%20as%20abas/data-service.js?v=20260319-1"></script>
+    <script type="module" src="Todas%20as%20abas/firebase-auth.js?v=20260319-1"></script>
     <script>
         function formatDateLabel(isoDate) {
             if (!isoDate) return '';
@@ -442,10 +655,14 @@
             if (!value) return '';
             const s = String(value).trim();
             if (!s) return '';
+            // Já está em ISO
             if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+            // YYYY-MM-DDTHH:mm:ss...
             if (s.includes('T')) return s.split('T')[0];
+            // DD/MM/YYYY (ou DD-MM-YYYY)
             const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
             if (m) return `${m[3]}-${String(m[2]).padStart(2, '0')}-${String(m[1]).padStart(2, '0')}`;
+            // tenta Date()
             const d = new Date(s);
             if (!isNaN(d.getTime())) {
                 return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -457,12 +674,37 @@
             return saida.horaSaida || saida.saida || saida.horario || saida.hora || '';
         }
 
+        function getSaidaDateISO(saida) {
+            if (!saida) return '';
+            return parseDateToISO(saida.dataSaida || saida.dataPedido || saida.data || '');
+        }
+
         function getDestino(saida) {
             if (saida.destino) return saida.destino;
             const partes = [];
             if (saida.cidade) partes.push(saida.cidade);
             if (saida.bairro) partes.push(saida.bairro);
             return partes.join(' - ') || '—';
+        }
+
+        // Formata KM no padrão brasileiro, inserindo ponto para milhares (ex.: 1234 -> 1.234)
+        function formatKmValue(value) {
+            if (value === null || value === undefined) return '';
+            // Mantém apenas dígitos
+            let digits = String(value).replace(/[^\d]/g, '');
+            if (!digits) return '';
+            // Remove zeros à esquerda, mas preserva "0" se for tudo zero
+            digits = digits.replace(/^0+(\d)/, '$1');
+            if (!digits) digits = '0';
+            // Agrupar a cada 3 dígitos da direita para a esquerda
+            let result = '';
+            while (digits.length > 3) {
+                const chunk = digits.slice(-3);
+                digits = digits.slice(0, -3);
+                result = (result ? '.' + result : chunk + result);
+            }
+            result = digits + (result ? '.' + result : '');
+            return result;
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -472,6 +714,33 @@
             const counterValue = document.getElementById('counterValue');
             const dateLabel = document.getElementById('dateLabel');
             const loading = document.getElementById('loading');
+            let lastKnownGoogleSignedIn = false;
+
+            function isGoogleSignedInNow() {
+                try {
+                    if (window.top && window.top._sot_google_signed_in) return true;
+                } catch (e) {}
+                return !!window._sot_google_signed_in;
+            }
+
+            async function waitForGoogleSignedInFlag(timeoutMs) {
+                const timeout = Number(timeoutMs || 12000);
+                if (isGoogleSignedInNow()) return true;
+                const started = Date.now();
+                return await new Promise(function (resolve) {
+                    const timer = setInterval(function () {
+                        if (isGoogleSignedInNow()) {
+                            clearInterval(timer);
+                            resolve(true);
+                            return;
+                        }
+                        if (Date.now() - started >= timeout) {
+                            clearInterval(timer);
+                            resolve(false);
+                        }
+                    }, 200);
+                });
+            }
 
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -481,26 +750,379 @@
             dateInput.value = todayISO;
             dateLabel.textContent = formatDateLabel(todayISO);
 
-            /** Obtém a lista de saídas: prioriza Firebase (dataService), depois JSON no repositório, depois localStorage */
-            async function getAllSaidas() {
-                if (window.dataService) {
-                    try {
-                        const fromFirebase = await window.dataService.getSaidasAdministrativas();
-                        if (Array.isArray(fromFirebase) && fromFirebase.length > 0) return fromFirebase;
-                        if (Array.isArray(fromFirebase)) { /* Firebase vazio, tentar JSON abaixo */ }
-                        else return fromFirebase || [];
-                    } catch (e) { /* segue para JSON */ }
-                }
-                try {
-                    const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (Array.isArray(data)) return data;
-                    }
-                } catch (e) { /* ignora */ }
-                if (window.dataService) return await window.dataService.getSaidasAdministrativas();
-                return [];
+            function getPreviousKmChegada(placa, currentDateStr, currentHoraStr, allSaidas) {
+                if (!placa || !Array.isArray(allSaidas)) return null;
+                const baseDateTime = new Date(`${currentDateStr}T${currentHoraStr || '00:00'}`);
+                if (isNaN(baseDateTime.getTime())) return null;
+                const candidatos = allSaidas
+                    .filter(s => {
+                        if (!s.viatura || String(s.viatura).trim() !== String(placa).trim()) return false;
+                        const d = s.dataSaida || s.dataPedido || s.data;
+                        const h = s.horaSaida || s.hora || s.saida || '00:00';
+                        const isoDate = parseDateToISO(d);
+                        if (!isoDate) return false;
+                        const dt = new Date(`${isoDate}T${h}`);
+                        if (isNaN(dt.getTime())) return false;
+                        return dt < baseDateTime;
+                    })
+                    .sort((a, b) => {
+                        const daIso = parseDateToISO(a.dataSaida || a.dataPedido || a.data);
+                        const dbIso = parseDateToISO(b.dataSaida || b.dataPedido || b.data);
+                        const da = daIso ? new Date(`${daIso}T${a.horaSaida || a.hora || a.saida || '00:00'}`) : new Date(0);
+                        const db = dbIso ? new Date(`${dbIso}T${b.horaSaida || b.hora || b.saida || '00:00'}`) : new Date(0);
+                        return db - da;
+                    });
+                if (!candidatos.length) return null;
+                const ultimo = candidatos[0];
+                const raw = ultimo.kmChegada ?? ultimo.km_chegada ?? '';
+                const str = String(raw).trim();
+                if (!str) return null;
+                const num = parseFloat(str.replace('.', '').replace(',', '.'));
+                return isNaN(num) ? null : num;
             }
+
+            /** Obtém lista de saídas SOMENTE do Firebase. */
+            async function getAllSaidas() {
+                let remoteList = [];
+                let remoteLoaded = false;
+
+                // Alinhar com o SOT: aguardar serviços + auth Google antes da leitura.
+                try {
+                    if (window.dataService && typeof window.dataService.waitForAPICheck === 'function') {
+                        await window.dataService.waitForAPICheck();
+                    }
+                    if (window.dataService && typeof window.dataService.waitForGoogleAuthReady === 'function') {
+                        await window.dataService.waitForGoogleAuthReady(20000);
+                    }
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: falha ao aguardar auth/serviços Firebase.', e);
+                }
+
+                // Firebase direto (fonte única da verdade)
+                if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                    try {
+                        const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
+                        if (Array.isArray(fbSaidas)) {
+                            remoteList = fbSaidas;
+                            remoteLoaded = true;
+                        } else if (fbSaidas === null) {
+                            // Pode ocorrer corrida de auth no mobile: aguarda login e tenta novamente.
+                            try {
+                                if (window.dataService && typeof window.dataService.waitForGoogleAuthReady === 'function') {
+                                    await window.dataService.waitForGoogleAuthReady(10000);
+                                }
+                                const fbRetry = await window.firebaseSot.get('saidasAdministrativas');
+                                if (Array.isArray(fbRetry)) {
+                                    remoteList = fbRetry;
+                                    remoteLoaded = true;
+                                }
+                            } catch (retryErr) {
+                                console.warn('QuadroDeSaidas: retry após auth falhou.', retryErr);
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase.', e);
+                    }
+                }
+
+                // Em modo somente-Firebase, se não carregou remoto retorna vazio.
+                const base = Array.isArray(remoteList) ? remoteList : [];
+
+                // Mapa id -> registro apenas da nuvem.
+                const map = new Map();
+
+                const addBase = (arr) => {
+                    if (!Array.isArray(arr)) return;
+                    for (const it of arr) {
+                        const n = { ...(it || {}) };
+                        const id = getSaidaId(n);
+                        n.id = id;
+                        map.set(String(id), n);
+                    }
+                };
+
+                addBase(base);
+
+                const merged = Array.from(map.values());
+                return { saidas: merged, remoteLoaded };
+            }
+
+            function normStr(v) {
+                return String(v == null ? '' : v).trim().toLowerCase();
+            }
+
+            function parseKmToNumber(raw) {
+                const str = String(raw == null ? '' : raw).trim();
+                if (!str) return NaN;
+                return parseFloat(str.replace('.', '').replace(',', '.'));
+            }
+
+            function computeRealizadaFromSaida(saida) {
+                const kmSaidaRaw = saida.kmSaida ?? saida.km_saida ?? '';
+                const kmChegadaRaw = saida.kmChegada ?? saida.km_chegada ?? '';
+
+                const kmSaidaStr = String(kmSaidaRaw).trim();
+                const kmChegadaStr = String(kmChegadaRaw).trim();
+
+                if (!kmSaidaStr || !kmChegadaStr) return false;
+
+                const kmSaidaNum = parseKmToNumber(kmSaidaStr);
+                const kmChegadaNum = parseKmToNumber(kmChegadaStr);
+                if (isNaN(kmSaidaNum) || isNaN(kmChegadaNum)) return false;
+
+                return kmChegadaNum > kmSaidaNum;
+            }
+
+            /** Registro finalizado no Quadro: os três campos preenchidos — não pode mais editar nesta página. */
+            var QUADRO_MSG_BLOQUEIO = 'Registro Bloqueado para Atualização, procure o responsável pelo Sistema';
+
+            function isQuadroRegistroBloqueado(saida) {
+                if (!saida) return false;
+                const kmS = String(saida.kmSaida ?? saida.km_saida ?? '').trim();
+                const kmC = String(saida.kmChegada ?? saida.km_chegada ?? '').trim();
+                const cheg = String(saida.chegada ?? '').trim();
+                return kmS.length > 0 && kmC.length > 0 && cheg.length > 0;
+            }
+
+            /** KM Saída preenchido e ainda faltam KM Chegada ou hora Chegada (cancela quando ambos chegada preenchidos). */
+            function isSaidaAdministrativaIniciada(saida) {
+                if (!saida) return false;
+                const kmS = String(saida.kmSaida ?? saida.km_saida ?? '').trim();
+                const kmC = String(saida.kmChegada ?? saida.km_chegada ?? '').trim();
+                const cheg = String(saida.chegada ?? '').trim();
+                if (!kmS) return false;
+                if (kmC.length > 0 && cheg.length > 0) return false;
+                return true;
+            }
+
+            function getQuadroCardClassName(saida) {
+                var parts = ['card'];
+                if (isSaidaAdministrativaIniciada(saida)) parts.push('card-iniciada');
+                if (computeRealizadaFromSaida(saida)) parts.push('card-realizada');
+                return parts.join(' ');
+            }
+
+            function showQuadroBloqueadoOverlay(card) {
+                const overlay = document.createElement('div');
+                overlay.className = 'card-edit-overlay';
+                const box = document.createElement('div');
+                box.className = 'card-edit-box';
+                const msg = document.createElement('div');
+                msg.className = 'card-edit-blocked-msg';
+                msg.innerHTML = '<strong>Atenção</strong>' + QUADRO_MSG_BLOQUEIO +
+                    '<br><br><span style="color:var(--muted);font-size:12px;">Edite esta saída apenas no sistema SOT (aba Saídas administrativas).</span>';
+                const actions = document.createElement('div');
+                actions.className = 'card-edit-actions';
+                const btnOk = document.createElement('button');
+                btnOk.className = 'card-edit-btn ok';
+                btnOk.textContent = 'Entendi';
+                btnOk.addEventListener('click', function () {
+                    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                });
+                actions.appendChild(btnOk);
+                box.appendChild(msg);
+                box.appendChild(actions);
+                overlay.appendChild(box);
+                card.appendChild(overlay);
+            }
+
+            // Gera id estável (não depende de km/chegada) para permitir edição mesmo quando s.id vier vazio
+            function genSaidaIdStable(saida) {
+                const data = getSaidaDateISO(saida);
+                const hora = String(saida.horaSaida ?? saida.hora ?? saida.saida ?? '').trim();
+                const viatura = String(saida.viatura ?? saida.viatura_id ?? '').trim();
+                const motorista = String(saida.motorista ?? saida.motorista_id ?? '').trim();
+                const destino = String(saida.hospital ?? saida.objetivo ?? saida.destino ?? '').trim();
+                const seed = [data, hora, viatura, motorista, destino].join('|');
+                const b = btoa(unescape(encodeURIComponent(seed)));
+                return 'gen_' + b.slice(0, 28);
+            }
+
+            function getSaidaId(saida) {
+                const id = saida?.id ?? saida?._id ?? saida?.uuid ?? saida?.key ?? saida?.saidaId ?? saida?.saida_id;
+                if (id != null && String(id).trim() !== '') return String(id).trim();
+                return genSaidaIdStable(saida || {});
+            }
+
+            function matchSaidaByStableKey(listItem, targetSaida) {
+                const aData = getSaidaDateISO(listItem);
+                const aHora = String(listItem.horaSaida ?? listItem.hora ?? listItem.saida ?? '').trim();
+                const aViatura = String(listItem.viatura ?? listItem.viatura_id ?? '').trim();
+                const aMotorista = String(listItem.motorista ?? listItem.motorista_id ?? '').trim();
+                const aDestino = (String(listItem.hospital ?? listItem.objetivo ?? listItem.destino ?? '').trim() || String(getDestino(listItem)).trim());
+
+                const bData = getSaidaDateISO(targetSaida);
+                const bHora = String(targetSaida.horaSaida ?? targetSaida.hora ?? targetSaida.saida ?? '').trim();
+                const bViatura = String(targetSaida.viatura ?? targetSaida.viatura_id ?? '').trim();
+                const bMotorista = String(targetSaida.motorista ?? targetSaida.motorista_id ?? '').trim();
+                const bDestino = (String(targetSaida.hospital ?? targetSaida.objetivo ?? targetSaida.destino ?? '').trim() || String(getDestino(targetSaida)).trim());
+
+                return (
+                    aData === bData &&
+                    aHora === bHora &&
+                    aViatura === bViatura &&
+                    aMotorista === bMotorista &&
+                    normStr(aDestino) === normStr(bDestino)
+                );
+            }
+
+            var _quadroSaidasAdmBc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('sot_saidas_administrativas') : null;
+            /** Atualiza Quadro, SOT (iframes), outras abas e pede sync Firebase após KM/Chegada. */
+            function propagateSaidasKmChegadaChangeFromQuadro(field) {
+                if (field !== 'kmSaida' && field !== 'kmChegada' && field !== 'chegada') return;
+                try { if (_quadroSaidasAdmBc) _quadroSaidasAdmBc.postMessage({ type: 'saidas_updated', t: Date.now() }); } catch (e) {}
+                try { window.parent.postMessage({ type: 'refresh_all_data' }, '*'); } catch (e) {}
+                try { window.top.postMessage({ type: 'request_sync', immediate: true }, '*'); } catch (e) {}
+            }
+
+            /**
+             * Atualiza UMA saída no Firebase (coleção saidasAdministrativas) e no cache local.
+             * Não depende de API backend — usa diretamente firebaseSot quando disponível.
+             */
+            async function updateSaidaField(saidaId, field, value, saidaOriginal) {
+                try {
+                    if (saidaOriginal && (field === 'kmSaida' || field === 'kmChegada' || field === 'chegada')) {
+                        if (isQuadroRegistroBloqueado(saidaOriginal)) {
+                            const err = new Error(QUADRO_MSG_BLOQUEIO);
+                            err.code = 'QUADRO_BLOQUEADO';
+                            throw err;
+                        }
+                    }
+                    // 1) Tentar atualizar diretamente no Firebase via firebaseSot
+                    if (window.firebaseSot && typeof window.firebaseSot.get === 'function' && typeof window.firebaseSot.set === 'function') {
+                        const atuais = await window.firebaseSot.get('saidasAdministrativas');
+                        let listaFb = Array.isArray(atuais) ? atuais : [];
+
+                        const base = saidaOriginal || {};
+                        const resolvedId = saidaId || getSaidaId(base);
+                        const next = { ...base, [field]: value, id: resolvedId };
+
+                        // Compatibilidade com nomes alternativos (registros antigos)
+                        if (field === 'kmSaida') next.km_saida = value;
+                        if (field === 'kmChegada') next.km_chegada = value;
+
+                        // Marca realizada também no Firebase
+                        next.realizada = computeRealizadaFromSaida(next);
+
+                        if (saidaOriginal && !listaFb.length) {
+                            // Se Firestore ainda não tem dados, começar com o que veio do dataService/JSON
+                            listaFb = [next];
+                        } else {
+                            // 1) Atualiza por id (quando disponível)
+                            const idxById = resolvedId ? listaFb.findIndex(s => String(s.id || '').trim() === String(resolvedId).trim()) : -1;
+
+                            // 2) Se não achou, tenta por chave estável (para casos onde s.id veio vazio)
+                            const idxStable = idxById === -1 && saidaOriginal ? listaFb.findIndex(s => matchSaidaByStableKey(s, saidaOriginal)) : -1;
+                            const idx = idxById !== -1 ? idxById : idxStable;
+
+                            if (idx !== -1) {
+                                const existingId = listaFb[idx].id;
+                                listaFb[idx] = { ...listaFb[idx], ...next, id: existingId || resolvedId };
+                            } else if (saidaOriginal) {
+                                listaFb.push(next);
+                            }
+                        }
+
+                        const ok = await window.firebaseSot.set('saidasAdministrativas', listaFb);
+
+                        // Atualizar cache localStorage com a lista vinda do Firebase
+                        try {
+                            localStorage.setItem('saidasAdministrativas', JSON.stringify(listaFb));
+                        } catch (e) { /* cache local é opcional */ }
+                        if (ok) {
+                            propagateSaidasKmChegadaChangeFromQuadro(field);
+                            return;
+                        }
+                        console.warn('QuadroDeSaidas: firebaseSot.set retornou falso, tentando fallback.', { ok });
+                    }
+
+                    // 2) Fallback: usar dataService para atualizar a saída, se disponível
+                    if (window.dataService) {
+                        if (typeof window.dataService.saveSaidaAdministrativa === 'function' && saidaOriginal) {
+                            const base = saidaOriginal || {};
+                            const resolvedId = saidaId || getSaidaId(base);
+                            const updated = { ...base, [field]: value, id: resolvedId };
+                            if (field === 'kmSaida') updated.km_saida = value;
+                            if (field === 'kmChegada') updated.km_chegada = value;
+                            updated.realizada = computeRealizadaFromSaida(updated);
+                            await window.dataService.saveSaidaAdministrativa(updated);
+                            try {
+                                const raw = localStorage.getItem('saidasAdministrativas');
+                                const lista = raw ? JSON.parse(raw) : [];
+                                if (Array.isArray(lista)) {
+                                    const idxLocal = lista.findIndex(s => s.id === updated.id);
+                                    if (idxLocal !== -1) {
+                                        lista[idxLocal] = updated;
+                                        localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                                    }
+                                }
+                            } catch (e) { /* cache local é opcional */ }
+                            propagateSaidasKmChegadaChangeFromQuadro(field);
+                            return;
+                        }
+
+                        if (typeof window.dataService.getSaidasAdministrativas === 'function' &&
+                            typeof window.dataService.setSaidasAdministrativas === 'function') {
+                            const todas = await window.dataService.getSaidasAdministrativas();
+                            if (!Array.isArray(todas)) return;
+                            const base = saidaOriginal || {};
+                            const resolvedId = saidaId || getSaidaId(base);
+                            const idxById = resolvedId ? todas.findIndex(s => String(s.id || '').trim() === String(resolvedId).trim()) : -1;
+                            const idxStable = idxById === -1 && saidaOriginal ? todas.findIndex(s => matchSaidaByStableKey(s, saidaOriginal)) : -1;
+                            const idx = idxById !== -1 ? idxById : idxStable;
+                            if (idx === -1) return;
+
+                            todas[idx][field] = value;
+                            if (field === 'kmSaida') todas[idx].km_saida = value;
+                            if (field === 'kmChegada') todas[idx].km_chegada = value;
+
+                            // Atualiza flag realizada também
+                            const next = { ...todas[idx], id: todas[idx].id || resolvedId };
+                            next.realizada = computeRealizadaFromSaida(next);
+                            todas[idx].realizada = next.realizada;
+                            await window.dataService.setSaidasAdministrativas(todas);
+                            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(todas)); } catch (e) {}
+                            propagateSaidasKmChegadaChangeFromQuadro(field);
+                            return;
+                        }
+                    }
+
+                    // 3) Último recurso: atualizar apenas localStorage
+                    try {
+                        const raw = localStorage.getItem('saidasAdministrativas');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista)) {
+                            const base = saidaOriginal || {};
+                            const resolvedId = saidaId || getSaidaId(base);
+                            const next = { ...base, [field]: value, id: resolvedId };
+                            if (field === 'kmSaida') next.km_saida = value;
+                            if (field === 'kmChegada') next.km_chegada = value;
+                            next.realizada = computeRealizadaFromSaida(next);
+
+                            const idxLocalById = resolvedId ? lista.findIndex(s => String(s.id || '').trim() === String(resolvedId).trim()) : -1;
+                            const idxLocalStable = idxLocalById === -1 && saidaOriginal ? lista.findIndex(s => matchSaidaByStableKey(s, saidaOriginal)) : -1;
+                            const idx = idxLocalById !== -1 ? idxLocalById : idxLocalStable;
+
+                            if (idx !== -1) {
+                                lista[idx] = { ...lista[idx], ...next, id: lista[idx].id || resolvedId };
+                                localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                                propagateSaidasKmChegadaChangeFromQuadro(field);
+                            } else if (saidaOriginal) {
+                                lista.push(next);
+                                localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                                propagateSaidasKmChegadaChangeFromQuadro(field);
+                            }
+                        }
+                    } catch (e) { /* se falhar, não temos o que fazer */ }
+                } catch (e) {
+                    console.error('QuadroDeSaidas: erro ao salvar edição de saída', e);
+                    throw e;
+                }
+            }
+
+            /** Enquanto o usuário percorre KM Saída → KM Chegada → Chegada, não recarregar a lista (senão o DOM some e o próximo modal não abre). */
+            let quadroKmFlowActive = false;
+            let quadroReloadPendingAfterFlow = false;
 
             async function loadSaidasForSelectedDate() {
                 const selectedDate = dateInput.value;
@@ -510,8 +1132,10 @@
                 loading.style.display = 'block';
 
                 try {
-                    const allSaidas = await getAllSaidas();
-                    const filtered = (allSaidas || []).filter(s => parseDateToISO(s.dataSaida || s.data) === selectedDate);
+                    const result = await getAllSaidas();
+                    const allSaidas = result?.saidas || [];
+                    const remoteLoaded = !!result?.remoteLoaded;
+                    const filtered = (allSaidas || []).filter(s => getSaidaDateISO(s) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
 
                     counterValue.textContent = filtered.length;
@@ -528,9 +1152,9 @@
                         const setor = saida.setor || '—';
                         const destino = getDestino(saida);
                         const om = saida.om || '—';
-
                         const card = document.createElement('div');
-                        card.className = 'card';
+                        card.className = getQuadroCardClassName(saida);
+                        card.dataset.id = getSaidaId(saida) || '';
                         card.innerHTML = `
                             <div class="card-header">
                                 <div class="time-pill">
@@ -562,9 +1186,179 @@
                                     <span class="value">${om}</span>
                                 </div>
                             </div>
+                            <div class="card-footer">
+                                <div class="card-footer-field">
+                                    <label>KM Saída</label>
+                                    <span class="value">${saida.kmSaida || saida.km_saida || '—'}</span>
+                                </div>
+                                <div class="card-footer-field">
+                                    <label>KM Chegada</label>
+                                    <span class="value">${saida.kmChegada || saida.km_chegada || '—'}</span>
+                                </div>
+                                <div class="card-footer-field">
+                                    <label>Chegada</label>
+                                    <span class="value">${saida.chegada || '—'}</span>
+                                </div>
+                            </div>
                         `;
                         cardsContainer.appendChild(card);
+                        // Duplo clique inicia fluxo de edição em 3 passos (bloqueado após KM Saída + KM Chegada + Chegada)
+                        card.addEventListener('dblclick', () => {
+                            if (isQuadroRegistroBloqueado(saida)) {
+                                showQuadroBloqueadoOverlay(card);
+                                return;
+                            }
+                            quadroKmFlowActive = true;
+                            quadroReloadPendingAfterFlow = false;
+                            const steps = [
+                                { field: 'kmSaida', label: 'KM Saída', type: 'text' },
+                                { field: 'kmChegada', label: 'KM Chegada', type: 'text' },
+                                { field: 'chegada', label: 'Chegada', type: 'time' }
+                            ];
+                            let currentStep = 0;
+
+                            const startStep = () => {
+                                if (currentStep >= steps.length) return;
+                                const step = steps[currentStep];
+
+                                const overlay = document.createElement('div');
+                                overlay.className = 'card-edit-overlay';
+                                const box = document.createElement('div');
+                                box.className = 'card-edit-box';
+                                const title = document.createElement('div');
+                                title.className = 'card-edit-title';
+                                title.textContent = step.label;
+
+                                const input = document.createElement('input');
+                                input.className = 'card-edit-input';
+                                input.type = step.type === 'time' ? 'time' : 'text';
+
+                                // Valor inicial (com auto-preenchimento para KM Saída e hora atual para Chegada)
+                                let initialValue = '';
+                                if (step.field === 'kmSaida') {
+                                    initialValue = saida.kmSaida || saida.km_saida || '';
+                                    if (!initialValue) {
+                                        const baseHora = getHoraSaida(saida) || '00:00';
+                                        const prevKm = getPreviousKmChegada(saida.viatura, selectedDate, baseHora, allSaidas);
+                                        if (prevKm !== null) initialValue = String(prevKm);
+                                    }
+                                } else if (step.field === 'kmChegada') {
+                                    initialValue = saida.kmChegada || saida.km_chegada || '';
+                                } else if (step.field === 'chegada') {
+                                    // Se já houver hora de chegada, usa; senão, preenche com hora atual (HH:MM)
+                                    if (saida.chegada) {
+                                        initialValue = saida.chegada;
+                                    } else {
+                                        const now = new Date();
+                                        const hh = String(now.getHours()).padStart(2, '0');
+                                        const mi = String(now.getMinutes()).padStart(2, '0');
+                                        initialValue = `${hh}:${mi}`;
+                                    }
+                                }
+                                input.value = initialValue;
+
+                                const actions = document.createElement('div');
+                                actions.className = 'card-edit-actions';
+                                const btnCancel = document.createElement('button');
+                                btnCancel.className = 'card-edit-btn cancel';
+                                btnCancel.textContent = 'Cancelar';
+                                const btnOk = document.createElement('button');
+                                btnOk.className = 'card-edit-btn ok';
+                                btnOk.textContent = 'OK';
+                                actions.appendChild(btnCancel);
+                                actions.appendChild(btnOk);
+
+                                box.appendChild(title);
+                                box.appendChild(input);
+                                box.appendChild(actions);
+                                overlay.appendChild(box);
+                                card.appendChild(overlay);
+
+                                input.focus();
+
+                                const closeOverlay = () => {
+                                    card.removeChild(overlay);
+                                };
+
+                                btnCancel.addEventListener('click', () => {
+                                    closeOverlay();
+                                    endQuadroKmFlow();
+                                });
+
+                                btnOk.addEventListener('click', async () => {
+                                    let val = input.value.trim();
+                                    // Formatação automática de KM (milhares com ponto) antes de salvar
+                                    if (step.field === 'kmSaida' || step.field === 'kmChegada') {
+                                        val = formatKmValue(val);
+                                        input.value = val; // refletir formatação no input
+                                    }
+                                    const saidaId = saida.id;
+
+                                    // Mostrar animação de carregamento enquanto envia atualização
+                                    btnOk.disabled = true;
+                                    btnCancel.disabled = true;
+                                    const originalOkHtml = btnOk.innerHTML;
+                                    btnOk.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+                                    try {
+                                        await updateSaidaField(saidaId, step.field, val, saida);
+                                        saida[step.field] = val;
+                                        if (step.field === 'kmSaida') saida.km_saida = val;
+                                        if (step.field === 'kmChegada') saida.km_chegada = val;
+
+                                        // Atualiza exibição no rodapé
+                                        const footerFields = card.querySelectorAll('.card-footer-field span.value');
+                                        if (footerFields[currentStep]) {
+                                            footerFields[currentStep].textContent = val || '—';
+                                        }
+
+                                        // Atualiza tarjas INICIADA / REALIZADA sem precisar de F5
+                                        card.className = getQuadroCardClassName(saida);
+
+                                        closeOverlay();
+                                        currentStep += 1;
+                                        if (currentStep >= steps.length) {
+                                            endQuadroKmFlow();
+                                        } else {
+                                            // Próximo passo no frame seguinte para o overlay de KM Chegada abrir de forma estável
+                                            requestAnimationFrame(function () { startStep(); });
+                                        }
+                                    } catch (e) {
+                                        console.error('QuadroDeSaidas: falha ao atualizar campo', step.field, e);
+                                        endQuadroKmFlow();
+                                        btnOk.disabled = false;
+                                        btnCancel.disabled = false;
+                                        btnOk.innerHTML = originalOkHtml;
+                                    }
+                                });
+                            };
+
+                            startStep();
+                        });
                     });
+
+                    // Reconcilia flag "realizada" no Firebase SOMENTE quando a lista veio do remoto.
+                    // Isso impede que itens "apagados" no Firebase voltem via cache local.
+                    if (remoteLoaded) {
+                        try {
+                            if (filtered.length && window.firebaseSot && typeof window.firebaseSot.set === 'function' && typeof window.firebaseSot.get === 'function') {
+                                const divergentes = filtered.filter(s => {
+                                    const computed = computeRealizadaFromSaida(s);
+                                    const stored = !!s.realizada;
+                                    return computed !== stored;
+                                });
+
+                                // Evita múltiplos writes em dias com muitos registros.
+                                const limite = 25;
+                                const tarefas = divergentes.slice(0, limite);
+                                for (const s of tarefas) {
+                                    const computed = computeRealizadaFromSaida(s);
+                                    await updateSaidaField(getSaidaId(s), 'realizada', computed, s);
+                                    s.realizada = computed;
+                                }
+                            }
+                        } catch (e) { /* sem bloquear o carregamento */ }
+                    }
                 } catch (error) {
                     console.error('Erro ao carregar saídas administrativas:', error);
                     emptyState.style.display = 'block';
@@ -575,19 +1369,88 @@
 
             dateInput.addEventListener('change', loadSaidasForSelectedDate);
 
-            // Atualiza automaticamente quando outra tela disparar refresh_all_data.
+            // Recarrega lista quando Saídas administrativas (SOT) ou outra aba alterar dados:
+            // — postMessage refresh_all_data (iframe / mesma janela com pai)
+            // — evento storage (outra aba no mesmo site, após localStorage)
+            // — BroadcastChannel sot_saidas_administrativas (qualquer contexto mesmo origin)
             let reloadInFlight = false;
-            window.addEventListener('message', (event) => {
+            let reloadQueued = false;
+            let reloadQuadroDebounceTimer = null;
+            function scheduleReloadQuadroFromExternal() {
+                if (quadroKmFlowActive) {
+                    quadroReloadPendingAfterFlow = true;
+                    return;
+                }
+                try { clearTimeout(reloadQuadroDebounceTimer); } catch (e) {}
+                reloadQuadroDebounceTimer = setTimeout(function () {
+                    reloadQuadroDebounceTimer = null;
+                    if (reloadInFlight) {
+                        reloadQueued = true;
+                        return;
+                    }
+                    reloadInFlight = true;
+                    // Outra aba (SOT) gravou no Firestore; este contexto ainda pode ter cache de 60s.
+                    try {
+                        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+                            window.firebaseSot.invalidateCache('saidasAdministrativas');
+                        }
+                    } catch (e) {}
+                    loadSaidasForSelectedDate()
+                        .catch(function () {})
+                        .finally(function () {
+                            reloadInFlight = false;
+                            if (reloadQueued) {
+                                reloadQueued = false;
+                                scheduleReloadQuadroFromExternal();
+                            }
+                        });
+                }, 0);
+            }
+
+            function endQuadroKmFlow() {
+                quadroKmFlowActive = false;
+                if (quadroReloadPendingAfterFlow) {
+                    quadroReloadPendingAfterFlow = false;
+                    scheduleReloadQuadroFromExternal();
+                }
+            }
+
+            window.addEventListener('storage', function (e) {
+                try {
+                    if (e.key === 'saidasAdministrativas') scheduleReloadQuadroFromExternal();
+                } catch (err) {}
+            });
+
+            if (typeof BroadcastChannel !== 'undefined') {
+                try {
+                    var sotSaidasBc = new BroadcastChannel('sot_saidas_administrativas');
+                    sotSaidasBc.onmessage = function () { scheduleReloadQuadroFromExternal(); };
+                } catch (err) {}
+            }
+
+            window.addEventListener('message', function (event) {
                 try {
                     const type = event && event.data && event.data.type;
-                    if (type === 'refresh_all_data' && !reloadInFlight) {
-                        reloadInFlight = true;
-                        loadSaidasForSelectedDate()
-                            .catch(() => {})
-                            .finally(() => { reloadInFlight = false; });
-                    }
+                    if (type === 'refresh_all_data') scheduleReloadQuadroFromExternal();
                 } catch (e) {}
             });
+
+            // Em mobile, o estado de auth pode ficar pronto depois do primeiro load.
+            // Quando detectar transição para logado, força reload sem cache.
+            setInterval(function () {
+                const nowSignedIn = isGoogleSignedInNow();
+                if (!lastKnownGoogleSignedIn && nowSignedIn) {
+                    try {
+                        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+                            window.firebaseSot.invalidateCache('saidasAdministrativas');
+                        }
+                    } catch (e) {}
+                    scheduleReloadQuadroFromExternal();
+                }
+                lastKnownGoogleSignedIn = nowSignedIn;
+            }, 2000);
+
+            await waitForGoogleSignedInFlag(12000);
             await loadSaidasForSelectedDate();
         });
     </script>

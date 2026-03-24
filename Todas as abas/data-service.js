@@ -104,6 +104,50 @@
         return Object.assign({}, local, cloud);
     }
 
+    function nowIso() {
+        return new Date().toISOString();
+    }
+
+    function ensureStableId(item, prefix) {
+        if (!item || typeof item !== 'object') return item;
+        var id = getStableRecordId(item, 'id');
+        if (!id) {
+            id = String(prefix || 'rec') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        }
+        item.id = id;
+        return item;
+    }
+
+    function itemUpdatedMs(item) {
+        try {
+            var v = item && (item.updatedAt || item._updatedAt || item.modifiedAt || item.updated_at);
+            if (!v) return 0;
+            var d = new Date(v);
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function normalizeArrayRecords(records, prefix) {
+        var arr = Array.isArray(records) ? records : [];
+        var byId = new Map();
+        arr.forEach(function (raw) {
+            if (!raw || typeof raw !== 'object') return;
+            var item = Object.assign({}, raw);
+            ensureStableId(item, prefix);
+            if (!item.updatedAt && !item._updatedAt) item.updatedAt = nowIso();
+            var key = String(item.id);
+            if (!byId.has(key)) {
+                byId.set(key, item);
+                return;
+            }
+            var prev = byId.get(key);
+            byId.set(key, itemUpdatedMs(item) >= itemUpdatedMs(prev) ? item : prev);
+        });
+        return Array.from(byId.values());
+    }
+
     function log(level, message, detail) {
         try {
             const msg = detail != null ? message + ' ' + (typeof detail === 'object' ? (detail.message || String(detail)) : detail) : message;
@@ -399,6 +443,7 @@
 
         async saveViaturas(viaturas) {
             await this.waitForAPICheck();
+            viaturas = normalizeArrayRecords(viaturas, 'vtr');
             if (this._useRestApi()) {
                 try {
                     for (const viatura of viaturas) {
@@ -441,6 +486,7 @@
 
         async saveMotoristas(motoristas) {
             await this.waitForAPICheck();
+            motoristas = normalizeArrayRecords(motoristas, 'mot');
             if (this._useRestApi()) {
                 try {
                     for (const m of motoristas) {
@@ -484,6 +530,8 @@
 
         async saveSaidaAdministrativa(saida) {
             await this.waitForAPICheck();
+            saida = ensureStableId(Object.assign({}, saida || {}), 'saida');
+            if (!saida.updatedAt && !saida._updatedAt) saida.updatedAt = nowIso();
             if (this._useRestApi()) {
                 try {
                     const result = await api.createSaidaAdministrativa(saida);
@@ -496,14 +544,14 @@
                     log('warn', 'saveSaidaAdministrativa API', e);
                 }
             }
-            const saidas = await this.getSaidasAdministrativas();
-            saidas.push(saida);
+            const saidas = normalizeArrayRecords([].concat(await this.getSaidasAdministrativas(), [saida]), 'saida');
             await this._setToFirebase('saidasAdministrativas', saidas);
             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas)); } catch (e) {}
             return saida;
         }
 
         async setSaidasAdministrativas(lista) {
+            lista = normalizeArrayRecords(lista, 'saida');
             await this._setToFirebase('saidasAdministrativas', lista);
             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(lista)); } catch (e) {}
             return true;
@@ -534,6 +582,7 @@
         }
 
         async setSaidasAmbulancias(lista) {
+            lista = normalizeArrayRecords(lista, 'amb');
             await this._setToFirebase('saidasAmbulancias', lista);
             try { localStorage.setItem('saidasAmbulancias', JSON.stringify(lista)); } catch (e) {}
             return true;
@@ -564,6 +613,8 @@
 
         async saveVistoria(vistoria) {
             await this.waitForAPICheck();
+            vistoria = ensureStableId(Object.assign({}, vistoria || {}), 'vist');
+            if (!vistoria.updatedAt && !vistoria._updatedAt) vistoria.updatedAt = nowIso();
             if (this._useRestApi()) {
                 try {
                     const result = await api.createVistoria(vistoria);
@@ -576,8 +627,7 @@
                     log('warn', 'saveVistoria API', e);
                 }
             }
-            const vistorias = await this.getVistorias();
-            vistorias.push(vistoria);
+            const vistorias = normalizeArrayRecords([].concat(await this.getVistorias(), [vistoria]), 'vist');
             await this._setToFirebase('vistoriasRealizadas', vistorias);
             try { localStorage.setItem('vistoriasRealizadas', JSON.stringify(vistorias)); } catch (e) {}
             return vistoria;
@@ -608,6 +658,8 @@
 
         async saveAbastecimento(abastecimento) {
             await this.waitForAPICheck();
+            abastecimento = ensureStableId(Object.assign({}, abastecimento || {}), 'abast');
+            if (!abastecimento.updatedAt && !abastecimento._updatedAt) abastecimento.updatedAt = nowIso();
             if (this._useRestApi()) {
                 try {
                     const result = await api.createAbastecimento(abastecimento);
@@ -620,8 +672,7 @@
                     log('warn', 'saveAbastecimento API', e);
                 }
             }
-            const abastecimentos = await this.getAbastecimentos();
-            abastecimentos.push(abastecimento);
+            const abastecimentos = normalizeArrayRecords([].concat(await this.getAbastecimentos(), [abastecimento]), 'abast');
             await this._setToFirebase('abastecimentos', abastecimentos);
             try { localStorage.setItem('abastecimentos', JSON.stringify(abastecimentos)); } catch (e) {}
             return abastecimento;

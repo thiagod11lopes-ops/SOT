@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSotArrayDoc(docId) {
+      return docId in [
+        'saidasAdministrativas',
+        'saidasAmbulancias',
+        'viaturasCadastradas',
+        'motoristasCadastrados',
+        'avisos',
+        'lembretes',
+        'vistorias',
+        'abastecimentos',
+        'motoristasVistoria',
+        'integrantesEscalaPao',
+        'feriadosEscalaPao',
+        'escalaPaoInsercoes',
+        'diasExcluidosEscalaPao',
+        'historicoEscalaPao',
+        'puladosEscalaPao',
+        'equipamentosSuprimentos',
+        'equipamentosMovements',
+        'equipamentosTabOrder',
+        'cadastroItensPersonalizados'
+      ];
+    }
+
+    function hasValidUpdatedAt() {
+      return request.resource.data.updatedAt is string
+        || request.resource.data.updatedAt is timestamp;
+    }
+
+    function hasValidArrayEnvelope() {
+      return request.resource.data.keys().hasAll(['items', 'updatedAt'])
+        && request.resource.data.items is list
+        && hasValidUpdatedAt();
+    }
+
+    // Protecao anti-wipe: bloqueia sobrescrever lista remota nao-vazia com [].
+    function isNotAccidentalArrayWipe() {
+      return !(resource != null
+        && resource.data.items is list
+        && resource.data.items.size() > 0
+        && request.resource.data.items is list
+        && request.resource.data.items.size() == 0);
+    }
+
+    // Para docs nao-lista no sot_data, exige payload minimamente estruturado.
+    function hasSafeGenericEnvelope() {
+      return request.resource.data.size() > 0
+        && (
+          request.resource.data.keys().hasAny(['updatedAt', 'valor', 'value', 'config', 'items'])
+        );
+    }
+
+    match /sot_agendamento_usuarios/{document=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /sot_google_audit_logs/{document=**} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /sot_data/{docId} {
+      allow read: if isSignedIn();
+
+      allow create, update: if isSignedIn()
+        && (
+          (isSotArrayDoc(docId) && hasValidArrayEnvelope() && isNotAccidentalArrayWipe())
+          || (!isSotArrayDoc(docId) && hasSafeGenericEnvelope())
+        );
+
+      // Evita wipe destrutivo por delete de documento inteiro.
+      allow delete: if false;
+    }
+  }
+}
