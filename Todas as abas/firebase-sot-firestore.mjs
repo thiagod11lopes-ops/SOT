@@ -555,6 +555,8 @@ export async function installFirebaseSot() {
               payload = { data: value, updatedAt: ts };
             }
             await setDoc(ref, payload);
+            /** Repõe cache com o valor gravado: o próximo get() não lê snapshot antigo (latência Firestore / corrida entre modais KM). */
+            setCache(keyStr, value);
             if (keyStr === "saidasAdministrativas" && Array.isArray(value) && value.length > 0) {
               try {
                 await syncSaidasAdministrativasDayShards(value);
