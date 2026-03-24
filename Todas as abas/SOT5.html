@@ -270,6 +270,68 @@ box-shadow: none;
 opacity: 0;
 transform: scale(0.5);
 }
+.firebase-summary-modal {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(0, 0, 0, 0.55);
+z-index: 4000;
+align-items: center;
+justify-content: center;
+padding: 18px;
+}
+.firebase-summary-modal.active { display: flex; }
+.firebase-summary-card {
+background: #fff;
+border-radius: 12px;
+width: 100%;
+max-width: 560px;
+box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+padding: 20px;
+}
+.firebase-summary-title {
+margin: 0 0 8px 0;
+font-size: 20px;
+color: var(--primary-blue);
+}
+.firebase-summary-subtitle {
+margin: 0 0 14px 0;
+font-size: 14px;
+color: #555;
+}
+.firebase-summary-list {
+list-style: none;
+margin: 0;
+padding: 0;
+display: grid;
+gap: 8px;
+}
+.firebase-summary-item {
+display: flex;
+align-items: center;
+justify-content: space-between;
+padding: 10px 12px;
+border: 1px solid #e2e8f0;
+border-radius: 8px;
+background: #f8fafc;
+font-size: 14px;
+}
+.firebase-summary-item .ok { color: #1f8b4c; font-weight: bold; }
+.firebase-summary-item .fail { color: #b42318; font-weight: bold; }
+.firebase-summary-actions {
+display: flex;
+justify-content: flex-end;
+margin-top: 14px;
+}
+.firebase-summary-actions button {
+background: var(--primary-blue);
+color: #fff;
+border: none;
+border-radius: 8px;
+padding: 10px 18px;
+font-weight: bold;
+cursor: pointer;
+}
 header {
 background-color: var(--white);
 padding: 15px 40px;
@@ -1439,6 +1501,17 @@ if (window.top !== window) document.documentElement.classList.add('sot-in-iframe
 </div>
 </header>
 
+<div id="firebaseSummaryModal" class="firebase-summary-modal" aria-hidden="true">
+<div class="firebase-summary-card">
+<h3 class="firebase-summary-title">Resumo do Firebase</h3>
+<p class="firebase-summary-subtitle">Abas com dados carregados da nuvem nesta inicialização:</p>
+<ul id="firebaseSummaryList" class="firebase-summary-list"></ul>
+<div class="firebase-summary-actions">
+<button type="button" id="firebaseSummaryCloseBtn">Fechar</button>
+</div>
+</div>
+</div>
+
 <!-- Modal Escala de Pão - Calendário do mês -->
 <div id="escalaPaoModal" class="modal-escala-pao">
 <div class="modal-escala-pao-content">
@@ -1960,6 +2033,9 @@ const updateOverlay = document.getElementById('updateOverlay');
 const updateLoader = document.querySelector('.update-loader');
 const updateOverlayTitle = document.getElementById('updateOverlayTitle');
 const updateOverlaySubtitle = document.getElementById('updateOverlaySubtitle');
+const firebaseSummaryModal = document.getElementById('firebaseSummaryModal');
+const firebaseSummaryList = document.getElementById('firebaseSummaryList');
+const firebaseSummaryCloseBtn = document.getElementById('firebaseSummaryCloseBtn');
 const THEME_ID_KEY = 'sot_theme_id';
 const THEME_VARS_KEY = 'sot_theme_variables';
 
@@ -2111,6 +2187,48 @@ const runInitialFirebaseLoad = async () => {
         setOverlayStatus('Carregando dados do Firebase...', 'Sincronizando com a nuvem…', 'loading');
         await window.SOTSync.sync(true, { afterSync: function() {} });
 
+        const summarizeFirebaseLoads = async function () {
+            const checks = [
+                { nome: 'Saídas Administrativas', fn: function () { return dataService.getSaidasAdministrativas(); } },
+                { nome: 'Saídas de Ambulâncias', fn: function () { return dataService.getSaidasAmbulancias(); } },
+                { nome: 'Frota (Viaturas)', fn: function () { return dataService.getViaturas(); } },
+                { nome: 'Pessoal (Motoristas)', fn: function () { return dataService.getMotoristas(); } }
+            ];
+            const out = [];
+            for (const item of checks) {
+                try {
+                    const v = await item.fn();
+                    const ok = Array.isArray(v);
+                    out.push({ nome: item.nome, ok: ok, qtd: ok ? v.length : 0 });
+                } catch (e) {
+                    out.push({ nome: item.nome, ok: false, qtd: 0 });
+                }
+            }
+            // Cadastro de Saídas depende desses conjuntos estarem disponíveis.
+            const baseOk = out.filter(function (x) { return x.ok; }).length >= 3;
+            out.push({ nome: 'Cadastro de Saídas (base)', ok: baseOk, qtd: 0 });
+            return out;
+        };
+
+        const showFirebaseSummaryModal = function (items) {
+            if (!firebaseSummaryModal || !firebaseSummaryList) return;
+            firebaseSummaryList.innerHTML = '';
+            (items || []).forEach(function (item) {
+                var li = document.createElement('li');
+                li.className = 'firebase-summary-item';
+                var left = document.createElement('span');
+                left.textContent = item.nome;
+                var right = document.createElement('span');
+                right.className = item.ok ? 'ok' : 'fail';
+                right.textContent = item.ok ? ('OK' + (item.qtd >= 0 ? ' (' + item.qtd + ')' : '')) : 'Falha';
+                li.appendChild(left);
+                li.appendChild(right);
+                firebaseSummaryList.appendChild(li);
+            });
+            firebaseSummaryModal.classList.add('active');
+            firebaseSummaryModal.setAttribute('aria-hidden', 'false');
+        };
+
         // Garante que todas as abas reflitam os dados sincronizados na inicialização.
         try {
             getAllTabIframes().forEach(function(iframe) {
@@ -2123,6 +2241,13 @@ const runInitialFirebaseLoad = async () => {
             console.warn('Falha ao recarregar iframes após sync inicial:', reloadErr);
         }
 
+        try {
+            const summary = await summarizeFirebaseLoads();
+            setTimeout(function () { showFirebaseSummaryModal(summary); }, 1000);
+        } catch (summaryErr) {
+            console.warn('Falha ao montar resumo de carga Firebase:', summaryErr);
+        }
+
         setOverlayStatus('Dados carregados com sucesso', 'Sistema atualizado com dados do Firebase.', 'success');
         finishOverlay('success');
     } catch (e) {
@@ -2133,6 +2258,19 @@ const runInitialFirebaseLoad = async () => {
 };
 
 setTimeout(runInitialFirebaseLoad, 0);
+
+if (firebaseSummaryCloseBtn && firebaseSummaryModal) {
+firebaseSummaryCloseBtn.addEventListener('click', function () {
+    firebaseSummaryModal.classList.remove('active');
+    firebaseSummaryModal.setAttribute('aria-hidden', 'true');
+});
+firebaseSummaryModal.addEventListener('click', function (ev) {
+    if (ev.target === firebaseSummaryModal) {
+        firebaseSummaryModal.classList.remove('active');
+        firebaseSummaryModal.setAttribute('aria-hidden', 'true');
+    }
+});
+}
 
 // Se o usuário fizer login Google depois que a página já carregou, sincroniza com a nuvem.
 window.addEventListener('sot-firebase-auth-changed', function (ev) {

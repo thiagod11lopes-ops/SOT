@@ -12,7 +12,7 @@
     /** Se true: não usa API REST /api; leituras/escritas somente Firebase. */
     const SOT_FORCE_FIREBASE_ONLY = true;
     /** Se true junto com SOT_FORCE_FIREBASE_ONLY, ignora completamente localStorage nos dados do domínio. */
-    const SOT_STRICT_FIREBASE_ONLY = true;
+    const SOT_STRICT_FIREBASE_ONLY = false;
     const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
     const LOG_PREFIX = '[data-service]';
@@ -244,6 +244,21 @@
             invalidateCache(key);
             if (!this.useFirebase || !window.firebaseSot || typeof window.firebaseSot.set !== 'function') return false;
             try {
+                // Proteção anti-wipe: em modo estrito, não sobrescrever coleção remota não-vazia com [] por corrida/carregamento parcial.
+                if (SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY && Array.isArray(value) && value.length === 0) {
+                    try {
+                        var remoteNow = null;
+                        if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
+                            remoteNow = await window.firebaseSot.get(key);
+                        }
+                        if (Array.isArray(remoteNow) && remoteNow.length > 0) {
+                            log('warn', 'Bloqueado wipe acidental no Firebase key=' + key + ' (remoto possui ' + remoteNow.length + ' itens)');
+                            return false;
+                        }
+                    } catch (wipeCheckErr) {
+                        log('warn', 'Verificação anti-wipe key=' + key, wipeCheckErr);
+                    }
+                }
                 const ok = await window.firebaseSot.set(key, value);
                 if (ok && !(SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY) && typeof localStorage !== 'undefined') {
                     try {

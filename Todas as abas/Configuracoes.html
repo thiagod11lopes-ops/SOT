@@ -1183,6 +1183,70 @@
                                 data['lembretes_ativos'] = JSON.stringify(lembretes);
                             }
                         } catch (e) { console.warn('Falha ao obter lembretes_ativos para backup:', e); }
+
+                        // Itens extras (Escala de Pão, vistoria e configurações auxiliares)
+                        try {
+                            const motoristasVistoria = await window.firebaseSot.get('motoristasVistoria');
+                            if (Array.isArray(motoristasVistoria)) {
+                                data['motoristasVistoria'] = JSON.stringify(motoristasVistoria);
+                            }
+                        } catch (e) { console.warn('Falha ao obter motoristasVistoria para backup:', e); }
+
+                        try {
+                            const integrantesEscalaPao = await window.firebaseSot.get('integrantesEscalaPao');
+                            if (Array.isArray(integrantesEscalaPao)) {
+                                data['integrantesEscalaPao'] = JSON.stringify(integrantesEscalaPao);
+                            }
+                        } catch (e) { console.warn('Falha ao obter integrantesEscalaPao para backup:', e); }
+
+                        try {
+                            const feriadosEscalaPao = await window.firebaseSot.get('feriadosEscalaPao');
+                            if (Array.isArray(feriadosEscalaPao)) {
+                                data['feriadosEscalaPao'] = JSON.stringify(feriadosEscalaPao);
+                            }
+                        } catch (e) { console.warn('Falha ao obter feriadosEscalaPao para backup:', e); }
+
+                        try {
+                            const escalaPaoInsercoes = await window.firebaseSot.get('escalaPaoInsercoes');
+                            if (Array.isArray(escalaPaoInsercoes)) {
+                                data['escalaPaoInsercoes'] = JSON.stringify(escalaPaoInsercoes);
+                            }
+                        } catch (e) { console.warn('Falha ao obter escalaPaoInsercoes para backup:', e); }
+
+                        try {
+                            const diasExcluidosEscalaPao = await window.firebaseSot.get('diasExcluidosEscalaPao');
+                            if (Array.isArray(diasExcluidosEscalaPao)) {
+                                data['diasExcluidosEscalaPao'] = JSON.stringify(diasExcluidosEscalaPao);
+                            }
+                        } catch (e) { console.warn('Falha ao obter diasExcluidosEscalaPao para backup:', e); }
+
+                        try {
+                            const historicoEscalaPao = await window.firebaseSot.get('historicoEscalaPao');
+                            if (Array.isArray(historicoEscalaPao)) {
+                                data['historicoEscalaPao'] = JSON.stringify(historicoEscalaPao);
+                            }
+                        } catch (e) { console.warn('Falha ao obter historicoEscalaPao para backup:', e); }
+
+                        try {
+                            const puladosEscalaPao = await window.firebaseSot.get('puladosEscalaPao');
+                            if (puladosEscalaPao && typeof puladosEscalaPao === 'object') {
+                                data['puladosEscalaPao'] = JSON.stringify(puladosEscalaPao);
+                            }
+                        } catch (e) { console.warn('Falha ao obter puladosEscalaPao para backup:', e); }
+
+                        try {
+                            const ultimoIndiceEscala = await window.firebaseSot.get('ultimoIndiceEscala');
+                            if (ultimoIndiceEscala !== null && ultimoIndiceEscala !== undefined) {
+                                data['ultimoIndiceEscala'] = JSON.stringify(ultimoIndiceEscala);
+                            }
+                        } catch (e) { console.warn('Falha ao obter ultimoIndiceEscala para backup:', e); }
+
+                        try {
+                            const escalaPaoDataReferencia = await window.firebaseSot.get('escalaPaoDataReferencia');
+                            if (escalaPaoDataReferencia !== null && escalaPaoDataReferencia !== undefined) {
+                                data['escalaPaoDataReferencia'] = String(escalaPaoDataReferencia);
+                            }
+                        } catch (e) { console.warn('Falha ao obter escalaPaoDataReferencia para backup:', e); }
                     }
                 } catch (e) {
                     console.warn('Falha geral ao montar backup completo (usando apenas localStorage):', e);
@@ -1260,7 +1324,7 @@
                     const file = e.target.files[0];
                     if (!file) return;
                     const reader = new FileReader();
-                    reader.onload = (event) => {
+                    reader.onload = async (event) => {
                         try {
                             const importedData = JSON.parse(event.target.result);
                             const existingData = {};
@@ -1274,8 +1338,65 @@
                             for (const key in merged) {
                                 localStorage.setItem(key, merged[key]);
                             }
+                            // Chaves especiais que devem manter o valor exato do backup.
+                            ['escalaData', 'puladosEscalaPao', 'ultimoIndiceEscala', 'escalaPaoDataReferencia'].forEach((k) => {
+                                if (!Object.prototype.hasOwnProperty.call(importedData, k)) return;
+                                const v = importedData[k];
+                                if (typeof v === 'string') localStorage.setItem(k, v);
+                                else localStorage.setItem(k, JSON.stringify(v));
+                            });
+
+                            // Enviar para Firebase as coleções principais restauradas.
+                            if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+                                await dataService.waitForAPICheck();
+                                if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                                    await dataService.waitForGoogleAuthReady(15000);
+                                }
+                            }
+                            if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                const parseVal = (v) => {
+                                    if (v == null) return null;
+                                    if (typeof v === 'string') {
+                                        try { return JSON.parse(v); } catch (_) { return v; }
+                                    }
+                                    return v;
+                                };
+                                const firebasePairs = [
+                                    ['saidasAdministrativas', 'saidasAdministrativas'],
+                                    ['saidasAmbulancias', 'saidasAmbulancias'],
+                                    ['viaturasCadastradas', 'viaturasCadastradas'],
+                                    ['motoristasCadastrados', 'motoristasCadastrados'],
+                                    ['vistoriasRealizadas', 'vistoriasRealizadas'],
+                                    ['vistorias', 'vistoriasRealizadas'],
+                                    ['abastecimentos', 'abastecimentos'],
+                                    ['avisos', 'avisos'],
+                                    ['lembretes_ativos', 'lembretes_ativos'],
+                                    ['motoristasVistoria', 'motoristasVistoria'],
+                                    ['escalaData', 'escalaData'],
+                                    ['integrantesEscalaPao', 'integrantesEscalaPao'],
+                                    ['feriadosEscalaPao', 'feriadosEscalaPao'],
+                                    ['escalaPaoInsercoes', 'escalaPaoInsercoes'],
+                                    ['diasExcluidosEscalaPao', 'diasExcluidosEscalaPao'],
+                                    ['historicoEscalaPao', 'historicoEscalaPao'],
+                                    ['puladosEscalaPao', 'puladosEscalaPao'],
+                                    ['ultimoIndiceEscala', 'ultimoIndiceEscala'],
+                                    ['escalaPaoDataReferencia', 'escalaPaoDataReferencia']
+                                ];
+                                for (const pair of firebasePairs) {
+                                    const localKey = pair[0];
+                                    const remoteKey = pair[1];
+                                    if (!Object.prototype.hasOwnProperty.call(merged, localKey) && !Object.prototype.hasOwnProperty.call(importedData, localKey)) continue;
+                                    const rawVal = Object.prototype.hasOwnProperty.call(importedData, localKey) ? importedData[localKey] : merged[localKey];
+                                    const parsed = parseVal(rawVal);
+                                    if (parsed === null || parsed === undefined) continue;
+                                    await window.firebaseSot.set(remoteKey, parsed);
+                                }
+                                if (typeof window.firebaseSot.invalidateAllCache === 'function') {
+                                    window.firebaseSot.invalidateAllCache();
+                                }
+                            }
                             showGerenciamentoMessage(
-                                'Dados carregados e mesclados com sucesso. Recarregue a página para ver tudo nas abas.',
+                                'Dados carregados com sucesso. Itens principais também foram enviados ao Firebase.',
                                 'success'
                             );
                             if (window.parent && window.parent.postMessage) {
@@ -1431,10 +1552,23 @@
                         viaturasCadastradas: 0,
                         motoristasCadastrados: 0,
                         vistoriasRealizadas: 0,
+                        motoristasVistoria: 0,
                         abastecimentos: 0,
                         escalaMeses: 0,
+                        integrantesEscalaPao: 0,
+                        feriadosEscalaPao: 0,
+                        escalaPaoInsercoes: 0,
+                        diasExcluidosEscalaPao: 0,
+                        historicoEscalaPao: 0,
+                        puladosEscalaPao: 0,
+                        ultimoIndiceEscala: 0,
+                        escalaPaoDataReferencia: 0,
                         avisos: 0,
-                        lembretes_ativos: 0
+                        lembretes_ativos: 0,
+                        equipamentosSuprimentos: 0,
+                        equipamentosMovements: 0,
+                        equipamentosTabOrder: 0,
+                        cadastroItensPersonalizados: 0
                     };
 
                     // Saídas Administrativas
@@ -1513,6 +1647,18 @@
                         console.warn('Falha ao enviar vistorias locais para Firebase:', e);
                     }
 
+                    // Motoristas de vistoria
+                    try {
+                        const raw = localStorage.getItem('motoristasVistoria');
+                        const lista = raw ? JSON.parse(raw) : [];
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            await window.firebaseSot.set('motoristasVistoria', lista);
+                            stats.motoristasVistoria = lista.length;
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar motoristasVistoria locais para Firebase:', e);
+                    }
+
                     // Abastecimentos
                     try {
                         const raw = localStorage.getItem('abastecimentos');
@@ -1575,16 +1721,126 @@
                         console.warn('Falha ao enviar lembretes_ativos locais para Firebase:', e);
                     }
 
+                    // Escala de Pão (listas)
+                    try {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            const rawIntegrantes = localStorage.getItem('integrantesEscalaPao');
+                            const integrantes = rawIntegrantes ? JSON.parse(rawIntegrantes) : [];
+                            if (Array.isArray(integrantes) && integrantes.length > 0) {
+                                await window.firebaseSot.set('integrantesEscalaPao', integrantes);
+                                stats.integrantesEscalaPao = integrantes.length;
+                            }
+
+                            const rawFeriados = localStorage.getItem('feriadosEscalaPao');
+                            const feriados = rawFeriados ? JSON.parse(rawFeriados) : [];
+                            if (Array.isArray(feriados) && feriados.length > 0) {
+                                await window.firebaseSot.set('feriadosEscalaPao', feriados);
+                                stats.feriadosEscalaPao = feriados.length;
+                            }
+
+                            const rawInsercoes = localStorage.getItem('escalaPaoInsercoes');
+                            const insercoes = rawInsercoes ? JSON.parse(rawInsercoes) : [];
+                            if (Array.isArray(insercoes) && insercoes.length > 0) {
+                                await window.firebaseSot.set('escalaPaoInsercoes', insercoes);
+                                stats.escalaPaoInsercoes = insercoes.length;
+                            }
+
+                            const rawDiasExcluidos = localStorage.getItem('diasExcluidosEscalaPao');
+                            const diasExcluidos = rawDiasExcluidos ? JSON.parse(rawDiasExcluidos) : [];
+                            if (Array.isArray(diasExcluidos) && diasExcluidos.length > 0) {
+                                await window.firebaseSot.set('diasExcluidosEscalaPao', diasExcluidos);
+                                stats.diasExcluidosEscalaPao = diasExcluidos.length;
+                            }
+
+                            const rawHistorico = localStorage.getItem('historicoEscalaPao');
+                            const historico = rawHistorico ? JSON.parse(rawHistorico) : [];
+                            if (Array.isArray(historico) && historico.length > 0) {
+                                await window.firebaseSot.set('historicoEscalaPao', historico);
+                                stats.historicoEscalaPao = historico.length;
+                            }
+
+                            const rawPulados = localStorage.getItem('puladosEscalaPao');
+                            const pulados = rawPulados ? JSON.parse(rawPulados) : {};
+                            if (pulados && typeof pulados === 'object' && Object.keys(pulados).length > 0) {
+                                await window.firebaseSot.set('puladosEscalaPao', pulados);
+                                stats.puladosEscalaPao = Object.keys(pulados).length;
+                            }
+
+                            const rawUltimoIndice = localStorage.getItem('ultimoIndiceEscala');
+                            const ultimoIndice = rawUltimoIndice != null && rawUltimoIndice !== '' ? JSON.parse(rawUltimoIndice) : null;
+                            if (ultimoIndice !== null && ultimoIndice !== undefined) {
+                                await window.firebaseSot.set('ultimoIndiceEscala', ultimoIndice);
+                                stats.ultimoIndiceEscala = 1;
+                            }
+
+                            const dataRef = localStorage.getItem('escalaPaoDataReferencia');
+                            if (dataRef) {
+                                await window.firebaseSot.set('escalaPaoDataReferencia', dataRef);
+                                stats.escalaPaoDataReferencia = 1;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar dados da Escala de Pão locais para Firebase:', e);
+                    }
+
+                    // Equipamentos e itens personalizados
+                    try {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            const eqSupRaw = localStorage.getItem('equipamentosSuprimentos');
+                            const eqSup = eqSupRaw ? JSON.parse(eqSupRaw) : null;
+                            if (eqSup && typeof eqSup === 'object') {
+                                await window.firebaseSot.set('equipamentosSuprimentos', eqSup);
+                                stats.equipamentosSuprimentos = Array.isArray(eqSup) ? eqSup.length : Object.keys(eqSup).length;
+                            }
+
+                            const eqMovRaw = localStorage.getItem('equipamentosMovements');
+                            const eqMov = eqMovRaw ? JSON.parse(eqMovRaw) : null;
+                            if (eqMov && typeof eqMov === 'object') {
+                                await window.firebaseSot.set('equipamentosMovements', eqMov);
+                                stats.equipamentosMovements = Array.isArray(eqMov) ? eqMov.length : Object.keys(eqMov).length;
+                            }
+
+                            const eqOrderRaw = localStorage.getItem('equipamentosTabOrder');
+                            const eqOrder = eqOrderRaw ? JSON.parse(eqOrderRaw) : null;
+                            if (eqOrder && (Array.isArray(eqOrder) || typeof eqOrder === 'object')) {
+                                await window.firebaseSot.set('equipamentosTabOrder', eqOrder);
+                                stats.equipamentosTabOrder = Array.isArray(eqOrder) ? eqOrder.length : Object.keys(eqOrder).length;
+                            }
+
+                            const itensRaw = localStorage.getItem('cadastroItensPersonalizados');
+                            const itens = itensRaw ? JSON.parse(itensRaw) : null;
+                            if (itens && typeof itens === 'object') {
+                                await window.firebaseSot.set('cadastroItensPersonalizados', itens);
+                                stats.cadastroItensPersonalizados = Object.keys(itens).length;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Falha ao enviar equipamentos/itens personalizados locais para Firebase:', e);
+                    }
+
                     const partes = [];
                     if (stats.saidasAdministrativas) partes.push(`Saídas Adm: ${stats.saidasAdministrativas}`);
                     if (stats.saidasAmbulancias) partes.push(`Saídas Ambulância: ${stats.saidasAmbulancias}`);
                     if (stats.viaturasCadastradas) partes.push(`Viaturas: ${stats.viaturasCadastradas}`);
                     if (stats.motoristasCadastrados) partes.push(`Motoristas: ${stats.motoristasCadastrados}`);
                     if (stats.vistoriasRealizadas) partes.push(`Vistorias: ${stats.vistoriasRealizadas}`);
+                    if (stats.motoristasVistoria) partes.push(`Motoristas Vistoria: ${stats.motoristasVistoria}`);
                     if (stats.abastecimentos) partes.push(`Abastecimentos: ${stats.abastecimentos}`);
                     if (stats.escalaMeses) partes.push(`Escala (meses): ${stats.escalaMeses}`);
+                    if (stats.integrantesEscalaPao) partes.push(`Escala Pão Integrantes: ${stats.integrantesEscalaPao}`);
+                    if (stats.feriadosEscalaPao) partes.push(`Escala Pão Feriados: ${stats.feriadosEscalaPao}`);
+                    if (stats.escalaPaoInsercoes) partes.push(`Escala Pão Inserções: ${stats.escalaPaoInsercoes}`);
+                    if (stats.diasExcluidosEscalaPao) partes.push(`Escala Pão Dias excluídos: ${stats.diasExcluidosEscalaPao}`);
+                    if (stats.historicoEscalaPao) partes.push(`Escala Pão Histórico: ${stats.historicoEscalaPao}`);
+                    if (stats.puladosEscalaPao) partes.push(`Escala Pão Pulados: ${stats.puladosEscalaPao}`);
+                    if (stats.ultimoIndiceEscala) partes.push('Escala Pão Índice: 1');
+                    if (stats.escalaPaoDataReferencia) partes.push('Escala Pão Data ref.: 1');
                     if (stats.avisos) partes.push(`Avisos: ${stats.avisos}`);
                     if (stats.lembretes_ativos) partes.push(`Lembretes: ${stats.lembretes_ativos}`);
+                    if (stats.equipamentosSuprimentos) partes.push(`Equip/Suprimentos: ${stats.equipamentosSuprimentos}`);
+                    if (stats.equipamentosMovements) partes.push(`Mov. Equipamentos: ${stats.equipamentosMovements}`);
+                    if (stats.equipamentosTabOrder) partes.push(`Ordem Equipamentos: ${stats.equipamentosTabOrder}`);
+                    if (stats.cadastroItensPersonalizados) partes.push(`Itens Personalizados: ${stats.cadastroItensPersonalizados}`);
 
                     const resumo = partes.length > 0
                         ? 'Dados locais enviados para o Firebase. ' + partes.join(' | ')
@@ -1820,14 +2076,23 @@
                     'motoristasCadastrados',
                     'totaisManuaisCombustivel',
                     'vistoriasRealizadas',
-                    'escalaData',
+                    'vistorias',
+                    'abastecimentos',
                     'avisos',
                     'lembretes_ativos',
-                    'saidasCadastradas'
+                    'saidasCadastradas',
+                    'motoristasVistoria',
+                    'integrantesEscalaPao',
+                    'feriadosEscalaPao',
+                    'escalaPaoInsercoes',
+                    'diasExcluidosEscalaPao',
+                    'historicoEscalaPao'
                 ];
                 
                 // Chaves de objetos que devem ser substituídos completamente (não mesclados)
                 const objectKeys = [
+                    'escalaData',
+                    'puladosEscalaPao',
                     'equipamentosSuprimentos',
                     'equipamentosMovements',
                     'equipamentosTabOrder',
