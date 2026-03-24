@@ -368,6 +368,18 @@ body[data-theme="dark"] .counter-badge {
   background: linear-gradient(135deg, #3d5a9e 0%, #4a69bd 100%);
   border-color: rgba(255, 255, 255, 0.2);
 }
+.quadro-login-shell { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
+.quadro-login-shell .btn-login-google {
+  padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer;
+  color: #fff; font-weight: 700; font-size: 12px; background: #4285f4;
+}
+.quadro-login-shell .btn-sair-google {
+  padding: 7px 10px; border: none; border-radius: 6px; cursor: pointer;
+  color: #fff; font-weight: 600; font-size: 12px; background: #6c757d;
+}
+.quadro-login-shell .usuario-info-google {
+  display: none; align-items: center; gap: 6px; color: var(--dark-gray); font-size: 12px; font-weight: 700;
+}
 </style>
 </head>
 <body>
@@ -375,6 +387,13 @@ body[data-theme="dark"] .counter-badge {
 <div id="saidasAmbulanciasSection" class="tab-content active">
 <div class="table-controls">
 <h2 class="table-title">SAÍDAS DE AMBULÂNCIAS</h2>
+<div id="quadroLoginShellAmb" class="quadro-login-shell">
+<button type="button" id="btn-login-quadro-amb" class="btn-login-google">Entrar com Google</button>
+<div id="usuario-info-quadro-amb" class="usuario-info-google">
+<span id="nome-usuario-quadro-amb"></span>
+<button type="button" id="btn-sair-quadro-amb" class="btn-sair-google">Sair</button>
+</div>
+</div>
 <div class="toolbar-actions">
 <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
 <button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
@@ -451,10 +470,28 @@ const problemasModal = document.getElementById('problemasModal');
 const problemasPlaca = document.getElementById('problemasPlaca');
 const problemasLista = document.getElementById('problemasLista');
 const closeProblemasBtn = document.getElementById('closeProblemasBtn');
+const btnLoginQuadroAmb = document.getElementById('btn-login-quadro-amb');
+const btnSairQuadroAmb = document.getElementById('btn-sair-quadro-amb');
+const usuarioInfoQuadroAmb = document.getElementById('usuario-info-quadro-amb');
+const nomeUsuarioQuadroAmb = document.getElementById('nome-usuario-quadro-amb');
 
 // FUNÇÃO PARA CARREGAR VIATURAS COM PROBLEMAS
 function loadViaturasComProblemas() {
 viaturasComProblemas = JSON.parse(localStorage.getItem('viaturasComProblemas') || '{}');
+}
+
+function renderGoogleLoginUiAmb() {
+const fs = window.firebaseSot;
+const profile = fs && typeof fs.getCurrentUserProfile === 'function' ? fs.getCurrentUserProfile() : null;
+const signedIn = !!(fs && typeof fs.authGateOk === 'function' && fs.authGateOk());
+if (signedIn && profile) {
+    if (nomeUsuarioQuadroAmb) nomeUsuarioQuadroAmb.textContent = profile.displayName || profile.email || 'Usuário';
+    if (usuarioInfoQuadroAmb) usuarioInfoQuadroAmb.style.display = 'flex';
+    if (btnLoginQuadroAmb) btnLoginQuadroAmb.style.display = 'none';
+} else {
+    if (usuarioInfoQuadroAmb) usuarioInfoQuadroAmb.style.display = 'none';
+    if (btnLoginQuadroAmb) btnLoginQuadroAmb.style.display = 'inline-block';
+}
 }
 
 // FUNÇÃO PARA EXIBIR MODAL DE PROBLEMAS
@@ -1229,6 +1266,30 @@ loadViaturasComProblemas();
 populateTables();
 }
 });
+if (btnLoginQuadroAmb) {
+btnLoginQuadroAmb.addEventListener('click', async function () {
+    if (!window.firebaseSot || typeof window.firebaseSot.signInWithGoogle !== 'function') return;
+    try {
+        await window.firebaseSot.signInWithGoogle();
+    } catch (e) {
+        if (String((e && e.message) || '') === 'google-login-file-protocol') {
+            alert('O login Google não funciona em file://. Use a URL https:// do sistema.');
+        } else {
+            alert('Falha ao entrar com Google. Tente novamente.');
+        }
+    }
+});
+}
+if (btnSairQuadroAmb) {
+btnSairQuadroAmb.addEventListener('click', async function () {
+    if (!window.firebaseSot || typeof window.firebaseSot.signOutGoogle !== 'function') return;
+    try { await window.firebaseSot.signOutGoogle(); } catch (e) {}
+});
+}
+window.addEventListener('sot-firebase-auth-changed', function () {
+renderGoogleLoginUiAmb();
+});
+renderGoogleLoginUiAmb();
 filterDateAmbInput.addEventListener('change', populateTables);
 document.getElementById('downloadPdfBtn').addEventListener('click', downloadSaidasTableAsPdf);
 

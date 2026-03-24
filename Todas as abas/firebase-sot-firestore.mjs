@@ -8,7 +8,10 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
-  onAuthStateChanged
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   getFirestore,
@@ -37,6 +40,7 @@ const inFlightSets = new Map();
 
 let db = null;
 let auth = null;
+const googleProvider = new GoogleAuthProvider();
 
 function log(level, message, detail) {
   try {
@@ -211,6 +215,35 @@ export async function installFirebaseSot() {
       try {
         cache.clear();
       } catch (e) {}
+    },
+
+    getCurrentUserProfile: function () {
+      try {
+        const u = auth && auth.currentUser;
+        if (!u) return null;
+        return {
+          uid: u.uid || "",
+          email: u.email || "",
+          displayName: u.displayName || ""
+        };
+      } catch (e) {
+        return null;
+      }
+    },
+
+    signInWithGoogle: async function () {
+      if (window.location.protocol === "file:") {
+        throw new Error("google-login-file-protocol");
+      }
+      if (!auth) return false;
+      await signInWithPopup(auth, googleProvider);
+      return !!(auth && auth.currentUser);
+    },
+
+    signOutGoogle: async function () {
+      if (!auth) return false;
+      await signOut(auth);
+      return true;
     },
 
     get: async function (key) {
