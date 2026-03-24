@@ -1,7 +1,7 @@
 /**
  * Serviço de Dados Unificado
- * Com SOT_FORCE_FIREBASE_ONLY: Firestore é a fonte principal; localStorage só completa (união por id).
- * Em conflito de mesmo id, prevalece a nuvem. Gravações podem espelhar no LS.
+ * Com SOT_FORCE_FIREBASE_ONLY: Firestore é a fonte principal.
+ * Modo estrito: não lê nem espelha localStorage para dados de domínio.
  * Sem a flag: API quando disponível, senão Firebase + merge com local.
  */
 
@@ -9,8 +9,10 @@
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
-    /** Se true: não usa API REST /api; leituras = Firestore (principal) + localStorage (complemento por id). */
+    /** Se true: não usa API REST /api; leituras/escritas somente Firebase. */
     const SOT_FORCE_FIREBASE_ONLY = true;
+    /** Se true junto com SOT_FORCE_FIREBASE_ONLY, ignora completamente localStorage nos dados do domínio. */
+    const SOT_STRICT_FIREBASE_ONLY = true;
     const FIREBASE_CACHE_TTL_MS = 5 * 1000; // 5 segundos para reduzir leituras repetidas
     const API_CHECK_INTERVAL_MS = 30000;
     const LOG_PREFIX = '[data-service]';
@@ -20,8 +22,9 @@
     /** Uma única Promise para a verificação da API (evita corrida) */
     let apiCheckPromise = null;
 
-    /** Lê array do localStorage sempre (para merge; não respeita “só nuvem”). */
+    /** Lê array do localStorage (desativado no modo estrito somente-Firebase). */
     function readLocalStorageArrayAlways(key) {
+        if (SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY) return [];
         if (typeof localStorage === 'undefined') return [];
         try {
             const raw = localStorage.getItem(key);
@@ -82,6 +85,7 @@
     }
 
     function readLocalStorageEscalaObject() {
+        if (SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY) return {};
         if (typeof localStorage === 'undefined') return {};
         try {
             const raw = localStorage.getItem('escalaData');
@@ -241,7 +245,7 @@
             if (!this.useFirebase || !window.firebaseSot || typeof window.firebaseSot.set !== 'function') return false;
             try {
                 const ok = await window.firebaseSot.set(key, value);
-                if (ok && typeof localStorage !== 'undefined') {
+                if (ok && !(SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY) && typeof localStorage !== 'undefined') {
                     try {
                         localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
                     } catch (le) {
@@ -753,10 +757,12 @@
                     log('warn', 'saveConfiguracao Firebase', e);
                 }
             }
-            try {
-                localStorage.setItem(chave, valor);
-            } catch (e) {
-                log('warn', 'saveConfiguracao localStorage', e);
+            if (!(SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY)) {
+                try {
+                    localStorage.setItem(chave, valor);
+                } catch (e) {
+                    log('warn', 'saveConfiguracao localStorage', e);
+                }
             }
             return true;
         }
