@@ -2065,9 +2065,11 @@ function populateRegisterSaidaSelects() {
     const selectedType = registerTipoSaidaSelect.value;
     const placasInoperantesRDV = getPlacasInoperantesRDV();
     viaturasCadastradas.forEach(vtr => {
+        const placaRaw = (vtr && vtr.placa != null) ? String(vtr.placa).trim() : '';
+        if (!placaRaw || placaRaw.toLowerCase() === 'undefined' || placaRaw.toLowerCase() === 'null') return;
         const option = document.createElement('option');
-        option.value = vtr.placa;
-        let optionText = vtr.placa;
+        option.value = placaRaw;
+        let optionText = placaRaw;
         if (vtr.modelo) {
             optionText += ` (${vtr.modelo})`;
         } else if (vtr.tipo) {
@@ -2075,7 +2077,7 @@ function populateRegisterSaidaSelects() {
         }
         option.textContent = optionText;
         const inoperanteFrota = !!vtr.inoperante;
-        const inoperanteRDV = placasInoperantesRDV.has(vtr.placa);
+        const inoperanteRDV = placasInoperantesRDV.has(placaRaw);
         const tipoNaoAmb = selectedType === 'Ambulância' && vtr.tipo !== 'Ambulância';
         if (inoperanteFrota || inoperanteRDV || tipoNaoAmb) {
             option.disabled = true;
@@ -2087,7 +2089,9 @@ function populateRegisterSaidaSelects() {
         vSel.appendChild(option);
     });
     motoristasCadastrados.forEach(mot => {
-        mSel.add(new Option(mot.nome, mot.nome));
+        const nomeRaw = (mot && mot.nome != null) ? String(mot.nome).trim() : '';
+        if (!nomeRaw || nomeRaw.toLowerCase() === 'undefined' || nomeRaw.toLowerCase() === 'null') return;
+        mSel.add(new Option(nomeRaw, nomeRaw));
     });
 }
 // Função para obter a última quilometragem de chegada de uma ambulância
