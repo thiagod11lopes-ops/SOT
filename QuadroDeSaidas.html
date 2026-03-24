@@ -102,6 +102,49 @@
             font-size: 13px;
         }
 
+        .header-right {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .google-login-shell {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .google-login-shell #btn-login {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 999px;
+            background: #4285f4;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .google-login-shell #btn-sair {
+            padding: 5px 9px;
+            border: none;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.35);
+            color: #e5e7eb;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .google-login-shell #usuario-info {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
         .subtitle {
             font-size: 13px;
             color: var(--muted);
@@ -540,9 +583,18 @@
                     QUADRO DE SAÍDAS
                     <span>MÓVEL</span>
                 </div>
-                <div class="sot-badge">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>SOT</span>
+                <div class="header-right">
+                    <div class="sot-badge">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>SOT</span>
+                    </div>
+                    <div id="google-login-shell" class="google-login-shell">
+                        <button type="button" id="btn-login">Entrar com Google</button>
+                        <div id="usuario-info">
+                            <strong id="nome-usuario"></strong>
+                            <button type="button" id="btn-sair">Sair</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="subtitle">
@@ -588,6 +640,7 @@
     <script src="Todas%20as%20abas/firebase-sot-service.js"></script>
     <script src="Todas%20as%20abas/api-service.js"></script>
     <script src="Todas%20as%20abas/data-service.js"></script>
+    <script type="module" src="Todas%20as%20abas/firebase-auth.js"></script>
     <script>
         function formatDateLabel(isoDate) {
             if (!isoDate) return '';

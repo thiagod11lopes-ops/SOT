@@ -540,18 +540,6 @@ body[data-theme="dark"] .counter-badge {
   background: linear-gradient(135deg, #3d5a9e 0%, #4a69bd 100%) !important;
   border-color: rgba(255, 255, 255, 0.2);
 }
-.quadro-login-shell { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
-.quadro-login-shell .btn-login-google {
-  padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer;
-  color: #fff; font-weight: 700; font-size: 12px; background: #4285f4;
-}
-.quadro-login-shell .btn-sair-google {
-  padding: 7px 10px; border: none; border-radius: 6px; cursor: pointer;
-  color: #fff; font-weight: 600; font-size: 12px; background: #6c757d;
-}
-.quadro-login-shell .usuario-info-google {
-  display: none; align-items: center; gap: 6px; color: var(--dark-gray); font-size: 12px; font-weight: 700;
-}
 </style>
 </head>
 <body>
@@ -559,13 +547,6 @@ body[data-theme="dark"] .counter-badge {
 <div id="saidasAdministrativasSection" class="tab-content active">
 <div class="table-controls">
 <h2 class="table-title">SAÍDAS ADMINISTRATIVAS</h2>
-<div id="quadroLoginShellAdm" class="quadro-login-shell">
-<button type="button" id="btn-login-quadro-adm" class="btn-login-google">Entrar com Google</button>
-<div id="usuario-info-quadro-adm" class="usuario-info-google">
-<span id="nome-usuario-quadro-adm"></span>
-<button type="button" id="btn-sair-quadro-adm" class="btn-sair-google">Sair</button>
-</div>
-</div>
 <div id="saidasStatusContainer" title="Clique para configurar os limites de saídas">
 <div class="status-periodo">
 <span>Manhã:</span>
@@ -827,10 +808,6 @@ const escalaBody = document.getElementById('escalaBody');
 const escalaEmpty = document.getElementById('escalaEmpty');
 const svcRoDisplay = document.getElementById('svcRoDisplay');
 const svcRoList = document.getElementById('svcRoList');
-const btnLoginQuadroAdm = document.getElementById('btn-login-quadro-adm');
-const btnSairQuadroAdm = document.getElementById('btn-sair-quadro-adm');
-const usuarioInfoQuadroAdm = document.getElementById('usuario-info-quadro-adm');
-const nomeUsuarioQuadroAdm = document.getElementById('nome-usuario-quadro-adm');
 
 // ===== ESCALA: helpers e renderização =====
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -846,20 +823,6 @@ var ValidacaoSaidasAdm = {
     return String(str).replace(/\s+/g, ' ').trim().slice(0, 2000);
   }
 };
-
-function renderGoogleLoginUiAdm() {
-  const fs = window.firebaseSot;
-  const profile = fs && typeof fs.getCurrentUserProfile === 'function' ? fs.getCurrentUserProfile() : null;
-  const signedIn = !!(fs && typeof fs.authGateOk === 'function' && fs.authGateOk());
-  if (signedIn && profile) {
-    if (nomeUsuarioQuadroAdm) nomeUsuarioQuadroAdm.textContent = profile.displayName || profile.email || 'Usuário';
-    if (usuarioInfoQuadroAdm) usuarioInfoQuadroAdm.style.display = 'flex';
-    if (btnLoginQuadroAdm) btnLoginQuadroAdm.style.display = 'none';
-  } else {
-    if (usuarioInfoQuadroAdm) usuarioInfoQuadroAdm.style.display = 'none';
-    if (btnLoginQuadroAdm) btnLoginQuadroAdm.style.display = 'inline-block';
-  }
-}
 
 // ========== FUNÇÕES DE NEGÓCIO / RENDERIZAÇÃO ==========
 function populateMonthYearFilters() {
@@ -4230,30 +4193,6 @@ loadViaturasComProblemas();
 populateTables();
 }
 });
-if (btnLoginQuadroAdm) {
-btnLoginQuadroAdm.addEventListener('click', async function () {
-    if (!window.firebaseSot || typeof window.firebaseSot.signInWithGoogle !== 'function') return;
-    try {
-        await window.firebaseSot.signInWithGoogle();
-    } catch (e) {
-        if (String((e && e.message) || '') === 'google-login-file-protocol') {
-            alert('O login Google não funciona em file://. Use a URL https:// do sistema.');
-        } else {
-            alert('Falha ao entrar com Google. Tente novamente.');
-        }
-    }
-});
-}
-if (btnSairQuadroAdm) {
-btnSairQuadroAdm.addEventListener('click', async function () {
-    if (!window.firebaseSot || typeof window.firebaseSot.signOutGoogle !== 'function') return;
-    try { await window.firebaseSot.signOutGoogle(); } catch (e) {}
-});
-}
-window.addEventListener('sot-firebase-auth-changed', function () {
-renderGoogleLoginUiAdm();
-});
-renderGoogleLoginUiAdm();
 function clearDailyAlarmStates() {
 const today = new Date().toISOString().split('T')[0];
 const keys = Object.keys(localStorage);
