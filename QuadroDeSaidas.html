@@ -786,6 +786,18 @@
                 let remoteList = [];
                 let remoteLoaded = false;
 
+                // Alinhar com o SOT: aguardar serviços + auth Google antes da leitura.
+                try {
+                    if (window.dataService && typeof window.dataService.waitForAPICheck === 'function') {
+                        await window.dataService.waitForAPICheck();
+                    }
+                    if (window.dataService && typeof window.dataService.waitForGoogleAuthReady === 'function') {
+                        await window.dataService.waitForGoogleAuthReady(20000);
+                    }
+                } catch (e) {
+                    console.warn('QuadroDeSaidas: falha ao aguardar auth/serviços Firebase.', e);
+                }
+
                 // Firebase direto (fonte única da verdade)
                 if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
                     try {
@@ -793,6 +805,20 @@
                         if (Array.isArray(fbSaidas)) {
                             remoteList = fbSaidas;
                             remoteLoaded = true;
+                        } else if (fbSaidas === null) {
+                            // Pode ocorrer corrida de auth no mobile: aguarda login e tenta novamente.
+                            try {
+                                if (window.dataService && typeof window.dataService.waitForGoogleAuthReady === 'function') {
+                                    await window.dataService.waitForGoogleAuthReady(10000);
+                                }
+                                const fbRetry = await window.firebaseSot.get('saidasAdministrativas');
+                                if (Array.isArray(fbRetry)) {
+                                    remoteList = fbRetry;
+                                    remoteLoaded = true;
+                                }
+                            } catch (retryErr) {
+                                console.warn('QuadroDeSaidas: retry após auth falhou.', retryErr);
+                            }
                         }
                     } catch (e) {
                         console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas direto do Firebase.', e);
