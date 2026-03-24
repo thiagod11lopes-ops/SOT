@@ -513,6 +513,9 @@ try {
 
 if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
 await dataService.waitForAPICheck();
+            if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                await dataService.waitForGoogleAuthReady(15000);
+            }
             // Não exigir apiAvailable: com SOT_FORCE_FIREBASE_ONLY ele fica false mesmo com Firebase OK
             const s = await dataService.getSaidasAmbulancias();
             const v = await dataService.getViaturas();

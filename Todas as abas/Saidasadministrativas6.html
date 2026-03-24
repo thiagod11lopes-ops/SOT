@@ -1229,6 +1229,12 @@ async function loadState() {
         
         // 1) Preferir sempre dataService (que já tenta API/Firebase e depois localStorage)
         if (typeof dataService !== 'undefined') {
+            if (typeof dataService.waitForAPICheck === 'function') {
+                await dataService.waitForAPICheck();
+            }
+            if (typeof dataService.waitForGoogleAuthReady === 'function') {
+                await dataService.waitForGoogleAuthReady(15000);
+            }
             saidasAdministrativas = await dataService.getSaidasAdministrativas();
             motoristasCadastrados = await dataService.getMotoristas();
             frotaData = await dataService.getViaturas();
