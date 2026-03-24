@@ -781,15 +781,12 @@
                 return isNaN(num) ? null : num;
             }
 
-            /** Obtém lista de saídas com persistência:
-             *  Firebase primeiro, depois mescla com localStorage (se houver), e por fim JSON estático.
-             *  Isso evita "sumir" após F5 quando o Firebase falhar ou estiver inconsistente.
-             */
+            /** Obtém lista de saídas SOMENTE do Firebase. */
             async function getAllSaidas() {
-                let remoteList = null;
+                let remoteList = [];
                 let remoteLoaded = false;
 
-                // 1) Firebase direto
+                // Firebase direto (fonte única da verdade)
                 if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
                     try {
                         const fbSaidas = await window.firebaseSot.get('saidasAdministrativas');
@@ -802,50 +799,11 @@
                     }
                 }
 
-                // 2) dataService (fallback)
-                if (!remoteList && window.dataService && typeof window.dataService.getSaidasAdministrativas === 'function') {
-                    try {
-                        const fromService = await window.dataService.getSaidasAdministrativas();
-                        if (Array.isArray(fromService)) {
-                            remoteList = fromService;
-                            // Não marcamos remoteLoaded aqui: o dataService pode ter caído em localStorage.
-                            // A reconciliação que escreve no Firebase só deve ocorrer quando o remoto vem do firebaseSot diretamente.
-                        }
-                    } catch (e) {
-                        console.warn('QuadroDeSaidas: falha ao carregar saidasAdministrativas via dataService.', e);
-                    }
-                }
+                // Em modo somente-Firebase, se não carregou remoto retorna vazio.
+                const base = Array.isArray(remoteList) ? remoteList : [];
 
-                // 3) localStorage (persistência por navegador)
-                let localList = null;
-                try {
-                    const raw = localStorage.getItem('saidasAdministrativas');
-                    const lista = raw ? JSON.parse(raw) : [];
-                    localList = Array.isArray(lista) ? lista : [];
-                } catch (e) {
-                    localList = [];
-                }
-
-                // 4) JSON estático (GitHub Pages) - somente se remoto e local estiverem vazios
-                let staticList = null;
-                if ((!remoteList || remoteList.length === 0) && (!localList || localList.length === 0)) {
-                    try {
-                        const res = await fetch('saidas-administrativas.json', { cache: 'no-store' });
-                        if (res.ok) {
-                            const data = await res.json();
-                            staticList = Array.isArray(data) ? data : null;
-                        }
-                    } catch (e) { /* ignora */ }
-                }
-
-                const hasRemote = Array.isArray(remoteList);
-                const base = hasRemote ? remoteList : (staticList || []);
-
-                // Mapa id → registro. Com Firebase: base vem do remoto, mas km/chegada do localStorage
-                // sobrescrevem (edições feitas no SOT no mesmo navegador), evitando “voltar” KM apagado
-                // enquanto o Firebase ainda não recebeu o save (auto-save pode atrasar).
+                // Mapa id -> registro apenas da nuvem.
                 const map = new Map();
-                var OVERLAY_KM_KEYS = ['kmSaida', 'km_saida', 'kmChegada', 'km_chegada', 'chegada', 'realizada'];
 
                 const addBase = (arr) => {
                     if (!Array.isArray(arr)) return;
@@ -857,51 +815,9 @@
                     }
                 };
 
-                const addLocalIfMissing = (arr) => {
-                    if (!Array.isArray(arr)) return;
-                    for (const it of arr) {
-                        const n = { ...(it || {}) };
-                        const id = getSaidaId(n);
-                        n.id = id;
-                        const key = String(id);
-                        if (!map.has(key)) map.set(key, n);
-                    }
-                };
-
                 addBase(base);
 
-                if (hasRemote && Array.isArray(localList) && localList.length) {
-                    var localById = new Map();
-                    localList.forEach(function (it) {
-                        var id = String(getSaidaId(it || {}));
-                        localById.set(id, it);
-                    });
-                    map.forEach(function (remoteRow, idKey) {
-                        var loc = localById.get(idKey);
-                        if (!loc) return;
-                        var next = Object.assign({}, remoteRow);
-                        OVERLAY_KM_KEYS.forEach(function (k) {
-                            if (Object.prototype.hasOwnProperty.call(loc, k)) next[k] = loc[k];
-                        });
-                        map.set(idKey, next);
-                    });
-                    localList.forEach(function (it) {
-                        var id = String(getSaidaId(it || {}));
-                        if (!map.has(id)) {
-                            var n = Object.assign({}, it);
-                            n.id = getSaidaId(n);
-                            map.set(id, n);
-                        }
-                    });
-                } else if (!hasRemote) {
-                    addLocalIfMissing(localList);
-                }
-
                 const merged = Array.from(map.values());
-
-                // Mantém cache local atualizado com o merge
-                try { localStorage.setItem('saidasAdministrativas', JSON.stringify(merged)); } catch (e) {}
-
                 return { saidas: merged, remoteLoaded };
             }
 
