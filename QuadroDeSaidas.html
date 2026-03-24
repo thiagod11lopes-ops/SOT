@@ -709,6 +709,33 @@
             const counterValue = document.getElementById('counterValue');
             const dateLabel = document.getElementById('dateLabel');
             const loading = document.getElementById('loading');
+            let lastKnownGoogleSignedIn = false;
+
+            function isGoogleSignedInNow() {
+                try {
+                    if (window.top && window.top._sot_google_signed_in) return true;
+                } catch (e) {}
+                return !!window._sot_google_signed_in;
+            }
+
+            async function waitForGoogleSignedInFlag(timeoutMs) {
+                const timeout = Number(timeoutMs || 12000);
+                if (isGoogleSignedInNow()) return true;
+                const started = Date.now();
+                return await new Promise(function (resolve) {
+                    const timer = setInterval(function () {
+                        if (isGoogleSignedInNow()) {
+                            clearInterval(timer);
+                            resolve(true);
+                            return;
+                        }
+                        if (Date.now() - started >= timeout) {
+                            clearInterval(timer);
+                            resolve(false);
+                        }
+                    }, 200);
+                });
+            }
 
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -1460,6 +1487,23 @@
                     if (type === 'refresh_all_data') scheduleReloadQuadroFromExternal();
                 } catch (e) {}
             });
+
+            // Em mobile, o estado de auth pode ficar pronto depois do primeiro load.
+            // Quando detectar transição para logado, força reload sem cache.
+            setInterval(function () {
+                const nowSignedIn = isGoogleSignedInNow();
+                if (!lastKnownGoogleSignedIn && nowSignedIn) {
+                    try {
+                        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+                            window.firebaseSot.invalidateCache('saidasAdministrativas');
+                        }
+                    } catch (e) {}
+                    scheduleReloadQuadroFromExternal();
+                }
+                lastKnownGoogleSignedIn = nowSignedIn;
+            }, 2000);
+
+            await waitForGoogleSignedInFlag(12000);
             await loadSaidasForSelectedDate();
         });
     </script>
