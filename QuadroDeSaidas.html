@@ -674,6 +674,11 @@
             return saida.horaSaida || saida.saida || saida.horario || saida.hora || '';
         }
 
+        function getSaidaDateISO(saida) {
+            if (!saida) return '';
+            return parseDateToISO(saida.dataSaida || saida.dataPedido || saida.data || '');
+        }
+
         function getDestino(saida) {
             if (saida.destino) return saida.destino;
             const partes = [];
@@ -752,7 +757,7 @@
                 const candidatos = allSaidas
                     .filter(s => {
                         if (!s.viatura || String(s.viatura).trim() !== String(placa).trim()) return false;
-                        const d = s.dataSaida || s.data;
+                        const d = s.dataSaida || s.dataPedido || s.data;
                         const h = s.horaSaida || s.hora || s.saida || '00:00';
                         const isoDate = parseDateToISO(d);
                         if (!isoDate) return false;
@@ -761,8 +766,8 @@
                         return dt < baseDateTime;
                     })
                     .sort((a, b) => {
-                        const daIso = parseDateToISO(a.dataSaida || a.data);
-                        const dbIso = parseDateToISO(b.dataSaida || b.data);
+                        const daIso = parseDateToISO(a.dataSaida || a.dataPedido || a.data);
+                        const dbIso = parseDateToISO(b.dataSaida || b.dataPedido || b.data);
                         const da = daIso ? new Date(`${daIso}T${a.horaSaida || a.hora || a.saida || '00:00'}`) : new Date(0);
                         const db = dbIso ? new Date(`${dbIso}T${b.horaSaida || b.hora || b.saida || '00:00'}`) : new Date(0);
                         return db - da;
@@ -981,7 +986,7 @@
 
             // Gera id estável (não depende de km/chegada) para permitir edição mesmo quando s.id vier vazio
             function genSaidaIdStable(saida) {
-                const data = parseDateToISO(saida.dataSaida ?? saida.data ?? '');
+                const data = getSaidaDateISO(saida);
                 const hora = String(saida.horaSaida ?? saida.hora ?? saida.saida ?? '').trim();
                 const viatura = String(saida.viatura ?? saida.viatura_id ?? '').trim();
                 const motorista = String(saida.motorista ?? saida.motorista_id ?? '').trim();
@@ -998,13 +1003,13 @@
             }
 
             function matchSaidaByStableKey(listItem, targetSaida) {
-                const aData = parseDateToISO(listItem.dataSaida ?? listItem.data ?? '');
+                const aData = getSaidaDateISO(listItem);
                 const aHora = String(listItem.horaSaida ?? listItem.hora ?? listItem.saida ?? '').trim();
                 const aViatura = String(listItem.viatura ?? listItem.viatura_id ?? '').trim();
                 const aMotorista = String(listItem.motorista ?? listItem.motorista_id ?? '').trim();
                 const aDestino = (String(listItem.hospital ?? listItem.objetivo ?? listItem.destino ?? '').trim() || String(getDestino(listItem)).trim());
 
-                const bData = parseDateToISO(targetSaida.dataSaida ?? targetSaida.data ?? '');
+                const bData = getSaidaDateISO(targetSaida);
                 const bHora = String(targetSaida.horaSaida ?? targetSaida.hora ?? targetSaida.saida ?? '').trim();
                 const bViatura = String(targetSaida.viatura ?? targetSaida.viatura_id ?? '').trim();
                 const bMotorista = String(targetSaida.motorista ?? targetSaida.motorista_id ?? '').trim();
@@ -1188,7 +1193,7 @@
                     const result = await getAllSaidas();
                     const allSaidas = result?.saidas || [];
                     const remoteLoaded = !!result?.remoteLoaded;
-                    const filtered = (allSaidas || []).filter(s => parseDateToISO(s.dataSaida || s.data) === selectedDate);
+                    const filtered = (allSaidas || []).filter(s => getSaidaDateISO(s) === selectedDate);
                     filtered.sort((a, b) => getHoraSaida(a).localeCompare(getHoraSaida(b)));
 
                     counterValue.textContent = filtered.length;
