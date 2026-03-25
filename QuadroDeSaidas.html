@@ -887,9 +887,6 @@
                 emptyStateLine2.textContent = extra || '';
             }
 
-            /** Item 2: prefixo do documento opcional por dia em sot_data — ver ESTRATEGIA-QUADRO-CONSULTA-DIA.md */
-            var SOT_QUADRO_DAY_DOC_PREFIX = 'saidasAdm_day_';
-
             /** Item 1 (melhorias Quadro): baseline de tamanho — ativar com ?quadroBaseline=1 ou localStorage sot_quadro_baseline_v1 = 1 */
             function quadroBaselineEnabled() {
                 try {
@@ -952,7 +949,7 @@
                 } catch (e) {}
                 const lm = loadMode || 'full';
                 console.info('[QuadroDeSaidas][baseline]', {
-                    doc: lm === 'day_shard' ? 'sot_data/' + SOT_QUADRO_DAY_DOC_PREFIX + (selectedDate || '') : 'sot_data/saidasAdministrativas',
+                    doc: 'sot_data/saidasAdministrativas',
                     loadMode: lm,
                     at: new Date().toISOString(),
                     selectedDate: selectedDate || '',
@@ -1143,8 +1140,9 @@
             }
 
             /**
-             * Obtém lista de saídas SOMENTE do Firebase.
-             * @param {string} [forDateISO] YYYY-MM-DD — tenta primeiro sot_data/{SOT_QUADRO_DAY_DOC_PREFIX}{data}
+             * Lista mestre de saídas administrativas SOMENTE via Firestore (`sot_data/saidasAdministrativas`).
+             * Não usa documentos `saidasAdm_day_*` — o filtro por dia é feito na UI após o get.
+             * @param {string} [forDateISO] YYYY-MM-DD reservado para futura otimização; hoje ignora-se na leitura.
              */
             async function getAllSaidas(forDateISO) {
                 let remoteList = [];
@@ -1157,26 +1155,6 @@
                     await quadroWaitForFirebaseAuth(20000);
                 } catch (e) {
                     console.warn('QuadroDeSaidas: falha ao aguardar auth/serviços Firebase.', e);
-                }
-
-                const dateKey = forDateISO && String(forDateISO).slice(0, 10);
-
-                if (dateKey && window.firebaseSot && typeof window.firebaseSot.get === 'function') {
-                    try {
-                        const dayDocId = SOT_QUADRO_DAY_DOC_PREFIX + dateKey;
-                        const dayArr = await window.firebaseSot.get(dayDocId);
-                        if (Array.isArray(dayArr)) {
-                            return {
-                                saidas: normalizeQuadroSaidasRemote(dayArr),
-                                remoteLoaded: true,
-                                loadMode: 'day_shard',
-                                loadHint: null
-                            };
-                        }
-                    } catch (e) {
-                        hadFetchError = true;
-                        console.warn('QuadroDeSaidas: falha ao ler shard do dia, usando lista completa.', dateKey, e);
-                    }
                 }
 
                 if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
@@ -1224,7 +1202,7 @@
                 return {
                     saidas: normalizeQuadroSaidasRemote(remoteList),
                     remoteLoaded,
-                    loadMode: 'full',
+                    loadMode: 'firebase_master',
                     loadHint
                 };
             }
@@ -1588,25 +1566,6 @@
                 }
             }
 
-            /** Cache em memória da lista completa (só usado com loadMode day_shard, para hint de KM Saída). */
-            let quadroFullSaidasCache = null;
-
-            async function ensureQuadroFullSaidasForHints() {
-                if (quadroFullSaidasCache !== null) return quadroFullSaidasCache;
-                if (!window.firebaseSot || typeof window.firebaseSot.get !== 'function') {
-                    quadroFullSaidasCache = [];
-                    return quadroFullSaidasCache;
-                }
-                try {
-                    const fb = await window.firebaseSot.get('saidasAdministrativas');
-                    quadroFullSaidasCache = normalizeQuadroSaidasRemote(Array.isArray(fb) ? fb : []);
-                } catch (e) {
-                    console.warn('QuadroDeSaidas: falha ao carregar lista completa para hint de KM.', e);
-                    quadroFullSaidasCache = [];
-                }
-                return quadroFullSaidasCache;
-            }
-
             /** Item 6: contexto da última lista pintada (delegação de dblclick). */
             let quadroLoadContext = { selectedDate: '', loadMode: 'full', allSaidas: [] };
             let quadroSaidasById = new Map();
@@ -1791,7 +1750,6 @@
                 dateLabel.textContent = formatDateLabel(selectedDate);
                 hideQuadroEmptyState();
                 loading.style.display = 'block';
-                quadroFullSaidasCache = null;
 
                 try {
                     const result = await getAllSaidas(selectedDate);
@@ -1848,9 +1806,6 @@
                     showQuadroEmptyState('exception', error && error.message ? error.message : '');
                 } finally {
                     loading.style.display = 'none';
-                    try {
-                        resyncQuadroDayShardListener();
-                    } catch (e) {}
                 }
             }
 
@@ -1862,21 +1817,13 @@
                 const saida = quadroSaidasById.get(sid);
                 if (!saida) return;
                 const selectedDate = dateInput.value;
-                const loadMode = quadroLoadContext.loadMode || 'full';
                 let allSaidas = quadroLoadContext.allSaidas || [];
 
                 if (isQuadroRegistroBloqueado(saida)) {
                     showQuadroBloqueadoOverlay(card);
                     return;
                 }
-                let kmHintList = allSaidas;
-                if (loadMode === 'day_shard') {
-                    try {
-                        kmHintList = await ensureQuadroFullSaidasForHints();
-                    } catch (e) {
-                        kmHintList = allSaidas;
-                    }
-                }
+                const kmHintList = allSaidas;
                 /** Durante estes modais não recarregar a lista nem propagar BC a cada OK (flush no fim). */
                 quadroKmFlowActive = true;
                 quadroReloadPendingAfterFlow = false;
@@ -2016,16 +1963,14 @@
             dateInput.addEventListener('change', loadSaidasForSelectedDate);
 
             // Item 10 — contrato completo: CONTRATO-QUADRO-SAIDAS-SYNC.md
-            // Recarrega lista quando Saídas administrativas (SOT) ou outra aba alterar dados:
+            // Leitura do Quadro: sempre lista mestre Firestore `saidasAdministrativas` (getAllSaidas).
+            // Recarrega quando Saídas administrativas (SOT) ou outra aba alterar dados:
             // — postMessage refresh_all_data (iframe / mesma janela com pai)
             // — evento storage (outra aba no mesmo site, após localStorage; a aba que grava não recebe)
             // — BroadcastChannel sot_saidas_administrativas (qualquer contexto mesmo origin)
             let reloadInFlight = false;
             let reloadQueued = false;
             let reloadQuadroDebounceTimer = null;
-            /** Item 11: unsubscribe do onSnapshot do shard do dia (firebase-sot-firestore.mjs). */
-            let quadroDayShardUnsub = null;
-            let quadroDayShardWatchDate = null;
 
             function scheduleReloadQuadroFromExternal() {
                 if (quadroKmFlowActive) {
@@ -2046,10 +1991,6 @@
                             window.firebaseSot.invalidateQuadroSaidasCaches(dateInput && dateInput.value);
                         } else if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
                             window.firebaseSot.invalidateCache('saidasAdministrativas');
-                            try {
-                                const d = dateInput && dateInput.value;
-                                if (d) window.firebaseSot.invalidateCache(SOT_QUADRO_DAY_DOC_PREFIX + String(d).slice(0, 10));
-                            } catch (e2) {}
                         }
                     } catch (e) {}
                     loadSaidasForSelectedDate()
@@ -2062,49 +2003,6 @@
                             }
                         });
                 }, 0);
-            }
-
-            /**
-             * Item 11: onSnapshot só em `saidasAdm_day_{data}` (custo baixo vs mestre).
-             * Primeira emissão do listener ignora-se (evita recarga duplicada após o get inicial).
-             */
-            function resyncQuadroDayShardListener() {
-                try {
-                    const d = dateInput && dateInput.value ? String(dateInput.value).slice(0, 10) : '';
-                    if (!window.firebaseSot || typeof window.firebaseSot.watchSaidasAdmDayShard !== 'function') {
-                        if (quadroDayShardUnsub) {
-                            quadroDayShardUnsub();
-                            quadroDayShardUnsub = null;
-                        }
-                        quadroDayShardWatchDate = null;
-                        return;
-                    }
-                    const authOk =
-                        typeof window.firebaseSot.authGateOk === 'function' && window.firebaseSot.authGateOk();
-                    if (!authOk) {
-                        if (quadroDayShardUnsub) {
-                            quadroDayShardUnsub();
-                            quadroDayShardUnsub = null;
-                        }
-                        quadroDayShardWatchDate = null;
-                        return;
-                    }
-                    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
-                    if (quadroDayShardWatchDate === d && quadroDayShardUnsub) return;
-                    if (quadroDayShardUnsub) {
-                        quadroDayShardUnsub();
-                        quadroDayShardUnsub = null;
-                    }
-                    quadroDayShardWatchDate = d;
-                    let skipFirstSnapshot = true;
-                    quadroDayShardUnsub = window.firebaseSot.watchSaidasAdmDayShard(d, function () {
-                        if (skipFirstSnapshot) {
-                            skipFirstSnapshot = false;
-                            return;
-                        }
-                        scheduleReloadQuadroFromExternal();
-                    });
-                } catch (e) {}
             }
 
             function endQuadroKmFlow() {
@@ -2143,25 +2041,12 @@
             // Quando detectar transição para logado, força reload sem cache.
             setInterval(function () {
                 const nowSignedIn = isGoogleSignedInNow();
-                if (lastKnownGoogleSignedIn && !nowSignedIn) {
-                    try {
-                        if (quadroDayShardUnsub) {
-                            quadroDayShardUnsub();
-                            quadroDayShardUnsub = null;
-                        }
-                        quadroDayShardWatchDate = null;
-                    } catch (e) {}
-                }
                 if (!lastKnownGoogleSignedIn && nowSignedIn) {
                     try {
                         if (window.firebaseSot && typeof window.firebaseSot.invalidateQuadroSaidasCaches === 'function') {
                             window.firebaseSot.invalidateQuadroSaidasCaches(dateInput && dateInput.value);
                         } else if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
                             window.firebaseSot.invalidateCache('saidasAdministrativas');
-                            try {
-                                const d = dateInput && dateInput.value;
-                                if (d) window.firebaseSot.invalidateCache(SOT_QUADRO_DAY_DOC_PREFIX + String(d).slice(0, 10));
-                            } catch (e2) {}
                         }
                     } catch (e) {}
                     scheduleReloadQuadroFromExternal();
