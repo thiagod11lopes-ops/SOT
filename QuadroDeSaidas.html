@@ -1998,11 +1998,20 @@
 
             // Item 10 — contrato completo: CONTRATO-QUADRO-SAIDAS-SYNC.md
             // Leitura do Quadro: lista mestre Firestore `saidasAdministrativas` (getAllSaidas); sem usar localStorage como fonte.
-            // Recarrega quando o SOT ou outra aba sinalizar ou o Firestore mudar:
+            // Recarrega quando o SOT ou outra aba sinalizar:
             // — postMessage refresh_all_data (iframe / mesma janela com pai)
             // — BroadcastChannel sot_saidas_administrativas (qualquer contexto mesmo origin)
             // — storage saidasAdministrativas (outra aba gravou LS após Firebase — invalida e relê a nuvem)
-            // — onSnapshot do mestre (watchSaidasAdministrativas): cache em memória do serviço já atualizada
+            // — opcional: onSnapshot (watchSaidasAdministrativas) — DESLIGADO por defeito; em planos Spark consome quota
+            //   e dispara resource-exhausted. Para ligar: window.SOT_QUADRO_USE_FIRESTORE_SNAPSHOT = true antes deste script.
+            function quadroFirestoreSnapshotEnabled() {
+                try {
+                    return window.SOT_QUADRO_USE_FIRESTORE_SNAPSHOT === true;
+                } catch (e) {
+                    return false;
+                }
+            }
+            var quadroSnapshotOffLogged = false;
             let reloadInFlight = false;
             let reloadQueued = false;
             let reloadQuadroDebounceTimer = null;
@@ -2043,6 +2052,19 @@
 
             function startQuadroSaidasMasterLiveWatch() {
                 stopQuadroSaidasMasterLiveWatch();
+                if (!quadroFirestoreSnapshotEnabled()) {
+                    if (!quadroSnapshotOffLogged) {
+                        quadroSnapshotOffLogged = true;
+                        try {
+                            console.info(
+                                'QuadroDeSaidas: listener em tempo real Firestore desligado (poupa quota). ' +
+                                    'Atualizações: BroadcastChannel, storage, postMessage. ' +
+                                    'Para ligar onSnapshot: window.SOT_QUADRO_USE_FIRESTORE_SNAPSHOT = true'
+                            );
+                        } catch (e) {}
+                    }
+                    return;
+                }
                 try {
                     if (!window.firebaseSot || typeof window.firebaseSot.watchSaidasAdministrativas !== 'function') return;
                     if (window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode()) return;
@@ -2164,13 +2186,18 @@
                 } catch (e) {}
             });
 
-            // Ao voltar ao separador, relê o Firestore (BroadcastChannel pode falhar com aba em segundo plano).
+            // Ao voltar ao separador, relê o Firestore (no máx. 1× / 2 min — evita rajadas de leituras e quota).
             var quadroVisibilityReloadTimer = null;
+            var quadroLastVisibilityReloadAt = 0;
+            var QUADRO_VISIBILITY_RELOAD_MIN_MS = 120000;
             document.addEventListener('visibilitychange', function () {
                 if (document.visibilityState !== 'visible') return;
+                var now = Date.now();
+                if (now - quadroLastVisibilityReloadAt < QUADRO_VISIBILITY_RELOAD_MIN_MS) return;
                 try { clearTimeout(quadroVisibilityReloadTimer); } catch (e) {}
                 quadroVisibilityReloadTimer = setTimeout(function () {
                     quadroVisibilityReloadTimer = null;
+                    quadroLastVisibilityReloadAt = Date.now();
                     try {
                         scheduleReloadQuadroFromExternal();
                     } catch (e2) {}
