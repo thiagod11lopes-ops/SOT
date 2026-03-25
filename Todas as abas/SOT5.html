@@ -112,164 +112,6 @@ font-size: 18px;
 text-align: center;
 padding: 40px 20px;
 }
-.update-overlay {
-position: fixed;
-inset: 0;
-display: flex;
-align-items: center;
-justify-content: center;
-padding: 32px;
-background: radial-gradient(circle at top, rgba(74,105,189,0.28), rgba(23,32,42,0.88));
-backdrop-filter: blur(6px);
-opacity: 0;
-pointer-events: none;
-transition: opacity 0.45s ease;
-z-index: 3000;
-}
-.update-overlay.active {
-opacity: 1;
-pointer-events: auto;
-}
-.update-overlay[hidden] {
-display: none;
-}
-.update-card {
-max-width: 420px;
-width: 100%;
-padding: 32px 28px;
-border-radius: 24px;
-background: rgba(255,255,255,0.92);
-box-shadow: 0 24px 50px rgba(16,24,40,0.22);
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 18px;
-text-align: center;
-transform: translateY(32px) scale(0.96);
-opacity: 0;
-animation: cardPop 0.6s cubic-bezier(.16,1,.3,1) forwards 0.2s;
-}
-.update-overlay:not(.active) .update-card {
-animation: none;
-opacity: 0;
-transform: translateY(32px) scale(0.96);
-}
-.update-logo {
-width: 100%;
-max-width: 260px;
-display: flex;
-align-items: center;
-justify-content: center;
-padding: 0;
-box-shadow: none;
-border-radius: 18px;
-overflow: hidden;
-background: #ffffff;
-}
-.update-logo img {
-width: 100%;
-height: auto;
-object-fit: contain;
-image-rendering: auto;
-filter: drop-shadow(0 16px 32px rgba(0,0,0,0.18));
-}
-.update-icon {
-width: 72px;
-height: 72px;
-border-radius: 50%;
-display: grid;
-place-items: center;
-background: linear-gradient(135deg, rgba(74,105,189,0.85), rgba(108,136,201,0.85));
-color: #fff;
-font-size: 28px;
-box-shadow: 0 10px 25px rgba(74,105,189,0.35);
-}
-.update-loader {
-width: 70px;
-height: 70px;
-border: 6px solid rgba(74,105,189,0.18);
-border-top-color: var(--primary-blue);
-border-radius: 50%;
-animation: spinLoader 1s linear infinite;
-transition: opacity 0.4s ease, transform 0.4s ease;
-}
-.update-message {
-display: flex;
-flex-direction: column;
-gap: 8px;
-}
-.update-message strong {
-font-size: 18px;
-color: var(--primary-blue);
-}
-.update-message span {
-font-size: 14px;
-color: #4a5568;
-}
-.update-badge {
-font-size: 13px;
-font-weight: 600;
-letter-spacing: 0.08em;
-color: var(--primary-blue);
-text-transform: uppercase;
-background: rgba(74,105,189,0.12);
-padding: 6px 14px;
-border-radius: 999px;
-}
-.update-card h2 {
-margin: 0;
-font-size: 24px;
-color: var(--dark-gray);
-}
-.update-card p {
-margin: 0;
-color: #4a5568;
-font-size: 15px;
-line-height: 1.5;
-}
-.enter-button {
-padding: 12px 38px;
-background: linear-gradient(135deg, #4a69bd 0%, #314a92 100%);
-color: #fff;
-border: none;
-border-radius: 999px;
-font-size: 16px;
-font-weight: 600;
-cursor: pointer;
-box-shadow: 0 15px 30px rgba(74,105,189,0.35);
-transition: transform 0.25s ease, box-shadow 0.25s ease;
-min-width: 200px;
-display: inline-flex;
-align-items: center;
-justify-content: center;
-gap: 10px;
-}
-.enter-button:hover {
-transform: translateY(-2px) scale(1.02);
-box-shadow: 0 22px 40px rgba(74,105,189,0.4);
-}
-.enter-button:active {
-transform: translateY(0);
-}
-.enter-button.is-disabled,
-.enter-button:disabled {
-cursor: wait;
-opacity: 0.6;
-transform: none;
-box-shadow: none;
-}
-@keyframes cardPop {
-0% { opacity: 0; transform: translateY(32px) scale(0.96); }
-100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes spinLoader {
-0% { transform: rotate(0deg); }
-100% { transform: rotate(360deg); }
-}
-.update-loader.is-complete {
-opacity: 0;
-transform: scale(0.5);
-}
 .firebase-summary-modal {
 display: none;
 position: fixed;
@@ -1446,18 +1288,6 @@ try {
 if (window.top !== window) document.documentElement.classList.add('sot-in-iframe');
 } catch (e) {}
 </script>
-<div id="updateOverlay" class="update-overlay" aria-hidden="true" hidden>
-<div class="update-card">
-<div class="update-logo">
-<img src="mascotedoblo.png" alt="Mascote SOT">
-</div>
-<div class="update-message">
-<strong id="updateOverlayTitle">Bem-vindo ao SOT</strong>
-<span id="updateOverlaySubtitle">Sistema de Organização de Transporte 10.1</span>
-</div>
-<div class="update-loader" aria-hidden="true"></div>
-</div>
-</div>
 <div class="top-bar" role="banner">
 <span class="top-bar__title">SOT 10.1</span>
 <div class="window-controls">
@@ -2029,8 +1859,6 @@ renderEscalaPaoModalCalendario(escalaPaoModalAno, escalaPaoModalMes);
 });
 
 const SOT5_BUILD_ID = '2025-11-09-anim-v1';
-const updateOverlay = document.getElementById('updateOverlay');
-const updateLoader = document.querySelector('.update-loader');
 const SOT_HEALTH_KEY = 'sot_health_metrics_v1';
 const SOT_HEALTH_MAX_EVENTS = 400;
 const sotPageBootAt = Date.now();
@@ -2100,8 +1928,6 @@ var reason = ev && ev.reason ? (ev.reason.message || String(ev.reason)) : 'unhan
 trackSotHealth('unhandled_rejection', { reason: reason });
 } catch (e) {}
 });
-const updateOverlayTitle = document.getElementById('updateOverlayTitle');
-const updateOverlaySubtitle = document.getElementById('updateOverlaySubtitle');
 const firebaseSummaryModal = document.getElementById('firebaseSummaryModal');
 const firebaseSummaryList = document.getElementById('firebaseSummaryList');
 const firebaseSummaryCloseBtn = document.getElementById('firebaseSummaryCloseBtn');
@@ -2173,45 +1999,6 @@ return request.call(docEl).catch(err => {
 console.warn('Falha ao solicitar tela cheia:', err);
 });
 }
-function showUpdateOverlay() {
-if (!updateOverlay) return;
-updateOverlay.removeAttribute('hidden');
-if (updateLoader) {
-updateLoader.classList.remove('is-complete');
-updateLoader.style.animation = 'none';
-void updateLoader.offsetWidth;
-updateLoader.style.animation = '';
-}
-requestAnimationFrame(() => {
-updateOverlay.classList.add('active');
-updateOverlay.setAttribute('aria-hidden', 'false');
-});
-}
-function hideUpdateOverlay() {
-if (!updateOverlay) return;
-updateOverlay.classList.remove('active');
-updateOverlay.setAttribute('aria-hidden', 'true');
-}
-if (updateOverlay) {
-updateOverlay.addEventListener('transitionend', (event) => {
-if (event.propertyName === 'opacity' && !updateOverlay.classList.contains('active')) {
-updateOverlay.setAttribute('hidden', 'true');
-}
-});
-}
-if (updateOverlay) {
-showUpdateOverlay();
-console.log('Exibindo carregamento inicial com status real do Firebase.');
-
-const setOverlayStatus = (title, subtitle, state) => {
-    if (updateOverlayTitle) updateOverlayTitle.textContent = title || '';
-    if (updateOverlaySubtitle) updateOverlaySubtitle.textContent = subtitle || '';
-    if (updateOverlayTitle) {
-        if (state === 'success') updateOverlayTitle.style.color = '#1f8b4c';
-        else if (state === 'error') updateOverlayTitle.style.color = '#b42318';
-        else updateOverlayTitle.style.color = 'var(--primary-blue)';
-    }
-};
 
 const waitForServices = async (timeoutMs) => {
     const start = Date.now();
@@ -2225,32 +2012,6 @@ const waitForServices = async (timeoutMs) => {
     return false;
 };
 
-var sot5OverlayFailsafeTimer = null;
-function clearSot5OverlayFailsafe() {
-    if (sot5OverlayFailsafeTimer) {
-        clearTimeout(sot5OverlayFailsafeTimer);
-        sot5OverlayFailsafeTimer = null;
-    }
-}
-
-const finishOverlay = (state) => {
-    clearSot5OverlayFailsafe();
-    if (updateLoader) updateLoader.classList.add('is-complete');
-    try {
-        localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
-    } catch (e) {}
-    const delay = state === 'success' ? 700 : 1800;
-    setTimeout(() => {
-        hideUpdateOverlay();
-        requestFullscreenSafe().then(() => {
-            console.log('Modo tela cheia solicitado ao entrar no SOT5.');
-        });
-    }, delay);
-};
-
-/** Após este tempo o overlay fecha mesmo que alguma Promise fique pendente (rede/CDN/Firebase). */
-const SOT5_OVERLAY_FAILSAFE_MS = 75000;
-
 const SOT_SIGNIN_WAIT_MS = 45000;
 
 function isSotPersistedOfflineMode() {
@@ -2261,79 +2022,43 @@ function isSotPersistedOfflineMode() {
     }
 }
 
-const runInitialFirebaseLoad = async () => {
+/** Sincronização / recarga de iframes em segundo plano — sem modal de carregamento no F5. */
+const runInitialFirebaseBootstrap = async () => {
     trackSotHealth('initial_load_start', {});
-    setOverlayStatus('Carregando dados do Firebase...', 'Aguarde enquanto sincronizamos os dados do sistema.', 'loading');
     try {
         const ready = await waitForServices(12000);
-        if (!ready) throw new Error('Serviços de sincronização não ficaram disponíveis a tempo.');
+        if (!ready) {
+            trackSotHealth('initial_load_services_timeout', { elapsedMs: Date.now() - sotPageBootAt });
+            try { localStorage.setItem('sot5_build_id', SOT5_BUILD_ID); } catch (e) {}
+            return;
+        }
 
-        /* Modo offline SOT: não aguardar Firebase/API no shell — evita overlay preso em waitForAPICheck ou boot ESM. */
         if (isSotPersistedOfflineMode()) {
             trackSotHealth('initial_load_offline_short_circuit', {});
-            setOverlayStatus('Modo offline', 'A iniciar o sistema com dados locais (sem esperar pela nuvem).', 'loading');
-            setOverlayStatus('Sistema pronto', 'Modo offline ativo. Pode ligar à nuvem nas abas (interruptor Modo), se necessário.', 'success');
+            try { localStorage.setItem('sot5_build_id', SOT5_BUILD_ID); } catch (e) {}
             trackSotHealth('initial_load_success_offline', { elapsedMs: Date.now() - sotPageBootAt });
-            finishOverlay('success');
             return;
         }
 
         dataService.setPreferLocalStorage(false);
         await dataService.waitForAPICheck();
-        if (!dataService.useFirebase) throw new Error('Firebase não está disponível no momento.');
-
-        if (window.__sotWaitUntilSignedIn && typeof window.__sotWaitUntilSignedIn === 'function') {
-            setOverlayStatus('Login Google necessário', 'Use «Entrar com Google» na barra superior (ou acima) e aguarde.', 'loading');
-            const signedIn = await window.__sotWaitUntilSignedIn(SOT_SIGNIN_WAIT_MS);
-            if (!signedIn) throw new Error('É necessário entrar com Google para carregar e sincronizar os dados na nuvem.');
+        if (!dataService.useFirebase) {
+            trackSotHealth('initial_load_no_firebase', { elapsedMs: Date.now() - sotPageBootAt });
+            try { localStorage.setItem('sot5_build_id', SOT5_BUILD_ID); } catch (e) {}
+            return;
         }
 
-        setOverlayStatus('Carregando dados do Firebase...', 'Sincronizando com a nuvem…', 'loading');
+        if (window.__sotWaitUntilSignedIn && typeof window.__sotWaitUntilSignedIn === 'function') {
+            const signedIn = await window.__sotWaitUntilSignedIn(SOT_SIGNIN_WAIT_MS);
+            if (!signedIn) {
+                trackSotHealth('initial_load_signin_timeout', { elapsedMs: Date.now() - sotPageBootAt });
+                try { localStorage.setItem('sot5_build_id', SOT5_BUILD_ID); } catch (e) {}
+                return;
+            }
+        }
+
         await runSyncWithHealth('initial_firebase_load', true);
 
-        const summarizeFirebaseLoads = async function () {
-            const checks = [
-                { nome: 'Saídas Administrativas', fn: function () { return dataService.getSaidasAdministrativas(); } },
-                { nome: 'Saídas de Ambulâncias', fn: function () { return dataService.getSaidasAmbulancias(); } },
-                { nome: 'Frota (Viaturas)', fn: function () { return dataService.getViaturas(); } },
-                { nome: 'Pessoal (Motoristas)', fn: function () { return dataService.getMotoristas(); } }
-            ];
-            const out = [];
-            for (const item of checks) {
-                try {
-                    const v = await item.fn();
-                    const ok = Array.isArray(v);
-                    out.push({ nome: item.nome, ok: ok, qtd: ok ? v.length : 0 });
-                } catch (e) {
-                    out.push({ nome: item.nome, ok: false, qtd: 0 });
-                }
-            }
-            // Cadastro de Saídas depende desses conjuntos estarem disponíveis.
-            const baseOk = out.filter(function (x) { return x.ok; }).length >= 3;
-            out.push({ nome: 'Cadastro de Saídas (base)', ok: baseOk, qtd: 0 });
-            return out;
-        };
-
-        const showFirebaseSummaryModal = function (items) {
-            if (!firebaseSummaryModal || !firebaseSummaryList) return;
-            firebaseSummaryList.innerHTML = '';
-            (items || []).forEach(function (item) {
-                var li = document.createElement('li');
-                li.className = 'firebase-summary-item';
-                var left = document.createElement('span');
-                left.textContent = item.nome;
-                var right = document.createElement('span');
-                right.className = item.ok ? 'ok' : 'fail';
-                right.textContent = item.ok ? ('OK' + (item.qtd >= 0 ? ' (' + item.qtd + ')' : '')) : 'Falha';
-                li.appendChild(left);
-                li.appendChild(right);
-                firebaseSummaryList.appendChild(li);
-            });
-            firebaseSummaryModal.classList.add('active');
-            firebaseSummaryModal.setAttribute('aria-hidden', 'false');
-        };
-
-        // Garante que todas as abas reflitam os dados sincronizados na inicialização.
         try {
             getAllTabIframes().forEach(function(iframe) {
                 var src = iframe.getAttribute('data-src') || iframe.getAttribute('src');
@@ -2345,38 +2070,16 @@ const runInitialFirebaseLoad = async () => {
             console.warn('Falha ao recarregar iframes após sync inicial:', reloadErr);
         }
 
-        try {
-            const summary = await summarizeFirebaseLoads();
-            setTimeout(function () { showFirebaseSummaryModal(summary); }, 1000);
-        } catch (summaryErr) {
-            console.warn('Falha ao montar resumo de carga Firebase:', summaryErr);
-        }
-
-        setOverlayStatus('Dados carregados com sucesso', 'Sistema atualizado com dados do Firebase.', 'success');
+        try { localStorage.setItem('sot5_build_id', SOT5_BUILD_ID); } catch (e) {}
         trackSotHealth('initial_load_success', { elapsedMs: Date.now() - sotPageBootAt });
-        finishOverlay('success');
     } catch (e) {
-        console.error('Falha no carregamento inicial do Firebase:', e);
+        console.error('Falha no carregamento inicial (SOT5, segundo plano):', e);
         trackSotHealth('initial_load_error', { elapsedMs: Date.now() - sotPageBootAt, message: e && e.message ? e.message : String(e) });
-        setOverlayStatus('Falha ao carregar dados da nuvem', 'Verifique conexão/regras do Firebase. O sistema seguirá com os dados disponíveis.', 'error');
-        finishOverlay('error');
+        try { localStorage.setItem('sot5_build_id', SOT5_BUILD_ID); } catch (e2) {}
     }
 };
 
-sot5OverlayFailsafeTimer = setTimeout(function () {
-    sot5OverlayFailsafeTimer = null;
-    console.warn('SOT5: tempo máximo do overlay de arranque — a fechar para permitir uso do sistema.');
-    try {
-        trackSotHealth('initial_load_failsafe', { elapsedMs: Date.now() - sotPageBootAt });
-    } catch (e) {}
-    try {
-        if (updateLoader) updateLoader.classList.add('is-complete');
-        hideUpdateOverlay();
-        if (updateOverlay) updateOverlay.setAttribute('hidden', 'true');
-    } catch (e2) {}
-}, SOT5_OVERLAY_FAILSAFE_MS);
-
-setTimeout(runInitialFirebaseLoad, 0);
+setTimeout(runInitialFirebaseBootstrap, 0);
 
 if (firebaseSummaryCloseBtn && firebaseSummaryModal) {
 firebaseSummaryCloseBtn.addEventListener('click', function () {
@@ -2391,7 +2094,6 @@ firebaseSummaryModal.addEventListener('click', function (ev) {
 });
 }
 
-// Se o usuário fizer login Google depois que a página já carregou, sincroniza com a nuvem.
 window.addEventListener('sot-firebase-auth-changed', function (ev) {
     try {
         if (!ev.detail || !ev.detail.signedIn) return;
@@ -2404,7 +2106,7 @@ window.addEventListener('sot-firebase-auth-changed', function (ev) {
         }, 800);
     } catch (e) {}
 });
-}
+
 function getPassword() {
 if (!localStorage.getItem('adminPassword')) {
 localStorage.setItem('adminPassword', '1234');
