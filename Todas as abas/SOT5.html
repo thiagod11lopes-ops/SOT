@@ -2237,6 +2237,16 @@ const finishOverlay = (state) => {
     }, delay);
 };
 
+const SOT_SIGNIN_WAIT_MS = 90000;
+
+function isSotPersistedOfflineMode() {
+    try {
+        return typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
 const runInitialFirebaseLoad = async () => {
     trackSotHealth('initial_load_start', {});
     setOverlayStatus('Carregando dados do Firebase...', 'Aguarde enquanto sincronizamos os dados do sistema.', 'loading');
@@ -2244,13 +2254,28 @@ const runInitialFirebaseLoad = async () => {
         const ready = await waitForServices(12000);
         if (!ready) throw new Error('Serviços de sincronização não ficaram disponíveis a tempo.');
 
+        /* Modo offline SOT: não bloquear no login Google nem na sincronização com a nuvem (evita overlay interminável). */
+        if (isSotPersistedOfflineMode()) {
+            trackSotHealth('initial_load_offline_short_circuit', {});
+            setOverlayStatus('Modo offline', 'A iniciar o sistema com dados locais (sem esperar pela nuvem).', 'loading');
+            try {
+                await dataService.waitForAPICheck();
+            } catch (wc) {
+                console.warn('waitForAPICheck em modo offline (SOT5):', wc);
+            }
+            setOverlayStatus('Sistema pronto', 'Modo offline ativo. Pode ligar à nuvem nas abas (interruptor Modo), se necessário.', 'success');
+            trackSotHealth('initial_load_success_offline', { elapsedMs: Date.now() - sotPageBootAt });
+            finishOverlay('success');
+            return;
+        }
+
         dataService.setPreferLocalStorage(false);
         await dataService.waitForAPICheck();
         if (!dataService.useFirebase) throw new Error('Firebase não está disponível no momento.');
 
         if (window.__sotWaitUntilSignedIn && typeof window.__sotWaitUntilSignedIn === 'function') {
             setOverlayStatus('Login Google necessário', 'Use «Entrar com Google» na barra superior (ou acima) e aguarde.', 'loading');
-            const signedIn = await window.__sotWaitUntilSignedIn(300000);
+            const signedIn = await window.__sotWaitUntilSignedIn(SOT_SIGNIN_WAIT_MS);
             if (!signedIn) throw new Error('É necessário entrar com Google para carregar e sincronizar os dados na nuvem.');
         }
 
