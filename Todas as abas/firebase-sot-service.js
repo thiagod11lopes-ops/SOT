@@ -277,6 +277,62 @@
     }
 
     /**
+     * Ouve `sot_data/saidasAdministrativas` em tempo real (compat). Atualiza cache como `get`; chama callback após cada snapshot.
+     * @returns {function} unsubscribe
+     */
+    function watchSaidasAdministrativas(callback) {
+        var keyStr = 'saidasAdministrativas';
+        if (isSotOfflineModeActive()) {
+            return function() {};
+        }
+        if (!authGateAllowsFirestore()) {
+            return function() {};
+        }
+        var d = db();
+        if (!d) {
+            return function() {};
+        }
+        try {
+            var ref = d.collection(COL).doc(keyStr);
+            return ref.onSnapshot(
+                function(snap) {
+                    if (isSotOfflineModeActive()) return;
+                    try {
+                        var value = null;
+                        if (snap.exists) {
+                            var data = snap.data();
+                            rememberDocGenerationForKey(keyStr, data);
+                            if (data && data._sotJsonV1 === true && typeof data.body === 'string') {
+                                try {
+                                    value = JSON.parse(data.body);
+                                } catch (parseErr) {
+                                    log('error', 'watch JSON parse key=' + keyStr, parseErr && parseErr.message);
+                                    value = null;
+                                }
+                            } else if (data && Array.isArray(data.items)) value = data.items;
+                            else if (data && data.data !== undefined) value = data.data;
+                            else value = data;
+                        } else {
+                            if (SOT_F7_GENERATION_KEYS[keyStr]) docGenByKey.set(keyStr, 0);
+                        }
+                        setCache(keyStr, value);
+                    } catch (e) {
+                        log('warn', 'watchSaidasAdministrativas parse', e && e.message);
+                    }
+                    try {
+                        if (typeof callback === 'function') callback();
+                    } catch (e2) {}
+                },
+                function(err) {
+                    log('warn', 'watchSaidasAdministrativas listener', err && err.message);
+                }
+            );
+        } catch (e) {
+            return function() {};
+        }
+    }
+
+    /**
      * Grava um documento na coleção sot_data. value pode ser array ou objeto.
      * Invalida o cache da chave e coalesce escritas concorrentes na mesma chave.
      *
@@ -468,6 +524,8 @@
         getLastSotDocGeneration: getLastSotDocGeneration,
         /** Invalida uma chave (ex.: após outra aba avisar via BroadcastChannel). */
         invalidateCache: invalidateCache,
-        invalidateAllCache: invalidateAllCache
+        invalidateAllCache: invalidateAllCache,
+        /** Tempo real: documento mestre de saídas administrativas (alinhado ao módulo firebase-sot-firestore.mjs). */
+        watchSaidasAdministrativas: watchSaidasAdministrativas
     };
 })();

@@ -491,6 +491,53 @@ export async function installFirebaseSot() {
       };
     },
 
+    /**
+     * Ouve o documento mestre `sot_data/saidasAdministrativas` em tempo real.
+     * Atualiza a cache em memória (alinhada a `get`) e chama `callback` a cada mudança.
+     * @returns {function} unsubscribe
+     */
+    watchSaidasAdministrativas: function (callback) {
+      if (isSotOfflineModeActive()) {
+        return function () {};
+      }
+      if (!db || !authGateOk()) {
+        return function () {};
+      }
+      var keyStr = "saidasAdministrativas";
+      var ref = doc(db, COL, keyStr);
+      var unsub = onSnapshot(
+        ref,
+        function (snap) {
+          try {
+            var value = null;
+            if (snapshotExists(snap)) {
+              var rawData = snap.data();
+              rememberDocGenerationForKey(keyStr, rawData);
+              value = valueFromFirestoreDocData(rawData);
+            } else {
+              if (SOT_F7_GENERATION_KEYS[keyStr]) {
+                docGenByKey.set(keyStr, 0);
+              }
+            }
+            setCache(keyStr, value);
+          } catch (e) {
+            log("warn", "watchSaidasAdministrativas parse key=" + keyStr, e && e.message);
+          }
+          try {
+            if (typeof callback === "function") callback();
+          } catch (e2) {}
+        },
+        function (err) {
+          log("warn", "watchSaidasAdministrativas listener key=" + keyStr, err && err.message);
+        }
+      );
+      return function () {
+        try {
+          unsub();
+        } catch (e) {}
+      };
+    },
+
     invalidateAllCache: function () {
       try {
         cache.clear();
