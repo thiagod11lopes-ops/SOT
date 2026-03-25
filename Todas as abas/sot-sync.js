@@ -9,6 +9,8 @@
     'use strict';
 
     var SOT_LAST_SYNC_KEY = 'sot_last_sync_timestamp';
+    /** Mesma semântica que Configurações / data-service (modo online vs offline SOT). */
+    var SOT_OFFLINE_MODE_KEY = 'sot_offline_mode';
     var AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
     var LOG_PREFIX = '[sot-sync]';
     var syncInFlight = false;
@@ -157,12 +159,29 @@
         }
     }
 
+    /**
+     * Espelha em sot_data o mesmo valor de localStorage.sot_offline_mode ('true'|'false'),
+     * alinhado aos botões Modo offline / Modo online em Configurações.
+     */
+    function persistOfflineModeToCloud() {
+        try {
+            var v = localStorage.getItem(SOT_OFFLINE_MODE_KEY);
+            if (v !== 'true' && v !== 'false') v = 'false';
+            if (!isSotCloudSyncDisabledByPolicy() && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                window.firebaseSot.set(SOT_OFFLINE_MODE_KEY, v).catch(function() {});
+            }
+        } catch (e) {
+            log('warn', 'persistOfflineModeToCloud', e);
+        }
+    }
+
     function persistLastSyncTimestamp(now) {
         try {
             localStorage.setItem(SOT_LAST_SYNC_KEY, now);
             if (!isSotCloudSyncDisabledByPolicy() && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
                 window.firebaseSot.set(SOT_LAST_SYNC_KEY, now).catch(function() {});
             }
+            persistOfflineModeToCloud();
         } catch (e) {
             log('warn', 'persistLastSyncTimestamp', e);
         }
@@ -432,7 +451,9 @@
 
     window.SOTSync = {
         LAST_SYNC_KEY: SOT_LAST_SYNC_KEY,
+        OFFLINE_MODE_KEY: SOT_OFFLINE_MODE_KEY,
         getLastSyncDisplay: getLastSyncDisplay,
+        persistOfflineModeToCloud: persistOfflineModeToCloud,
         sync: sync,
         runAutoSync: runAutoSync,
         AUTO_SYNC_INTERVAL_MS: AUTO_SYNC_INTERVAL_MS

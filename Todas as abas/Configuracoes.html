@@ -856,7 +856,8 @@
                     <i class="fas fa-trash-alt"></i> Apagar Todos os Dados do Sistema
                 </button>
                 <p id="ultimaSincronizacaoInfo" style="margin: 14px 0 0; font-size: 13px; color: var(--dark-gray); padding: 8px; background: #f0f4f8; border-radius: 6px;">
-                    <i class="fas fa-sync-alt"></i> Última sincronização (local ↔ Firebase): <strong id="ultimaSincronizacaoTexto">—</strong>
+                    <i class="fas fa-sync-alt"></i> Última sincronização (local ↔ Firebase): <strong id="ultimaSincronizacaoTexto">—</strong><br>
+                    <span style="display: inline-block; margin-top: 8px;" title="Chave localStorage e documento sot_data: sot_offline_mode ('true' = offline, 'false' = online). Espelhada no Firebase após sincronizar ou ao gravar última sync em modo online."><i class="fas fa-plug"></i> Modo de ligação (igual aos botões Modo offline / Modo online): <strong id="sotModoLigacaoTexto">—</strong></span>
                 </p>
             </div>
         </div>
@@ -1603,7 +1604,8 @@
                     'equipamentosTabOrder',
                     'cadastroItensPersonalizados',
                     'vtr_oficina_registros',
-                    'sot_last_sync_timestamp'
+                    'sot_last_sync_timestamp',
+                    'sot_offline_mode'
                 ];
                 
                 // Coletar todas as chaves do localStorage
@@ -1649,7 +1651,7 @@
                 'integrantesEscalaPao', 'feriadosEscalaPao', 'escalaPaoInsercoes', 'diasExcluidosEscalaPao',
                 'historicoEscalaPao', 'puladosEscalaPao', 'ultimoIndiceEscala', 'escalaPaoDataReferencia',
                 'equipamentosSuprimentos', 'equipamentosMovements', 'equipamentosTabOrder', 'cadastroItensPersonalizados',
-                'vtr_oficina_registros', 'sot_last_sync_timestamp', 'vistorias'
+                'vtr_oficina_registros', 'sot_last_sync_timestamp', 'sot_offline_mode', 'vistorias'
             ];
 
             /**
@@ -1873,6 +1875,17 @@
                                         data['sot_last_sync_timestamp'] = typeof ts === 'string' ? ts : JSON.stringify(ts);
                                     }
                                 } catch (e) { console.warn('Falha ao obter sot_last_sync_timestamp para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'sot_offline_mode')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const mo = await fsGet('sot_offline_mode');
+                                    if (mo === true) data['sot_offline_mode'] = 'true';
+                                    else if (mo === false) data['sot_offline_mode'] = 'false';
+                                    else if (typeof mo === 'string' && (mo === 'true' || mo === 'false')) data['sot_offline_mode'] = mo;
+                                    else if (mo != null && mo !== '') data['sot_offline_mode'] = String(mo);
+                                } catch (e) { console.warn('Falha ao obter sot_offline_mode para backup:', e); }
                             });
                         }
                         const _equipBackupKeys = ['equipamentosSuprimentos', 'equipamentosMovements', 'equipamentosTabOrder', 'cadastroItensPersonalizados'];
@@ -3164,6 +3177,9 @@
                         if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('sot_last_sync_timestamp', now);
                         }
+                        if (window.SOTSync && typeof window.SOTSync.persistOfflineModeToCloud === 'function') {
+                            window.SOTSync.persistOfflineModeToCloud();
+                        }
                     } catch (tsErr) {
                         console.warn('Não foi possível gravar o registro de última sincronização:', tsErr);
                     }
@@ -3202,8 +3218,8 @@
                         }
                         await pushLocalDataToFirebase();
                         recordUsuarioAudit('config_push_local_to_firebase', { source: 'Configuracoes.html' });
-                        if (typeof updateUltimaSincronizacaoDisplay === 'function') {
-                            updateUltimaSincronizacaoDisplay();
+                        if (typeof updateSincronizacaoEConexaoDisplay === 'function') {
+                            updateSincronizacaoEConexaoDisplay();
                         }
                     } catch (err) {
                         console.error('Erro no fluxo de envio à nuvem:', err);
@@ -3370,10 +3386,25 @@
                 });
             }
 
-            /** Atualiza o texto da última sincronização na tela (usa sot-sync.js). */
-            function updateUltimaSincronizacaoDisplay() {
-                const el = document.getElementById('ultimaSincronizacaoTexto');
-                if (el && window.SOTSync && typeof window.SOTSync.getLastSyncDisplay === 'function') el.textContent = window.SOTSync.getLastSyncDisplay();
+            /** Última sync + modo online/offline (chave sot_offline_mode, alinhada aos botões e ao espelho na nuvem). */
+            function updateSincronizacaoEConexaoDisplay() {
+                const elSync = document.getElementById('ultimaSincronizacaoTexto');
+                if (elSync && window.SOTSync && typeof window.SOTSync.getLastSyncDisplay === 'function') {
+                    elSync.textContent = window.SOTSync.getLastSyncDisplay();
+                }
+                const elModo = document.getElementById('sotModoLigacaoTexto');
+                if (elModo) {
+                    let off = false;
+                    try {
+                        if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === null) {
+                            localStorage.setItem('sot_offline_mode', 'false');
+                        }
+                        off = typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true';
+                    } catch (e) {}
+                    elModo.textContent = off
+                        ? 'Offline — só dados neste dispositivo (Firebase bloqueado)'
+                        : 'Online — Firebase e sincronização permitidos neste navegador';
+                }
             }
 
             // 3) Sincronizar (local ↔ Firebase) — botão usa sot-sync.js
@@ -3389,7 +3420,7 @@
                                 recordUsuarioAudit('config_sync_local_firebase', { source: 'Configuracoes.html' });
                             },
                             onError: (err) => showGerenciamentoMessage('Erro ao sincronizar: ' + (err && err.message ? err.message : err), 'error'),
-                            afterSync: updateUltimaSincronizacaoDisplay
+                            afterSync: updateSincronizacaoEConexaoDisplay
                         });
                     }
                     saveAllToFirebaseBtn.disabled = false;
@@ -3443,7 +3474,7 @@
             }
 
             // Exibir última sincronização ao carregar a aba
-            updateUltimaSincronizacaoDisplay();
+            updateSincronizacaoEConexaoDisplay();
 
             function updateOfflineModeButtonsUi() {
                 try {
@@ -3511,6 +3542,7 @@
                         cfgImportSyncFirebaseAfter.removeAttribute('aria-disabled');
                     }
                 }
+                updateSincronizacaoEConexaoDisplay();
             }
             updateOfflineModeButtonsUi();
 
@@ -3529,7 +3561,7 @@
                     if (typeof dataService === 'undefined') return;
                     await dataService.waitForAPICheck();
                     if (!dataService.useFirebase || !navigator.onLine) return;
-                    await window.SOTSync.sync(true, { afterSync: updateUltimaSincronizacaoDisplay });
+                    await window.SOTSync.sync(true, { afterSync: updateSincronizacaoEConexaoDisplay });
                 } catch (e) { console.warn('Auto-sync ao abrir Configurações:', e); }
             })();
 
@@ -3635,8 +3667,8 @@
                             console.warn('Timestamp de sincronização:', tsErr);
                         }
 
-                        if (typeof updateUltimaSincronizacaoDisplay === 'function') {
-                            updateUltimaSincronizacaoDisplay();
+                        if (typeof updateSincronizacaoEConexaoDisplay === 'function') {
+                            updateSincronizacaoEConexaoDisplay();
                         }
 
                         recordUsuarioAudit('config_modo_online_merge_firebase', { source: 'Configuracoes.html' });
