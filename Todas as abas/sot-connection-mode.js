@@ -694,13 +694,7 @@
 
         if (toggleIn && toggleIn.type === 'checkbox') {
             toggleIn.addEventListener('change', function () {
-                if (global.__SOT_TRANSIENT_AUTO_SYNC) {
-                    return;
-                }
                 var wantOnline = toggleIn.checked;
-                if (wantOnline && global.SOTOfflineScheduledSync && typeof global.SOTOfflineScheduledSync.onManualOnline === 'function') {
-                    global.SOTOfflineScheduledSync.onManualOnline();
-                }
                 if (wantOnline) {
                     activateOnlineMode(opts);
                 } else {
@@ -716,18 +710,7 @@
         }
         if (onBtn) {
             onBtn.addEventListener('click', function () {
-                if (global.SOTOfflineScheduledSync && typeof global.SOTOfflineScheduledSync.onManualOnline === 'function') {
-                    global.SOTOfflineScheduledSync.onManualOnline();
-                }
                 activateOnlineMode(opts);
-            });
-        }
-
-        if (global.SOTOfflineScheduledSync && typeof global.SOTOfflineScheduledSync.register === 'function') {
-            global.SOTOfflineScheduledSync.register({
-                msgElementId: opts.scheduledSyncMsgElementId || 'sotOfflineAutoSyncMsg',
-                toggleInputId: toggleInputId,
-                auditSource: opts.auditSource || ''
             });
         }
     }

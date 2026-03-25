@@ -11,7 +11,6 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
 <script src="data-service.js?v=20260319-1" defer></script>
 <script src="sot-sync.js" defer></script>
 <script src="sot-connection-mode.js" defer></script>
-<script src="sot-offline-scheduled-sync.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -154,20 +153,10 @@ main { margin: 20px 10px; }
 .sot-conn-unified .sync-status-pill { max-width: 100%; }
 .sot-conn-unified__toggle {
   display: inline-flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  max-width: 100%;
 }
-.sot-offline-auto-msg {
-  flex: 1 1 100%;
-  font-size: 11px;
-  color: #64748b;
-  line-height: 1.35;
-  max-width: 320px;
-}
-body[data-theme="dark"] .sot-offline-auto-msg { color: #94a3b8; }
 .sot-conn-inline-label {
   font-size: 10px;
   font-weight: 700;
@@ -565,7 +554,6 @@ border: 1px solid transparent;
 </label>
 <span class="sot-conn-toggle__cap">Online</span>
 </div>
-<span id="sotOfflineAutoSyncMsg" class="sot-offline-auto-msg" role="status" aria-live="polite"></span>
 </div>
 </div>
 <div class="toolbar-actions">
