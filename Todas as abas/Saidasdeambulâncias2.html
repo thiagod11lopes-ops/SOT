@@ -141,34 +141,80 @@ main { margin: 20px 10px; }
   display: inline-flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 0;
-  padding: 3px;
-  border-radius: 999px;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
+  gap: 10px;
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
 }
 .sot-conn-btn {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   padding: 6px 12px;
   border-radius: 999px;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  background: transparent;
-  color: #64748b;
+  background: #ffffff;
+  color: #334155;
 }
 .sot-conn-btn:disabled { opacity: 0.7; cursor: wait; }
+.sot-conn-btn--internal { display: none !important; }
+
+.sot-conn-toggle-word {
+  font-size: 12px;
+  font-weight: 800;
+  color: #334155;
+  user-select: none;
+  white-space: nowrap;
+}
+.sot-conn-toggle-word--offline.is-active { color: #c2410c; }
+.sot-conn-toggle-word--online.is-active { color: #2563eb; }
+
+.sot-conn-toggle {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  position: relative;
+  cursor: pointer;
+  padding: 0;
+}
+.sot-conn-toggle__knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  transform: translateY(-50%);
+}
+.sot-connection-mode-inline.is-offline .sot-conn-toggle {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.sot-connection-mode-inline.is-online .sot-conn-toggle {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.sot-connection-mode-inline.is-online .sot-conn-toggle__knob {
+  transform: translate(22px, -50%);
+}
 .sot-conn-btn.is-active.sot-conn-btn--offline {
   background: #fff7ed;
   color: #c2410c;
+  border-color: #fed7aa;
 }
 .sot-conn-btn.is-active.sot-conn-btn--online {
   background: #eff6ff;
   color: #2563eb;
+  border-color: #bfdbfe;
 }
 .sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body[data-theme="dark"] .sot-connection-mode-inline { background: #0f172a; border-color: #334155; }
-body[data-theme="dark"] .sot-conn-btn { color: #94a3b8; }
+body[data-theme="dark"] .sot-connection-mode-inline { background: transparent; }
+body[data-theme="dark"] .sot-conn-btn { color: #e5e7eb; background: #0b1220; }
 body[data-theme="dark"] .sot-conn-btn--offline.is-active {
   background: rgba(253, 186, 116, 0.12);
   color: #fdba74;
@@ -178,6 +224,19 @@ body[data-theme="dark"] .sot-conn-btn--online.is-active {
   color: #93c5fd;
 }
 body[data-theme="dark"] .sot-conn-chip { background: #0c4a6e; color: #7dd3fc; border-color: #0369a1; }
+
+body[data-theme="dark"] .sot-conn-toggle-word { color: #e5e7eb; }
+body[data-theme="dark"] .sot-conn-toggle-word--offline.is-active { color: #fdba74; }
+body[data-theme="dark"] .sot-conn-toggle-word--online.is-active { color: #93c5fd; }
+body[data-theme="dark"] .sot-conn-toggle { background: #0b1220; border-color: #334155; }
+body[data-theme="dark"] .sot-connection-mode-inline.is-online .sot-conn-toggle {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: rgba(147, 197, 253, 0.35);
+}
+body[data-theme="dark"] .sot-connection-mode-inline.is-offline .sot-conn-toggle {
+  background: rgba(253, 186, 116, 0.12);
+  border-color: rgba(253, 186, 116, 0.35);
+}
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.9); }
@@ -534,9 +593,14 @@ border: 1px solid transparent;
   <span class="sync-dot" aria-hidden="true"></span>
   <span id="syncStatusTextAmb">Carregando dados...</span>
 </div>
-<div class="sot-connection-mode-inline" role="group" aria-label="Modo de ligação SOT">
-<button type="button" id="sotConnModoOfflineAmb" class="sot-conn-btn sot-conn-btn--offline" title="Operar só com dados neste dispositivo; Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
-<button type="button" id="sotConnModoOnlineAmb" class="sot-conn-btn sot-conn-btn--online" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
+<div class="sot-connection-mode-inline" id="sotConnSelectorAmb" role="group" aria-label="Modo de ligação SOT">
+<button type="button" id="sotConnModoOfflineAmb" class="sot-conn-btn sot-conn-btn--offline sot-conn-btn--internal" title="Operar só com dados neste dispositivo; Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
+<button type="button" id="sotConnModoOnlineAmb" class="sot-conn-btn sot-conn-btn--online sot-conn-btn--internal" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
+<span id="sotConnToggleOfflineWordAmb" class="sot-conn-toggle-word sot-conn-toggle-word--offline">Offline</span>
+<button type="button" id="sotConnToggleAmb" class="sot-conn-toggle" role="switch" aria-checked="false" title="Alternar modo de ligação">
+  <span class="sot-conn-toggle__knob" aria-hidden="true"></span>
+</button>
+<span id="sotConnToggleOnlineWordAmb" class="sot-conn-toggle-word sot-conn-toggle-word--online">Online</span>
 <span id="sotConnChipAmb" class="sot-conn-chip" title="Estado atual da ligação"></span>
 </div>
 <div class="toolbar-actions">
@@ -2695,18 +2759,44 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    var selectorEl = document.getElementById('sotConnSelectorAmb');
+    var offBtn = document.getElementById('sotConnModoOfflineAmb');
+    var onBtn = document.getElementById('sotConnModoOnlineAmb');
+    var toggleBtn = document.getElementById('sotConnToggleAmb');
+    var offWord = document.getElementById('sotConnToggleOfflineWordAmb');
+    var onWord = document.getElementById('sotConnToggleOnlineWordAmb');
+
     function updateAmbConnButtonsUi() {
         var off = false;
         try {
             off = localStorage.getItem('sot_offline_mode') === 'true';
         } catch (e) {}
-        var offBtn = document.getElementById('sotConnModoOfflineAmb');
-        var onBtn = document.getElementById('sotConnModoOnlineAmb');
-        if (offBtn) offBtn.classList.toggle('is-active', !!off);
-        if (onBtn) onBtn.classList.toggle('is-active', !off);
+
+        if (selectorEl) {
+            selectorEl.classList.toggle('is-offline', !!off);
+            selectorEl.classList.toggle('is-online', !off);
+        }
+        if (offWord) offWord.classList.toggle('is-active', !!off);
+        if (onWord) onWord.classList.toggle('is-active', !off);
+        if (toggleBtn) toggleBtn.setAttribute('aria-checked', String(!off));
     }
 
     updateAmbConnButtonsUi();
+
+    if (toggleBtn && offBtn && onBtn && !toggleBtn.__sotBound) {
+        toggleBtn.__sotBound = true;
+        toggleBtn.addEventListener('click', function () {
+            var offNow = false;
+            try {
+                offNow = localStorage.getItem('sot_offline_mode') === 'true';
+            } catch (e) {}
+            if (offNow) {
+                onBtn.click();
+            } else {
+                offBtn.click();
+            }
+        });
+    }
     window.addEventListener('storage', function (ev) {
         if (ev && ev.key === 'sot_offline_mode') updateAmbConnButtonsUi();
     });
