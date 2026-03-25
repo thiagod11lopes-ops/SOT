@@ -1161,35 +1161,34 @@
             dateInput.value = todayISO;
             dateLabel.textContent = formatDateLabel(todayISO);
 
-            function getPreviousKmChegada(placa, currentDateStr, currentHoraStr, allSaidas) {
-                if (!placa || !Array.isArray(allSaidas)) return null;
-                const baseDateTime = new Date(`${currentDateStr}T${currentHoraStr || '00:00'}`);
-                if (isNaN(baseDateTime.getTime())) return null;
-                const candidatos = allSaidas
-                    .filter(s => {
-                        if (!s.viatura || String(s.viatura).trim() !== String(placa).trim()) return false;
-                        const d = s.dataSaida || s.dataPedido || s.data;
-                        const h = s.horaSaida || s.hora || s.saida || '00:00';
-                        const isoDate = parseDateToISO(d);
-                        if (!isoDate) return false;
-                        const dt = new Date(`${isoDate}T${h}`);
-                        if (isNaN(dt.getTime())) return false;
-                        return dt < baseDateTime;
-                    })
-                    .sort((a, b) => {
-                        const daIso = parseDateToISO(a.dataSaida || a.dataPedido || a.data);
-                        const dbIso = parseDateToISO(b.dataSaida || b.dataPedido || b.data);
-                        const da = daIso ? new Date(`${daIso}T${a.horaSaida || a.hora || a.saida || '00:00'}`) : new Date(0);
-                        const db = dbIso ? new Date(`${dbIso}T${b.horaSaida || b.hora || b.saida || '00:00'}`) : new Date(0);
-                        return db - da;
-                    });
-                if (!candidatos.length) return null;
-                const ultimo = candidatos[0];
-                const raw = ultimo.kmChegada ?? ultimo.km_chegada ?? '';
-                const str = String(raw).trim();
-                if (!str) return null;
-                const num = parseFloat(str.replace('.', '').replace(',', '.'));
-                return isNaN(num) ? null : num;
+            /** Igual ao SOT (`getLastKmChegadaAdm`): última KM chegada da placa, por data/hora da saída (mais recente primeiro). */
+            function quadroSaidaAdmActive(s) {
+                return s && (s.deletedAt == null || String(s.deletedAt).trim() === '');
+            }
+            function quadroSamePlacaSaida(s, placa) {
+                const p = String(placa || '').trim();
+                if (!p) return false;
+                const v1 = String(s.viatura || '').trim();
+                const v2 = String(s.viatura_id || '').trim();
+                return v1 === p || v2 === p;
+            }
+            function quadroSaidaDateTimeMs(s) {
+                const iso = parseDateToISO(s.dataSaida || s.dataPedido || s.data || '');
+                if (!iso) return 0;
+                const h = getHoraSaida(s) || '00:00';
+                const dt = new Date(`${iso}T${h}`);
+                return isNaN(dt.getTime()) ? 0 : dt.getTime();
+            }
+            function getLastKmChegadaForQuadro(placa, allSaidas) {
+                if (!placa || !Array.isArray(allSaidas)) return '';
+                const list = allSaidas.filter(s => quadroSaidaAdmActive(s) && quadroSamePlacaSaida(s, placa));
+                list.sort((a, b) => quadroSaidaDateTimeMs(b) - quadroSaidaDateTimeMs(a));
+                for (const s of list) {
+                    const raw = s.kmChegada ?? s.km_chegada ?? '';
+                    const str = String(raw).trim();
+                    if (str) return str;
+                }
+                return '';
             }
 
             function normalizeQuadroSaidasRemote(remoteList) {
@@ -1891,9 +1890,8 @@
                     if (step.field === 'kmSaida') {
                         initialValue = saida.kmSaida || saida.km_saida || '';
                         if (!initialValue) {
-                            const baseHora = getHoraSaida(saida) || '00:00';
-                            const prevKm = getPreviousKmChegada(saida.viatura, selectedDate, baseHora, kmHintList);
-                            if (prevKm !== null) initialValue = String(prevKm);
+                            const placa = String(saida.viatura || saida.viatura_id || '').trim();
+                            initialValue = getLastKmChegadaForQuadro(placa, kmHintList) || '';
                         }
                     } else if (step.field === 'kmChegada') {
                         initialValue = saida.kmChegada || saida.km_chegada || '';
