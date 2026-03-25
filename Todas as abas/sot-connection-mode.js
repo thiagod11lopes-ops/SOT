@@ -30,9 +30,22 @@
         } catch (e4) {}
     }
 
-    function dispatchModeChanged() {
+    function dispatchModeChanged(detail) {
         try {
-            global.dispatchEvent(new CustomEvent('sot-connection-mode-changed'));
+            if (detail && typeof detail === 'object') {
+                global.dispatchEvent(new CustomEvent('sot-connection-mode-changed', { detail: detail }));
+            } else {
+                global.dispatchEvent(new CustomEvent('sot-connection-mode-changed'));
+            }
+        } catch (e) {}
+    }
+
+    function broadcastSaidasAdministrativasPeers(source) {
+        try {
+            if (typeof BroadcastChannel === 'undefined') return;
+            var ch = new BroadcastChannel('sot_saidas_administrativas');
+            ch.postMessage({ type: 'saidas_updated', source: source || 'sot-connection-mode', t: Date.now() });
+            ch.close();
         } catch (e) {}
     }
 
@@ -486,7 +499,7 @@
             global.dataService.setPreferLocalStorage(true);
         } catch (e2) {}
         updateChip(opts.chipTextId);
-        dispatchModeChanged();
+        dispatchModeChanged({ offline: true });
         notify(
             'Modo offline ativo. Firebase bloqueado. A recarregar…',
             'success'
@@ -577,7 +590,7 @@
             }
 
             updateChip(opts.chipTextId);
-            dispatchModeChanged();
+            dispatchModeChanged({ offline: false });
 
             audit('sot_modo_online_merge_firebase', { source: opts.auditSource || 'sot-connection-mode.js' });
             notify('Modo online: dados fundidos com o Firebase. A atualizar abas…', 'success');
@@ -587,6 +600,7 @@
                         global.parent.postMessage({ type: 'refresh_all_data' }, '*');
                     }
                 } catch (e) {}
+                broadcastSaidasAdministrativasPeers('sot_modo_online_merge');
             }, 350);
         } catch (e) {
             console.error('Falha ao carregar dados do Firebase para local:', e);

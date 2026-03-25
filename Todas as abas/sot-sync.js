@@ -173,6 +173,12 @@
         try {
             if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'refresh_all_data' }, '*');
         } catch (e) {}
+        try {
+            if (typeof BroadcastChannel === 'undefined') return;
+            var ch = new BroadcastChannel('sot_saidas_administrativas');
+            ch.postMessage({ type: 'saidas_updated', source: 'sot_sync', t: Date.now() });
+            ch.close();
+        } catch (e2) {}
     }
 
     async function sync(silent, callbacks) {

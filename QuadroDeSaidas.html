@@ -2210,6 +2210,19 @@
                 } catch (e) {}
             });
 
+            window.addEventListener('online', function () {
+                try {
+                    scheduleReloadQuadroFromExternal();
+                } catch (e) {}
+            });
+
+            window.addEventListener('sot-connection-mode-changed', function (ev) {
+                try {
+                    var d = ev && ev.detail;
+                    if (d && d.offline === false) scheduleReloadQuadroFromExternal();
+                } catch (e2) {}
+            });
+
             // Em mobile, o estado de auth pode ficar pronto depois do primeiro load.
             // Quando detectar transição para logado, força reload sem cache.
             setInterval(function () {
