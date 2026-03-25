@@ -11,6 +11,14 @@
     const COL = 'sot_data';
     const CACHE_TTL_MS = 60 * 1000; // 1 minuto: reduz leituras repetidas ao Firestore
     const LOG_PREFIX = '[firebase-sot]';
+
+    function isSotOfflineModeActive() {
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
     /** Item 13 Quadro: evitar serializar objetos grandes na consola. */
     const LOG_DETAIL_MAX_LEN = 320;
 
@@ -164,6 +172,10 @@
      */
     async function get(key) {
         const keyStr = String(key);
+        if (isSotOfflineModeActive()) {
+            log('log', 'get bloqueado (modo offline)', keyStr);
+            return null;
+        }
         if (!authGateAllowsFirestore()) {
             log('warn', 'get: login Google necessário (regras Firestore)', keyStr);
             return null;
@@ -284,6 +296,10 @@
      * Lê uma configuração (chave/valor). Documentos de config: config_<chave> com campo value.
      */
     async function getConfig(chave) {
+        if (isSotOfflineModeActive()) {
+            log('log', 'getConfig bloqueado (modo offline)', chave);
+            return null;
+        }
         if (!authGateAllowsFirestore()) {
             log('warn', 'getConfig: login Google necessário');
             return null;
@@ -309,6 +325,10 @@
      * Grava uma configuração.
      */
     async function setConfig(chave, valor) {
+        if (isSotOfflineModeActive()) {
+            log('log', 'setConfig bloqueado (modo offline)', chave);
+            return false;
+        }
         if (!authGateAllowsFirestore()) {
             log('warn', 'setConfig: login Google necessário');
             return false;

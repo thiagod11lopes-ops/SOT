@@ -164,6 +164,14 @@
             if (callbacks.onError) callbacks.onError(new Error('Sincronização já em andamento.'));
             return false;
         }
+        try {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true') {
+                if (!silent && callbacks.onError) {
+                    callbacks.onError(new Error('Modo offline ativo: sincronização com a nuvem está desativada.'));
+                }
+                return false;
+            }
+        } catch (e) {}
         if (typeof dataService === 'undefined') {
             if (callbacks.onError) callbacks.onError(new Error('Serviço de dados não carregado. Recarregue a página.'));
             return false;

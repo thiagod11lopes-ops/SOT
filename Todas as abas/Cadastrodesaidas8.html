@@ -4642,6 +4642,14 @@ if (modal) modal.style.display = 'flex';
 }
 } else if (type === 'refresh_data' || type === 'refresh_all_data') {
 loadDataAndPopulateTables();
+} else if (type === 'sot_flush_state_for_backup') {
+(function () {
+try {
+if (typeof saidasAdministrativas !== 'undefined' && typeof saidasAmbulancias !== 'undefined' && typeof persistCadastroSaidasSnapshot === 'function') {
+Promise.resolve(persistCadastroSaidasSnapshot(saidasAdministrativas, saidasAmbulancias)).catch(function (e) { console.warn('Cadastro flush backup:', e); });
+}
+} catch (e) { console.warn('Cadastro flush backup:', e); }
+})();
 }
 });
 

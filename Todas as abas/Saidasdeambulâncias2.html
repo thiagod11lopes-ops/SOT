@@ -761,6 +761,7 @@ filterDateAmbInput.value = todayFormatted;
 async function loadAllData() {
 const loadStart = Date.now();
 setSyncUiStateAmb('loading', 'Carregando dados...');
+var syncStateSetInCatchAmb = false;
 try {
     let remoteLoadedSaidas = false;
     let remoteLoadedFrota = false;
@@ -824,8 +825,8 @@ trackAmbHealth('load_success', {
 elapsedMs: Date.now() - loadStart,
 saidas: Array.isArray(saidasAmbulancias) ? saidasAmbulancias.length : 0
 });
-setSyncUiStateAmb('ok', 'Sincronizado');
 } catch (error) {
+syncStateSetInCatchAmb = true;
 console.error('Erro ao carregar dados:', error);
 saidasAmbulancias = saidasAmbulancias || [];
 frotaData = frotaData || [];
@@ -835,6 +836,17 @@ if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false)
 setSyncUiStateAmb('offline', 'Offline (usando cache local)');
 } else {
 setSyncUiStateAmb('error', 'Falha ao carregar dados', 3000);
+}
+}
+if (!syncStateSetInCatchAmb) {
+try {
+if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true') {
+setSyncUiStateAmb('offline', 'Modo offline (dados locais)');
+} else {
+setSyncUiStateAmb('ok', 'Sincronizado');
+}
+} catch (eAmb) {
+setSyncUiStateAmb('ok', 'Sincronizado');
 }
 }
 }
@@ -1816,6 +1828,11 @@ scheduleAmbUnifiedReload({ resetDate: true, reason: 'message_refresh' }, 100);
 else if (event.data?.type === 'viaturas_problemas_update') {
 loadViaturasComProblemas();
 populateTables();
+}
+else if (event.data?.type === 'sot_flush_state_for_backup') {
+try {
+localStorage.setItem('saidasAmbulancias', JSON.stringify(Array.isArray(saidasAmbulancias) ? saidasAmbulancias : []));
+} catch (e) { console.warn('Ambulâncias flush backup:', e); }
 }
 });
 filterDateAmbInput.addEventListener('change', populateTables);

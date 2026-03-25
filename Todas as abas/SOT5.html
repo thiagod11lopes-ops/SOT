@@ -2684,6 +2684,24 @@ iframe.contentWindow.postMessage({ type: 'refresh_data' }, '*');
 } catch (e) {}
 });
 }
+/* Pedido da aba Configurações: pedir a todas as iframes que persistam estado em localStorage antes do backup. */
+if (event.data?.type === 'sot_prepare_backup') {
+var rid = event.data.requestId || '';
+getAllTabIframes().forEach(function(iframe) {
+try {
+if (iframe.contentWindow) {
+iframe.contentWindow.postMessage({ type: 'sot_flush_state_for_backup', requestId: rid }, '*');
+}
+} catch (e) {}
+});
+setTimeout(function() {
+try {
+if (event.source && event.source.postMessage) {
+event.source.postMessage({ type: 'sot_prepare_backup_done', requestId: rid }, '*');
+}
+} catch (e) {}
+}, 500);
+}
 });
 window.changeTab = changeTab;
 // Event listeners de inatividade removidos - bloqueio automático desativado

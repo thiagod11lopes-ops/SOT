@@ -1301,6 +1301,7 @@ filterDateAdmInput.value = todayFormatted;
 }
 async function loadState() {
     setSyncUiState('loading', 'Carregando dados...');
+    var syncStateSetInCatch = false;
     try {
         // Fonte única da verdade da tela: dataService.
         // O próprio dataService gerencia Firebase/Auth/cache de forma centralizada.
@@ -1317,8 +1318,8 @@ async function loadState() {
         motoristasCadastrados = await dataService.getMotoristas();
         frotaData = await dataService.getViaturas();
         loadViaturasComProblemas();
-        setSyncUiState('ok', 'Sincronizado');
     } catch (error) {
+        syncStateSetInCatch = true;
         console.error('Erro ao carregar estado via dataService:', error);
         // Fallback controlado: apenas para manter a UI funcional em indisponibilidade momentânea.
         try {
@@ -1340,6 +1341,17 @@ async function loadState() {
     }
     saidasAdministrativas = normalizeSaidasAdmMetadata(saidasAdministrativas);
     saidasAdmLastFullReadAt = Date.now();
+    if (!syncStateSetInCatch) {
+        try {
+            if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true') {
+                setSyncUiState('offline', 'Modo offline (dados locais)');
+            } else {
+                setSyncUiState('ok', 'Sincronizado');
+            }
+        } catch (e3) {
+            setSyncUiState('ok', 'Sincronizado');
+        }
+    }
 }
 
 /** Aviso para QuadroDeSaidas (outras abas / BroadcastChannel) e iframes do SOT */
@@ -4715,6 +4727,13 @@ else if (event.data?.type === 'lembretes_update') renderLembretesFlutuante(event
 else if (event.data?.type === 'viaturas_problemas_update') {
 loadViaturasComProblemas();
 populateTables();
+}
+else if (event.data?.type === 'sot_flush_state_for_backup') {
+try {
+if (typeof saveState === 'function') {
+Promise.resolve(saveState()).catch(function (e) { console.warn('Saídas adm flush backup:', e); });
+}
+} catch (e) { console.warn('Saídas adm flush backup:', e); }
 }
 });
 if (SOT_SAIDAS_ADM_BC) {

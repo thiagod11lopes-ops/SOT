@@ -9,6 +9,25 @@
     'use strict';
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
+    /** Modo offline forçado: apenas persistência local (localStorage / IndexedDB nas telas); sem Firebase nem API. */
+    /** Persistido no localStorage: 'true' = modo offline (só local), 'false' = modo online (nuvem). Chave ausente = online. */
+    const SOT_OFFLINE_MODE_KEY = 'sot_offline_mode';
+
+    function isForcedOfflineMode() {
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem(SOT_OFFLINE_MODE_KEY) === 'true';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function refreshSotOfflineGlobalFlag() {
+        try {
+            window.__SOT_IS_OFFLINE__ = isForcedOfflineMode();
+        } catch (e) {
+            window.__SOT_IS_OFFLINE__ = false;
+        }
+    }
     /** Se true: não usa API REST /api; leituras/escritas somente Firebase. */
     const SOT_FORCE_FIREBASE_ONLY = true;
     /** Se true junto com SOT_FORCE_FIREBASE_ONLY, ignora completamente localStorage nos dados do domínio. */
@@ -251,6 +270,7 @@
          * evita listas vazias quando o Firestore tem dados mas os endpoints de saídas não estão populados.
          */
         _useRestApi() {
+            if (isForcedOfflineMode()) return false;
             if (SOT_FORCE_FIREBASE_ONLY) return false;
             return !!(this.useAPI && this.apiAvailable);
         }
@@ -267,6 +287,7 @@
         }
 
         async _getFromFirebase(key) {
+            if (isForcedOfflineMode()) return null;
             const cached = getCached(key);
             // Não usar cache de null: antes da Auth ficar pronta o get falha e null ficava 5s na cache —
             // o sync e as telas liam [] e podiam sobrescrever o Firebase.
@@ -286,6 +307,16 @@
 
         async _setToFirebase(key, value) {
             invalidateCache(key);
+            if (isForcedOfflineMode()) {
+                try {
+                    if (typeof localStorage !== 'undefined') {
+                        localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                    }
+                } catch (le) {
+                    log('warn', '_setToFirebase modo offline key=' + key, le);
+                }
+                return true;
+            }
             if (!this.useFirebase || !window.firebaseSot || typeof window.firebaseSot.set !== 'function') return false;
             try {
                 // Proteção anti-wipe: em modo estrito, não sobrescrever coleção remota não-vazia com [] por corrida/carregamento parcial.
@@ -350,6 +381,15 @@
 
         async waitForAPICheck() {
             try {
+                if (isForcedOfflineMode()) {
+                    refreshSotOfflineGlobalFlag();
+                    if (!apiCheckPromise) apiCheckPromise = this.checkAPI();
+                    await apiCheckPromise;
+                    try {
+                        this._checkFirebase();
+                    } catch (e) {}
+                    return apiCheckPromise;
+                }
                 if (window.__sotFirestoreBoot) {
                     try {
                         await window.__sotFirestoreBoot;
@@ -387,6 +427,9 @@
          */
         async waitForGoogleAuthReady(timeoutMs) {
             if (timeoutMs == null) timeoutMs = 15000;
+            if (isForcedOfflineMode()) {
+                return true;
+            }
             try {
                 const fs = window.firebaseSot;
                 if (fs && typeof fs.authGateOk === 'function' && fs.authGateOk()) {
@@ -792,6 +835,13 @@
         // ---------- Configurações ----------
         async getConfiguracao(chave) {
             await this.waitForAPICheck();
+            if (isForcedOfflineMode()) {
+                try {
+                    return localStorage.getItem(chave);
+                } catch (e) {
+                    return null;
+                }
+            }
             if (this._useRestApi()) {
                 try {
                     const configs = await api.getConfiguracao();
@@ -820,6 +870,14 @@
         async saveConfiguracao(chave, valor, tipo) {
             tipo = tipo || 'string';
             await this.waitForAPICheck();
+            if (isForcedOfflineMode()) {
+                try {
+                    localStorage.setItem(chave, valor);
+                } catch (e) {
+                    log('warn', 'saveConfiguracao offline', e);
+                }
+                return true;
+            }
             if (this._useRestApi()) {
                 try {
                     await api.saveConfiguracao(chave, valor, tipo);
@@ -846,6 +904,10 @@
 
         // ---------- Sincronização para API ----------
         async syncToAPI() {
+            if (isForcedOfflineMode()) {
+                log('warn', 'syncToAPI ignorado (modo offline forçado)');
+                return;
+            }
             if (!this.apiAvailable) {
                 log('warn', 'syncToAPI: API não disponível');
                 return;
@@ -890,6 +952,32 @@
 
     window.DataService = DataService;
     window.dataService = dataService;
+
+    try {
+        window.SOTOfflineMode = {
+            STORAGE_KEY: SOT_OFFLINE_MODE_KEY,
+            isActive: isForcedOfflineMode,
+            refreshFlag: refreshSotOfflineGlobalFlag,
+            setPersistedOffline: function (offline) {
+                try {
+                    localStorage.setItem(SOT_OFFLINE_MODE_KEY, offline ? 'true' : 'false');
+                    refreshSotOfflineGlobalFlag();
+                    try {
+                        window.dispatchEvent(new CustomEvent('sot-connection-mode-changed', { detail: { offline: !!offline } }));
+                    } catch (e) {}
+                } catch (err) {
+                    log('warn', 'setPersistedOffline', err);
+                }
+            },
+            readPersistedOffline: function () {
+                return isForcedOfflineMode();
+            }
+        };
+        refreshSotOfflineGlobalFlag();
+        window.addEventListener('storage', function(ev) {
+            if (ev && ev.key === SOT_OFFLINE_MODE_KEY) refreshSotOfflineGlobalFlag();
+        });
+    } catch (e) {}
 
     try {
         window.sotDataMerge = {
