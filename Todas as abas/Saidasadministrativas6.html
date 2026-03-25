@@ -2017,6 +2017,7 @@ var saidasAdmCriticalOps = {
         idList.forEach(function (id) {
             var idx = saidasAdministrativas.findIndex(function (item) { return String(item.id) === id; });
             if (idx !== -1 && typeof mutator === 'function') mutator(saidasAdministrativas[idx], idx);
+            if (idx !== -1) touchSaidaAdmRecord(saidasAdministrativas[idx]);
         });
         return idList;
     },

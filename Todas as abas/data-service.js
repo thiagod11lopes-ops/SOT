@@ -285,7 +285,9 @@
                 byId.set(sid, Object.assign({}, primary));
                 return;
             }
-            byId.set(sid, mergePrimaryOverSecondary(primary, secondary));
+            // LWW já escolheu a revisão vencedora: copiar campos da primary incluindo '' (limpar KM, etc.).
+            // mergePrimaryOverSecondary ignorava '' e repunha valores antigos da secondary.
+            byId.set(sid, Object.assign({}, secondary, primary));
         });
 
         return order.map(function (sid) { return byId.get(sid); }).concat(remoteExtras);

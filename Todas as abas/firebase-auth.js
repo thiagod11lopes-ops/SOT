@@ -49,6 +49,20 @@ export const db = getFirestore(app);
 
 const provider = new GoogleAuthProvider();
 
+/**
+ * Auditoria em `sot_google_audit_logs` (addDoc a cada login/logout) gasta escritas Firestore.
+ * Com quota baixa (Spark / resource-exhausted) desligar por defeito. Ativar explicitamente:
+ *   window.SOT_ENABLE_FIREBASE_AUDIT_LOGS = true
+ * antes de carregar este módulo (ou na consola + reload).
+ */
+function sotFirebaseAuditLogsEnabled() {
+  try {
+    return window.SOT_ENABLE_FIREBASE_AUDIT_LOGS === true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function safeStringifyJson(value) {
   try {
     if (value == null) return "";
@@ -61,6 +75,7 @@ function safeStringifyJson(value) {
 
 async function recordAuditForUser(userSnapshot, action, details) {
   try {
+    if (!sotFirebaseAuditLogsEnabled()) return;
     if (!userSnapshot || !userSnapshot.uid) return;
     const detailsStr = safeStringifyJson(details);
     await addDoc(collection(db, "sot_google_audit_logs"), {
