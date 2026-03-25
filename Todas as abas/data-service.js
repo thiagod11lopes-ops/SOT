@@ -89,39 +89,74 @@
     }
 
     /**
-     * União: nuvem primeiro (principal em conflito de mesmo id); local só completa ids que a nuvem não tem.
-     * Registros da nuvem sem id estável continuam na lista (antes eram descartados → listas vazias online).
+     * Mesclagem por id (mais recente) + preenchimento de campos.
+     *
+     * Antes: "nuvem primary" ignorava o item local quando o mesmo `id` existia na nuvem
+     * (isso podia apagar campos que existiam só no local).
+     *
+     * Agora:
+     * - mantém a ordem dos itens remotos por id estável
+     * - para ids em conflito, escolhe como "primary" o item com `updatedAt/_updatedAt/...` mais recente (empate favorece o local)
+     * - quando a primary tem valores "vazios" (null/undefined/''), preserva valores da secondary
+     * - itens da nuvem sem id estável continuam na lista (e itens sem id estável no local continuam ignorados)
      */
     function mergeArraysCloudPrimary(cloudArr, localArr, idField) {
         idField = idField || 'id';
         const remote = Array.isArray(cloudArr) ? cloudArr : [];
         const local = Array.isArray(localArr) ? localArr : [];
-        const seenIds = new Set();
-        const out = [];
 
-        remote.forEach(function(item) {
+        const byId = new Map(); // sid -> merged item
+        const order = []; // order of sids seeded from remote
+        const remoteExtras = []; // items sem id estável (mantidos)
+
+        remote.forEach(function (item) {
             if (!item || typeof item !== 'object') return;
             var sid = getStableRecordId(item, idField);
-            if (sid != null) {
-                if (seenIds.has(sid)) return;
-                seenIds.add(sid);
-                out.push(item);
-            } else {
-                out.push(item);
+            if (sid == null) {
+                remoteExtras.push(item);
+                return;
             }
+            if (byId.has(sid)) return; // evita duplicados remotos
+            byId.set(sid, item);
+            order.push(sid);
         });
 
-        local.forEach(function(item) {
+        function mergePrimaryOverSecondary(primary, secondary) {
+            // Começa pela secondary e sobrescreve apenas com valores não-vazios da primary
+            const res = Object.assign({}, secondary);
+            if (!primary || typeof primary !== 'object') return res;
+            Object.keys(primary).forEach(function (k) {
+                var v = primary[k];
+                if (v !== undefined && v !== null && v !== '') {
+                    res[k] = v;
+                }
+            });
+            return res;
+        }
+
+        local.forEach(function (item) {
             if (!item || typeof item !== 'object') return;
             var sid = getStableRecordId(item, idField);
-            if (sid != null) {
-                if (seenIds.has(sid)) return;
-                seenIds.add(sid);
-                out.push(item);
+            if (sid == null) return; // mantém comportamento anterior: local sem id estável é ignorado
+
+            if (!byId.has(sid)) {
+                byId.set(sid, item);
+                order.push(sid);
+                return;
             }
+
+            var remoteItem = byId.get(sid);
+            var tLocal = itemUpdatedMs(item);
+            var tRemote = itemUpdatedMs(remoteItem);
+            var primaryIsLocal = tLocal > tRemote; // empate favorece a nuvem
+
+            var primary = primaryIsLocal ? item : remoteItem;
+            var secondary = primaryIsLocal ? remoteItem : item;
+            var merged = mergePrimaryOverSecondary(primary, secondary);
+            byId.set(sid, merged);
         });
 
-        return out;
+        return order.map(function (sid) { return byId.get(sid); }).concat(remoteExtras);
     }
 
     function readLocalStorageEscalaObject() {

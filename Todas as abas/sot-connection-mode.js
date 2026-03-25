@@ -472,7 +472,7 @@
         updateChip(opts.chipTextId);
         dispatchModeChanged();
         notify(
-            'Modo offline ativo: apenas dados locais. Firebase bloqueado. A recarregar…',
+            'Modo offline ativo. Firebase bloqueado. A recarregar…',
             'success'
         );
         audit('sot_modo_offline_ativado', { source: opts.auditSource || 'sot-connection-mode.js' });

@@ -2401,14 +2401,8 @@
                             const parts = [];
                             if (Array.isArray(saidasAdm) && saidasAdm.length) parts.push(`Saídas administrativas: ${saidasAdm.length}`);
                             if (Array.isArray(saidasAmb) && saidasAmb.length) parts.push(`Saídas ambulâncias: ${saidasAmb.length}`);
+                            // Mensagem offline removida para não poluir a UI.
                             let offlineNote = '';
-                            try {
-                                if (sotConfigFirebaseCloudWritesDisabled()) {
-                                    offlineNote = ' Modo offline (SOT): apenas dados locais; firebaseSot.set não grava na nuvem. Ao voltar online, use «Enviar dados locais para Firebase».';
-                                } else if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-                                    offlineNote = ' Sem internet: dados no navegador; ao conectar, use «Enviar dados locais para Firebase».';
-                                }
-                            } catch (e) {}
                             showGerenciamentoMessage('Saídas restauradas com sucesso. ' + (parts.length ? parts.join('; ') : 'Nenhum dado de saída no arquivo.') + offlineNote, 'success');
                             recordUsuarioAudit('config_restaurar_saidas_backup', { total: parts.join('; ') });
                             if (window.parent && window.parent.postMessage) {
@@ -3160,8 +3154,8 @@
                     if (offline) {
                         modeChipMain.textContent = 'Modo offline';
                         modeChipSub.textContent = 'Apenas dados neste dispositivo; Firebase e API desativados';
-                        modeChip.setAttribute('aria-label', 'Modo de ligação: offline, apenas dados locais');
-                        modeChip.setAttribute('title', 'Modo offline: dados só no navegador; sem escrita na nuvem');
+                        modeChip.setAttribute('aria-label', 'Modo de ligação: offline');
+                        modeChip.setAttribute('title', 'Modo offline: Firebase e API desativados');
                     } else {
                         modeChipMain.textContent = 'Modo online';
                         modeChipSub.textContent = 'Firebase e sincronização disponíveis neste navegador';
