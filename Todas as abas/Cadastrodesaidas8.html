@@ -263,6 +263,29 @@ animation: cadastro-sync-pulse 1s ease-in-out infinite;
   border: none;
   background: transparent;
 }
+/* Cadastro: estado de sync + seletor Online/Offline num só bloco */
+.sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.sot-connection-mode-inline--with-sync .cadastro-sync-status-pill {
+  margin: 0;
+  flex-shrink: 0;
+}
+.sot-conn-toggle-cluster {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 .sot-conn-btn {
   font-size: 12px;
   font-weight: 800;
@@ -330,6 +353,10 @@ animation: cadastro-sync-pulse 1s ease-in-out infinite;
 }
 .sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body[data-theme="dark"] .sot-connection-mode-inline { background: transparent; }
+body[data-theme="dark"] .sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
+  background: #0f172a;
+  border-color: #334155;
+}
 body[data-theme="dark"] .sot-conn-btn { color: #e5e7eb; background: #0b1220; }
 body[data-theme="dark"] .sot-conn-btn--offline.is-active {
   background: rgba(253, 186, 116, 0.12);
@@ -1345,11 +1372,12 @@ body[data-theme="dark"] .cadastro-sync-status-pill.is-error { background: #450a0
 <div class="table-controls-title-row">
 <h2 class="table-title" id="registerFormTitleRow">CADASTRAR NOVA SAÍDA</h2>
 <div class="cadastro-toolbar-right" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+<div class="sot-connection-mode-inline sot-connection-mode-inline--with-sync" id="sotConnSelectorCadastro" role="group" aria-label="Modo de ligação e sincronização SOT">
 <div id="cadastroSyncStatusPill" class="cadastro-sync-status-pill is-loading" role="status" aria-live="polite" title="Estado de sincronização dos cadastros com a nuvem">
 <span class="cadastro-sync-dot" aria-hidden="true"></span>
 <span id="cadastroSyncStatusText">Carregando dados...</span>
 </div>
-<div class="sot-connection-mode-inline" id="sotConnSelectorCadastro" role="group" aria-label="Modo de ligação SOT">
+<div class="sot-conn-toggle-cluster">
 <button type="button" id="sotConnModoOfflineCadastro" class="sot-conn-btn sot-conn-btn--offline sot-conn-btn--internal" title="Operar só com dados neste dispositivo (localStorage e IndexedDB); Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
 <button type="button" id="sotConnModoOnlineCadastro" class="sot-conn-btn sot-conn-btn--online sot-conn-btn--internal" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
 <span id="sotConnToggleOfflineWordCadastro" class="sot-conn-toggle-word sot-conn-toggle-word--offline">Offline</span>
@@ -1358,6 +1386,7 @@ body[data-theme="dark"] .cadastro-sync-status-pill.is-error { background: #450a0
 </button>
 <span id="sotConnToggleOnlineWordCadastro" class="sot-conn-toggle-word sot-conn-toggle-word--online">Online</span>
 <span id="sotConnChipCadastro" class="sot-conn-chip" title="Estado atual da ligação"></span>
+</div>
 </div>
 <button type="button" id="btnPreencherTeste" class="icon-btn-teste" title="Preencher formulário com dados aleatórios para teste (Data e Hora da Saída não são preenchidos)">
 <i class="fas fa-flask"></i>
