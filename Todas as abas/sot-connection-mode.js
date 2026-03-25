@@ -500,6 +500,116 @@
         if (slot) slot.classList.toggle('sot-conn-toggle-slot--online', toggleEl.checked);
     }
 
+    /**
+     * Passos de rede/Firebase ao passar a online (merge local → nuvem + espelhos).
+     * Não altera UI; em erro deixa sot_offline_mode conforme já estava antes da chamada — o chamador deve repor offline se necessário.
+     */
+    async function performOnlineMergeAndCloudSteps(opts) {
+        opts = opts || {};
+        if (typeof global.dataService === 'undefined') {
+            throw new Error('Serviço de dados não carregado.');
+        }
+        if (!navigator.onLine) {
+            throw new Error('Sem ligação à rede.');
+        }
+        if (!global.sotDataMerge || typeof global.sotDataMerge.mergeArraysCloudPrimary !== 'function') {
+            throw new Error('Módulo de mesclagem não disponível.');
+        }
+
+        if (global.parent !== global) {
+            var flushResult = await waitForParentBackupFlush(12000);
+            if (!flushResult.ok && !flushResult.standalone) {
+                console.warn('Modo online: flush das abas atrasou ou falhou.', flushResult);
+            }
+        }
+
+        var idbVtrRows = await readVtrOficinaIndexedDBAll();
+        consolidateLocalVtrOficinaIntoStorage(idbVtrRows);
+        normalizeVistoriasLocalStorageForMerge();
+
+        try {
+            if (global.SOTOfflineMode && typeof global.SOTOfflineMode.setPersistedOffline === 'function') {
+                global.SOTOfflineMode.setPersistedOffline(false);
+            } else {
+                localStorage.setItem('sot_offline_mode', 'false');
+            }
+        } catch (e) {}
+
+        global.dataService.setPreferLocalStorage(false);
+        if (global.firebaseSot && typeof global.firebaseSot.invalidateAllCache === 'function') {
+            global.firebaseSot.invalidateAllCache();
+        }
+        await global.dataService.waitForAPICheck();
+        if (typeof global.dataService.waitForGoogleAuthReady === 'function') {
+            await global.dataService.waitForGoogleAuthReady(20000);
+        }
+
+        if (global.firebaseSot && typeof global.firebaseSot.authGateOk === 'function' && !global.firebaseSot.authGateOk()) {
+            throw new Error('Autenticação Google / Firebase necessária para sincronizar.');
+        }
+
+        await syncOfflineReturnMergeToCloud();
+
+        try {
+            var rawVtr = localStorage.getItem('vtr_oficina_registros');
+            var parsedVtr = rawVtr ? JSON.parse(rawVtr) : [];
+            await syncVtrOficinaIndexedDB({
+                vtr_oficina_registros: Array.isArray(parsedVtr) ? parsedVtr : []
+            });
+        } catch (vtrSyncErr) {
+            console.warn('Espelhar VTR Oficina no IndexedDB após retorno online:', vtrSyncErr);
+        }
+
+        if (global.SOTSync && typeof global.SOTSync.sync === 'function') {
+            var syncErr = null;
+            var syncOk = await global.SOTSync.sync(true, {
+                onError: function (err) {
+                    syncErr = err;
+                }
+            });
+            if (syncOk !== true) {
+                throw syncErr || new Error('Sincronização com a nuvem não concluída.');
+            }
+        }
+
+        try {
+            var nowIso = new Date().toISOString();
+            localStorage.setItem('sot_last_sync_timestamp', nowIso);
+            if (global.firebaseSot && typeof global.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
+                await global.firebaseSot.set('sot_last_sync_timestamp', nowIso);
+            }
+        } catch (tsErr) {
+            console.warn('Timestamp de sincronização:', tsErr);
+        }
+
+        if (global.SOTSync && typeof global.SOTSync.persistOfflineModeToCloud === 'function') {
+            global.SOTSync.persistOfflineModeToCloud();
+        }
+    }
+
+    /** Volta a sot_offline_mode sem recarregar a página (pós sync transitório). */
+    function restorePersistedOfflineAfterTransient() {
+        try {
+            if (global.SOTOfflineMode && typeof global.SOTOfflineMode.setPersistedOffline === 'function') {
+                global.SOTOfflineMode.setPersistedOffline(true);
+            } else {
+                localStorage.setItem('sot_offline_mode', 'true');
+                if (global.SOTOfflineMode && typeof global.SOTOfflineMode.refreshFlag === 'function') {
+                    global.SOTOfflineMode.refreshFlag();
+                }
+            }
+        } catch (e) {}
+        try {
+            global.__SOT_IS_OFFLINE__ = true;
+        } catch (e2) {}
+        try {
+            if (typeof global.dataService !== 'undefined' && typeof global.dataService.setPreferLocalStorage === 'function') {
+                global.dataService.setPreferLocalStorage(true);
+            }
+        } catch (e3) {}
+        dispatchModeChanged();
+    }
+
     async function activateOnlineMode(opts) {
         opts = opts || {};
         var onlineBtn = opts.onlineBtnId ? document.getElementById(opts.onlineBtnId) : null;
@@ -527,63 +637,7 @@
             onlineBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando…';
         }
         try {
-            if (!global.sotDataMerge || typeof global.sotDataMerge.mergeArraysCloudPrimary !== 'function') {
-                throw new Error('Módulo de mesclagem não disponível. Recarregue a página.');
-            }
-
-            if (global.parent !== global) {
-                var flushResult = await waitForParentBackupFlush(12000);
-                if (!flushResult.ok && !flushResult.standalone) {
-                    console.warn('Modo online: flush das abas atrasou ou falhou.', flushResult);
-                }
-            }
-
-            var idbVtrRows = await readVtrOficinaIndexedDBAll();
-            consolidateLocalVtrOficinaIntoStorage(idbVtrRows);
-            normalizeVistoriasLocalStorageForMerge();
-
-            try {
-                if (global.SOTOfflineMode && typeof global.SOTOfflineMode.setPersistedOffline === 'function') {
-                    global.SOTOfflineMode.setPersistedOffline(false);
-                } else {
-                    localStorage.setItem('sot_offline_mode', 'false');
-                }
-            } catch (e) {}
-
-            global.dataService.setPreferLocalStorage(false);
-            if (global.firebaseSot && typeof global.firebaseSot.invalidateAllCache === 'function') {
-                global.firebaseSot.invalidateAllCache();
-            }
-            await global.dataService.waitForAPICheck();
-            if (typeof global.dataService.waitForGoogleAuthReady === 'function') {
-                await global.dataService.waitForGoogleAuthReady(20000);
-            }
-
-            await syncOfflineReturnMergeToCloud();
-
-            try {
-                var rawVtr = localStorage.getItem('vtr_oficina_registros');
-                var parsedVtr = rawVtr ? JSON.parse(rawVtr) : [];
-                await syncVtrOficinaIndexedDB({
-                    vtr_oficina_registros: Array.isArray(parsedVtr) ? parsedVtr : []
-                });
-            } catch (vtrSyncErr) {
-                console.warn('Espelhar VTR Oficina no IndexedDB após retorno online:', vtrSyncErr);
-            }
-
-            try {
-                var nowIso = new Date().toISOString();
-                localStorage.setItem('sot_last_sync_timestamp', nowIso);
-                if (global.firebaseSot && typeof global.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
-                    await global.firebaseSot.set('sot_last_sync_timestamp', nowIso);
-                }
-            } catch (tsErr) {
-                console.warn('Timestamp de sincronização:', tsErr);
-            }
-
-            if (global.SOTSync && typeof global.SOTSync.persistOfflineModeToCloud === 'function') {
-                global.SOTSync.persistOfflineModeToCloud();
-            }
+            await performOnlineMergeAndCloudSteps(opts);
 
             updateChip(opts.chipTextId);
             dispatchModeChanged();
@@ -640,7 +694,13 @@
 
         if (toggleIn && toggleIn.type === 'checkbox') {
             toggleIn.addEventListener('change', function () {
+                if (global.__SOT_TRANSIENT_AUTO_SYNC) {
+                    return;
+                }
                 var wantOnline = toggleIn.checked;
+                if (wantOnline && global.SOTOfflineScheduledSync && typeof global.SOTOfflineScheduledSync.onManualOnline === 'function') {
+                    global.SOTOfflineScheduledSync.onManualOnline();
+                }
                 if (wantOnline) {
                     activateOnlineMode(opts);
                 } else {
@@ -656,7 +716,18 @@
         }
         if (onBtn) {
             onBtn.addEventListener('click', function () {
+                if (global.SOTOfflineScheduledSync && typeof global.SOTOfflineScheduledSync.onManualOnline === 'function') {
+                    global.SOTOfflineScheduledSync.onManualOnline();
+                }
                 activateOnlineMode(opts);
+            });
+        }
+
+        if (global.SOTOfflineScheduledSync && typeof global.SOTOfflineScheduledSync.register === 'function') {
+            global.SOTOfflineScheduledSync.register({
+                msgElementId: opts.scheduledSyncMsgElementId || 'sotOfflineAutoSyncMsg',
+                toggleInputId: toggleInputId,
+                auditSource: opts.auditSource || ''
             });
         }
     }
@@ -668,9 +739,13 @@
         normalizeVistoriasLocalStorageForMerge: normalizeVistoriasLocalStorageForMerge,
         syncVtrOficinaIndexedDB: syncVtrOficinaIndexedDB,
         syncOfflineReturnMergeToCloud: syncOfflineReturnMergeToCloud,
+        performOnlineMergeAndCloudSteps: performOnlineMergeAndCloudSteps,
+        restorePersistedOfflineAfterTransient: restorePersistedOfflineAfterTransient,
         activateOfflineMode: activateOfflineMode,
         activateOnlineMode: activateOnlineMode,
         install: install,
-        updateChip: updateChip
+        updateChip: updateChip,
+        syncToggleFromStorage: syncToggleFromStorage,
+        getToggleEl: getToggleEl
     };
 })(typeof window !== 'undefined' ? window : self);
