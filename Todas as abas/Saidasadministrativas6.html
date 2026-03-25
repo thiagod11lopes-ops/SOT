@@ -145,7 +145,15 @@ td[contenteditable="true"]:focus { outline: 2px solid var(--primary-blue); }
 .motorista-cell { cursor: pointer; }
 .motorista-cell:hover { background-color: #e9f7fe; }
 .action-buttons { display: flex; gap: 5px; justify-content: center; }
-.action-buttons button, .table-controls button { color: var(--white); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.action-buttons button,
+.table-controls button:not(.sot-conn-toggle):not(.sot-conn-btn) {
+  color: var(--white);
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
 .action-buttons .delete-row-btn { background-color: var(--delete-red); }
 .action-buttons .edit-row-btn { background-color: var(--edit-green); }
 .obs-btn { background-color: #007bff; }
@@ -365,8 +373,10 @@ padding: 3px 6px; border-radius: 4px; margin-left: 10px;
 .lembrete-piscando { animation: piscarAmareloLembrete 1.2s infinite; }
 #saidasStatusContainer {
 display: flex;
-gap: 30px;
-padding: 5px 20px;
+flex-direction: column;
+align-items: flex-start;
+gap: 10px;
+padding: 8px 16px;
 background-color: #f1f3f5;
 border: 1px solid var(--gray);
 border-radius: 20px;
@@ -385,55 +395,70 @@ opacity: 0.7;
 background-color: #f1f3f5;
 }
 .status-periodo {
-display: flex;
+display: grid;
+grid-template-columns: 8.5ch 24px;
 align-items: center;
-gap: 10px;
+column-gap: 10px;
 font-weight: bold;
 font-size: 16px;
 text-shadow: 0 2px 4px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.15);
+}
+.status-periodo-label {
+text-align: right;
+white-space: nowrap;
 }
 .status-dot {
 width: 20px;
 height: 20px;
 border-radius: 50%;
 border: 1px solid rgba(0,0,0,0.2);
+justify-self: start;
 }
 .status-dot.green { background-color: var(--edit-green); }
 .status-dot.orange { background-color: var(--orange); }
 .status-dot.red { background-color: var(--delete-red); }
-.sync-status-pill {
+/* Alinhado ao Cadastro de saídas: pill de sync + cartão com seletor */
+.cadastro-sync-status-pill {
 display: inline-flex;
 align-items: center;
 gap: 8px;
-padding: 8px 12px;
+font-size: 13px;
+font-weight: 600;
+padding: 6px 12px;
 border-radius: 999px;
-font-size: 12px;
-font-weight: 700;
-letter-spacing: 0.01em;
-border: 1px solid #d7dce5;
-background: #f5f7fb;
-color: #475569;
+border: 1px solid #cbd5e1;
+background: #f8fafc;
+color: #334155;
+white-space: nowrap;
+max-width: 100%;
 }
-.sync-status-pill .sync-dot {
+.cadastro-sync-status-pill .cadastro-sync-dot {
 width: 8px;
 height: 8px;
 border-radius: 50%;
-background: #94a3b8;
+background: #64748b;
+flex-shrink: 0;
 }
-.sync-status-pill.is-loading .sync-dot,
-.sync-status-pill.is-saving .sync-dot {
-animation: pulse-dot 1.2s ease-in-out infinite;
+.cadastro-sync-status-pill.is-loading .cadastro-sync-dot,
+.cadastro-sync-status-pill.is-saving .cadastro-sync-dot {
+animation: cadastro-sync-pulse 1s ease-in-out infinite;
 }
-.sync-status-pill.is-loading { background: #eef4ff; color: #1d4ed8; border-color: #c7d7ff; }
-.sync-status-pill.is-loading .sync-dot { background: #1d4ed8; }
-.sync-status-pill.is-saving { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
-.sync-status-pill.is-saving .sync-dot { background: #c2410c; }
-.sync-status-pill.is-offline { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
-.sync-status-pill.is-offline .sync-dot { background: #64748b; }
-.sync-status-pill.is-ok { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
-.sync-status-pill.is-ok .sync-dot { background: #16a34a; }
-.sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
-.sync-status-pill.is-error .sync-dot { background: #dc2626; }
+@keyframes cadastro-sync-pulse {
+0%, 100% { opacity: 1; transform: scale(1); }
+50% { opacity: 0.45; transform: scale(0.92); }
+}
+.cadastro-sync-status-pill.is-loading { background: #eef4ff; color: #1d4ed8; border-color: #c7d7ff; }
+.cadastro-sync-status-pill.is-loading .cadastro-sync-dot { background: #1d4ed8; }
+.cadastro-sync-status-pill.is-saving { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+.cadastro-sync-status-pill.is-saving .cadastro-sync-dot { background: #c2410c; }
+.cadastro-sync-status-pill.is-pending { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+.cadastro-sync-status-pill.is-pending .cadastro-sync-dot { background: #d97706; }
+.cadastro-sync-status-pill.is-offline { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+.cadastro-sync-status-pill.is-offline .cadastro-sync-dot { background: #64748b; }
+.cadastro-sync-status-pill.is-ok { background: #ecfdf5; color: #166534; border-color: #bbf7d0; }
+.cadastro-sync-status-pill.is-ok .cadastro-sync-dot { background: #16a34a; }
+.cadastro-sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.cadastro-sync-status-pill.is-error .cadastro-sync-dot { background: #dc2626; }
 .sot-connection-mode-inline {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -443,6 +468,33 @@ animation: pulse-dot 1.2s ease-in-out infinite;
   border-radius: 0;
   border: none;
   background: transparent;
+}
+.sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.sot-connection-mode-inline--with-sync .cadastro-sync-status-pill {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+.sot-conn-toggle-cluster {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  align-self: flex-start;
 }
 .sot-conn-btn {
   font-size: 12px;
@@ -512,8 +564,17 @@ animation: pulse-dot 1.2s ease-in-out infinite;
   color: #2563eb;
   border-color: #bfdbfe;
 }
-.sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body[data-theme="dark"] .sot-connection-mode-inline { background: transparent; }
+body[data-theme="dark"] .sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
+  background: #0f172a;
+  border-color: #334155;
+}
+body[data-theme="dark"] .cadastro-sync-status-pill.is-loading { background: #1e3a5f; color: #93c5fd; border-color: #3b82f6; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-saving { background: #422006; color: #fdba74; border-color: #ea580c; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-pending { background: #422006; color: #fcd34d; border-color: #d97706; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-offline { background: #1e293b; color: #94a3b8; border-color: #475569; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-ok { background: #052e16; color: #86efac; border-color: #16a34a; }
+body[data-theme="dark"] .cadastro-sync-status-pill.is-error { background: #450a0a; color: #fca5a5; border-color: #dc2626; }
 body[data-theme="dark"] .sot-conn-btn { color: #e5e7eb; background: #0b1220; }
 body[data-theme="dark"] .sot-conn-btn--offline.is-active {
   background: rgba(253, 186, 116, 0.12);
@@ -523,8 +584,6 @@ body[data-theme="dark"] .sot-conn-btn--online.is-active {
   background: rgba(59, 130, 246, 0.14);
   color: #93c5fd;
 }
-body[data-theme="dark"] .sot-conn-chip { background: #0c4a6e; color: #7dd3fc; border-color: #0369a1; }
-
 body[data-theme="dark"] .sot-conn-toggle-word { color: #e5e7eb; }
 body[data-theme="dark"] .sot-conn-toggle-word--offline.is-active { color: #fdba74; }
 body[data-theme="dark"] .sot-conn-toggle-word--online.is-active { color: #93c5fd; }
@@ -653,12 +712,12 @@ body[data-theme="dark"] h2,
 body[data-theme="dark"] h3 {
 color: #e0e0e0 !important;
 }
-body[data-theme="dark"] button,
+body[data-theme="dark"] button:not(.sot-conn-toggle):not(.sot-conn-btn),
 body[data-theme="dark"] .btn {
 background-color: #4a69bd !important;
 color: #ffffff !important;
 }
-body[data-theme="dark"] button:hover,
+body[data-theme="dark"] button:not(.sot-conn-toggle):not(.sot-conn-btn):hover,
 body[data-theme="dark"] .btn:hover {
 background-color: #6c88c9 !important;
 }
@@ -687,19 +746,20 @@ body[data-theme="dark"] .counter-badge {
 <h2 class="table-title">SAÍDAS ADMINISTRATIVAS</h2>
 <div id="saidasStatusContainer" title="Clique para configurar os limites de saídas">
 <div class="status-periodo">
-<span>Manhã:</span>
+<span class="status-periodo-label">Manhã:</span>
 <div class="status-dot" id="statusManha"></div>
 </div>
 <div class="status-periodo">
-<span>Tarde:</span>
+<span class="status-periodo-label">Tarde:</span>
 <div class="status-dot" id="statusTarde"></div>
 </div>
 </div>
-<div id="syncStatusPill" class="sync-status-pill is-loading" title="Status de sincronização da agenda">
-<span class="sync-dot" aria-hidden="true"></span>
+<div class="sot-connection-mode-inline sot-connection-mode-inline--with-sync" id="sotConnSelectorAdm" role="group" aria-label="Modo de ligação e sincronização SOT">
+<div id="syncStatusPill" class="cadastro-sync-status-pill is-loading" role="status" aria-live="polite" title="Status de sincronização da agenda">
+<span class="cadastro-sync-dot" aria-hidden="true"></span>
 <span id="syncStatusText">Carregando dados...</span>
 </div>
-<div class="sot-connection-mode-inline" id="sotConnSelectorAdm" role="group" aria-label="Modo de ligação SOT">
+<div class="sot-conn-toggle-cluster">
   <button type="button" id="sotConnModoOfflineAdm" class="sot-conn-btn sot-conn-btn--offline sot-conn-btn--internal" title="Operar só com dados neste dispositivo; Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
   <button type="button" id="sotConnModoOnlineAdm" class="sot-conn-btn sot-conn-btn--online sot-conn-btn--internal" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
   <span id="sotConnToggleOfflineWordAdm" class="sot-conn-toggle-word sot-conn-toggle-word--offline">Offline</span>
@@ -707,7 +767,7 @@ body[data-theme="dark"] .counter-badge {
     <span class="sot-conn-toggle__knob" aria-hidden="true"></span>
   </button>
   <span id="sotConnToggleOnlineWordAdm" class="sot-conn-toggle-word sot-conn-toggle-word--online">Online</span>
-  <span id="sotConnChipAdm" class="sot-conn-chip" title="Estado atual da ligação"></span>
+</div>
 </div>
 <div class="toolbar-actions">
 <button type="button" id="showSvcRoBtn" class="btn-action btn-svc" title="Serviço / Rotina">SVC/RO</button>
@@ -932,7 +992,8 @@ let syncStateBackToOkTimer = null;
 function setSyncUiState(state, message, autoBackToOkMs) {
     currentSyncState = state || currentSyncState;
     if (!syncStatusPill || !syncStatusText) return;
-    syncStatusPill.classList.remove('is-loading', 'is-saving', 'is-offline', 'is-ok', 'is-error');
+    syncStatusPill.classList.remove('is-loading', 'is-saving', 'is-pending', 'is-offline', 'is-ok', 'is-error');
+    syncStatusPill.setAttribute('aria-busy', (currentSyncState === 'loading' || currentSyncState === 'saving') ? 'true' : 'false');
     switch (currentSyncState) {
         case 'saving':
             syncStatusPill.classList.add('is-saving');
@@ -5248,8 +5309,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.SOTConnectionMode.install({
             auditSource: 'Saidasadministrativas6.html',
             offlineBtnId: 'sotConnModoOfflineAdm',
-            onlineBtnId: 'sotConnModoOnlineAdm',
-            chipTextId: 'sotConnChipAdm'
+            onlineBtnId: 'sotConnModoOnlineAdm'
         });
     }
 

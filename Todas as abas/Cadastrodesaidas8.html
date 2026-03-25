@@ -263,11 +263,12 @@ animation: cadastro-sync-pulse 1s ease-in-out infinite;
   border: none;
   background: transparent;
 }
-/* Cadastro: estado de sync + seletor Online/Offline num só bloco */
+/* Cadastro: texto de sync por cima; seletor Online/Offline por baixo no mesmo cartão */
 .sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
   padding: 8px 12px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
@@ -277,14 +278,18 @@ animation: cadastro-sync-pulse 1s ease-in-out infinite;
 }
 .sot-connection-mode-inline--with-sync .cadastro-sync-status-pill {
   margin: 0;
-  flex-shrink: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-start;
 }
 .sot-conn-toggle-cluster {
   display: inline-flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  align-self: flex-start;
 }
 .sot-conn-btn {
   font-size: 12px;
@@ -351,7 +356,6 @@ animation: cadastro-sync-pulse 1s ease-in-out infinite;
   color: #2563eb;
   border-color: #bfdbfe;
 }
-.sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body[data-theme="dark"] .sot-connection-mode-inline { background: transparent; }
 body[data-theme="dark"] .sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
   background: #0f172a;
@@ -366,8 +370,6 @@ body[data-theme="dark"] .sot-conn-btn--online.is-active {
   background: rgba(59, 130, 246, 0.14);
   color: #93c5fd;
 }
-body[data-theme="dark"] .sot-conn-chip { background: #0c4a6e; color: #7dd3fc; border-color: #0369a1; }
-
 body[data-theme="dark"] .sot-conn-toggle-word { color: #e5e7eb; }
 body[data-theme="dark"] .sot-conn-toggle-word--offline.is-active { color: #fdba74; }
 body[data-theme="dark"] .sot-conn-toggle-word--online.is-active { color: #93c5fd; }
@@ -1339,12 +1341,12 @@ body[data-theme="dark"] h3 {
  color: #e0e0e0 !important;
 }
 body[data-theme="dark"] .btn-primary,
-body[data-theme="dark"] button[class*="btn"] {
+body[data-theme="dark"] button[class*="btn"]:not(.sot-conn-btn) {
  background-color: #4a69bd !important;
  color: #ffffff !important;
 }
 body[data-theme="dark"] .btn-primary:hover,
-body[data-theme="dark"] button[class*="btn"]:hover {
+body[data-theme="dark"] button[class*="btn"]:not(.sot-conn-btn):hover {
  background-color: #6c88c9 !important;
 }
 body[data-theme="dark"] .cadastro-sync-status-pill.is-loading { background: #1e3a5f; color: #93c5fd; border-color: #3b82f6; }
@@ -1385,7 +1387,6 @@ body[data-theme="dark"] .cadastro-sync-status-pill.is-error { background: #450a0
   <span class="sot-conn-toggle__knob" aria-hidden="true"></span>
 </button>
 <span id="sotConnToggleOnlineWordCadastro" class="sot-conn-toggle-word sot-conn-toggle-word--online">Online</span>
-<span id="sotConnChipCadastro" class="sot-conn-chip" title="Estado atual da ligação"></span>
 </div>
 </div>
 <button type="button" id="btnPreencherTeste" class="icon-btn-teste" title="Preencher formulário com dados aleatórios para teste (Data e Hora da Saída não são preenchidos)">
@@ -2501,18 +2502,27 @@ function refreshCadastroSyncStatusPill() {
   }
   if (setCadastroSyncUiState._t) return;
   var online = typeof navigator === 'undefined' || navigator.onLine !== false;
+  var sotOffline = false;
+  try {
+    sotOffline = localStorage.getItem('sot_offline_mode') === 'true';
+  } catch (e) {}
   var ob = getCadastroOutbox();
+  /* Pendências como nas abas Adm./Amb.: pill offline (cinza), não is-pending. */
   if (!online) {
-    if (ob) setCadastroSyncUiState('pending', 'Offline — alterações pendentes de envio');
-    else setCadastroSyncUiState('offline', 'Offline — dados locais');
+    if (ob) setCadastroSyncUiState('offline', 'Offline (pendente de sincronização)');
+    else setCadastroSyncUiState('offline', 'Offline (usando cache local)');
     return;
   }
   if (ob) {
-    setCadastroSyncUiState('pending', 'Pendente de sincronização com a nuvem');
+    setCadastroSyncUiState('offline', 'Pendente de sincronização');
+    return;
+  }
+  if (sotOffline) {
+    setCadastroSyncUiState('offline', 'Modo offline (dados locais)');
     return;
   }
   if (!cadastroRemoteLoadedLast) {
-    setCadastroSyncUiState('pending', 'Somente cache local (nuvem indisponível)');
+    setCadastroSyncUiState('offline', 'Offline (usando cache local)');
     return;
   }
   setCadastroSyncUiState('ok', 'Sincronizado');
@@ -2769,7 +2779,7 @@ function notifyCadastroImportPersist(importPersist, newCount) {
   } else if (importPersist.status === 'pending_sync') {
     var importPendingMsg =
       importPersist.userHint ||
-      'Importação local concluída! ' + n + ' registro(s) pendentes de sincronização.';
+      'Importação local concluída! ' + n + ' registro(s) — pendente de sincronização.';
     showCadastroToast(importPendingMsg, 'warning', importPersist.userHint ? 9000 : 6500);
   } else {
     showCadastroToast('Falha ao persistir os dados importados. Tente novamente.', 'error');
@@ -2784,7 +2794,7 @@ function notifyCadastroRowDeletePersist(deletePersist) {
   }
   if (deletePersist.status === 'pending_sync') {
     displayMessage(
-      deletePersist.userHint || 'Registro excluído localmente e pendente de sincronização.',
+      deletePersist.userHint || 'Registro excluído localmente — pendente de sincronização.',
       'error',
       deletePersist.userHint ? 12000 : undefined
     );
@@ -2796,7 +2806,7 @@ function notifyCadastroRowDeletePersist(deletePersist) {
 function notifyCadastroSubmitPersistResult(persistResult, isEditing) {
   if (persistResult && persistResult.status === 'pending_sync') {
     displayMessage(
-      persistResult.userHint || 'Saída salva localmente e pendente de sincronização.',
+      persistResult.userHint || 'Saída salva localmente — pendente de sincronização.',
       'error',
       persistResult.userHint ? 12000 : undefined
     );
@@ -2810,7 +2820,7 @@ function notifyCadastroMultiPersistResult(multiPersist, formData) {
   if (multiPersist.status === 'pending_sync') {
     displayMessage(
       multiPersist.userHint ||
-        '1 saída para \'' + formData.cidade + ' - ' + formData.bairro + '\' salva localmente e pendente de sincronização.',
+        '1 saída para \'' + formData.cidade + ' - ' + formData.bairro + '\' salva localmente — pendente de sincronização.',
       'error',
       multiPersist.userHint ? 12000 : undefined
     );
@@ -2834,7 +2844,7 @@ function getSerialCadastroOutcomeDisplay(okCount, pendingCount, failCount, total
     };
   }
   if (pendingCount > 0 && okCount === 0) {
-    return { text: total + ' saída(s) salvas localmente e pendentes de sincronização com a nuvem.', type: 'error' };
+    return { text: total + ' saída(s) salvas localmente — pendente(s) de sincronização.', type: 'error' };
   }
   if (pendingCount > 0) {
     return { text: okCount + ' saída(s) sincronizada(s); ' + pendingCount + ' pendente(s) de sincronização.', type: 'error' };
@@ -7940,8 +7950,7 @@ document.addEventListener('DOMContentLoaded', function () {
         window.SOTConnectionMode.install({
             auditSource: 'Cadastrodesaidas8.html',
             offlineBtnId: 'sotConnModoOfflineCadastro',
-            onlineBtnId: 'sotConnModoOnlineCadastro',
-            chipTextId: 'sotConnChipCadastro'
+            onlineBtnId: 'sotConnModoOnlineCadastro'
         });
     }
 
@@ -7984,10 +7993,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     window.addEventListener('storage', function (ev) {
-        if (ev && ev.key === 'sot_offline_mode') updateCadastroConnButtonsUi();
+        if (ev && ev.key === 'sot_offline_mode') {
+            updateCadastroConnButtonsUi();
+            if (typeof refreshCadastroSyncStatusPill === 'function') refreshCadastroSyncStatusPill();
+        }
     });
     window.addEventListener('sot-connection-mode-changed', function () {
         updateCadastroConnButtonsUi();
+        if (typeof refreshCadastroSyncStatusPill === 'function') refreshCadastroSyncStatusPill();
     });
 });
 </script>
