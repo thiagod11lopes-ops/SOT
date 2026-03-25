@@ -2289,6 +2289,22 @@ ambReloadTimer = setTimeout(() => {
 }, typeof delayMs === 'number' ? delayMs : 120);
 }
 
+/** Fase 9: outro iframe/aba gravou saidasAmbulancias via data-service — invalidar cache e recarregar. */
+if (typeof BroadcastChannel !== 'undefined') {
+try {
+var _sotF9AmbBc = new BroadcastChannel('sot_saidas_ambulancias');
+_sotF9AmbBc.onmessage = function (evt) {
+    if (!evt || !evt.data || evt.data.type !== 'saidas_amb_updated') return;
+    try {
+        if (window.firebaseSot && typeof window.firebaseSot.invalidateCache === 'function') {
+            window.firebaseSot.invalidateCache('saidasAmbulancias');
+        }
+    } catch (eInv) {}
+    scheduleAmbUnifiedReload({ resetDate: false, reason: 'broadcast_fase9' }, 280);
+};
+} catch (eBc) {}
+}
+
 function initializeAndRefresh() {
 scheduleAmbUnifiedReload({ resetDate: true, reason: 'init' }, 0);
 }

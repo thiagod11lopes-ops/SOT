@@ -63,6 +63,7 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
 <!-- Scripts locais sem defer: devem rodar antes do <script> principal no fim do body -->
 <script src="api-service.js"></script>
 <script src="data-service.js"></script>
+<script src="sot-saidas-indexeddb.js"></script>
 <script src="junta-saidas-service.js"></script>
 <style>
 :root {
@@ -2164,6 +2165,65 @@ function touchCadastroSaidaMetadata(record, isNew) {
   return record;
 }
 
+/** Fase 4: metadados por campo — só chaves de domínio (KM tem bloco atómico na Fase 3). */
+var CADASTRO_F4_META_KEYS = {
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  updatedBy: true,
+  fieldUpdatedAt: true,
+  fieldRevision: true
+};
+var CADASTRO_F4_KM_KEYS = {
+  kmSaida: true,
+  kmChegada: true,
+  chegada: true,
+  km_saida: true,
+  km_chegada: true,
+  realizada: true
+};
+function cadastroIsF4FieldMergeSkipped(k) {
+  if (!k || typeof k !== 'string') return true;
+  if (k.charAt(0) === '_') return true;
+  return !!(CADASTRO_F4_META_KEYS[k] || CADASTRO_F4_KM_KEYS[k]);
+}
+function cadastroValuesEqualForMerge(a, b) {
+  if (a === b) return true;
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  if (typeof a === 'object' || typeof b === 'object') {
+    try {
+      return JSON.stringify(a) === JSON.stringify(b);
+    } catch (e) {
+      return false;
+    }
+  }
+  return String(a) === String(b);
+}
+/**
+ * Fase 4: actualiza fieldUpdatedAt apenas para chaves cujo valor mudou face a `prev`.
+ * Preserva carimbos anteriores nas chaves inalteradas.
+ */
+function touchCadastroSaidaFieldUpdatedAtFromDiff(prev, next) {
+  if (!next || typeof next !== 'object') return;
+  var now = cadastroSaidasNowIso();
+  var prevObj = prev && typeof prev === 'object' ? prev : {};
+  if (!next.fieldUpdatedAt || typeof next.fieldUpdatedAt !== 'object') {
+    next.fieldUpdatedAt =
+      prevObj.fieldUpdatedAt && typeof prevObj.fieldUpdatedAt === 'object'
+        ? Object.assign({}, prevObj.fieldUpdatedAt)
+        : {};
+  } else if (prevObj.fieldUpdatedAt && typeof prevObj.fieldUpdatedAt === 'object') {
+    next.fieldUpdatedAt = Object.assign({}, prevObj.fieldUpdatedAt, next.fieldUpdatedAt);
+  }
+  Object.keys(next).forEach(function (k) {
+    if (CADASTRO_F4_META_KEYS[k]) return;
+    if (!Object.prototype.hasOwnProperty.call(next, k)) return;
+    if (cadastroValuesEqualForMerge(prevObj[k], next[k])) return;
+    next.fieldUpdatedAt[k] = now;
+  });
+}
+
 const cadastroActionLocks = new Set();
 const CADASTRO_OUTBOX_KEY = 'sot_cadastro_saidas_outbox_v1';
 /** Tópico 17: buffer circular de telemetria operacional (diagnóstico em produção). */
@@ -2192,6 +2252,13 @@ function logCadastroTelemetry(eventType, payload) {
 
 let cadastroOutboxTimer = null;
 let cadastroOutboxFlushInFlight = false;
+/** Fase 6: intervalo do relógio para tentar drenar outbox (aba visível + online). */
+var CADASTRO_OUTBOX_PERIODIC_MS = 30000;
+/** Fase 6: após falhas consecutivas, pausa tentativas até este instante (epoch ms). */
+var cadastroOutboxBackoffUntil = 0;
+var cadastroOutboxFlushFailStreak = 0;
+var CADASTRO_OUTBOX_BACKOFF_CAP_MS = 300000;
+var CADASTRO_OUTBOX_BACKOFF_BASE_MS = 20000;
 async function runCadastroLocked(actionKey, fn) {
   const key = String(actionKey || 'global');
   if (cadastroActionLocks.has(key)) return { skipped: true, reason: 'locked', actionKey: key };
@@ -2315,7 +2382,11 @@ async function flushCadastroOutbox() {
     return false;
   }
   const out = getCadastroOutbox();
-  if (!out) return true;
+  if (!out) {
+    cadastroOutboxFlushFailStreak = 0;
+    cadastroOutboxBackoffUntil = 0;
+    return true;
+  }
 
   var flushT0 = Date.now();
   cadastroOutboxFlushInFlight = true;
@@ -2325,17 +2396,41 @@ async function flushCadastroOutbox() {
     var flushMs = Date.now() - flushT0;
     if (persisted && persisted.status === 'success') {
       setCadastroOutbox(null);
+      cadastroOutboxFlushFailStreak = 0;
+      cadastroOutboxBackoffUntil = 0;
       logCadastroTelemetry('outbox_flush_ok', { latencyMs: flushMs, persistStatus: 'success' });
       return true;
     }
+    cadastroOutboxFlushFailStreak = Math.min((cadastroOutboxFlushFailStreak || 0) + 1, 12);
+    var pow = cadastroOutboxFlushFailStreak - 1;
+    if (pow < 0) pow = 0;
+    var backoffMs = Math.min(
+      CADASTRO_OUTBOX_BACKOFF_BASE_MS * Math.pow(2, pow),
+      CADASTRO_OUTBOX_BACKOFF_CAP_MS
+    );
+    cadastroOutboxBackoffUntil = Date.now() + backoffMs;
     logCadastroTelemetry('outbox_flush_retry', {
       latencyMs: flushMs,
       persistStatus: persisted && persisted.status ? persisted.status : 'unknown',
-      errors: persisted && persisted.errors ? persisted.errors.slice() : []
+      errors: persisted && persisted.errors ? persisted.errors.slice() : [],
+      backoffMs: backoffMs,
+      failStreak: cadastroOutboxFlushFailStreak
+    });
+    logCadastroTelemetry('outbox_backoff_fase6', {
+      untilEpochMs: cadastroOutboxBackoffUntil,
+      failStreak: cadastroOutboxFlushFailStreak
     });
     return false;
   } catch (e) {
-    logCadastroTelemetry('outbox_flush_error', { message: e && e.message ? e.message : String(e) });
+    cadastroOutboxFlushFailStreak = Math.min((cadastroOutboxFlushFailStreak || 0) + 1, 12);
+    var powE = cadastroOutboxFlushFailStreak - 1;
+    if (powE < 0) powE = 0;
+    var backoffErr = Math.min(
+      CADASTRO_OUTBOX_BACKOFF_BASE_MS * Math.pow(2, powE),
+      CADASTRO_OUTBOX_BACKOFF_CAP_MS
+    );
+    cadastroOutboxBackoffUntil = Date.now() + backoffErr;
+    logCadastroTelemetry('outbox_flush_error', { message: e && e.message ? e.message : String(e), backoffMs: backoffErr });
     return false;
   } finally {
     cadastroOutboxFlushInFlight = false;
@@ -2423,6 +2518,14 @@ async function persistCadastroSaidasSnapshot(nextSaidasAdm, nextSaidasAmb) {
   } catch (e) {
     result.localOk = false;
     result.errors.push('local_cache_write_failed');
+  }
+
+  try {
+    if (window.sotSaidasIdb && typeof window.sotSaidasIdb.putCadastroSnapshot === 'function') {
+      await window.sotSaidasIdb.putCadastroSnapshot(adm, amb);
+    }
+  } catch (eIdb) {
+    result.errors.push('indexeddb_mirror_failed');
   }
 
   var authOkForWrite = await cadastroPrepareRemoteWriteAuth();
@@ -2715,15 +2818,200 @@ function appendCadastroConflictLog(entry) {
   } catch (e) {}
 }
 
+/** Fase 5: histórico de conflitos “moles” (empate de carimbo / mesmo score KM). */
+var CADASTRO_SOFT_CONFLICT_LOG_KEY = 'sot_cadastro_soft_conflict_log_v1';
+var CADASTRO_SOFT_CONFLICT_LOG_MAX = 60;
+
+function appendCadastroSoftConflictLogEntries(entries) {
+  try {
+    if (!Array.isArray(entries) || !entries.length) return;
+    var raw = localStorage.getItem(CADASTRO_SOFT_CONFLICT_LOG_KEY);
+    var arr = [];
+    if (raw) {
+      try {
+        arr = JSON.parse(raw);
+      } catch (e) {
+        arr = [];
+      }
+    }
+    if (!Array.isArray(arr)) arr = [];
+    var i;
+    for (i = 0; i < entries.length; i++) {
+      var rowIn = entries[i];
+      if (!rowIn || typeof rowIn !== 'object') continue;
+      var row = Object.assign({}, rowIn);
+      row.ts = new Date().toISOString();
+      row.policy = CADASTRO_CONFLICT_POLICY;
+      arr.push(row);
+    }
+    if (arr.length > CADASTRO_SOFT_CONFLICT_LOG_MAX) arr = arr.slice(-CADASTRO_SOFT_CONFLICT_LOG_MAX);
+    localStorage.setItem(CADASTRO_SOFT_CONFLICT_LOG_KEY, JSON.stringify(arr));
+  } catch (e2) {}
+}
+
+/** Fase 3: leitura canónica do bloco KM/chegada (camel + snake). */
+function cadastroKmCanonSaida(s) {
+  if (!s || typeof s !== 'object') return '';
+  var v = s.kmSaida != null ? String(s.kmSaida).trim() : '';
+  if (!v && s.km_saida != null) v = String(s.km_saida).trim();
+  return v;
+}
+function cadastroKmCanonChegadaKm(s) {
+  if (!s || typeof s !== 'object') return '';
+  var v = s.kmChegada != null ? String(s.kmChegada).trim() : '';
+  if (!v && s.km_chegada != null) v = String(s.km_chegada).trim();
+  return v;
+}
+function cadastroKmCanonChegadaHora(s) {
+  if (!s || typeof s !== 'object') return '';
+  return s.chegada != null ? String(s.chegada).trim() : '';
+}
+/** Conta quantos dos três canónicos estão preenchidos (0–3). */
+function cadastroKmBlockCompletenessScore(s) {
+  var a = cadastroKmCanonSaida(s) ? 1 : 0;
+  var b = cadastroKmCanonChegadaKm(s) ? 1 : 0;
+  var c = cadastroKmCanonChegadaHora(s) ? 1 : 0;
+  return a + b + c;
+}
+/**
+ * Fase 3: aplica o bloco KM/chegada inteiro de `from` em `onto` (mutável).
+ * Mantém espelhos km_saida / km_chegada alinhados aos canónicos.
+ */
+function cadastroApplyAtomicKmBlock(onto, from) {
+  if (!onto || typeof onto !== 'object' || !from || typeof from !== 'object') return onto;
+  var ks = cadastroKmCanonSaida(from);
+  var kc = cadastroKmCanonChegadaKm(from);
+  var ch = cadastroKmCanonChegadaHora(from);
+  onto.kmSaida = ks;
+  onto.kmChegada = kc;
+  onto.chegada = ch;
+  onto.km_saida = ks;
+  onto.km_chegada = kc;
+  onto.realizada = !!(ks && kc && ch);
+  return onto;
+}
+/**
+ * Se `from` tem bloco estritamente mais completo, copia-o atomicamente para `onto`.
+ * Retorna true se alterou `onto`.
+ */
+function cadastroMergeAtomicKmBlockIfRicher(onto, from) {
+  if (!onto || typeof onto !== 'object' || !from || typeof from !== 'object') return false;
+  var sOnto = cadastroKmBlockCompletenessScore(onto);
+  var sFrom = cadastroKmBlockCompletenessScore(from);
+  if (sFrom <= sOnto) return false;
+  cadastroApplyAtomicKmBlock(onto, from);
+  return true;
+}
+
+/** Fase 4: carimbo por campo para merge (fallback = updatedAt do registo). */
+function cadastroFieldUpdatedMsForKey(item, key) {
+  if (!item || typeof item !== 'object') return 0;
+  var m = item.fieldUpdatedAt && typeof item.fieldUpdatedAt === 'object' ? item.fieldUpdatedAt[key] : null;
+  if (m != null && m !== '') {
+    var d = Date.parse(String(m));
+    if (!isNaN(d)) return d;
+  }
+  return cadastroItemUpdatedMs(item);
+}
+/**
+ * Fase 4: para cada campo fora de metadados/KM, se a outra cópia tiver carimbo mais recente, copia o valor.
+ * Não altera o bloco KM (Fase 3). Muta `onto`.
+ */
+function cadastroMergeNonKmFieldsByFieldTime(onto, other) {
+  var changedKeys = [];
+  if (!onto || typeof onto !== 'object' || !other || typeof other !== 'object') {
+    return { changed: 0, keys: changedKeys };
+  }
+  var keySet = Object.create(null);
+  Object.keys(onto).forEach(function (k) {
+    keySet[k] = true;
+  });
+  Object.keys(other).forEach(function (k) {
+    keySet[k] = true;
+  });
+  if (!onto.fieldUpdatedAt || typeof onto.fieldUpdatedAt !== 'object') onto.fieldUpdatedAt = {};
+  Object.keys(keySet).forEach(function (k) {
+    if (cadastroIsF4FieldMergeSkipped(k)) return;
+    var vo = onto[k];
+    var vr = other[k];
+    if (cadastroValuesEqualForMerge(vo, vr)) return;
+    var tO = cadastroFieldUpdatedMsForKey(onto, k);
+    var tR = cadastroFieldUpdatedMsForKey(other, k);
+    if (tR > tO) {
+      onto[k] = vr;
+      var stamp = other.fieldUpdatedAt && other.fieldUpdatedAt[k] != null ? String(other.fieldUpdatedAt[k]) : '';
+      if (!stamp || isNaN(Date.parse(stamp))) stamp = new Date(tR).toISOString();
+      onto.fieldUpdatedAt[k] = stamp;
+      changedKeys.push(k);
+    }
+  });
+  return { changed: changedKeys.length, keys: changedKeys };
+}
+
+/** Fase 5: assinatura canónica do triple KM (para comparar duas cópias). */
+function cadastroKmBlockCanonicalTripleStr(obj) {
+  if (!obj || typeof obj !== 'object') return '';
+  try {
+    return JSON.stringify({
+      ks: cadastroKmCanonSaida(obj),
+      kc: cadastroKmCanonChegadaKm(obj),
+      ch: cadastroKmCanonChegadaHora(obj)
+    });
+  } catch (e) {
+    return '';
+  }
+}
+/**
+ * Fase 5: divergências que o merge automático não desempata de forma inequívoca.
+ * Compara cópia remota (`a`) e local (`b`) **antes** de enxertos Fase 3/4.
+ */
+function cadastroCollectSoftMergeConflicts(a, b) {
+  var issues = [];
+  if (!a || typeof a !== 'object' || !b || typeof b !== 'object') return issues;
+  var sa = cadastroKmBlockCompletenessScore(a);
+  var sb = cadastroKmBlockCompletenessScore(b);
+  if (sa > 0 && sb > 0 && sa === sb && cadastroKmBlockCanonicalTripleStr(a) !== cadastroKmBlockCanonicalTripleStr(b)) {
+    issues.push({ kind: 'km_same_score_divergent', score: sa });
+  }
+  var keySet = Object.create(null);
+  Object.keys(a).forEach(function (k) {
+    keySet[k] = true;
+  });
+  Object.keys(b).forEach(function (k) {
+    keySet[k] = true;
+  });
+  Object.keys(keySet).forEach(function (k) {
+    if (cadastroIsF4FieldMergeSkipped(k)) return;
+    if (cadastroValuesEqualForMerge(a[k], b[k])) return;
+    var tA = cadastroFieldUpdatedMsForKey(a, k);
+    var tB = cadastroFieldUpdatedMsForKey(b, k);
+    if (tA === tB) {
+      var explicitA = a.fieldUpdatedAt && a.fieldUpdatedAt[k] != null && String(a.fieldUpdatedAt[k]).trim() !== '';
+      var explicitB = b.fieldUpdatedAt && b.fieldUpdatedAt[k] != null && String(b.fieldUpdatedAt[k]).trim() !== '';
+      if (tA > 0 || explicitA || explicitB) {
+        issues.push({ kind: 'field_timestamp_tie', key: k, tMs: tA });
+      }
+    }
+  });
+  return issues;
+}
+
 /**
  * Mescla remoto + cache local: por id, vence a revisão com updatedAt mais recente (CADASTRO_CONFLICT_POLICY).
  * Ids só no local entram. Em empate de timestamp (0 vs 0), mantém o remoto.
+ * Fase 3: após LWW, se a outra cópia tiver bloco KM/chegada mais completo, aplica-o em bloco único
+ * e actualiza metadados para permitir push à nuvem.
+ * Fase 4: depois, merge campo-a-campo (fora KM) usando fieldUpdatedAt com fallback a updatedAt.
+ * Fase 5: regista conflitos “moles” (mesmo carimbo / mesmo score KM) antes dos enxertos.
  * Retorna merged + ids afetados por tipo de resolução (tópico 11).
  */
 function mergeSaidasCadastroLWWWithReport(remoteArr, localArr, forcedTipo) {
   var remoteWonIds = [];
   var localWonIds = [];
   var localOnlyIds = [];
+  var kmBlockGraftedIds = [];
+  var fieldLevelMergeDetails = [];
+  var softConflictDetails = [];
   var map = new Map();
   (Array.isArray(remoteArr) ? remoteArr : []).forEach(function (it) {
     var n = normalizeSaida(it, forcedTipo);
@@ -2742,18 +3030,44 @@ function mergeSaidasCadastroLWWWithReport(remoteArr, localArr, forcedTipo) {
     var rem = map.get(id);
     var tLoc = cadastroItemUpdatedMs(n);
     var tRem = cadastroItemUpdatedMs(rem);
+    var chosen;
     if (tLoc > tRem) {
-      map.set(id, n);
+      chosen = n;
       localWonIds.push(id);
     } else {
+      chosen = rem;
       remoteWonIds.push(id);
     }
+    var softIssues = cadastroCollectSoftMergeConflicts(rem, n);
+    if (softIssues.length) {
+      softConflictDetails.push({ id: id, tipo: forcedTipo || '', issues: softIssues });
+    }
+    var other = chosen === n ? rem : n;
+    var metaTouch = false;
+    if (cadastroMergeAtomicKmBlockIfRicher(chosen, other)) {
+      kmBlockGraftedIds.push(id);
+      metaTouch = true;
+    }
+    var fl = cadastroMergeNonKmFieldsByFieldTime(chosen, other);
+    if (fl.changed > 0) {
+      fieldLevelMergeDetails.push({ id: id, keys: fl.keys });
+      metaTouch = true;
+    }
+    if (metaTouch) {
+      try {
+        touchCadastroSaidaMetadata(chosen, false);
+      } catch (eMeta) {}
+    }
+    map.set(id, chosen);
   });
   return {
     merged: Array.from(map.values()),
     remoteWonIds: remoteWonIds,
     localWonIds: localWonIds,
-    localOnlyIds: localOnlyIds
+    localOnlyIds: localOnlyIds,
+    kmBlockGraftedIds: kmBlockGraftedIds,
+    fieldLevelMergeDetails: fieldLevelMergeDetails,
+    softConflictDetails: softConflictDetails
   };
 }
 
@@ -3462,6 +3776,7 @@ if (existingIndex !== -1) {
     delete saidaAtualizada.saidas_originais;
     delete saidaAtualizada.saidaJuntadaOriginal;
     
+    touchCadastroSaidaFieldUpdatedAtFromDiff(saidaExistente, saidaAtualizada);
     touchCadastroSaidaMetadata(saidaAtualizada, false);
     targetArray[existingIndex] = saidaAtualizada;
 } else {
@@ -4210,6 +4525,24 @@ let remoteLoaded = false;
 try { lsSaidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]'); } catch (e) { lsSaidasAdm = []; }
 try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); } catch (e) { lsSaidasAmb = []; }
 
+try {
+  if (window.sotSaidasIdb && typeof window.sotSaidasIdb.getCadastroSnapshot === 'function') {
+    var admLen = Array.isArray(lsSaidasAdm) ? lsSaidasAdm.length : 0;
+    var ambLen = Array.isArray(lsSaidasAmb) ? lsSaidasAmb.length : 0;
+    if (admLen === 0 && ambLen === 0) {
+      var idbSnap = await window.sotSaidasIdb.getCadastroSnapshot();
+      if (idbSnap && typeof idbSnap === 'object') {
+        if (Array.isArray(idbSnap.saidasAdministrativas) && idbSnap.saidasAdministrativas.length) {
+          lsSaidasAdm = idbSnap.saidasAdministrativas;
+        }
+        if (Array.isArray(idbSnap.saidasAmbulancias) && idbSnap.saidasAmbulancias.length) {
+          lsSaidasAmb = idbSnap.saidasAmbulancias;
+        }
+      }
+    }
+  }
+} catch (eIdbLoad) {}
+
 cadastroSyncLoadDepth++;
 setCadastroSyncUiState('loading', 'Carregando dados...');
 var cadastroLoadT0 = Date.now();
@@ -4343,6 +4676,59 @@ if (remoteLoaded) {
       displayMessage(msg, 'warning', 14000);
     }
   }
+  var kmGraftAll = (repAdm.kmBlockGraftedIds || []).concat(repAmb.kmBlockGraftedIds || []);
+  if (kmGraftAll.length) {
+    logCadastroTelemetry('merge_km_block_graft', {
+      count: kmGraftAll.length,
+      sampleIds: kmGraftAll.slice(0, 12)
+    });
+    if (typeof displayMessage === 'function') {
+      displayMessage(
+        'Bloco KM/chegada mais completo foi unificado em ' + kmGraftAll.length + ' saída(s) (merge atómico, Fase 3).',
+        'info',
+        7000
+      );
+    }
+  }
+  var flDetails = (repAdm.fieldLevelMergeDetails || []).concat(repAmb.fieldLevelMergeDetails || []);
+  if (flDetails.length) {
+    var flKeyCount = 0;
+    flDetails.forEach(function (d) {
+      if (d && Array.isArray(d.keys)) flKeyCount += d.keys.length;
+    });
+    logCadastroTelemetry('merge_field_level_non_km', {
+      recordCount: flDetails.length,
+      fieldChangeCount: flKeyCount,
+      sample: flDetails.slice(0, 6)
+    });
+  }
+  var softAll = (repAdm.softConflictDetails || []).concat(repAmb.softConflictDetails || []);
+  if (softAll.length) {
+    console.warn('[SOT Cadastro Saídas][Fase 5 — conflitos não resolvidos automaticamente]', softAll);
+    appendCadastroSoftConflictLogEntries(softAll);
+    logCadastroTelemetry('merge_soft_conflicts_fase5', {
+      recordCount: softAll.length,
+      sample: softAll.slice(0, 8)
+    });
+    if (typeof displayMessage === 'function') {
+      var idSample = softAll
+        .map(function (x) {
+          return x && x.id != null ? String(x.id) : '';
+        })
+        .filter(Boolean)
+        .slice(0, 4)
+        .join(', ');
+      displayMessage(
+        'Atenção: em ' +
+          softAll.length +
+          ' saída(s) há divergências que o sistema não desempatou só com carimbos (mesmo tempo ou mesmo nível de KM). Revise manualmente. IDs (amostra): ' +
+          idSample +
+          (softAll.length > 4 ? '…' : ''),
+        'warning',
+        14000
+      );
+    }
+  }
 } else {
   saidasAdministrativas = mergeById(saidasAdministrativas, lsSaidasAdm, 'Administrativa');
   saidasAmbulancias = mergeById(saidasAmbulancias, lsSaidasAmb, 'Ambulância');
@@ -4353,6 +4739,11 @@ try {
   localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
   localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmbulancias));
 } catch (e) {}
+try {
+  if (window.sotSaidasIdb && typeof window.sotSaidasIdb.putCadastroSnapshot === 'function') {
+    void window.sotSaidasIdb.putCadastroSnapshot(saidasAdministrativas, saidasAmbulancias).catch(function () {});
+  }
+} catch (eIdbMirror) {}
 
 // Tópico 10: enviar à nuvem só se o merge trouxe novidade vs snapshot remoto (sem heurística length>=)
 try {
@@ -4662,7 +5053,25 @@ window.addEventListener('sot-firebase-auth-changed', function (ev) {
     }
 });
 
+window.addEventListener('sot-fase8-write-recovered', function (ev) {
+  try {
+    var k = ev && ev.detail ? ev.detail.key : '';
+    if (k !== 'saidasAdministrativas' && k !== 'saidasAmbulancias') return;
+    logCadastroTelemetry('fase8_write_recovered', { key: k });
+    if (typeof displayMessage === 'function') {
+      displayMessage(
+        'Conflito de sincronização resolvido: dados locais foram fundidos com a nuvem (Fase 8).',
+        'info',
+        6500
+      );
+    }
+    refreshCadastroSyncStatusPill();
+  } catch (e) {}
+});
+
 window.addEventListener('online', function () {
+  cadastroOutboxBackoffUntil = 0;
+  cadastroOutboxFlushFailStreak = 0;
   scheduleCadastroOutboxFlush(300);
   refreshCadastroSyncStatusPill();
 });
@@ -4681,6 +5090,13 @@ document.addEventListener('visibilitychange', function () {
 window.addEventListener('focus', function () {
   if (!document.hidden) {
     scheduleCadastroOutboxFlush(0);
+    refreshCadastroSyncStatusPill();
+  }
+});
+
+window.addEventListener('pageshow', function (ev) {
+  if (ev && ev.persisted) {
+    scheduleCadastroOutboxFlush(200);
     refreshCadastroSyncStatusPill();
   }
 });
@@ -4765,8 +5181,10 @@ initItensTabs();
 
 setInterval(function () {
   if (document.hidden) return;
+  if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return;
+  if (Date.now() < cadastroOutboxBackoffUntil) return;
   if (getCadastroOutbox()) scheduleCadastroOutboxFlush(0);
-}, 20000);
+}, CADASTRO_OUTBOX_PERIODIC_MS);
 });
 
 // Função global para inicializar as abas dos itens

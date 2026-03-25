@@ -29,7 +29,8 @@ import {
   setDoc,
   onSnapshot,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -68,6 +69,41 @@ function isSotOfflineModeActive() {
 const cache = new Map();
 const inFlightGets = new Map();
 const inFlightSets = new Map();
+/** Fase 7: última geração lida/gravada por chave (documentos mestre de listas). */
+const docGenByKey = new Map();
+const SOT_F7_GENERATION_KEYS = {
+  saidasAdministrativas: true,
+  saidasAmbulancias: true
+};
+
+function readSotDocGenerationFromData(data) {
+  if (!data || typeof data !== "object") return 0;
+  var g = data.sotDocGeneration;
+  if (typeof g === "number" && !isNaN(g) && g >= 0) return Math.floor(g);
+  return 0;
+}
+
+function rememberDocGenerationForKey(keyStr, data) {
+  if (!SOT_F7_GENERATION_KEYS[keyStr]) return;
+  docGenByKey.set(keyStr, readSotDocGenerationFromData(data));
+}
+
+function buildPayloadWithSotDocGen(value, ts, nextGen) {
+  var payload;
+  if (valueNeedsJsonBlob(value)) {
+    payload = {
+      _sotJsonV1: true,
+      body: JSON.stringify(value),
+      updatedAt: ts,
+      sotDocGeneration: nextGen
+    };
+  } else if (Array.isArray(value)) {
+    payload = { items: value, updatedAt: ts, sotDocGeneration: nextGen };
+  } else {
+    payload = { data: value, updatedAt: ts, sotDocGeneration: nextGen };
+  }
+  return payload;
+}
 
 let db = null;
 let auth = null;
@@ -115,7 +151,9 @@ function log(level, message, detail) {
 
 function invalidateCache(key) {
   try {
-    cache.delete(String(key));
+    var ks = String(key);
+    cache.delete(ks);
+    docGenByKey.delete(ks);
   } catch (e) {}
 }
 
@@ -456,7 +494,18 @@ export async function installFirebaseSot() {
     invalidateAllCache: function () {
       try {
         cache.clear();
+        docGenByKey.clear();
       } catch (e) {}
+    },
+
+    /**
+     * Fase 7: geração optimista do documento (0 se desconhecido). Só saidasAdministrativas / saidasAmbulancias.
+     */
+    getLastSotDocGeneration: function (key) {
+      var k = String(key || "");
+      if (!SOT_F7_GENERATION_KEYS[k]) return null;
+      if (!docGenByKey.has(k)) return null;
+      return docGenByKey.get(k);
     },
 
     getCurrentUserProfile: function () {
@@ -520,9 +569,12 @@ export async function installFirebaseSot() {
           const snap = await getDoc(ref);
           if (!snapshotExists(snap)) {
             setCache(keyStr, null);
+            if (SOT_F7_GENERATION_KEYS[keyStr]) docGenByKey.set(keyStr, 0);
             return null;
           }
-          const value = valueFromFirestoreDocData(snap.data());
+          const rawData = snap.data();
+          rememberDocGenerationForKey(keyStr, rawData);
+          const value = valueFromFirestoreDocData(rawData);
           setCache(keyStr, value);
           return value;
         } catch (e) {
@@ -545,13 +597,15 @@ export async function installFirebaseSot() {
       }
     },
 
-    set: async function (key, value) {
+    set: async function (key, value, options) {
       const keyStr = String(key);
       if (isSotOfflineModeActive()) {
         log("log", "set bloqueado (modo offline)", keyStr);
         return false;
       }
-      invalidateCache(keyStr);
+      try {
+        cache.delete(keyStr);
+      } catch (eDel) {}
       if (!authGateOk()) {
         return false;
       }
@@ -574,6 +628,37 @@ export async function installFirebaseSot() {
           try {
             const ref = doc(db, COL, keyStr);
             const ts = serverTimestamp();
+            const expectGen =
+              options && typeof options.expectSotDocGeneration === "number" && !isNaN(options.expectSotDocGeneration)
+                ? Math.floor(options.expectSotDocGeneration)
+                : null;
+
+            if (SOT_F7_GENERATION_KEYS[keyStr]) {
+              var nextGenF7 = 0;
+              await runTransaction(db, async function (transaction) {
+                const snap = await transaction.get(ref);
+                var prevGen = 0;
+                if (snapshotExists(snap)) {
+                  prevGen = readSotDocGenerationFromData(snap.data());
+                }
+                if (expectGen !== null && prevGen !== expectGen) {
+                  throw new Error("SOT_F7_GEN_MISMATCH:" + prevGen);
+                }
+                nextGenF7 = prevGen + 1;
+                transaction.set(ref, buildPayloadWithSotDocGen(value, ts, nextGenF7));
+              });
+              docGenByKey.set(keyStr, nextGenF7);
+              setCache(keyStr, value);
+              if (keyStr === "saidasAdministrativas" && Array.isArray(value) && value.length > 0) {
+                try {
+                  await syncSaidasAdministrativasDayShards(value);
+                } catch (shardErr) {
+                  log("warn", "syncSaidasAdministrativasDayShards após set mestre", shardErr && shardErr.message);
+                }
+              }
+              return true;
+            }
+
             var payload;
             if (valueNeedsJsonBlob(value)) {
               payload = { _sotJsonV1: true, body: JSON.stringify(value), updatedAt: ts };
@@ -583,7 +668,6 @@ export async function installFirebaseSot() {
               payload = { data: value, updatedAt: ts };
             }
             await setDoc(ref, payload);
-            /** Repõe cache com o valor gravado: o próximo get() não lê snapshot antigo (latência Firestore / corrida entre modais KM). */
             setCache(keyStr, value);
             if (keyStr === "saidasAdministrativas" && Array.isArray(value) && value.length > 0) {
               try {
@@ -594,7 +678,13 @@ export async function installFirebaseSot() {
             }
             return true;
           } catch (e) {
-            log("error", "set error key=" + keyStr, e && e.message);
+            var msg = e && e.message ? String(e.message) : String(e);
+            if (msg.indexOf("SOT_F7_GEN_MISMATCH") === 0) {
+              docGenByKey.delete(keyStr);
+              log("warn", "set Fase 7 generation mismatch key=" + keyStr, msg);
+            } else {
+              log("error", "set error key=" + keyStr, e && e.message);
+            }
             return false;
           }
         } finally {

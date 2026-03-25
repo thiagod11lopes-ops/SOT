@@ -437,4 +437,128 @@
         runAutoSync: runAutoSync,
         AUTO_SYNC_INTERVAL_MS: AUTO_SYNC_INTERVAL_MS
     };
+
+    /** Fase 11: leitura de estado local (outboxes, último sync) — sem escrita na nuvem. */
+    var CADASTRO_OUTBOX_KEY_F11 = 'sot_cadastro_saidas_outbox_v1';
+    var SAIDAS_ADM_OUTBOX_KEY_F11 = 'sot_saidas_adm_outbox_v1';
+    var SAIDAS_ADM_SYNC_LOG_KEY_F11 = 'sot_saidas_adm_sync_log_v1';
+    var AMB_OUTBOX_KEY_F11 = 'sot_amb_outbox_v1';
+
+    function readCadastroOutboxDiag() {
+        var key = CADASTRO_OUTBOX_KEY_F11;
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return { key: key, pendingJobs: 0 };
+            var p = JSON.parse(raw);
+            if (!p || typeof p !== 'object') return { key: key, pendingJobs: 0, note: 'invalid_shape' };
+            if (p.type === 'replace_collections') {
+                return {
+                    key: key,
+                    pendingJobs: 1,
+                    queuedAt: p.queuedAt || null,
+                    reason: p.reason || null,
+                    saidasAdministrativasCount: Array.isArray(p.saidasAdministrativas) ? p.saidasAdministrativas.length : 0,
+                    saidasAmbulanciasCount: Array.isArray(p.saidasAmbulancias) ? p.saidasAmbulancias.length : 0
+                };
+            }
+            return { key: key, pendingJobs: 1, note: 'unknown_type', type: p.type || null };
+        } catch (e) {
+            return { key: key, pendingJobs: null, error: e && e.message ? e.message : String(e) };
+        }
+    }
+
+    function readAdmOutboxDiag() {
+        var key = SAIDAS_ADM_OUTBOX_KEY_F11;
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return { key: key, pendingUpserts: 0 };
+            var parsed = JSON.parse(raw);
+            var n = Array.isArray(parsed) ? parsed.length : 0;
+            return { key: key, pendingUpserts: n };
+        } catch (e) {
+            return { key: key, pendingUpserts: null, error: e && e.message ? e.message : String(e) };
+        }
+    }
+
+    function readAmbOutboxDiag() {
+        var key = AMB_OUTBOX_KEY_F11;
+        try {
+            var raw = localStorage.getItem(key);
+            if (!raw) return { key: key, pendingItems: 0 };
+            var p = JSON.parse(raw);
+            if (!p || typeof p !== 'object' || !Array.isArray(p.items)) return { key: key, pendingItems: 0, note: 'no_items_array' };
+            return {
+                key: key,
+                pendingItems: p.items.length,
+                queuedAt: p.queuedAt || null,
+                reason: p.reason || null
+            };
+        } catch (e) {
+            return { key: key, pendingItems: null, error: e && e.message ? e.message : String(e) };
+        }
+    }
+
+    function tailSaidasAdmSyncLog(maxN) {
+        maxN = maxN || 5;
+        try {
+            var raw = localStorage.getItem(SAIDAS_ADM_SYNC_LOG_KEY_F11);
+            if (!raw) return [];
+            var rows = JSON.parse(raw);
+            if (!Array.isArray(rows)) return [];
+            return rows.slice(-maxN);
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function getPhase11DiagnosticsSnapshot() {
+        var authOk = null;
+        try {
+            if (window.firebaseSot && typeof window.firebaseSot.authGateOk === 'function') {
+                authOk = !!window.firebaseSot.authGateOk();
+            }
+        } catch (e) {}
+        var useFb = false;
+        try {
+            useFb = typeof dataService !== 'undefined' && !!dataService.useFirebase;
+        } catch (e2) {}
+        return {
+            at: new Date().toISOString(),
+            navigatorOnLine: typeof navigator !== 'undefined' ? !!navigator.onLine : null,
+            sotOfflineModeFlag: (function () {
+                try {
+                    return localStorage.getItem('sot_offline_mode');
+                } catch (e) {
+                    return null;
+                }
+            })(),
+            cloudSyncDisabledByPolicy: isSotCloudSyncDisabledByPolicy(),
+            lastSyncIso: (function () {
+                try {
+                    return localStorage.getItem(SOT_LAST_SYNC_KEY);
+                } catch (e) {
+                    return null;
+                }
+            })(),
+            lastSyncDisplay: getLastSyncDisplay(),
+            syncInFlight: syncInFlight,
+            dataServiceUseFirebase: useFb,
+            firebaseAuthGateOk: authOk,
+            outboxCadastro: readCadastroOutboxDiag(),
+            outboxSaidasAdministrativas: readAdmOutboxDiag(),
+            outboxSaidasAmbulancias: readAmbOutboxDiag(),
+            saidasAdmSyncLogTail: tailSaidasAdmSyncLog(5)
+        };
+    }
+
+    window.__sotPhase11Diagnostics = {
+        getSnapshot: getPhase11DiagnosticsSnapshot,
+        log: function () {
+            var s = getPhase11DiagnosticsSnapshot();
+            try {
+                console.log('[SOT Fase 11] diagnostics snapshot', s);
+            } catch (e) {}
+            return s;
+        }
+    };
 })();

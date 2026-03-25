@@ -807,6 +807,18 @@
                         </button>
                         <span class="config-tool-scope config-tool-scope--cloud">Local + Firebase · mescla</span>
                     </div>
+                    <div class="config-tool-wrap">
+                        <button type="button" id="sotFase10SelfTestBtn" title="Executa verificações em memória da fusão LWW (Fase 8) e itemUpdatedMs; não acede à rede">
+                            <i class="fas fa-vial"></i> Teste rápido de fusão (Fase 10)
+                        </button>
+                        <span class="config-tool-scope config-tool-scope--local">Só navegador · diagnóstico</span>
+                    </div>
+                    <div class="config-tool-wrap">
+                        <button type="button" id="sotFase11DiagBtn" title="Mostra na consola última sincronização, modo offline e tamanho das filas locais (outbox); não altera dados">
+                            <i class="fas fa-heartbeat"></i> Diagnóstico de sincronização (Fase 11)
+                        </button>
+                        <span class="config-tool-scope config-tool-scope--local">Só navegador · leitura</span>
+                    </div>
                 </div>
             </details>
             <details class="config-advanced-details config-file-formats-details" style="margin-top: 14px;">
@@ -3382,6 +3394,51 @@
                     }
                     saveAllToFirebaseBtn.disabled = false;
                     saveAllToFirebaseBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)';
+                });
+            }
+
+            const sotFase10SelfTestBtn = document.getElementById('sotFase10SelfTestBtn');
+            if (sotFase10SelfTestBtn) {
+                sotFase10SelfTestBtn.addEventListener('click', () => {
+                    const run = window.__sotPhase10SelfTest && typeof window.__sotPhase10SelfTest.run === 'function'
+                        ? window.__sotPhase10SelfTest.run
+                        : null;
+                    if (!run) {
+                        showGerenciamentoMessage('Teste Fase 10 indisponível: data-service não expôs __sotPhase10SelfTest.', 'error');
+                        return;
+                    }
+                    const ok = run();
+                    showGerenciamentoMessage(
+                        ok
+                            ? 'Fase 10: teste de fusão em memória concluído com sucesso (ver consola para detalhe).'
+                            : 'Fase 10: uma ou mais verificações falharam — abra a consola do navegador (F12).',
+                        ok ? 'success' : 'error'
+                    );
+                });
+            }
+
+            const sotFase11DiagBtn = document.getElementById('sotFase11DiagBtn');
+            if (sotFase11DiagBtn) {
+                sotFase11DiagBtn.addEventListener('click', () => {
+                    const log = window.__sotPhase11Diagnostics && typeof window.__sotPhase11Diagnostics.log === 'function'
+                        ? window.__sotPhase11Diagnostics.log
+                        : null;
+                    if (!log) {
+                        showGerenciamentoMessage('Diagnóstico Fase 11 indisponível: sot-sync não expôs __sotPhase11Diagnostics.', 'error');
+                        return;
+                    }
+                    const s = log();
+                    const f = (n) => (n == null ? '?' : String(n));
+                    const c = s.outboxCadastro && s.outboxCadastro.pendingJobs;
+                    const a = s.outboxSaidasAdministrativas && s.outboxSaidasAdministrativas.pendingUpserts;
+                    const m = s.outboxSaidasAmbulancias && s.outboxSaidasAmbulancias.pendingItems;
+                    showGerenciamentoMessage(
+                        'Fase 11: objeto completo na consola (F12). Resumo — última sync: ' + (s.lastSyncDisplay || '—')
+                            + '; online: ' + f(s.navigatorOnLine)
+                            + '; modo offline SOT: ' + (s.sotOfflineModeFlag === 'true' ? 'sim' : s.sotOfflineModeFlag === 'false' ? 'não' : f(s.sotOfflineModeFlag))
+                            + '; filas cadastro / adm / amb: ' + f(c) + ' / ' + f(a) + ' / ' + f(m) + '.',
+                        'success'
+                    );
                 });
             }
 

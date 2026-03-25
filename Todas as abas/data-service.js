@@ -175,6 +175,50 @@
         return Array.from(byId.values());
     }
 
+    /**
+     * Fase 8: funde duas listas por id — timestamp mais recente vence; empate favorece `clientList` (intenção local).
+     */
+    function mergeSaidasListsLwwClientTiebreak(remoteList, clientList) {
+        var byId = new Map();
+        (Array.isArray(remoteList) ? remoteList : []).forEach(function (raw) {
+            if (!raw || typeof raw !== 'object' || raw.id == null || String(raw.id) === '') return;
+            var id = String(raw.id);
+            byId.set(id, Object.assign({}, raw));
+        });
+        (Array.isArray(clientList) ? clientList : []).forEach(function (raw) {
+            if (!raw || typeof raw !== 'object' || raw.id == null || String(raw.id) === '') return;
+            var id = String(raw.id);
+            var item = Object.assign({}, raw);
+            if (!byId.has(id)) {
+                byId.set(id, item);
+                return;
+            }
+            var prev = byId.get(id);
+            var tN = itemUpdatedMs(item);
+            var tO = itemUpdatedMs(prev);
+            if (tN > tO) byId.set(id, item);
+            else if (tN === tO) byId.set(id, item);
+        });
+        return Array.from(byId.values());
+    }
+
+    /** Fase 9: avisa outras abas/iframes que a lista na nuvem foi actualizada via data-service. */
+    function notifyFase9SaidasListBroadcast(key) {
+        if (key !== 'saidasAdministrativas' && key !== 'saidasAmbulancias') return;
+        try {
+            if (typeof BroadcastChannel === 'undefined') return;
+            if (key === 'saidasAdministrativas') {
+                var chAdm = new BroadcastChannel('sot_saidas_administrativas');
+                chAdm.postMessage({ type: 'saidas_updated', source: 'data_service_f9', key: key, t: Date.now() });
+                chAdm.close();
+            } else {
+                var chAmb = new BroadcastChannel('sot_saidas_ambulancias');
+                chAmb.postMessage({ type: 'saidas_amb_updated', source: 'data_service_f9', key: key, t: Date.now() });
+                chAmb.close();
+            }
+        } catch (e) {}
+    }
+
     function log(level, message, detail) {
         try {
             const msg = detail != null ? message + ' ' + (typeof detail === 'object' ? (detail.message || String(detail)) : detail) : message;
@@ -342,7 +386,18 @@
                         log('warn', 'Verificação anti-wipe key=' + key, wipeCheckErr);
                     }
                 }
-                const ok = await window.firebaseSot.set(key, value);
+                var setOpts = undefined;
+                if (
+                    (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') &&
+                    window.firebaseSot &&
+                    typeof window.firebaseSot.getLastSotDocGeneration === 'function'
+                ) {
+                    var lastGen = window.firebaseSot.getLastSotDocGeneration(key);
+                    if (typeof lastGen === 'number' && !isNaN(lastGen)) {
+                        setOpts = { expectSotDocGeneration: lastGen };
+                    }
+                }
+                const ok = await window.firebaseSot.set(key, value, setOpts);
                 if (ok && !(SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY) && typeof localStorage !== 'undefined') {
                     try {
                         localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
@@ -350,7 +405,74 @@
                         log('warn', 'localStorage.setItem após Firebase set', le);
                     }
                 }
-                return ok;
+                if (ok) {
+                    notifyFase9SaidasListBroadcast(key);
+                    return true;
+                }
+
+                // Fase 8: uma tentativa com leitura fresca + merge LWW por registo (ex.: mismatch sotDocGeneration).
+                if (
+                    (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') &&
+                    Array.isArray(value)
+                ) {
+                    try {
+                        invalidateCache(key);
+                        if (window.firebaseSot.invalidateCache) {
+                            window.firebaseSot.invalidateCache(key);
+                        }
+                        const remoteFresh = await window.firebaseSot.get(key);
+                        if (!Array.isArray(remoteFresh)) {
+                            log('warn', 'Fase 8: get remoto inválido após falha key=' + key);
+                            return false;
+                        }
+                        if (
+                            SOT_FORCE_FIREBASE_ONLY &&
+                            SOT_STRICT_FIREBASE_ONLY &&
+                            remoteFresh.length > 0 &&
+                            value.length === 0
+                        ) {
+                            log('warn', 'Fase 8: bloqueado merge para wipe vazio key=' + key);
+                            return false;
+                        }
+                        var merged = mergeSaidasListsLwwClientTiebreak(remoteFresh, value);
+                        var normPrefix = key === 'saidasAmbulancias' ? 'amb' : 'saida';
+                        merged = normalizeArrayRecords(merged, normPrefix);
+                        var genAfterGet =
+                            window.firebaseSot.getLastSotDocGeneration &&
+                            typeof window.firebaseSot.getLastSotDocGeneration === 'function'
+                                ? window.firebaseSot.getLastSotDocGeneration(key)
+                                : null;
+                        var setOpts2 =
+                            typeof genAfterGet === 'number' && !isNaN(genAfterGet)
+                                ? { expectSotDocGeneration: genAfterGet }
+                                : undefined;
+                        const ok2 = await window.firebaseSot.set(key, merged, setOpts2);
+                        if (ok2) {
+                            log('log', 'Fase 8: escrita recuperada após merge por registro key=' + key);
+                            try {
+                                window.dispatchEvent(
+                                    new CustomEvent('sot-fase8-write-recovered', { detail: { key: key } })
+                                );
+                            } catch (evErr) {}
+                            if (
+                                !(SOT_FORCE_FIREBASE_ONLY && SOT_STRICT_FIREBASE_ONLY) &&
+                                typeof localStorage !== 'undefined'
+                            ) {
+                                try {
+                                    localStorage.setItem(key, JSON.stringify(merged));
+                                } catch (le2) {
+                                    log('warn', 'localStorage após Fase 8 set', le2);
+                                }
+                            }
+                            notifyFase9SaidasListBroadcast(key);
+                            return true;
+                        }
+                    } catch (retryErr) {
+                        log('warn', 'Fase 8 retry merge key=' + key, retryErr);
+                    }
+                }
+
+                return false;
             } catch (e) {
                 log('error', '_setToFirebase key=' + key, e);
                 return false;
@@ -1008,4 +1130,56 @@
             } catch (e2) {}
         });
     } catch (e) {}
+
+    /**
+     * Fase 10: testes leves na consola (fusão Fase 8 + itemUpdatedMs). Sem rede.
+     * Uso: window.__sotPhase10SelfTest.run() → boolean
+     */
+    try {
+        window.__sotPhase10SelfTest = {
+            run: function () {
+                var failed = 0;
+                function fail(name, detail) {
+                    failed++;
+                    try {
+                        console.error('[SOT Fase 10]', name, detail != null ? detail : '');
+                    } catch (e) {}
+                }
+                function ok(name, cond, detail) {
+                    if (!cond) fail(name, detail);
+                }
+                var r1 = mergeSaidasListsLwwClientTiebreak(
+                    [{ id: 'a', updatedAt: '2020-01-01T00:00:00.000Z', v: 1 }],
+                    [{ id: 'a', updatedAt: '2021-01-01T00:00:00.000Z', v: 2 }]
+                );
+                ok('merge: cliente mais recente vence', r1.length === 1 && r1[0].v === 2, r1);
+                var r2 = mergeSaidasListsLwwClientTiebreak(
+                    [{ id: 'a', updatedAt: '2021-01-01T00:00:00.000Z', v: 99 }],
+                    [{ id: 'a', updatedAt: '2020-01-01T00:00:00.000Z', v: 3 }]
+                );
+                ok('merge: remoto mais recente vence', r2.length === 1 && r2[0].v === 99, r2);
+                var r3 = mergeSaidasListsLwwClientTiebreak(
+                    [{ id: 'a', updatedAt: '2021-06-01T12:00:00.000Z', v: 10 }],
+                    [{ id: 'a', updatedAt: '2021-06-01T12:00:00.000Z', v: 20 }]
+                );
+                ok('merge: empate favorece cliente', r3.length === 1 && r3[0].v === 20, r3);
+                var r4 = mergeSaidasListsLwwClientTiebreak([], [{ id: 'b', updatedAt: '2020-01-01T00:00:00.000Z', x: 1 }]);
+                ok('merge: só cliente', r4.length === 1 && r4[0].id === 'b', r4);
+                var r5 = mergeSaidasListsLwwClientTiebreak([{ id: 'c', updatedAt: '2020-01-01T00:00:00.000Z', y: 1 }], []);
+                ok('merge: só remoto', r5.length === 1 && r5[0].id === 'c', r5);
+                ok('itemUpdatedMs', itemUpdatedMs({ updatedAt: '2022-01-01T00:00:00.000Z' }) > 0);
+                var r6 = mergeSaidasListsLwwClientTiebreak(
+                    [{ id: 'd', updatedAt: '2020-01-01T00:00:00.000Z', a: 1 }],
+                    [{ id: 'd', updatedAt: '2020-01-01T00:00:00.000Z', b: 2 }]
+                );
+                ok('merge: empate com timestamps iguais → cliente', r6.length === 1 && r6[0].b === 2 && r6[0].a === undefined, r6);
+                var allOk = failed === 0;
+                try {
+                    if (allOk) console.log('[SOT Fase 10] selftest: OK (7 verificações)');
+                    else console.warn('[SOT Fase 10] selftest: FALHOU —', failed, 'verificação(ões)');
+                } catch (e2) {}
+                return allOk;
+            }
+        };
+    } catch (e3) {}
 })();

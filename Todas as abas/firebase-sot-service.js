@@ -127,10 +127,42 @@
         return false;
     }
 
+    /** Fase 7: geração optimista (saidasAdministrativas / saidasAmbulancias). */
+    var docGenByKey = new Map();
+    var SOT_F7_GENERATION_KEYS = { saidasAdministrativas: true, saidasAmbulancias: true };
+
+    function readSotDocGenerationFromData(data) {
+        if (!data || typeof data !== 'object') return 0;
+        var g = data.sotDocGeneration;
+        if (typeof g === 'number' && !isNaN(g) && g >= 0) return Math.floor(g);
+        return 0;
+    }
+
+    function rememberDocGenerationForKey(keyStr, data) {
+        if (!SOT_F7_GENERATION_KEYS[keyStr]) return;
+        docGenByKey.set(keyStr, readSotDocGenerationFromData(data));
+    }
+
+    function buildPayloadWithSotDocGen(value, ts, nextGen) {
+        var payload;
+        if (valueNeedsJsonBlob(value)) {
+            payload = ts
+                ? { _sotJsonV1: true, body: JSON.stringify(value), updatedAt: ts, sotDocGeneration: nextGen }
+                : { _sotJsonV1: true, body: JSON.stringify(value), sotDocGeneration: nextGen };
+        } else if (Array.isArray(value)) {
+            payload = ts ? { items: value, updatedAt: ts, sotDocGeneration: nextGen } : { items: value, sotDocGeneration: nextGen };
+        } else {
+            payload = ts ? { data: value, updatedAt: ts, sotDocGeneration: nextGen } : { data: value, sotDocGeneration: nextGen };
+        }
+        return payload;
+    }
+
     /** Remove entrada do cache (chamado após set para manter consistência). */
     function invalidateCache(key) {
         try {
-            cache.delete(String(key));
+            var ks = String(key);
+            cache.delete(ks);
+            docGenByKey.delete(ks);
         } catch (e) {}
     }
 
@@ -212,9 +244,11 @@
                 const snap = await ref.get();
                 if (!snap.exists) {
                     setCache(keyStr, null);
+                    if (SOT_F7_GENERATION_KEYS[keyStr]) docGenByKey.set(keyStr, 0);
                     return null;
                 }
                 const data = snap.data();
+                rememberDocGenerationForKey(keyStr, data);
                 let value = null;
                 if (data && data._sotJsonV1 === true && typeof data.body === 'string') {
                     try {
@@ -253,13 +287,15 @@
      * @returns {Promise<boolean>} true se persistiu no Firestore; false se modo offline,
      *   sem auth Google, Firebase indisponível ou erro de escrita/regras.
      */
-    async function set(key, value) {
+    async function set(key, value, options) {
         const keyStr = String(key);
         if (isSotOfflineModeActive()) {
             log('log', 'set bloqueado (modo offline)', keyStr);
             return false;
         }
-        invalidateCache(keyStr);
+        try {
+            cache.delete(keyStr);
+        } catch (eDel) {}
 
         let promise = inFlightSets.get(keyStr);
         if (promise) {
@@ -284,6 +320,32 @@
             try {
                 const ref = d.collection(COL).doc(keyStr);
                 const ts = fb.firestore && fb.firestore.FieldValue ? fb.firestore.FieldValue.serverTimestamp() : null;
+                var expectGen =
+                    options && typeof options.expectSotDocGeneration === 'number' && !isNaN(options.expectSotDocGeneration)
+                        ? Math.floor(options.expectSotDocGeneration)
+                        : null;
+
+                if (SOT_F7_GENERATION_KEYS[keyStr] && typeof d.runTransaction === 'function') {
+                    var nextGenF7 = 0;
+                    await d.runTransaction(function(transaction) {
+                        return transaction.get(ref).then(function(snap) {
+                            var prevGen = 0;
+                            if (snap.exists) {
+                                prevGen = readSotDocGenerationFromData(snap.data());
+                            }
+                            if (expectGen !== null && prevGen !== expectGen) {
+                                throw new Error('SOT_F7_GEN_MISMATCH:' + prevGen);
+                            }
+                            nextGenF7 = prevGen + 1;
+                            var payloadTx = buildPayloadWithSotDocGen(value, ts, nextGenF7);
+                            transaction.set(ref, payloadTx);
+                        });
+                    });
+                    docGenByKey.set(keyStr, nextGenF7);
+                    setCache(keyStr, value);
+                    return true;
+                }
+
                 var payload;
                 if (valueNeedsJsonBlob(value)) {
                     payload = ts
@@ -295,9 +357,16 @@
                     payload = ts ? { data: value, updatedAt: ts } : { data: value };
                 }
                 await ref.set(payload);
+                setCache(keyStr, value);
                 return true;
             } catch (e) {
-                log('error', 'set error key=' + keyStr, e && e.message);
+                var msg = e && e.message ? String(e.message) : String(e);
+                if (msg.indexOf('SOT_F7_GEN_MISMATCH') === 0) {
+                    docGenByKey.delete(keyStr);
+                    log('warn', 'set Fase 7 generation mismatch key=' + keyStr, msg);
+                } else {
+                    log('error', 'set error key=' + keyStr, e && e.message);
+                }
                 return false;
             } finally {
                 inFlightSets.delete(keyStr);
@@ -375,7 +444,15 @@
     function invalidateAllCache() {
         try {
             cache.clear();
+            docGenByKey.clear();
         } catch (e) {}
+    }
+
+    function getLastSotDocGeneration(key) {
+        var k = String(key || '');
+        if (!SOT_F7_GENERATION_KEYS[k]) return null;
+        if (!docGenByKey.has(k)) return null;
+        return docGenByKey.get(k);
     }
 
     window.firebaseSot = {
@@ -387,6 +464,8 @@
         set: set,
         getConfig: getConfig,
         setConfig: setConfig,
+        /** Fase 7: geração optimista (saidasAdministrativas / saidasAmbulancias). */
+        getLastSotDocGeneration: getLastSotDocGeneration,
         /** Invalida uma chave (ex.: após outra aba avisar via BroadcastChannel). */
         invalidateCache: invalidateCache,
         invalidateAllCache: invalidateAllCache
