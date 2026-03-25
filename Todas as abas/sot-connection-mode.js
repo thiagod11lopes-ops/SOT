@@ -443,7 +443,8 @@
         try {
             off = localStorage.getItem('sot_offline_mode') === 'true';
         } catch (e) {}
-        el.textContent = off ? 'Offline SOT (só local)' : 'Online SOT (Firebase)';
+        // O seletor já deixa claro o modo; removemos a descrição longa "só local" do chip.
+        el.textContent = off ? 'Offline' : 'Online SOT (Firebase)';
     }
 
     function activateOfflineMode(opts) {
