@@ -4,6 +4,10 @@
  * Modo estrito: não lê nem espelha localStorage para dados de domínio.
  * Sem a flag: API quando disponível, senão Firebase + merge com local.
  *
+ * Saídas (adm/amb): ao persistir, tombstones são compactados (só id/deletedAt/updatedAt/replacedById).
+ * Purga: após `window.SOT_TOMBSTONE_PURGE_DAYS` (omissão 365; 0 = nunca remover da lista) o registo
+ * apagado deixa de ser gravado — ver getSotTombstonePurgeDays / compactSaidasListForPersistence.
+ *
  * Segurança: validação de acesso a dados sensíveis pertence às regras Firestore (e ao backend,
  * se existir). Este serviço orquestra leitura/escrita no browser; não é barreira de segurança.
  */
@@ -88,6 +92,19 @@
         return null;
     }
 
+    /** Começa pela secondary e sobrescreve apenas com valores não-vazios da primary. */
+    function mergePrimaryOverSecondary(primary, secondary) {
+        const res = Object.assign({}, secondary);
+        if (!primary || typeof primary !== 'object') return res;
+        Object.keys(primary).forEach(function (k) {
+            var v = primary[k];
+            if (v !== undefined && v !== null && v !== '') {
+                res[k] = v;
+            }
+        });
+        return res;
+    }
+
     /**
      * Mesclagem por id (mais recente) + preenchimento de campos.
      *
@@ -120,19 +137,6 @@
             byId.set(sid, item);
             order.push(sid);
         });
-
-        function mergePrimaryOverSecondary(primary, secondary) {
-            // Começa pela secondary e sobrescreve apenas com valores não-vazios da primary
-            const res = Object.assign({}, secondary);
-            if (!primary || typeof primary !== 'object') return res;
-            Object.keys(primary).forEach(function (k) {
-                var v = primary[k];
-                if (v !== undefined && v !== null && v !== '') {
-                    res[k] = v;
-                }
-            });
-            return res;
-        }
 
         local.forEach(function (item) {
             if (!item || typeof item !== 'object') return;
@@ -204,6 +208,163 @@
         }
     }
 
+    function isoToMs(iso) {
+        try {
+            if (iso == null || iso === '') return 0;
+            var d = new Date(String(iso).trim());
+            return isNaN(d.getTime()) ? 0 : d.getTime();
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    /** Revisão LWW: max(updatedAt, deletedAt) para apagamentos/substituições não perderem para cópias velhas "vivas". */
+    function itemRevisionMs(item) {
+        if (!item || typeof item !== 'object') return 0;
+        var u = itemUpdatedMs(item);
+        var del = item.deletedAt != null && String(item.deletedAt).trim() !== '' ? isoToMs(item.deletedAt) : 0;
+        return Math.max(u, del);
+    }
+
+    function hasSaidaDeletedAt(item) {
+        return !!(item && item.deletedAt != null && String(item.deletedAt).trim() !== '');
+    }
+
+    /**
+     * Merge de listas de saídas (adm/amb): mesma ordem-base da nuvem; conflitos por revisão (inclui tombstone).
+     * Se qualquer lado tiver `deletedAt`, vence a revisão mais recente e copia o objecto inteiro (sem misturar campos).
+     * opts.tiePrefers: 'cloud' (default) | 'local' — em empate de revisão.
+     */
+    function mergeSaidasArraysTombstone(cloudArr, localArr, idField, opts) {
+        idField = idField || 'id';
+        opts = opts || {};
+        var tiePrefersLocal = opts.tiePrefers === 'local';
+        var remote = Array.isArray(cloudArr) ? cloudArr : [];
+        var local = Array.isArray(localArr) ? localArr : [];
+        var byId = new Map();
+        var order = [];
+        var remoteExtras = [];
+
+        remote.forEach(function (item) {
+            if (!item || typeof item !== 'object') return;
+            var sid = getStableRecordId(item, idField);
+            if (sid == null) {
+                remoteExtras.push(item);
+                return;
+            }
+            if (byId.has(sid)) return;
+            byId.set(sid, Object.assign({}, item));
+            order.push(sid);
+        });
+
+        local.forEach(function (item) {
+            if (!item || typeof item !== 'object') return;
+            var sid = getStableRecordId(item, idField);
+            if (sid == null) return;
+
+            if (!byId.has(sid)) {
+                byId.set(sid, Object.assign({}, item));
+                order.push(sid);
+                return;
+            }
+
+            var remoteItem = byId.get(sid);
+            var delLoc = hasSaidaDeletedAt(item);
+            var delRem = hasSaidaDeletedAt(remoteItem);
+            var tLoc = itemRevisionMs(item);
+            var tRem = itemRevisionMs(remoteItem);
+            var primaryIsLocal;
+            if (tLoc > tRem) primaryIsLocal = true;
+            else if (tRem > tLoc) primaryIsLocal = false;
+            else primaryIsLocal = tiePrefersLocal;
+
+            var primary = primaryIsLocal ? item : remoteItem;
+            var secondary = primaryIsLocal ? remoteItem : item;
+
+            if (delLoc || delRem) {
+                byId.set(sid, Object.assign({}, primary));
+                return;
+            }
+            byId.set(sid, mergePrimaryOverSecondary(primary, secondary));
+        });
+
+        return order.map(function (sid) { return byId.get(sid); }).concat(remoteExtras);
+    }
+
+    function isSaidaRecordActive(item) {
+        return !!(item && typeof item === 'object' && (item.deletedAt == null || String(item.deletedAt).trim() === ''));
+    }
+
+    function filterActiveSaidasRecords(arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.filter(isSaidaRecordActive);
+    }
+
+    function markSaidaDeletedRecord(item, replacedById) {
+        if (!item || typeof item !== 'object') return item;
+        var ts = new Date().toISOString();
+        item.deletedAt = ts;
+        item.updatedAt = ts;
+        if (replacedById != null && String(replacedById).trim() !== '') {
+            item.replacedById = String(replacedById);
+        }
+        return item;
+    }
+
+    /**
+     * Dias após deletedAt para remover o tombstone do array persistido (Firestore/localStorage).
+     * 0 = nunca remover (só compactar campos). Valor por omissão 365.
+     * Atenção: após purga, um cliente offline muito antigo pode voltar a enviar o mesmo id "vivo".
+     * Defina antes de carregar data-service, ex.: window.SOT_TOMBSTONE_PURGE_DAYS = 0;
+     */
+    function getSotTombstonePurgeDays() {
+        try {
+            var n = window.SOT_TOMBSTONE_PURGE_DAYS;
+            if (typeof n === 'number' && !isNaN(n) && n >= 0) return Math.floor(n);
+        } catch (e) {}
+        return 365;
+    }
+
+    /** Tombstone mínimo para gravar (reduz tamanho do documento sot_data). */
+    function compactSaidaTombstoneShape(item) {
+        if (!item || typeof item !== 'object') return item;
+        var id = getStableRecordId(item, 'id');
+        if (id == null) return item;
+        var min = {
+            id: id,
+            deletedAt: item.deletedAt,
+            updatedAt: item.updatedAt || item.deletedAt
+        };
+        if (item.replacedById != null && String(item.replacedById).trim() !== '') {
+            min.replacedById = String(item.replacedById);
+        }
+        return min;
+    }
+
+    /**
+     * Antes de persistir: compacta tombstones; opcionalmente remove os mais antigos que getSotTombstonePurgeDays().
+     */
+    function compactSaidasListForPersistence(arr) {
+        if (!Array.isArray(arr)) return [];
+        var now = Date.now();
+        var purgeDays = getSotTombstonePurgeDays();
+        var maxAgeMs = purgeDays > 0 ? purgeDays * 86400000 : 0;
+        var out = [];
+        arr.forEach(function (item) {
+            if (!item || typeof item !== 'object') return;
+            if (!hasSaidaDeletedAt(item)) {
+                out.push(item);
+                return;
+            }
+            var delMs = isoToMs(item.deletedAt);
+            if (maxAgeMs > 0 && delMs > 0 && now - delMs > maxAgeMs) {
+                return;
+            }
+            out.push(compactSaidaTombstoneShape(item));
+        });
+        return out;
+    }
+
     function normalizeArrayRecords(records, prefix) {
         var arr = Array.isArray(records) ? records : [];
         var byId = new Map();
@@ -218,7 +379,7 @@
                 return;
             }
             var prev = byId.get(key);
-            byId.set(key, itemUpdatedMs(item) >= itemUpdatedMs(prev) ? item : prev);
+            byId.set(key, itemRevisionMs(item) >= itemRevisionMs(prev) ? item : prev);
         });
         return Array.from(byId.values());
     }
@@ -482,9 +643,9 @@
                             log('warn', 'Fase 8: bloqueado merge para wipe vazio key=' + key);
                             return false;
                         }
-                        var merged = mergeSaidasListsLwwClientTiebreak(remoteFresh, value);
+                        var merged = mergeSaidasArraysTombstone(remoteFresh, value, 'id', { tiePrefers: 'local' });
                         var normPrefix = key === 'saidasAmbulancias' ? 'amb' : 'saida';
-                        merged = normalizeArrayRecords(merged, normPrefix);
+                        merged = compactSaidasListForPersistence(normalizeArrayRecords(merged, normPrefix));
                         var genAfterGet =
                             window.firebaseSot.getLastSotDocGeneration &&
                             typeof window.firebaseSot.getLastSotDocGeneration === 'function'
@@ -740,7 +901,7 @@
             if (this._useRestApi()) {
                 try {
                     const apiData = await api.getSaidasAdministrativas();
-                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
+                    return mergeSaidasArraysTombstone(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getSaidasAdministrativas API', e);
                     this.apiAvailable = false;
@@ -749,7 +910,7 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('saidasAdministrativas');
-                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
+                if (Array.isArray(data)) return mergeSaidasArraysTombstone(data, local, 'id');
             }
             if (local.length) return local.slice();
             if (!navigator.onLine) return local.slice();
@@ -764,8 +925,14 @@
             if (this._useRestApi()) {
                 try {
                     const result = await api.createSaidaAdministrativa(saida);
-                    const saidas = await this.getSaidasAdministrativas();
-                    saidas.push({ ...saida, id: (result && result.data && result.data.id) || saida.id });
+                    const saidas = compactSaidasListForPersistence(
+                        normalizeArrayRecords(
+                            [].concat(await this.getSaidasAdministrativas(), [
+                                { ...saida, id: (result && result.data && result.data.id) || saida.id }
+                            ]),
+                            'saida'
+                        )
+                    );
                     await this._setToFirebase('saidasAdministrativas', saidas);
                     try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas)); } catch (e) {}
                     return result.data || saida;
@@ -773,14 +940,16 @@
                     log('warn', 'saveSaidaAdministrativa API', e);
                 }
             }
-            const saidas = normalizeArrayRecords([].concat(await this.getSaidasAdministrativas(), [saida]), 'saida');
+            const saidas = compactSaidasListForPersistence(
+                normalizeArrayRecords([].concat(await this.getSaidasAdministrativas(), [saida]), 'saida')
+            );
             await this._setToFirebase('saidasAdministrativas', saidas);
             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas)); } catch (e) {}
             return saida;
         }
 
         async setSaidasAdministrativas(lista) {
-            lista = normalizeArrayRecords(lista, 'saida');
+            lista = compactSaidasListForPersistence(normalizeArrayRecords(lista, 'saida'));
             await this._setToFirebase('saidasAdministrativas', lista);
             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(lista)); } catch (e) {}
             return true;
@@ -793,7 +962,7 @@
             if (this._useRestApi()) {
                 try {
                     const apiData = await api.getSaidasAmbulancias();
-                    return mergeArraysCloudPrimary(Array.isArray(apiData) ? apiData : [], local, 'id');
+                    return mergeSaidasArraysTombstone(Array.isArray(apiData) ? apiData : [], local, 'id');
                 } catch (e) {
                     log('warn', 'getSaidasAmbulancias API', e);
                     this.apiAvailable = false;
@@ -802,7 +971,7 @@
             }
             if (this.useFirebase) {
                 const data = await this._getFromFirebase('saidasAmbulancias');
-                if (Array.isArray(data)) return mergeArraysCloudPrimary(data, local, 'id');
+                if (Array.isArray(data)) return mergeSaidasArraysTombstone(data, local, 'id');
             }
             if (local.length) return local.slice();
             if (!navigator.onLine) return local.slice();
@@ -811,7 +980,7 @@
         }
 
         async setSaidasAmbulancias(lista) {
-            lista = normalizeArrayRecords(lista, 'amb');
+            lista = compactSaidasListForPersistence(normalizeArrayRecords(lista, 'amb'));
             await this._setToFirebase('saidasAmbulancias', lista);
             try { localStorage.setItem('saidasAmbulancias', JSON.stringify(lista)); } catch (e) {}
             return true;
@@ -1169,6 +1338,13 @@
     try {
         window.sotDataMerge = {
             mergeArraysCloudPrimary: mergeArraysCloudPrimary,
+            mergeSaidasArraysTombstone: mergeSaidasArraysTombstone,
+            itemRevisionMs: itemRevisionMs,
+            isSaidaRecordActive: isSaidaRecordActive,
+            filterActiveSaidasRecords: filterActiveSaidasRecords,
+            markSaidaDeletedRecord: markSaidaDeletedRecord,
+            compactSaidasListForPersistence: compactSaidasListForPersistence,
+            getSotTombstonePurgeDays: getSotTombstonePurgeDays,
             getStableRecordId: getStableRecordId,
             readLocalStorageArrayAlways: readLocalStorageArrayAlways,
             mergeObjectsCloudPrimary: mergeObjectsCloudPrimary,

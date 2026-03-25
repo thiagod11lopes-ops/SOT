@@ -1260,6 +1260,9 @@ row.classList.toggle('saida-realizada', !!(saidaPrincipal.kmSaida && saidaPrinci
  * @param {string} destino - String do destino (pode ser "Cidade - Bairro" ou apenas "Bairro")
  * @returns {string} - Apenas o bairro
  */
+function isSaidaAmbActive(s) {
+    return s && (s.deletedAt == null || String(s.deletedAt).trim() === '');
+}
 function extrairBairroDoDestino(destino) {
     if (!destino || !destino.trim()) return '';
     // Se contém " - ", pega apenas a parte após o " - " (bairro)
@@ -1293,7 +1296,7 @@ return group;
 }
 function getLastKmChegadaAmb(placa) {
     ambDebug('Getting last KM for placa:', placa);
-    const allSaidas = [...saidasAmbulancias].filter(s => s.viatura === placa);
+    const allSaidas = [...saidasAmbulancias].filter(s => isSaidaAmbActive(s) && s.viatura === placa);
     ambDebug('Filtered saidas:', allSaidas.length);
     allSaidas.sort((a, b) => {
         const dateA = new Date(a.dataSaida + 'T' + (a.saida || '00:00'));
@@ -1316,7 +1319,8 @@ function getLastKmChegadaAmb(placa) {
 function populateTables() {
 alertedVehicles.clear();
 const filterDateAmb = filterDateAmbInput.value;
-let filteredSaidasAmb = filterDateAmb ? saidasAmbulancias.filter(s => s.dataSaida === filterDateAmb) : saidasAmbulancias;
+const poolAmb = saidasAmbulancias.filter(isSaidaAmbActive);
+let filteredSaidasAmb = filterDateAmb ? poolAmb.filter(s => s.dataSaida === filterDateAmb) : poolAmb;
 filteredSaidasAmb.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
 const groupedAmbSaidas = groupSaidas(filteredSaidasAmb);
 ambulanciasTableBody.innerHTML = '';
@@ -1762,7 +1766,7 @@ if (keyToUpdate === 'kmChegada' && valueToSave !== '') {
 async function handleDeleteRow(event) {
 const row = event.target.closest('tr');
 if (!row) return;
-if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
+if (confirm('Tem certeza que deseja remover este registo? A linha deixa de aparecer e a remoção sincroniza com a nuvem (não é só apagar localmente).')) {
 const idsToRemove = row.dataset.id.split(',');
 const totalAntes = Array.isArray(saidasAmbulancias) ? saidasAmbulancias.length : 0;
 const totalRemovidos = saidasAmbulancias.filter(item => idsToRemove.includes(item.id)).length;
@@ -1776,7 +1780,17 @@ if (confirmacaoForte !== 'APAGAR TUDO') {
 authorizeAmbExplicitClear(180000);
 }
 await runAmbulanciaLocked('delete:' + row.dataset.id, async function () {
-saidasAmbulancias = saidasAmbulancias.filter(item => !idsToRemove.includes(item.id));
+idsToRemove.forEach(function (rid) {
+    var item = saidasAmbulancias.find(function (s) { return s && String(s.id) === String(rid); });
+    if (!item) return;
+    if (window.sotDataMerge && typeof window.sotDataMerge.markSaidaDeletedRecord === 'function') {
+        window.sotDataMerge.markSaidaDeletedRecord(item);
+    } else {
+        var ts = new Date().toISOString();
+        item.deletedAt = ts;
+        item.updatedAt = ts;
+    }
+});
 await ambulanciaWritePipeline.persistAndRefresh({ repopulateTables: true });
 });
 }
@@ -1826,7 +1840,8 @@ function downloadSaidasTableAsPdf() {
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'landscape' });
 const filterDateAmb = filterDateAmbInput.value;
-let filteredSaidasAmb = filterDateAmb ? saidasAmbulancias.filter(s => s.dataSaida === filterDateAmb) : saidasAmbulancias;
+const poolAmbPdf = saidasAmbulancias.filter(isSaidaAmbActive);
+let filteredSaidasAmb = filterDateAmb ? poolAmbPdf.filter(s => s.dataSaida === filterDateAmb) : poolAmbPdf;
 filteredSaidasAmb.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
 const groupedAmbSaidas = groupSaidas(filteredSaidasAmb);
 const title = 'Relatório de Saídas de Ambulâncias';
@@ -2184,7 +2199,7 @@ function generatePrintHTML(selectedDates, motoristasPorData) {
     `;
     
     selectedDates.forEach((date, index) => {
-        const filteredSaidas = saidasAmbulancias.filter(s => s.dataSaida === date);
+        const filteredSaidas = saidasAmbulancias.filter(s => isSaidaAmbActive(s) && s.dataSaida === date);
         if (filteredSaidas.length === 0) return;
         
         filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));

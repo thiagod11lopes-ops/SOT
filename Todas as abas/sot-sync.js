@@ -84,24 +84,6 @@
         return Array.from(byId.values());
     }
 
-    // Tenta inferir "criado/modificado" do id quando ele carrega um timestamp.
-    // Usado para não ressuscitar itens antigos do localStorage que já foram deletados no remoto.
-    function getIdTimestampMs(id) {
-        if (id == null) return null;
-        var s = String(id);
-        var m = s.match(/^saida_(\d+)_/); // ex.: saida_1712345678901_...
-        if (m && m[1]) {
-            var n = parseInt(m[1], 10);
-            return isNaN(n) ? null : n;
-        }
-        m = s.match(/^import-(\d+)-/); // ex.: import-1712345678901-...
-        if (m && m[1]) {
-            var n2 = parseInt(m[1], 10);
-            return isNaN(n2) ? null : n2;
-        }
-        return null;
-    }
-
     function getLocalEscalaObject() {
         var out = {};
         var re = /^\d{4}-\d{2}$/;
@@ -227,14 +209,6 @@
 
         syncInFlight = true;
         try {
-            var lastSyncMs = 0;
-            try {
-                var rawLast = localStorage.getItem(SOT_LAST_SYNC_KEY);
-                var dtLast = rawLast ? new Date(rawLast) : null;
-                var t = dtLast && !isNaN(dtLast.getTime()) ? dtLast.getTime() : 0;
-                lastSyncMs = t;
-            } catch (e) {}
-
             var pairsDataService = [
                 ['saidasAdministrativas', dataService.getSaidasAdministrativas.bind(dataService), dataService.setSaidasAdministrativas.bind(dataService), getLocal('saidasAdministrativas', [])],
                 ['saidasAmbulancias', dataService.getSaidasAmbulancias.bind(dataService), dataService.setSaidasAmbulancias.bind(dataService), getLocal('saidasAmbulancias', [])],
@@ -269,29 +243,23 @@
 
                 var merged = null;
                 if (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') {
-                    // Não ressuscitar itens que o remoto não possui.
-                    // Mantém apenas itens locais que parecem ter sido criados depois do último sync.
-                    var remoteIds = new Set();
-                    remoteBase.forEach(function (item) {
-                        var id = item && item.id;
-                        if (id != null) remoteIds.add(String(id));
-                    });
-
-                    var allowedLocalExtras = [];
-                    (Array.isArray(localArr) ? localArr : []).forEach(function (item) {
-                        if (!item) return;
-                        var id = item.id;
-                        if (id == null) return;
-                        var idStr = String(id);
-                        if (remoteIds.has(idStr)) return; // já existe no remoto
-                        var ts = getIdTimestampMs(idStr);
-                        if (ts != null && ts > lastSyncMs) allowedLocalExtras.push(item);
-                    });
-
-                    merged = mergeArraysById(allowedLocalExtras, remoteBase, 'id');
+                    // Fonte única: nuvem + local fundidos por revisão (inclui tombstones deletedAt).
+                    if (window.sotDataMerge && typeof window.sotDataMerge.mergeSaidasArraysTombstone === 'function') {
+                        merged = window.sotDataMerge.mergeSaidasArraysTombstone(remoteBase, localArr, 'id');
+                    } else {
+                        merged = mergeArraysById(localArr, remoteBase, 'id');
+                    }
                 } else {
                     // Para as outras coleções, mantém a estratégia original (união).
                     merged = mergeArraysById(localArr, remoteBase, 'id');
+                }
+
+                if (
+                    (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') &&
+                    window.sotDataMerge &&
+                    typeof window.sotDataMerge.compactSaidasListForPersistence === 'function'
+                ) {
+                    merged = window.sotDataMerge.compactSaidasListForPersistence(merged);
                 }
 
                 setLocal(key, merged);

@@ -2377,19 +2377,25 @@
                                 await dataService.waitForAPICheck();
                             }
                             if (Array.isArray(saidasAdm)) {
-                                localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdm));
                                 if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
                                     await dataService.setSaidasAdministrativas(saidasAdm);
                                 } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
-                                    await window.firebaseSot.set('saidasAdministrativas', saidasAdm);
+                                    var _cfgAdm = (window.sotDataMerge && window.sotDataMerge.compactSaidasListForPersistence) ? window.sotDataMerge.compactSaidasListForPersistence(saidasAdm) : saidasAdm;
+                                    try { localStorage.setItem('saidasAdministrativas', JSON.stringify(_cfgAdm)); } catch (eLsAdm) {}
+                                    await window.firebaseSot.set('saidasAdministrativas', _cfgAdm);
+                                } else {
+                                    try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdm)); } catch (eLsAdm2) {}
                                 }
                             }
                             if (Array.isArray(saidasAmb)) {
-                                localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmb));
                                 if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
                                     await dataService.setSaidasAmbulancias(saidasAmb);
                                 } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
-                                    await window.firebaseSot.set('saidasAmbulancias', saidasAmb);
+                                    var _cfgAmb = (window.sotDataMerge && window.sotDataMerge.compactSaidasListForPersistence) ? window.sotDataMerge.compactSaidasListForPersistence(saidasAmb) : saidasAmb;
+                                    try { localStorage.setItem('saidasAmbulancias', JSON.stringify(_cfgAmb)); } catch (eLsAmb) {}
+                                    await window.firebaseSot.set('saidasAmbulancias', _cfgAmb);
+                                } else {
+                                    try { localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmb)); } catch (eLsAmb2) {}
                                 }
                             }
                             if (window.firebaseSot && typeof window.firebaseSot.invalidateAllCache === 'function') {
@@ -2522,7 +2528,8 @@
                             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
                                 await dataService.setSaidasAdministrativas(lista);
                             } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
-                                await window.firebaseSot.set('saidasAdministrativas', lista);
+                                var _pushAdm = (window.sotDataMerge && window.sotDataMerge.compactSaidasListForPersistence) ? window.sotDataMerge.compactSaidasListForPersistence(lista) : lista;
+                                await window.firebaseSot.set('saidasAdministrativas', _pushAdm);
                             }
                             stats.saidasAdministrativas = lista.length;
                         }
@@ -2538,7 +2545,8 @@
                             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
                                 await dataService.setSaidasAmbulancias(lista);
                             } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
-                                await window.firebaseSot.set('saidasAmbulancias', lista);
+                                var _pushAmb = (window.sotDataMerge && window.sotDataMerge.compactSaidasListForPersistence) ? window.sotDataMerge.compactSaidasListForPersistence(lista) : lista;
+                                await window.firebaseSot.set('saidasAmbulancias', _pushAmb);
                             }
                             stats.saidasAmbulancias = lista.length;
                         }

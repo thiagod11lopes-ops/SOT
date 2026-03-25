@@ -271,7 +271,23 @@
             } catch (e2) {
                 remote = [];
             }
-            var merged = m(remote, local, idField);
+            var merged;
+            if (
+                (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') &&
+                global.sotDataMerge &&
+                typeof global.sotDataMerge.mergeSaidasArraysTombstone === 'function'
+            ) {
+                merged = global.sotDataMerge.mergeSaidasArraysTombstone(remote, local, idField);
+            } else {
+                merged = m(remote, local, idField);
+            }
+            if (
+                (key === 'saidasAdministrativas' || key === 'saidasAmbulancias') &&
+                global.sotDataMerge &&
+                typeof global.sotDataMerge.compactSaidasListForPersistence === 'function'
+            ) {
+                merged = global.sotDataMerge.compactSaidasListForPersistence(merged);
+            }
             await fs.set(key, merged);
             localStorage.setItem(key, JSON.stringify(merged));
             return merged.length;

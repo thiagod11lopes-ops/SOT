@@ -27,4 +27,9 @@
         window.firebaseApp = firebase.initializeApp(firebaseConfig);
     }
     window.firebaseDb = firebase.firestore();
+    try {
+        window.firebaseDb.enablePersistence({ synchronizeTabs: true }).catch(function () {
+            /* vários separadores ou browser sem suporte */
+        });
+    } catch (ePersist) {}
 })();

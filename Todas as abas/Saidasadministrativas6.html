@@ -1565,8 +1565,9 @@ async function saveState() {
             await dataService.setSaidasAdministrativas(saidasAdministrativas);
         } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
             // Sem dataService, grava direto no Firebase como fonte principal (C3: não chamar set se modo offline SOT)
-            await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
-            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
+            var _admPayload = (window.sotDataMerge && typeof window.sotDataMerge.compactSaidasListForPersistence === 'function') ? window.sotDataMerge.compactSaidasListForPersistence(saidasAdministrativas) : saidasAdministrativas;
+            await window.firebaseSot.set('saidasAdministrativas', _admPayload);
+            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(_admPayload)); } catch (e) {}
         } else {
             // Fallback final: apenas localStorage
             localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
@@ -1577,8 +1578,9 @@ async function saveState() {
             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
                 await dataService.setSaidasAdministrativas(saidasAdministrativas);
             } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
-                await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
-                try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
+                var _admPayload2 = (window.sotDataMerge && typeof window.sotDataMerge.compactSaidasListForPersistence === 'function') ? window.sotDataMerge.compactSaidasListForPersistence(saidasAdministrativas) : saidasAdministrativas;
+                await window.firebaseSot.set('saidasAdministrativas', _admPayload2);
+                try { localStorage.setItem('saidasAdministrativas', JSON.stringify(_admPayload2)); } catch (e) {}
             } else {
                 localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
             }
@@ -2017,8 +2019,12 @@ function commitKmFieldsFromModal(ids, keyToUpdate, valueToSave, row) {
         }
     }
 }
+/** Saídas com deletedAt ficam na lista para sincronizar tombstone; não aparecem na UI. */
+function isSaidaAdmActive(s) {
+    return s && (s.deletedAt == null || String(s.deletedAt).trim() === '');
+}
 function getLastKmChegadaAdm(placa) {
-    const allSaidas = [...saidasAdministrativas].filter(s => s.viatura === placa);
+    const allSaidas = [...saidasAdministrativas].filter(s => isSaidaAdmActive(s) && s.viatura === placa);
     allSaidas.sort((a, b) => {
         const dateA = new Date(a.dataSaida + 'T' + (a.saida || '00:00'));
         const dateB = new Date(b.dataSaida + 'T' + (b.saida || '00:00'));
@@ -2184,8 +2190,9 @@ saidasTableBody.innerHTML = '';
 // IMPORTANTE: Sempre exibir TODAS as saídas carregadas do localStorage
 // Apenas aplicar filtro de data se houver um valor selecionado
 // NÃO remover saídas baseado em avisos de junção removidos
-const filteredSaidas = filterDateAdmInput.value ? saidasAdministrativas.filter(s => s.dataSaida === filterDateAdmInput.value) : saidasAdministrativas;
-console.log(`[populateTables] Exibindo ${filteredSaidas.length} saídas (total carregado: ${saidasAdministrativas.length})`);
+const poolAdm = saidasAdministrativas.filter(isSaidaAdmActive);
+const filteredSaidas = filterDateAdmInput.value ? poolAdm.filter(s => s.dataSaida === filterDateAdmInput.value) : poolAdm;
+console.log(`[populateTables] Exibindo ${filteredSaidas.length} saídas (total em memória: ${saidasAdministrativas.length}, ativas: ${poolAdm.length})`);
 filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
 const groupedSaidas = groupSaidas(filteredSaidas);
 const dateForLimits = filterDateAdmInput.value || new Date().toISOString().slice(0, 10);
@@ -4039,7 +4046,7 @@ if (saidaData) {
 }
 async function handleDeleteRow(event) {
 event.stopPropagation();
-if (confirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.')) {
+if (confirm('Tem certeza que deseja remover este registo? A linha deixa de aparecer e a remoção sincroniza com a nuvem (não é só apagar localmente).')) {
 const idsToRemove = event.target.closest('tr').dataset.id.split(',');
 const totalAntes = Array.isArray(saidasAdministrativas) ? saidasAdministrativas.length : 0;
 const totalRemovidos = saidasAdministrativas.filter(item => idsToRemove.includes(item.id)).length;
@@ -4053,23 +4060,32 @@ if (vaiZerarLista) {
     authorizeSaidasAdmExplicitClear(180000);
 }
 try {
-// Deletar da API se disponível
-if (typeof api !== 'undefined' && typeof dataService !== 'undefined' && dataService.apiAvailable) {
-for (const id of idsToRemove) {
-try {
-await api.deleteSaidaAdministrativa(id);
-} catch (error) {
-console.warn('Erro ao deletar da API, continuando:', error);
-}
-}
-}
-saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
-await saveState(); 
+idsToRemove.forEach(function (rid) {
+    var item = saidasAdministrativas.find(function (s) { return s && String(s.id) === String(rid); });
+    if (!item) return;
+    if (window.sotDataMerge && typeof window.sotDataMerge.markSaidaDeletedRecord === 'function') {
+        window.sotDataMerge.markSaidaDeletedRecord(item);
+    } else {
+        var ts = new Date().toISOString();
+        item.deletedAt = ts;
+        item.updatedAt = ts;
+    }
+});
+await saveState();
 populateTables();
 notifySaidasAdministrativasChanged();
 } catch (error) {
 console.error('Erro ao deletar saída:', error);
-saidasAdministrativas = saidasAdministrativas.filter(item => !idsToRemove.includes(item.id));
+idsToRemove.forEach(function (rid) {
+    var item = saidasAdministrativas.find(function (s) { return s && String(s.id) === String(rid); });
+    if (item && window.sotDataMerge && typeof window.sotDataMerge.markSaidaDeletedRecord === 'function') {
+        window.sotDataMerge.markSaidaDeletedRecord(item);
+    } else if (item) {
+        var ts2 = new Date().toISOString();
+        item.deletedAt = ts2;
+        item.updatedAt = ts2;
+    }
+});
 persistSaidasAdministrativasImmediate();
 populateTables();
 }
@@ -4118,7 +4134,8 @@ function downloadPdf() {
 const { jsPDF } = window.jspdf;
 const doc = new jsPDF({ orientation: 'landscape' });
 
-const filteredSaidas = filterDateAdmInput.value ? saidasAdministrativas.filter(s => s.dataSaida === filterDateAdmInput.value) : saidasAdministrativas;
+const poolPdf = saidasAdministrativas.filter(isSaidaAdmActive);
+const filteredSaidas = filterDateAdmInput.value ? poolPdf.filter(s => s.dataSaida === filterDateAdmInput.value) : poolPdf;
 filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
 const groupedSaidas = groupSaidas(filteredSaidas);
 
@@ -4631,7 +4648,7 @@ function generatePrintHTML(selectedDates) {
     `;
     
     selectedDates.forEach((date, index) => {
-        const filteredSaidas = saidasAdministrativas.filter(s => s.dataSaida === date);
+        const filteredSaidas = saidasAdministrativas.filter(s => isSaidaAdmActive(s) && s.dataSaida === date);
         if (filteredSaidas.length === 0) return;
         
         filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));

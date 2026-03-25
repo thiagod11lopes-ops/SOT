@@ -2906,6 +2906,20 @@ function cadastroItemUpdatedMs(item) {
   }
 }
 
+function cadastroIsoToMs(iso) {
+  if (iso == null || iso === '') return 0;
+  var d = Date.parse(String(iso).trim());
+  return isNaN(d) ? 0 : d;
+}
+
+/** LWW por revisão: inclui deletedAt para não ressuscitar linhas apagadas na nuvem. */
+function cadastroItemRevisionMs(item) {
+  if (!item || typeof item !== 'object') return 0;
+  var u = cadastroItemUpdatedMs(item);
+  var del = item.deletedAt != null && String(item.deletedAt).trim() !== '' ? cadastroIsoToMs(item.deletedAt) : 0;
+  return Math.max(u, del);
+}
+
 /** Tópico 11: política de conflito explícita (empate → versão remota). */
 var CADASTRO_CONFLICT_POLICY = 'latest-wins';
 var CADASTRO_CONFLICT_LOG_KEY = 'sot_cadastro_conflict_log_v1';
@@ -3142,8 +3156,10 @@ function mergeSaidasCadastroLWWWithReport(remoteArr, localArr, forcedTipo) {
       return;
     }
     var rem = map.get(id);
-    var tLoc = cadastroItemUpdatedMs(n);
-    var tRem = cadastroItemUpdatedMs(rem);
+    var delLoc = !!(n.deletedAt != null && String(n.deletedAt).trim() !== '');
+    var delRem = !!(rem.deletedAt != null && String(rem.deletedAt).trim() !== '');
+    var tLoc = cadastroItemRevisionMs(n);
+    var tRem = cadastroItemRevisionMs(rem);
     var chosen;
     if (tLoc > tRem) {
       chosen = n;
@@ -3151,6 +3167,10 @@ function mergeSaidasCadastroLWWWithReport(remoteArr, localArr, forcedTipo) {
     } else {
       chosen = rem;
       remoteWonIds.push(id);
+    }
+    if (delLoc || delRem) {
+      map.set(id, chosen);
+      return;
     }
     var softIssues = cadastroCollectSoftMergeConflicts(rem, n);
     if (softIssues.length) {
@@ -3382,10 +3402,22 @@ const tipoSaida = row.dataset.tipo;
 const delOk = await showCadastroConfirm('Tem centeza que deseja apagar esse registreo? Ele será deletado de forma pemanente.');
 if (!delOk) return;
 await runCadastroLocked('delete_row:' + String(idToDelete || ''), async () => {
+var _markDel = function (arr, delId) {
+  var ix = arr.findIndex(function (i) { return i && String(i.id) === String(delId); });
+  if (ix === -1) return;
+  var row = arr[ix];
+  if (window.sotDataMerge && typeof window.sotDataMerge.markSaidaDeletedRecord === 'function') {
+    window.sotDataMerge.markSaidaDeletedRecord(row);
+  } else {
+    var ts = new Date().toISOString();
+    row.deletedAt = ts;
+    row.updatedAt = ts;
+  }
+};
 if (tipoSaida === 'Administrativa') {
-saidasAdministrativas = saidasAdministrativas.filter(i => i.id !== idToDelete);
+  _markDel(saidasAdministrativas, idToDelete);
 } else if (tipoSaida === 'Ambulância') {
-saidasAmbulancias = saidasAmbulancias.filter(i => i.id !== idToDelete);
+  _markDel(saidasAmbulancias, idToDelete);
 }
 const deletePersist = await persistCadastroSaidasSnapshot(saidasAdministrativas, saidasAmbulancias);
 if (!notifyCadastroRowDeletePersist(deletePersist)) return;
@@ -4292,7 +4324,8 @@ const [year, month, day] = dateString.split('-');
 return `${day}/${month}/${year}`;
 }
 function populateTodasSaidasTable(onlySaidaId) {
-var allSaidas = [...saidasAdministrativas.map(s => ({ ...s, tipo: 'Administrativa' })), ...saidasAmbulancias.map(s => ({ ...s, tipo: 'Ambulância' }))];
+var _sotAct = function (s) { return s && (s.deletedAt == null || String(s.deletedAt).trim() === ''); };
+var allSaidas = [...saidasAdministrativas.filter(_sotAct).map(s => ({ ...s, tipo: 'Administrativa' })), ...saidasAmbulancias.filter(_sotAct).map(s => ({ ...s, tipo: 'Ambulância' }))];
 if (onlySaidaId != null && onlySaidaId !== '') {
 var idStr = String(onlySaidaId);
 allSaidas = allSaidas.filter(function(s) { return String(s.id) === idStr; });
@@ -4352,7 +4385,7 @@ const year = today.getFullYear();
 const month = String(today.getMonth() + 1).padStart(2, '0');
 const day = String(today.getDate()).padStart(2, '0');
 const todayString = `${year}-${month}-${day}`;
-const allSaidas = [...saidasAdministrativas, ...saidasAmbulancias];
+const allSaidas = [...saidasAdministrativas, ...saidasAmbulancias].filter(function (s) { return s && (s.deletedAt == null || String(s.deletedAt).trim() === ''); });
 if (incompletosCounter) {
 const totalIncompletePast = allSaidas.filter(saida => {
 const now = new Date();
@@ -4696,14 +4729,15 @@ if (typeof dataService !== 'undefined') {
         b.forEach(function (it) { if (it && it.id != null && it.id !== '' && !m.has(String(it.id))) m.set(String(it.id), it); });
         return Array.from(m.values());
     };
+    var _mergeSaidas = (window.sotDataMerge && window.sotDataMerge.mergeSaidasArraysTombstone) || _merge;
     var _lsArr = (window.sotDataMerge && window.sotDataMerge.readLocalStorageArrayAlways) || function (key) {
         try { var r = localStorage.getItem(key); if (!r) return []; var v = JSON.parse(r); return Array.isArray(v) ? v : []; } catch (e) { return []; }
     };
     try {
         const fbSaidasAdm = await window.firebaseSot.get('saidasAdministrativas');
         const fbSaidasAmb = await window.firebaseSot.get('saidasAmbulancias');
-        saidasAdministrativas = _merge(Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [], _lsArr('saidasAdministrativas'), 'id');
-        saidasAmbulancias = _merge(Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [], _lsArr('saidasAmbulancias'), 'id');
+        saidasAdministrativas = _mergeSaidas(Array.isArray(fbSaidasAdm) ? fbSaidasAdm : [], _lsArr('saidasAdministrativas'), 'id');
+        saidasAmbulancias = _mergeSaidas(Array.isArray(fbSaidasAmb) ? fbSaidasAmb : [], _lsArr('saidasAmbulancias'), 'id');
         const fbV = await window.firebaseSot.get('viaturasCadastradas');
         const fbM = await window.firebaseSot.get('motoristasCadastrados');
         viaturasCadastradas = _merge(Array.isArray(fbV) ? fbV : [], _lsArr('viaturasCadastradas'), 'id');
@@ -4870,10 +4904,12 @@ try {
     }
   } else if (remoteLoaded && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
     if (cadastroNeedPushSaidas(saidasAdministrativas, remoteOnlyAdm)) {
-      window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas).catch(function () {});
+      var _cadAdmPay = (window.sotDataMerge && window.sotDataMerge.compactSaidasListForPersistence) ? window.sotDataMerge.compactSaidasListForPersistence(saidasAdministrativas) : saidasAdministrativas;
+      window.firebaseSot.set('saidasAdministrativas', _cadAdmPay).catch(function () {});
     }
     if (cadastroNeedPushSaidas(saidasAmbulancias, remoteOnlyAmb)) {
-      window.firebaseSot.set('saidasAmbulancias', saidasAmbulancias).catch(function () {});
+      var _cadAmbPay = (window.sotDataMerge && window.sotDataMerge.compactSaidasListForPersistence) ? window.sotDataMerge.compactSaidasListForPersistence(saidasAmbulancias) : saidasAmbulancias;
+      window.firebaseSot.set('saidasAmbulancias', _cadAmbPay).catch(function () {});
     }
   }
 } catch (e) {}
