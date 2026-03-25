@@ -4363,7 +4363,7 @@ try {
     if (cadastroNeedPushSaidas(saidasAmbulancias, remoteOnlyAmb)) {
       dataService.setSaidasAmbulancias(saidasAmbulancias).catch(function () {});
     }
-  } else if (remoteLoaded && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+  } else if (remoteLoaded && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
     if (cadastroNeedPushSaidas(saidasAdministrativas, remoteOnlyAdm)) {
       window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas).catch(function () {});
     }

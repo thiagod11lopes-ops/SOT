@@ -3,6 +3,9 @@
  * Com SOT_FORCE_FIREBASE_ONLY: Firestore é a fonte principal.
  * Modo estrito: não lê nem espelha localStorage para dados de domínio.
  * Sem a flag: API quando disponível, senão Firebase + merge com local.
+ *
+ * Segurança: validação de acesso a dados sensíveis pertence às regras Firestore (e ao backend,
+ * se existir). Este serviço orquestra leitura/escrita no browser; não é barreira de segurança.
  */
 
 (function() {
@@ -15,8 +18,13 @@
 
     function isForcedOfflineMode() {
         try {
+            if (window.firebaseSot && typeof window.firebaseSot.isOfflineMode === 'function') {
+                return window.firebaseSot.isOfflineMode();
+            }
+        } catch (e) {}
+        try {
             return typeof localStorage !== 'undefined' && localStorage.getItem(SOT_OFFLINE_MODE_KEY) === 'true';
-        } catch (e) {
+        } catch (e2) {
             return false;
         }
     }
@@ -954,6 +962,7 @@
     window.dataService = dataService;
 
     try {
+        /** C3: isActive alinha-se a firebaseSot.isOfflineMode() quando o script Firebase já carregou. */
         window.SOTOfflineMode = {
             STORAGE_KEY: SOT_OFFLINE_MODE_KEY,
             isActive: isForcedOfflineMode,

@@ -1,4 +1,7 @@
 rules_version = '2';
+// Segurança: estas regras são a autoridade em produção. O cliente (SOT em HTML/JS) pode
+// omitir chamadas ou guiar a UI, mas não substitui esta camada — quem tiver credenciais
+// válidas pode falar com a API Firestore diretamente. Não duplicar como única defesa só no browser.
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {

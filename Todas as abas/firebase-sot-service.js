@@ -3,6 +3,15 @@
  * Usado pelo data-service.js para ler/gravar saídas, viaturas, motoristas, etc.
  * Inclui cache com TTL e coalescência de requisições concorrentes.
  *
+ * C3 — Modo offline SOT (localStorage sot_offline_mode === 'true'):
+ * get, set, getConfig e setConfig não acedem à rede; set/setConfig resolvem com false.
+ * É a única fonte de verdade para “nuvem desligada por política”. A UI deve usar
+ * firebaseSot.isOfflineMode() antes de chamar set quando quiser evitar trabalho inútil;
+ * não há segundo critério paralelo (ex.: outro flag global) para o mesmo efeito.
+ *
+ * Segurança: regras Firestore (ex.: firestore.rules no repositório) são a última linha de
+ * defesa. authGateOk / modo offline aqui são UX e economia de rede, não substitutos de regras.
+ *
  * Depende de: firebase-config.js (e dos scripts firebase-app e firebase-firestore).
  */
 (function() {
@@ -234,11 +243,22 @@
     }
 
     /**
-     * Grava um documento. value pode ser array ou objeto.
+     * Grava um documento na coleção sot_data. value pode ser array ou objeto.
      * Invalida o cache da chave e coalesce escritas concorrentes na mesma chave.
+     *
+     * Em modo offline (localStorage sot_offline_mode === 'true'): não acessa o Firestore;
+     * retorna false de imediato (noop de rede), igual a get/getConfig. O data-service.js
+     * grava só em localStorage nesse caso quando usa _setToFirebase.
+     *
+     * @returns {Promise<boolean>} true se persistiu no Firestore; false se modo offline,
+     *   sem auth Google, Firebase indisponível ou erro de escrita/regras.
      */
     async function set(key, value) {
         const keyStr = String(key);
+        if (isSotOfflineModeActive()) {
+            log('log', 'set bloqueado (modo offline)', keyStr);
+            return false;
+        }
         invalidateCache(keyStr);
 
         let promise = inFlightSets.get(keyStr);
@@ -361,6 +381,8 @@
     window.firebaseSot = {
         isAvailable: isAvailable,
         authGateOk: authGateAllowsFirestore,
+        /** C3: true quando gravações/leituras Firestore via este serviço estão desativadas (modo offline SOT). */
+        isOfflineMode: isSotOfflineModeActive,
         get: get,
         set: set,
         getConfig: getConfig,

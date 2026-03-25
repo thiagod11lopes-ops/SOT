@@ -2,6 +2,8 @@
  * Sincronização bidirecional localStorage ↔ Firebase (offline-first, resiliente).
  * Regra: Firebase nunca perde dados; união local + remoto; integridade checada antes de gravar.
  * Execução em segundo plano com yield à UI entre coleções.
+ *
+ * Segurança: escrita efetiva na nuvem continua sujeita às regras Firestore; este script não as substitui.
  */
 (function() {
     'use strict';
@@ -10,6 +12,20 @@
     var AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
     var LOG_PREFIX = '[sot-sync]';
     var syncInFlight = false;
+
+    /** C3: alinhado a firebaseSot.isOfflineMode (fallback se script ainda não carregou). */
+    function isSotCloudSyncDisabledByPolicy() {
+        try {
+            if (window.firebaseSot && typeof window.firebaseSot.isOfflineMode === 'function') {
+                return window.firebaseSot.isOfflineMode();
+            }
+        } catch (e) {}
+        try {
+            return typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true';
+        } catch (e2) {
+            return false;
+        }
+    }
 
     function log(level, msg, err) {
         try {
@@ -144,7 +160,7 @@
     function persistLastSyncTimestamp(now) {
         try {
             localStorage.setItem(SOT_LAST_SYNC_KEY, now);
-            if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+            if (!isSotCloudSyncDisabledByPolicy() && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
                 window.firebaseSot.set(SOT_LAST_SYNC_KEY, now).catch(function() {});
             }
         } catch (e) {
@@ -164,14 +180,12 @@
             if (callbacks.onError) callbacks.onError(new Error('Sincronização já em andamento.'));
             return false;
         }
-        try {
-            if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true') {
-                if (!silent && callbacks.onError) {
-                    callbacks.onError(new Error('Modo offline ativo: sincronização com a nuvem está desativada.'));
-                }
-                return false;
+        if (isSotCloudSyncDisabledByPolicy()) {
+            if (!silent && callbacks.onError) {
+                callbacks.onError(new Error('Modo offline ativo: sincronização com a nuvem está desativada.'));
             }
-        } catch (e) {}
+            return false;
+        }
         if (typeof dataService === 'undefined') {
             if (callbacks.onError) callbacks.onError(new Error('Serviço de dados não carregado. Recarregue a página.'));
             return false;

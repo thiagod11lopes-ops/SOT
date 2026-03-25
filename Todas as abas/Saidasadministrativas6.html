@@ -1448,8 +1448,8 @@ async function saveState() {
         // Sincronizar com Firebase (e localStorage) quando dataService disponível
         if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
             await dataService.setSaidasAdministrativas(saidasAdministrativas);
-        } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
-            // Sem dataService, grava direto no Firebase como fonte principal
+        } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
+            // Sem dataService, grava direto no Firebase como fonte principal (C3: não chamar set se modo offline SOT)
             await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
         } else {
@@ -1461,7 +1461,7 @@ async function saveState() {
         try {
             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
                 await dataService.setSaidasAdministrativas(saidasAdministrativas);
-            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
                 await window.firebaseSot.set('saidasAdministrativas', saidasAdministrativas);
                 try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas)); } catch (e) {}
             } else {

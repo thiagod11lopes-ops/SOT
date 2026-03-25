@@ -1331,7 +1331,7 @@ async function loadData() {
 
 async function saveData() {
   // Sempre tenta gravar primeiro no Firebase como fonte principal
-  if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+  if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
     try {
       await window.firebaseSot.set('vistoriasRealizadas', inspections);
     } catch (e) {

@@ -54,6 +54,8 @@ Para produção, use regras com:
 
 Use o arquivo `firestore.rules` na raiz do projeto (copie e cole no Firebase Console > Firestore > Regras).
 
+**Autoridade das regras:** Em produção, as regras Firestore são a **última linha de defesa**. O SOT no browser pode evitar chamadas ou mostrar confirmações, mas isso é conveniência e UX — **não** substitui as regras: quem use a API com credenciais válidas contorna o cliente. Não trate “a UI não oferece esta ação” como segurança. Mantenha políticas sensíveis nas regras (e em qualquer backend que exista).
+
 Trecho principal:
 
 ```

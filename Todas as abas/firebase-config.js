@@ -7,6 +7,9 @@
  * 3. Em Configurações do projeto (engrenagem) > Seus aplicativos > app Web, copie o firebaseConfig.
  * 4. Cole abaixo os valores reais (apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId).
  * Guia completo: abra o arquivo CONFIGURAR_FIREBASE.md nesta pasta.
+ *
+ * Segurança: a chave Web é pública por desenho; o controlo de acesso real está nas regras
+ * Firestore (ver firestore.rules na raiz do projeto e o guia).
  */
 (function() {
     if (typeof firebase === 'undefined') return;

@@ -434,6 +434,235 @@
             font-size: 14px;
             padding: 10px 16px;
         }
+        /* Âmbito das ações: só local vs envolve Firebase */
+        .config-data-legend {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 14px;
+            margin: 0 0 16px;
+            padding: 12px 14px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--dark-gray);
+            line-height: 1.45;
+        }
+        .config-data-legend strong {
+            color: var(--primary-blue);
+            margin-right: 4px;
+        }
+        .config-scope-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .config-scope-pill--local {
+            background: #e2e8f0;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+        .config-scope-pill--cloud {
+            background: rgba(74, 105, 189, 0.12);
+            color: #354e9a;
+            border: 1px solid rgba(74, 105, 189, 0.35);
+        }
+        .config-action-btn__scope {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 9px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            line-height: 1.2;
+            position: relative;
+            z-index: 1;
+        }
+        .config-action-btn__scope--local {
+            background: rgba(0, 0, 0, 0.22);
+            color: #fff;
+        }
+        .config-action-btn--carregar .config-action-btn__scope--local,
+        .config-action-btn--carregar .config-action-btn__scope--cloud {
+            background: rgba(0, 0, 0, 0.1);
+            color: #1a1a1a;
+        }
+        .config-action-btn__scope--cloud {
+            background: rgba(255, 255, 255, 0.28);
+            color: #fff;
+        }
+        .config-tool-wrap {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            max-width: 100%;
+        }
+        .config-tool-wrap .config-tool-scope {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            line-height: 1.25;
+            max-width: 220px;
+        }
+        .config-tool-scope--local { color: #475569; }
+        .config-tool-scope--cloud { color: #354e9a; }
+        .config-import-full-row {
+            margin: -4px 0 18px;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            max-width: 720px;
+        }
+        .config-import-full-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark-gray);
+            line-height: 1.35;
+        }
+        .config-import-full-label input[type="checkbox"] {
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+        .config-import-full-hint {
+            margin: 8px 0 0 28px;
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.45;
+        }
+        .config-import-full-row.is-offline .config-import-full-hint {
+            color: #94a3b8;
+        }
+        /* Indicador fixo de modo Online / Offline no painel de dados */
+        .config-data-panel-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+            margin: 0 0 18px;
+            padding: 8px 0 14px;
+            border-bottom: 2px solid var(--primary-blue);
+            position: sticky;
+            top: 0;
+            z-index: 12;
+            background: var(--white);
+            box-shadow: 0 8px 16px -12px rgba(0, 0, 0, 0.15);
+        }
+        .config-data-panel-header .config-data-panel-header__title {
+            margin: 0;
+            flex: 1 1 220px;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .config-connection-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.25;
+            border: 2px solid transparent;
+            flex-shrink: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+        .config-connection-chip__icon {
+            font-size: 18px;
+            opacity: 0.95;
+        }
+        .config-connection-chip__text {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            text-align: left;
+        }
+        .config-connection-chip__main {
+            letter-spacing: 0.02em;
+        }
+        .config-connection-chip__sub {
+            font-size: 11px;
+            font-weight: 600;
+            opacity: 0.88;
+            max-width: 260px;
+        }
+        .config-connection-chip--online {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(74, 105, 189, 0.12));
+            color: #075985;
+            border-color: rgba(14, 165, 233, 0.45);
+        }
+        .config-connection-chip--offline {
+            background: linear-gradient(135deg, rgba(71, 85, 105, 0.18), rgba(51, 65, 85, 0.12));
+            color: #1e293b;
+            border-color: rgba(71, 85, 105, 0.4);
+        }
+        @media (max-width: 600px) {
+            .config-connection-chip {
+                width: 100%;
+                border-radius: 12px;
+                justify-content: flex-start;
+            }
+            .config-connection-chip__sub { max-width: none; }
+        }
+        .config-file-formats-details.config-advanced-details .config-file-formats-body {
+            font-size: 14px;
+            color: var(--dark-gray);
+            line-height: 1.55;
+        }
+        .config-file-formats-body ul {
+            margin: 0 0 14px;
+            padding-left: 1.25rem;
+        }
+        .config-file-formats-body li {
+            margin-bottom: 10px;
+        }
+        .config-file-formats-body li strong {
+            color: var(--primary-blue);
+        }
+        .config-doc-link-row {
+            margin: 0;
+            padding: 12px 14px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 8px 12px;
+        }
+        .config-doc-link {
+            font-weight: 700;
+            color: var(--primary-blue);
+            text-decoration: none;
+        }
+        .config-doc-link:hover {
+            text-decoration: underline;
+        }
+        .config-doc-hint {
+            font-size: 12px;
+            color: #64748b;
+        }
     </style>
 </head>
 <body>
@@ -484,66 +713,122 @@
 
         <!-- Seção de Dados, backup e nuvem (ações principais) -->
         <div class="config-section config-section-data">
-            <h2 class="section-title">
-                <i class="fas fa-database"></i>
-                Dados e sincronização
-            </h2>
+            <div class="config-data-panel-header">
+                <h2 class="section-title config-data-panel-header__title">
+                    <i class="fas fa-database"></i>
+                    Dados e sincronização
+                </h2>
+                <div id="cfgConnectionModeChip" class="config-connection-chip config-connection-chip--online" role="status" aria-live="polite" aria-atomic="true" aria-label="Modo de ligação: online" title="Estado atual da ligação aos dados (local vs Firebase)">
+                    <span class="config-connection-chip__icon" aria-hidden="true"><i class="fas fa-cloud"></i></span>
+                    <span class="config-connection-chip__text">
+                        <span class="config-connection-chip__main" id="cfgConnectionModeChipMain">Modo online</span>
+                        <span class="config-connection-chip__sub" id="cfgConnectionModeChipSub">Firebase e sincronização disponíveis</span>
+                    </span>
+                </div>
+            </div>
             <p class="config-section-lead">
-                Use os atalhos abaixo para <strong>backup</strong>, <strong>importar</strong> JSON (aplica no navegador; em modo online, funde com o Firebase sem apagar dados mais novos na nuvem), <strong>enviar</strong> o que está neste navegador para a nuvem e alternar entre <strong>modo offline</strong> (dados locais) e <strong>modo online</strong> (Firebase).
+                Use os atalhos abaixo para <strong>backup</strong>, <strong>importar</strong> JSON, <strong>enviar</strong> dados para a nuvem e alternar <strong>modo offline</strong> / <strong>modo online</strong>. A legenda indica se a ação altera apenas este navegador ou também o Firebase.
             </p>
+            <div class="config-data-legend" role="note" aria-label="Legenda do âmbito das ações">
+                <strong>Legenda:</strong>
+                <span class="config-scope-pill config-scope-pill--local" title="Não grava no Firebase">Só local — sem escrita na nuvem</span>
+                <span class="config-scope-pill config-scope-pill--cloud" title="Lê e/ou grava no Firebase">Local + Firebase</span>
+                <span style="font-size: 12px; color: #64748b;">(O backup pode <em>ler</em> a nuvem para completar o JSON, mas não a altera.)</span>
+            </div>
             <div class="config-actions-grid" role="group" aria-label="Ações principais de dados">
-                <button type="button" id="cfgBtnBackup" class="config-action-btn config-action-btn--backup" title="Gera um arquivo JSON com todos os dados do sistema e faz o download">
+                <button type="button" id="cfgBtnBackup" class="config-action-btn config-action-btn--backup" title="Descarrega backup_sistema.json (.json): objeto com todas as chaves do navegador; pode incluir dados lidos do Firebase para completar o ficheiro">
                     <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-cloud-download-alt"></i></span>
                     <span class="config-action-btn__text">Backup</span>
                     <span class="config-action-btn__hint">Exportar JSON completo</span>
+                    <span class="config-action-btn__scope config-action-btn__scope--local">Só local · sem escrita na nuvem</span>
                 </button>
-                <button type="button" id="cfgBtnCarregarDados" class="config-action-btn config-action-btn--carregar" title="Carrega um arquivo JSON: aplica no navegador e, em modo online, funde com o Firebase (nuvem prevalece no mesmo id)">
+                <button type="button" id="cfgBtnCarregarDados" class="config-action-btn config-action-btn--carregar" title="Ficheiro .json com objeto na raiz (ex.: backup completo). Aplica no navegador; a fusão com Firebase depende da opção abaixo">
                     <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-file-import"></i></span>
                     <span class="config-action-btn__text">Carregar Dados</span>
-                    <span class="config-action-btn__hint">Local + mescla na nuvem</span>
+                    <span class="config-action-btn__hint">Importação completa · opção Firebase abaixo</span>
+                    <span class="config-action-btn__scope config-action-btn__scope--cloud">Local; nuvem só se optar</span>
                 </button>
                 <button type="button" id="cfgBtnEnviarNuvem" class="config-action-btn config-action-btn--nuvem" title="Envia todos os dados locais deste navegador para o Firebase">
                     <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-cloud-upload-alt"></i></span>
                     <span class="config-action-btn__text">Enviar Dados para Nuvem</span>
-                    <span class="config-action-btn__hint">Local → Firebase</span>
+                    <span class="config-action-btn__hint">Push local → nuvem</span>
+                    <span class="config-action-btn__scope config-action-btn__scope--cloud">Local + Firebase</span>
                 </button>
                 <button type="button" id="cfgBtnModoOffline" class="config-action-btn config-action-btn--offline" title="Operar só com dados neste dispositivo (localStorage e IndexedDB); Firebase e API desativados" aria-pressed="false">
                     <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-wifi-slash"></i></span>
                     <span class="config-action-btn__text">Modo Offline</span>
-                    <span class="config-action-btn__hint">Dados só no aparelho</span>
+                    <span class="config-action-btn__hint">Preferência de trabalho</span>
+                    <span class="config-action-btn__scope config-action-btn__scope--local">Só local — sem Firebase</span>
                 </button>
                 <button type="button" id="cfgBtnModoOnline" class="config-action-btn config-action-btn--online" title="Usar Firebase em tempo real (preferência salva no navegador)" aria-pressed="true">
                     <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-cloud"></i></span>
                     <span class="config-action-btn__text">Modo Online</span>
-                    <span class="config-action-btn__hint">Nuvem em tempo real</span>
+                    <span class="config-action-btn__hint">Preferência de trabalho</span>
+                    <span class="config-action-btn__scope config-action-btn__scope--cloud">Local + Firebase</span>
                 </button>
+            </div>
+            <div id="cfgImportFullOptionsRow" class="config-import-full-row" role="group" aria-label="Opções de importação completa">
+                <label class="config-import-full-label" for="cfgImportSyncFirebaseAfter">
+                    <input type="checkbox" id="cfgImportSyncFirebaseAfter" checked>
+                    <span>Sincronizar com Firebase após importar</span>
+                </label>
+                <p class="config-import-full-hint" id="cfgImportSyncFirebaseHint">
+                    <strong>Desmarcado:</strong> aplica apenas neste navegador (localStorage e IndexedDB da VTR Oficina), sem alterar a nuvem.<br>
+                    <strong>Marcado (modo online):</strong> após aplicar localmente, pede confirmação e funde com o Firebase (nuvem prevalece no mesmo identificador de registo). Em modo offline a caixa fica indisponível.
+                </p>
             </div>
             <details class="config-advanced-details">
                 <summary><i class="fas fa-sliders-h"></i> Ferramentas adicionais</summary>
                 <p style="margin: 0 0 12px; font-size: 13px; color: var(--dark-gray);">
-                    Auditoria, restauração parcial, export só de saídas e sincronização bidirecional (local ↔ Firebase).
+                    Ferramentas complementares. Cada botão indica se afeta <strong>só o navegador</strong> ou também o <strong>Firebase</strong>.
                 </p>
-                <div class="button-group" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-                    <button type="button" id="abrirUsuariosAuditBtn" title="Ver histórico do que cada usuário logado com Google fez no sistema">
-                        <i class="fas fa-users"></i> Usuários
-                    </button>
-                    <button type="button" id="restaurarSaidasBackupBtn" class="warning" title="Substitui apenas Saídas Administrativas e Saídas Ambulâncias no Firebase e local pelo conteúdo do backup">
-                        <i class="fas fa-undo"></i> Restaurar saídas do backup
-                    </button>
-                    <button type="button" id="exportarSaidasJsonBtn" class="success" title="Baixa um JSON só com saídas administrativas e de ambulância">
-                        <i class="fas fa-file-export"></i> Baixar saídas (JSON)
-                    </button>
-                    <button type="button" id="saveAllToFirebaseBtn" title="Sincroniza dados: mescla localStorage e Firebase nos dois sentidos (não apaga o que já existe)">
-                        <i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)
-                    </button>
+                <div class="button-group" style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;">
+                    <div class="config-tool-wrap">
+                        <button type="button" id="abrirUsuariosAuditBtn" title="Ver histórico do que cada usuário logado com Google fez no sistema">
+                            <i class="fas fa-users"></i> Usuários
+                        </button>
+                        <span class="config-tool-scope config-tool-scope--cloud">Local + Firebase · leitura na nuvem</span>
+                    </div>
+                    <div class="config-tool-wrap">
+                        <button type="button" id="restaurarSaidasBackupBtn" class="warning" title="Ficheiro .json com saidasAdministrativas e/ou saidasAmbulancias (array ou string JSON). Substitui essas listas no navegador e na nuvem se online">
+                            <i class="fas fa-undo"></i> Restaurar saídas do backup
+                        </button>
+                        <span class="config-tool-scope config-tool-scope--cloud">Local + Firebase se online</span>
+                    </div>
+                    <div class="config-tool-wrap">
+                        <button type="button" id="exportarSaidasJsonBtn" class="success" title="Descarrega SOT_saidas_DD-MM-AAAA.json: formato mínimo para Restaurar saídas ou uso offline (ver guia EXPORTAR_SAIDAS_OFFLINE.md)">
+                            <i class="fas fa-file-export"></i> Baixar saídas (JSON)
+                        </button>
+                        <span class="config-tool-scope config-tool-scope--local">Só ficheiro · sem escrita na nuvem</span>
+                    </div>
+                    <div class="config-tool-wrap">
+                        <button type="button" id="saveAllToFirebaseBtn" title="Sincroniza dados: mescla localStorage e Firebase nos dois sentidos (não apaga o que já existe)">
+                            <i class="fas fa-sync-alt"></i> Sincronizar (local ↔ Firebase)
+                        </button>
+                        <span class="config-tool-scope config-tool-scope--cloud">Local + Firebase · mescla</span>
+                    </div>
                 </div>
             </details>
-            <p style="margin: 14px 0 0; font-size: 13px; color: var(--dark-gray);">
-                <strong>Offline:</strong> importe um JSON com <code>saidasAdministrativas</code> e <code>saidasAmbulancias</code> (veja <code>EXPORTAR_SAIDAS_OFFLINE.md</code>). Sem internet, os dados ficam no navegador; ao voltar online, use <em>Enviar Dados para Nuvem</em> para atualizar a nuvem.
-            </p>
+            <details class="config-advanced-details config-file-formats-details" style="margin-top: 14px;">
+                <summary><i class="fas fa-file-code"></i> Formatos JSON aceites e guia offline</summary>
+                <div class="config-file-formats-body">
+                    <ul>
+                        <li><strong>Carregar Dados</strong> — ficheiro <code>.json</code> com um <strong>objeto na raiz</strong> (o mesmo tipo que o <strong>Backup</strong> gera, ex. <code>backup_sistema.json</code>). Substitui o armazenamento local e a VTR Oficina no IndexedDB. A opção <strong>«Sincronizar com Firebase após importar»</strong> controla se, em seguida, o sistema funde com a nuvem (com confirmação extra quando online); desmarcada, só o navegador é alterado.</li>
+                        <li><strong>Restaurar saídas do backup</strong> — <code>.json</code> com <strong>pelo menos uma</strong> das chaves <code>saidasAdministrativas</code> ou <code>saidasAmbulancias</code>. Cada valor pode ser um <strong>array</strong> ou uma <strong>string</strong> que o <code>JSON.parse</code> interprete como array. Pode usar o ficheiro de <strong>Baixar saídas (JSON)</strong> ou um excerto de backup completo que contenha essas chaves.</li>
+                        <li><strong>Baixar saídas (JSON)</strong> — gera <code>SOT_saidas_DD-MM-AAAA.json</code> nesse formato mínimo, ideal para outro PC ou para trabalhar <strong>sem internet</strong> (dados ficam no navegador até enviar à nuvem).</li>
+                    </ul>
+                    <p style="margin: 0 0 12px; font-size: 13px;">
+                        <strong>Sem internet:</strong> use <em>Restaurar saídas</em> com o JSON preparado; em seguida <em>Enviar Dados para Nuvem</em> (ou <em>Sincronizar</em>) quando voltar a estar online e autenticado, para atualizar o Firebase.
+                    </p>
+                    <p class="config-doc-link-row">
+                        <a href="EXPORTAR_SAIDAS_OFFLINE.md" class="config-doc-link" target="_blank" rel="noopener noreferrer" title="Guia em Markdown na pasta do projeto (Todas as abas)">Abrir guia <code>EXPORTAR_SAIDAS_OFFLINE.md</code></a>
+                        <span class="config-doc-hint">Documento na pasta do projeto, junto a esta página (mesmo nível que Configurações). Se o browser não abrir, abra o ficheiro no explorador ou num editor.</span>
+                    </p>
+                </div>
+            </details>
             <input type="file" id="carregarDadosFileInput" accept=".json" style="display: none;">
             <input type="file" id="restaurarSaidasBackupFileInput" accept=".json" style="display: none;">
-            <div id="gerenciamentoMessage" class="message" style="margin-top: 12px;"></div>
+            <div id="gerenciamentoMessage" class="message" style="margin-top: 12px;" aria-live="polite" aria-atomic="true"></div>
 
             <div class="config-group" style="margin-top: 24px;">
                 <label style="color: var(--error-red); font-size: 18px;">
@@ -551,6 +836,9 @@
                 </label>
                 <p style="margin: 10px 0; color: var(--dark-gray);">
                     Esta ação irá apagar <strong>TODOS os dados do sistema</strong> (local e Firebase) permanentemente.
+                </p>
+                <p style="margin: 0 0 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #354e9a;">
+                    Âmbito: Local + Firebase (quando a nuvem estiver acessível)
                 </p>
                 <button id="clearAllDataBtn" style="background-color: var(--error-red); width: 100%;">
                     <i class="fas fa-trash-alt"></i> Apagar Todos os Dados do Sistema
@@ -645,6 +933,8 @@
             const cfgBtnModoOffline = document.getElementById('cfgBtnModoOffline');
             const cfgBtnModoOnline = document.getElementById('cfgBtnModoOnline');
             const carregarDadosFileInput = document.getElementById('carregarDadosFileInput');
+            const cfgImportSyncFirebaseAfter = document.getElementById('cfgImportSyncFirebaseAfter');
+            const cfgImportFullOptionsRow = document.getElementById('cfgImportFullOptionsRow');
             const restaurarSaidasBackupBtn = document.getElementById('restaurarSaidasBackupBtn');
             const restaurarSaidasBackupFileInput = document.getElementById('restaurarSaidasBackupFileInput');
             const exportarSaidasJsonBtn = document.getElementById('exportarSaidasJsonBtn');
@@ -1268,15 +1558,40 @@
                 if (!backupData || !(key in backupData)) return true;
                 return isBackupLocalValueEmpty(backupData[key]);
             }
+
+            /**
+             * A partir do campo escalaData (JSON), preenche chaves YYYY-MM no payload de backup.
+             * Assim meses que existam só no Firestore entram no ficheiro como chaves locais esperadas pelo Escala13/sync.
+             * Parse/stringify aqui ficam na main: um único JSON.parse(escalaData) + poucos meses — volume típico
+             * muito inferior ao stringify final do objeto completo no download (onde se usa Web Worker acima do limiar).
+             */
+            function fanOutEscalaDataMonthsIntoBackupPayload(dataObj) {
+                try {
+                    const raw = dataObj['escalaData'];
+                    if (raw == null || String(raw).trim() === '') return;
+                    const ep = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                    if (!ep || typeof ep !== 'object' || Array.isArray(ep)) return;
+                    Object.keys(ep).forEach(function (mk) {
+                        if (!/^\d{4}-\d{2}$/.test(mk)) return;
+                        try {
+                            dataObj[mk] = JSON.stringify(ep[mk]);
+                        } catch (e) { /* ignorar mês problemático */ }
+                    });
+                } catch (e) {
+                    console.warn('fanOutEscalaDataMonthsIntoBackupPayload', e);
+                }
+            }
             
             function getAllSystemData() {
                 const data = {};
-                // Lista de chaves importantes que devem ser sempre incluídas
+                // Chaves que o backup deve mencionar mesmo vazias (import/restauro alinhado ao modelo SOT).
                 const importantKeys = [
                     'equipamentosSuprimentos',
                     'equipamentosMovements',
                     'equipamentosTabOrder',
-                    'cadastroItensPersonalizados'
+                    'cadastroItensPersonalizados',
+                    'vtr_oficina_registros',
+                    'sot_last_sync_timestamp'
                 ];
                 
                 // Coletar todas as chaves do localStorage
@@ -1308,7 +1623,48 @@
                 return data;
             }
 
-            // Monta os dados de backup incluindo, quando possível, o que está no Firebase/API
+            /**
+             * Backup completo: localStorage + enriquecimento a partir do Firestore (sot_data) quando o valor local
+             * está vazio (shouldEnrichKeyFromRemote). Documentação de lacunas conhecidas:
+             * - Documentos config_* (getConfig/setConfig) não são listados aqui; ficam só se existirem como chave em localStorage.
+             * - Dados exclusivos da API REST (se useAPI) não são espelhados por firebaseSot.get.
+             * - IndexedDB (ex.: VTR Oficina) só entra via chave vtr_oficina_registros no JSON / localStorage consolidado.
+             * - Atualizar SOT_FIRESTORE_ENRICH_KEYS se novas coleções forem gravadas em sot_data.
+             */
+            const SOT_FIRESTORE_ENRICH_KEYS_DOC = [
+                'saidasAdministrativas', 'saidasAmbulancias', 'viaturasCadastradas', 'motoristasCadastrados',
+                'vistoriasRealizadas', 'abastecimentos', 'escalaData', 'avisos', 'lembretes_ativos', 'motoristasVistoria',
+                'integrantesEscalaPao', 'feriadosEscalaPao', 'escalaPaoInsercoes', 'diasExcluidosEscalaPao',
+                'historicoEscalaPao', 'puladosEscalaPao', 'ultimoIndiceEscala', 'escalaPaoDataReferencia',
+                'equipamentosSuprimentos', 'equipamentosMovements', 'equipamentosTabOrder', 'cadastroItensPersonalizados',
+                'vtr_oficina_registros', 'sot_last_sync_timestamp', 'vistorias'
+            ];
+
+            /**
+             * Executa tarefas assíncronas com limite de concorrência (ex.: vários firebaseSot.get no backup).
+             * Cada tarefa trata o seu próprio erro; falhas não cancelam as restantes.
+             */
+            async function sotBackupRunPool(asyncFns, concurrency) {
+                if (!asyncFns || !asyncFns.length) return;
+                const limit = Math.max(1, Math.min(concurrency || 4, asyncFns.length));
+                let cursor = 0;
+                async function worker() {
+                    while (true) {
+                        if (cursor >= asyncFns.length) return;
+                        const myPos = cursor++;
+                        const fn = asyncFns[myPos];
+                        try {
+                            await fn();
+                        } catch (e) {
+                            console.warn('sotBackupRunPool: tarefa ' + myPos + ' falhou:', e);
+                        }
+                    }
+                }
+                const workers = [];
+                for (let w = 0; w < limit; w++) workers.push(worker());
+                await Promise.all(workers);
+            }
+
             async function buildFullBackupData() {
                 const data = getAllSystemData();
 
@@ -1316,10 +1672,11 @@
                     try {
                         const keysExcludingMeta = Object.keys(data).filter(function (k) { return k !== '_backupMeta'; });
                         data._backupMeta = JSON.stringify({
-                            version: 1,
+                            version: 2,
                             createdAt: new Date().toISOString(),
                             keyCount: keysExcludingMeta.length,
-                            embeddedInSOT5: window.parent !== window
+                            embeddedInSOT5: window.parent !== window,
+                            firestoreEnrichKeysDoc: SOT_FIRESTORE_ENRICH_KEYS_DOC
                         });
                     } catch (e) { /* ignore */ }
                 }
@@ -1332,172 +1689,210 @@
                 try {
                     await dataService.waitForAPICheck();
 
-                    try {
-                        if (shouldEnrichKeyFromRemote(data, 'saidasAdministrativas')) {
-                            const saidasAdm = await dataService.getSaidasAdministrativas();
-                            if (Array.isArray(saidasAdm)) {
-                                data['saidasAdministrativas'] = JSON.stringify(saidasAdm);
-                            }
-                        }
-                    } catch (e) { console.warn('Falha ao obter saidasAdministrativas para backup:', e); }
+                    const SOT_BACKUP_READ_CONCURRENCY = 4;
+                    const backupTasks = [];
+                    const fsGet = window.firebaseSot && typeof window.firebaseSot.get === 'function'
+                        ? window.firebaseSot.get.bind(window.firebaseSot)
+                        : null;
 
-                    try {
-                        if (shouldEnrichKeyFromRemote(data, 'saidasAmbulancias')) {
-                            const saidasAmb = await dataService.getSaidasAmbulancias();
-                            if (Array.isArray(saidasAmb)) {
-                                data['saidasAmbulancias'] = JSON.stringify(saidasAmb);
-                            }
-                        }
-                    } catch (e) { console.warn('Falha ao obter saidasAmbulancias para backup:', e); }
-
-                    try {
-                        if (shouldEnrichKeyFromRemote(data, 'viaturasCadastradas')) {
-                            const viaturas = await dataService.getViaturas();
-                            if (Array.isArray(viaturas)) {
-                                data['viaturasCadastradas'] = JSON.stringify(viaturas);
-                            }
-                        }
-                    } catch (e) { console.warn('Falha ao obter viaturas para backup:', e); }
-
-                    try {
-                        if (shouldEnrichKeyFromRemote(data, 'motoristasCadastrados')) {
-                            const motoristas = await dataService.getMotoristas();
-                            if (Array.isArray(motoristas)) {
-                                data['motoristasCadastrados'] = JSON.stringify(motoristas);
-                            }
-                        }
-                    } catch (e) { console.warn('Falha ao obter motoristas para backup:', e); }
-
-                    if (window.firebaseSot && typeof window.firebaseSot.get === 'function') {
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'vistoriasRealizadas')) {
-                                const vistorias = await window.firebaseSot.get('vistoriasRealizadas');
-                                if (Array.isArray(vistorias)) {
-                                    data['vistoriasRealizadas'] = JSON.stringify(vistorias);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter vistoriasRealizadas para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'abastecimentos')) {
-                                const abastecimentos = await window.firebaseSot.get('abastecimentos');
-                                if (Array.isArray(abastecimentos)) {
-                                    data['abastecimentos'] = JSON.stringify(abastecimentos);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter abastecimentos para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'escalaData')) {
-                                const escalaData = await window.firebaseSot.get('escalaData');
-                                if (escalaData && typeof escalaData === 'object') {
-                                    data['escalaData'] = JSON.stringify(escalaData);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter escalaData para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'avisos')) {
-                                const avisos = await window.firebaseSot.get('avisos');
-                                if (Array.isArray(avisos)) {
-                                    data['avisos'] = JSON.stringify(avisos);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter avisos para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'lembretes_ativos')) {
-                                const lembretes = await window.firebaseSot.get('lembretes_ativos');
-                                if (Array.isArray(lembretes)) {
-                                    data['lembretes_ativos'] = JSON.stringify(lembretes);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter lembretes_ativos para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'motoristasVistoria')) {
-                                const motoristasVistoria = await window.firebaseSot.get('motoristasVistoria');
-                                if (Array.isArray(motoristasVistoria)) {
-                                    data['motoristasVistoria'] = JSON.stringify(motoristasVistoria);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter motoristasVistoria para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'integrantesEscalaPao')) {
-                                const integrantesEscalaPao = await window.firebaseSot.get('integrantesEscalaPao');
-                                if (Array.isArray(integrantesEscalaPao)) {
-                                    data['integrantesEscalaPao'] = JSON.stringify(integrantesEscalaPao);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter integrantesEscalaPao para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'feriadosEscalaPao')) {
-                                const feriadosEscalaPao = await window.firebaseSot.get('feriadosEscalaPao');
-                                if (Array.isArray(feriadosEscalaPao)) {
-                                    data['feriadosEscalaPao'] = JSON.stringify(feriadosEscalaPao);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter feriadosEscalaPao para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'escalaPaoInsercoes')) {
-                                const escalaPaoInsercoes = await window.firebaseSot.get('escalaPaoInsercoes');
-                                if (Array.isArray(escalaPaoInsercoes)) {
-                                    data['escalaPaoInsercoes'] = JSON.stringify(escalaPaoInsercoes);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter escalaPaoInsercoes para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'diasExcluidosEscalaPao')) {
-                                const diasExcluidosEscalaPao = await window.firebaseSot.get('diasExcluidosEscalaPao');
-                                if (Array.isArray(diasExcluidosEscalaPao)) {
-                                    data['diasExcluidosEscalaPao'] = JSON.stringify(diasExcluidosEscalaPao);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter diasExcluidosEscalaPao para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'historicoEscalaPao')) {
-                                const historicoEscalaPao = await window.firebaseSot.get('historicoEscalaPao');
-                                if (Array.isArray(historicoEscalaPao)) {
-                                    data['historicoEscalaPao'] = JSON.stringify(historicoEscalaPao);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter historicoEscalaPao para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'puladosEscalaPao')) {
-                                const puladosEscalaPao = await window.firebaseSot.get('puladosEscalaPao');
-                                if (puladosEscalaPao && typeof puladosEscalaPao === 'object') {
-                                    data['puladosEscalaPao'] = JSON.stringify(puladosEscalaPao);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter puladosEscalaPao para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'ultimoIndiceEscala')) {
-                                const ultimoIndiceEscala = await window.firebaseSot.get('ultimoIndiceEscala');
-                                if (ultimoIndiceEscala !== null && ultimoIndiceEscala !== undefined) {
-                                    data['ultimoIndiceEscala'] = JSON.stringify(ultimoIndiceEscala);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter ultimoIndiceEscala para backup:', e); }
-
-                        try {
-                            if (shouldEnrichKeyFromRemote(data, 'escalaPaoDataReferencia')) {
-                                const escalaPaoDataReferencia = await window.firebaseSot.get('escalaPaoDataReferencia');
-                                if (escalaPaoDataReferencia !== null && escalaPaoDataReferencia !== undefined) {
-                                    data['escalaPaoDataReferencia'] = String(escalaPaoDataReferencia);
-                                }
-                            }
-                        } catch (e) { console.warn('Falha ao obter escalaPaoDataReferencia para backup:', e); }
+                    if (shouldEnrichKeyFromRemote(data, 'saidasAdministrativas')) {
+                        backupTasks.push(async function () {
+                            try {
+                                const saidasAdm = await dataService.getSaidasAdministrativas();
+                                if (Array.isArray(saidasAdm)) data['saidasAdministrativas'] = JSON.stringify(saidasAdm);
+                            } catch (e) { console.warn('Falha ao obter saidasAdministrativas para backup:', e); }
+                        });
                     }
+                    if (shouldEnrichKeyFromRemote(data, 'saidasAmbulancias')) {
+                        backupTasks.push(async function () {
+                            try {
+                                const saidasAmb = await dataService.getSaidasAmbulancias();
+                                if (Array.isArray(saidasAmb)) data['saidasAmbulancias'] = JSON.stringify(saidasAmb);
+                            } catch (e) { console.warn('Falha ao obter saidasAmbulancias para backup:', e); }
+                        });
+                    }
+                    if (shouldEnrichKeyFromRemote(data, 'viaturasCadastradas')) {
+                        backupTasks.push(async function () {
+                            try {
+                                const viaturas = await dataService.getViaturas();
+                                if (Array.isArray(viaturas)) data['viaturasCadastradas'] = JSON.stringify(viaturas);
+                            } catch (e) { console.warn('Falha ao obter viaturas para backup:', e); }
+                        });
+                    }
+                    if (shouldEnrichKeyFromRemote(data, 'motoristasCadastrados')) {
+                        backupTasks.push(async function () {
+                            try {
+                                const motoristas = await dataService.getMotoristas();
+                                if (Array.isArray(motoristas)) data['motoristasCadastrados'] = JSON.stringify(motoristas);
+                            } catch (e) { console.warn('Falha ao obter motoristas para backup:', e); }
+                        });
+                    }
+
+                    if (fsGet) {
+                        if (shouldEnrichKeyFromRemote(data, 'vistoriasRealizadas')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const vistorias = await fsGet('vistoriasRealizadas');
+                                    if (Array.isArray(vistorias)) data['vistoriasRealizadas'] = JSON.stringify(vistorias);
+                                } catch (e) { console.warn('Falha ao obter vistoriasRealizadas para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'abastecimentos')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const abastecimentos = await fsGet('abastecimentos');
+                                    if (Array.isArray(abastecimentos)) data['abastecimentos'] = JSON.stringify(abastecimentos);
+                                } catch (e) { console.warn('Falha ao obter abastecimentos para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'escalaData')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const escalaData = await fsGet('escalaData');
+                                    if (escalaData && typeof escalaData === 'object') data['escalaData'] = JSON.stringify(escalaData);
+                                } catch (e) { console.warn('Falha ao obter escalaData para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'avisos')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const avisos = await fsGet('avisos');
+                                    if (Array.isArray(avisos)) data['avisos'] = JSON.stringify(avisos);
+                                } catch (e) { console.warn('Falha ao obter avisos para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'lembretes_ativos')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const lembretes = await fsGet('lembretes_ativos');
+                                    if (Array.isArray(lembretes)) data['lembretes_ativos'] = JSON.stringify(lembretes);
+                                } catch (e) { console.warn('Falha ao obter lembretes_ativos para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'motoristasVistoria')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const motoristasVistoria = await fsGet('motoristasVistoria');
+                                    if (Array.isArray(motoristasVistoria)) data['motoristasVistoria'] = JSON.stringify(motoristasVistoria);
+                                } catch (e) { console.warn('Falha ao obter motoristasVistoria para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'integrantesEscalaPao')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const integrantesEscalaPao = await fsGet('integrantesEscalaPao');
+                                    if (Array.isArray(integrantesEscalaPao)) data['integrantesEscalaPao'] = JSON.stringify(integrantesEscalaPao);
+                                } catch (e) { console.warn('Falha ao obter integrantesEscalaPao para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'feriadosEscalaPao')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const feriadosEscalaPao = await fsGet('feriadosEscalaPao');
+                                    if (Array.isArray(feriadosEscalaPao)) data['feriadosEscalaPao'] = JSON.stringify(feriadosEscalaPao);
+                                } catch (e) { console.warn('Falha ao obter feriadosEscalaPao para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'escalaPaoInsercoes')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const escalaPaoInsercoes = await fsGet('escalaPaoInsercoes');
+                                    if (Array.isArray(escalaPaoInsercoes)) data['escalaPaoInsercoes'] = JSON.stringify(escalaPaoInsercoes);
+                                } catch (e) { console.warn('Falha ao obter escalaPaoInsercoes para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'diasExcluidosEscalaPao')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const diasExcluidosEscalaPao = await fsGet('diasExcluidosEscalaPao');
+                                    if (Array.isArray(diasExcluidosEscalaPao)) data['diasExcluidosEscalaPao'] = JSON.stringify(diasExcluidosEscalaPao);
+                                } catch (e) { console.warn('Falha ao obter diasExcluidosEscalaPao para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'historicoEscalaPao')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const historicoEscalaPao = await fsGet('historicoEscalaPao');
+                                    if (Array.isArray(historicoEscalaPao)) data['historicoEscalaPao'] = JSON.stringify(historicoEscalaPao);
+                                } catch (e) { console.warn('Falha ao obter historicoEscalaPao para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'puladosEscalaPao')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const puladosEscalaPao = await fsGet('puladosEscalaPao');
+                                    if (puladosEscalaPao && typeof puladosEscalaPao === 'object') data['puladosEscalaPao'] = JSON.stringify(puladosEscalaPao);
+                                } catch (e) { console.warn('Falha ao obter puladosEscalaPao para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'ultimoIndiceEscala')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const ultimoIndiceEscala = await fsGet('ultimoIndiceEscala');
+                                    if (ultimoIndiceEscala !== null && ultimoIndiceEscala !== undefined) {
+                                        data['ultimoIndiceEscala'] = JSON.stringify(ultimoIndiceEscala);
+                                    }
+                                } catch (e) { console.warn('Falha ao obter ultimoIndiceEscala para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'escalaPaoDataReferencia')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const escalaPaoDataReferencia = await fsGet('escalaPaoDataReferencia');
+                                    if (escalaPaoDataReferencia !== null && escalaPaoDataReferencia !== undefined) {
+                                        data['escalaPaoDataReferencia'] = String(escalaPaoDataReferencia);
+                                    }
+                                } catch (e) { console.warn('Falha ao obter escalaPaoDataReferencia para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'vtr_oficina_registros')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const vtrReg = await fsGet('vtr_oficina_registros');
+                                    if (Array.isArray(vtrReg)) data['vtr_oficina_registros'] = JSON.stringify(vtrReg);
+                                } catch (e) { console.warn('Falha ao obter vtr_oficina_registros para backup:', e); }
+                            });
+                        }
+                        if (shouldEnrichKeyFromRemote(data, 'sot_last_sync_timestamp')) {
+                            backupTasks.push(async function () {
+                                try {
+                                    const ts = await fsGet('sot_last_sync_timestamp');
+                                    if (ts != null && ts !== '') {
+                                        data['sot_last_sync_timestamp'] = typeof ts === 'string' ? ts : JSON.stringify(ts);
+                                    }
+                                } catch (e) { console.warn('Falha ao obter sot_last_sync_timestamp para backup:', e); }
+                            });
+                        }
+                        const _equipBackupKeys = ['equipamentosSuprimentos', 'equipamentosMovements', 'equipamentosTabOrder', 'cadastroItensPersonalizados'];
+                        for (let _ei = 0; _ei < _equipBackupKeys.length; _ei++) {
+                            const _ek = _equipBackupKeys[_ei];
+                            if (shouldEnrichKeyFromRemote(data, _ek)) {
+                                backupTasks.push((function (ek) {
+                                    return async function () {
+                                        try {
+                                            const _ob = await fsGet(ek);
+                                            if (_ob != null && typeof _ob === 'object' && !Array.isArray(_ob)) {
+                                                data[ek] = JSON.stringify(_ob);
+                                            }
+                                        } catch (_ee) { console.warn('Falha ao obter ' + ek + ' para backup:', _ee); }
+                                    };
+                                })(_ek));
+                            }
+                        }
+                    }
+
+                    await sotBackupRunPool(backupTasks, SOT_BACKUP_READ_CONCURRENCY);
+
+                    try {
+                        if (data['vistoriasRealizadas'] != null && String(data['vistoriasRealizadas']).trim() !== '' && shouldEnrichKeyFromRemote(data, 'vistorias')) {
+                            data['vistorias'] = data['vistoriasRealizadas'];
+                        }
+                    } catch (e) { console.warn('Falha ao espelhar vistorias para backup:', e); }
                 } catch (e) {
                     console.warn('Falha geral ao montar backup completo (usando apenas localStorage):', e);
                 }
+
+                fanOutEscalaDataMonthsIntoBackupPayload(data);
 
                 attachBackupMeta();
                 return data;
@@ -1512,15 +1907,60 @@
                 }, 5000);
             }
 
-            function showGerenciamentoMessage(message, type) {
+            /** Feedback unificado (import, backup, nuvem, etc.): sem window.alert; mensagem inline com suporte a leitores de ecrã. */
+            function showGerenciamentoMessage(message, type, opts) {
                 if (!gerenciamentoMessage) return;
+                opts = opts && typeof opts === 'object' ? opts : null;
+                try {
+                    if (gerenciamentoMessage._sotMsgHideTimer) {
+                        clearTimeout(gerenciamentoMessage._sotMsgHideTimer);
+                        gerenciamentoMessage._sotMsgHideTimer = null;
+                    }
+                } catch (e) {}
                 gerenciamentoMessage.textContent = message;
                 gerenciamentoMessage.className = 'message ' + (type || '');
-                gerenciamentoMessage.style.display = 'block';
-                setTimeout(() => {
-                    gerenciamentoMessage.textContent = '';
-                    gerenciamentoMessage.className = 'message';
-                }, 6000);
+                if (type === 'error') {
+                    gerenciamentoMessage.setAttribute('role', 'alert');
+                } else {
+                    gerenciamentoMessage.setAttribute('role', 'status');
+                }
+                let hideMs = 7000;
+                if (opts && typeof opts.durationMs === 'number' && opts.durationMs > 0) {
+                    hideMs = opts.durationMs;
+                } else if (type === 'success') hideMs = 9000;
+                else if (type === 'info') hideMs = 8000;
+                if (opts && opts.scrollIntoView) {
+                    try {
+                        requestAnimationFrame(function () {
+                            try {
+                                gerenciamentoMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            } catch (e3) {}
+                        });
+                    } catch (e4) {}
+                }
+                gerenciamentoMessage._sotMsgHideTimer = setTimeout(function () {
+                    try {
+                        gerenciamentoMessage.textContent = '';
+                        gerenciamentoMessage.className = 'message';
+                        gerenciamentoMessage.removeAttribute('role');
+                    } catch (e2) {}
+                    gerenciamentoMessage._sotMsgHideTimer = null;
+                }, hideMs);
+            }
+
+            /** C5: erros de FileReader com texto visível e scroll até à zona de mensagens. */
+            function showFileReaderErrorMessage(reader, contextLabel) {
+                const fe = reader && reader.error;
+                const bits = [];
+                bits.push('Erro ao ler o ficheiro' + (contextLabel ? ' — ' + contextLabel : '') + '.');
+                if (fe) {
+                    if (fe.name) bits.push(fe.name);
+                    if (fe.message) bits.push(fe.message);
+                    if (fe.code != null && fe.code !== '') bits.push('(código ' + fe.code + ')');
+                } else {
+                    bits.push('Falha desconhecida na leitura do ficheiro.');
+                }
+                showGerenciamentoMessage(bits.join(' '), 'error', { scrollIntoView: true, durationMs: 14000 });
             }
 
             // ==================== SENHA ====================
@@ -1563,14 +2003,107 @@
                 });
             }
 
+            /*
+             * ==================== CHECKLIST MANUAL (backup / import) ====================
+             * Validação humana; não substitui testes automatizados. Executar no SOT5 (iframe) quando aplicável.
+             *
+             * [ ] Import com sot_offline_mode = true (Modo offline)
+             *     Esperado: caixa «Sincronizar com Firebase após importar» desativada; sem fusão na nuvem;
+             *     localStorage + IndexedDB VTR conforme JSON; mensagem de sucesso menciona só local.
+             *
+             * [ ] Import com sot_offline_mode = false (Modo online), ficheiro vs nuvem com dados distintos
+             *     A) Checkbox sync desmarcada: só browser alterado; nuvem intocada.
+             *     B) Checkbox sync marcada + confirmar 2.º diálogo: merge (nuvem prevalece no mesmo id);
+             *        itens só no ficheiro entram; recarregar abas e verificar consistência.
+             *
+             * [ ] Backup: flush do shell SOT5 OK (parent responde a sot_prepare_backup a tempo)
+             *     Esperado: sem aviso de timeout no consola; JSON contém chaves esperadas após enriquecimento.
+             *
+             * [ ] Backup: flush SOT5 com timeout ou falha (simular: não estar no shell, ou atrasar resposta)
+             *     Esperado: console.warn sobre flush; download do backup segue com o que já está no storage local.
+             *
+             * [ ] Import: JSON inválido / _backupMeta inválido / só metadados → erro antes de localStorage.clear().
+             *
+             * [ ] Import: falha IndexedDB (VTR Oficina) → mensagem de erro explícita; localStorage já aplicado (ver texto).
+             * =====================================================================
+             */
             // ==================== GERENCIAMENTO DE DADOS ====================
 
+            /** Chaves só de metadado no topo do JSON de import — não contam como "dados do sistema". */
+            const SOT_BACKUP_IMPORT_META_ONLY_KEYS = new Set(['_backupMeta', 'backupInfo', '_backupInfo']);
+            /** Versões de _backupMeta aceites (export atual usa 2; reserva para futuras revisões do formato). */
+            const SOT_IMPORT_BACKUP_META_VERSION_MIN = 1;
+            const SOT_IMPORT_BACKUP_META_VERSION_MAX = 99;
+
+            function countSubstantiveImportKeys(data) {
+                return Object.keys(data).filter(function (k) { return !SOT_BACKUP_IMPORT_META_ONLY_KEYS.has(k); }).length;
+            }
+
+            /**
+             * Valida _backupMeta quando a chave existe no ficheiro (string JSON ou objeto).
+             * Deve ser chamada antes de localStorage.clear() / replaceLocalStorageFromImport.
+             */
+            function validateImportedBackupMetaIfPresent(data) {
+                if (!Object.prototype.hasOwnProperty.call(data, '_backupMeta')) return null;
+                var raw = data._backupMeta;
+                var obj;
+                if (typeof raw === 'string') {
+                    var s = raw.trim();
+                    if (s === '') {
+                        throw new Error('Importação recusada: _backupMeta está vazio.');
+                    }
+                    try {
+                        obj = JSON.parse(raw);
+                    } catch (e) {
+                        throw new Error('Importação recusada: _backupMeta não é JSON válido.');
+                    }
+                } else if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+                    obj = raw;
+                } else {
+                    throw new Error('Importação recusada: _backupMeta deve ser texto JSON ou objeto.');
+                }
+                if (obj == null || typeof obj !== 'object' || Array.isArray(obj)) {
+                    throw new Error('Importação recusada: _backupMeta deve descrever um objeto.');
+                }
+                if (!Object.prototype.hasOwnProperty.call(obj, 'version')) {
+                    throw new Error('Importação recusada: _backupMeta em falta do campo "version".');
+                }
+                var ver = obj.version;
+                if (typeof ver === 'string' && /^\s*\d+\s*$/.test(ver)) {
+                    ver = parseInt(ver, 10);
+                }
+                if (typeof ver !== 'number' || !Number.isFinite(ver) || !Number.isInteger(ver)) {
+                    throw new Error('Importação recusada: _backupMeta.version deve ser um número inteiro.');
+                }
+                if (ver < SOT_IMPORT_BACKUP_META_VERSION_MIN || ver > SOT_IMPORT_BACKUP_META_VERSION_MAX) {
+                    throw new Error('Importação recusada: _backupMeta.version fora do intervalo suportado (' +
+                        SOT_IMPORT_BACKUP_META_VERSION_MIN + '–' + SOT_IMPORT_BACKUP_META_VERSION_MAX + ').');
+                }
+                if (Object.prototype.hasOwnProperty.call(obj, 'keyCount')) {
+                    var kc = obj.keyCount;
+                    if (typeof kc === 'string' && /^\s*\d+\s*$/.test(kc)) kc = parseInt(kc, 10);
+                    if (typeof kc !== 'number' || !Number.isFinite(kc) || !Number.isInteger(kc) || kc < 0) {
+                        throw new Error('Importação recusada: _backupMeta.keyCount inválido (esperado inteiro ≥ 0).');
+                    }
+                }
+                return obj;
+            }
+
+            /**
+             * Estrutura mínima antes de apagar/repor localStorage: objeto raiz, não vazio, pelo menos uma chave
+             * de dados além de _backupMeta/backupInfo; se _backupMeta existir, JSON + version obrigatórios.
+             * Backups antigos sem _backupMeta continuam válidos desde que tenham chaves substantivas.
+             */
             function validateImportedSystemBackup(data) {
                 if (data == null || typeof data !== 'object' || Array.isArray(data)) {
                     throw new Error('O arquivo deve ser um objeto JSON na raiz (não uma lista).');
                 }
                 if (Object.keys(data).length === 0) {
                     throw new Error('O JSON está vazio.');
+                }
+                validateImportedBackupMetaIfPresent(data);
+                if (countSubstantiveImportKeys(data) === 0) {
+                    throw new Error('O ficheiro só contém metadados (_backupMeta, backupInfo, etc.); não há dados do sistema para importar.');
                 }
                 return true;
             }
@@ -1583,20 +2116,62 @@
                 return JSON.stringify(value);
             }
 
-            /** Chave de preferência Online/Offline — não deve sumir após import sem essa chave no JSON. */
+            /** Chave de preferência Online/Offline — ver política de import em SOT_FULL_IMPORT_PRESERVE_WHEN_KEY_MISSING. */
             const SOT_CONNECTION_MODE_KEY = 'sot_offline_mode';
 
+            /** C3: espelha firebaseSot.isOfflineMode — evita chamar firebaseSot.set na UI quando a nuvem está desligada por política (o serviço já bloqueia). */
+            function sotConfigFirebaseCloudWritesDisabled() {
+                try {
+                    return !!(window.firebaseSot && typeof window.firebaseSot.isOfflineMode === 'function' && window.firebaseSot.isOfflineMode());
+                } catch (e) { return false; }
+            }
+
             /**
-             * Substitui todo o localStorage pelas chaves do backup (estado único do arquivo).
-             * Se o arquivo não trouxer sot_offline_mode, repõe o valor que estava antes do clear
-             * (backup antigo ou export parcial não altera o modo silenciosamente).
+             * Política — import completo (Carregar Dados): chaves de posto de trabalho / UI que não fazem parte
+             * do estado negocial típico do backup. Se o JSON não trouxer a chave, repõe-se o valor local vigente
+             * após localStorage.clear(); se o ficheiro incluir a chave, prevalece o valor importado.
+             * Inclui: modo offline, tema (Configurações + theme-listener.js), zoom do shell (SOT5).
              */
+            const SOT_FULL_IMPORT_PRESERVE_WHEN_KEY_MISSING = [
+                {
+                    storageKey: SOT_CONNECTION_MODE_KEY,
+                    acceptCurrent: function (v) { return v === 'true' || v === 'false'; }
+                },
+                {
+                    storageKey: THEME_ID_KEY,
+                    acceptCurrent: function (v) { return v != null && String(v).trim() !== ''; }
+                },
+                {
+                    storageKey: THEME_VARS_KEY,
+                    acceptCurrent: function (v) { return v != null && String(v).trim() !== ''; }
+                },
+                {
+                    storageKey: 'zoomLevel',
+                    acceptCurrent: function (v) {
+                        if (v == null) return false;
+                        var n = parseFloat(String(v).trim());
+                        return Number.isFinite(n) && n >= 0.5 && n <= 2;
+                    }
+                }
+            ];
+
+            /**
+             * Substitui todo o localStorage pelas chaves do backup (estado único do arquivo),
+             * aplicando SOT_FULL_IMPORT_PRESERVE_WHEN_KEY_MISSING após o clear.
+             */
+            /** Espera `validateImportedSystemBackup(importedData)` já executado (antes do clear). */
             function replaceLocalStorageFromImport(importedData) {
-                let preservedConnectionMode = null;
+                const preservedSystem = Object.create(null);
                 try {
                     if (typeof localStorage !== 'undefined') {
-                        const cur = localStorage.getItem(SOT_CONNECTION_MODE_KEY);
-                        if (cur === 'true' || cur === 'false') preservedConnectionMode = cur;
+                        for (let pi = 0; pi < SOT_FULL_IMPORT_PRESERVE_WHEN_KEY_MISSING.length; pi++) {
+                            const rule = SOT_FULL_IMPORT_PRESERVE_WHEN_KEY_MISSING[pi];
+                            if (Object.prototype.hasOwnProperty.call(importedData, rule.storageKey)) continue;
+                            try {
+                                const cur = localStorage.getItem(rule.storageKey);
+                                if (rule.acceptCurrent(cur)) preservedSystem[rule.storageKey] = cur;
+                            } catch (e1) { /* ignorar chave */ }
+                        }
                     }
                 } catch (e) {}
 
@@ -1610,10 +2185,11 @@
                 for (const key of Object.keys(flat)) {
                     localStorage.setItem(key, flat[key]);
                 }
-                if (!Object.prototype.hasOwnProperty.call(importedData, SOT_CONNECTION_MODE_KEY) && preservedConnectionMode != null) {
+                const preservedKeys = Object.keys(preservedSystem);
+                for (let ri = 0; ri < preservedKeys.length; ri++) {
                     try {
-                        localStorage.setItem(SOT_CONNECTION_MODE_KEY, preservedConnectionMode);
-                    } catch (e) {}
+                        localStorage.setItem(preservedKeys[ri], preservedSystem[preservedKeys[ri]]);
+                    } catch (e2) {}
                 }
                 try {
                     window.__SOT_IS_OFFLINE__ = typeof localStorage !== 'undefined' && localStorage.getItem(SOT_CONNECTION_MODE_KEY) === 'true';
@@ -1626,6 +2202,13 @@
 
             /** IndexedDB usado pela aba VTR Oficina — alinhado a vtr-oficina.html (SOT_VTR_Oficina / registros). */
             function syncVtrOficinaIndexedDB(importedData) {
+                function idbErrToMessage(prefix, domErr) {
+                    var parts = [prefix];
+                    if (domErr && domErr.name) parts.push(domErr.name);
+                    if (domErr && domErr.message) parts.push(domErr.message);
+                    if (parts.length === 1) parts.push('motivo desconhecido');
+                    return parts.join(': ');
+                }
                 return new Promise(function (resolve, reject) {
                     const DB_NAME = 'SOT_VTR_Oficina';
                     const STORE = 'registros';
@@ -1648,7 +2231,9 @@
                         }
                     }
                     const req = indexedDB.open(DB_NAME, 1);
-                    req.onerror = function () { reject(req.error); };
+                    req.onerror = function () {
+                        reject(new Error(idbErrToMessage('Falha ao abrir IndexedDB (VTR Oficina)', req.error)));
+                    };
                     req.onupgradeneeded = function (ev) {
                         const db = ev.target.result;
                         if (!db.objectStoreNames.contains(STORE)) {
@@ -1660,7 +2245,10 @@
                         const tx = db.transaction([STORE], 'readwrite');
                         const store = tx.objectStore(STORE);
                         const clearReq = store.clear();
-                        clearReq.onerror = function () { reject(clearReq.error); };
+                        clearReq.onerror = function () {
+                            try { db.close(); } catch (e) {}
+                            reject(new Error(idbErrToMessage('Falha ao limpar registos VTR Oficina no IndexedDB', clearReq.error)));
+                        };
                         clearReq.onsuccess = function () {
                             list.forEach(function (reg) {
                                 if (reg && typeof reg === 'object') store.put(reg);
@@ -1670,9 +2258,13 @@
                             db.close();
                             resolve(list.length);
                         };
+                        tx.onabort = function () {
+                            try { db.close(); } catch (e) {}
+                            reject(new Error('Transação IndexedDB (VTR Oficina) foi abortada.'));
+                        };
                         tx.onerror = function () {
                             try { db.close(); } catch (e) {}
-                            reject(tx.error);
+                            reject(new Error(idbErrToMessage('Falha na transação IndexedDB (VTR Oficina)', tx.error)));
                         };
                     };
                 });
@@ -1757,6 +2349,9 @@
                 const fs = window.firebaseSot;
                 if (!fs || typeof fs.get !== 'function' || typeof fs.set !== 'function') {
                     throw new Error('Firebase SOT indisponível.');
+                }
+                if (typeof fs.isOfflineMode === 'function' && fs.isOfflineMode()) {
+                    throw new Error('Modo offline SOT ativo: mesclagem com a nuvem não está disponível.');
                 }
                 if (!window.sotDataMerge || typeof window.sotDataMerge.mergeArraysCloudPrimary !== 'function') {
                     throw new Error('Utilitário de mesclagem (sotDataMerge) não disponível.');
@@ -1902,9 +2497,24 @@
                 if (typeof fs.invalidateAllCache === 'function') fs.invalidateAllCache();
             }
 
-            // 1) Carregar Dados — JSON validado; substitui localStorage + IndexedDB (VTR Oficina); mescla com Firebase (nuvem-primary); recarrega o shell
+            // 1) Carregar Dados — (A) localStorage + IndexedDB; (B) opcional fusão Firebase conforme checkbox + confirmação
             if (cfgBtnCarregarDados && carregarDadosFileInput) {
-                cfgBtnCarregarDados.addEventListener('click', () => carregarDadosFileInput.click());
+                cfgBtnCarregarDados.addEventListener('click', () => {
+                    const syncAfter = cfgImportSyncFirebaseAfter && cfgImportSyncFirebaseAfter.checked && !cfgImportSyncFirebaseAfter.disabled;
+                    const syncLine = syncAfter
+                        ? 'A opção «Sincronizar com Firebase após importar» está ATIVA: depois de aplicar o ficheiro neste navegador, será pedida uma confirmação para fundir com a nuvem (modo online e Firebase disponível).\n\n'
+                        : 'A opção «Sincronizar com Firebase após importar» está DESATIVA: só localStorage e IndexedDB (VTR Oficina) serão alterados; a nuvem não será tocada neste passo.\n\n';
+                    const msgCarregar =
+                        'Importação completa — Carregar Dados\n\n' +
+                        syncLine +
+                        'O ficheiro JSON repõe o estado neste navegador (localStorage aplicável e registos da VTR Oficina).\n\n' +
+                        'Preferências de posto (modo offline, tema e zoom): se o ficheiro não trouxer essas chaves, mantêm-se os valores actuais; se trouxer, usa-se o valor do backup.\n\n' +
+                        'Em modo offline SOT a caixa de sincronização fica indisponível — só importação local.\n\n' +
+                        'Não existe reversão automática. Recomenda-se exportar um backup (JSON) antes de continuar.\n\n' +
+                        'Pretende selecionar o ficheiro?';
+                    if (!window.confirm(msgCarregar)) return;
+                    carregarDadosFileInput.click();
+                });
                 carregarDadosFileInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -1920,10 +2530,12 @@
                             }
                             validateImportedSystemBackup(importedData);
 
+                            let wantsCloudMerge = !!(cfgImportSyncFirebaseAfter && cfgImportSyncFirebaseAfter.checked && !cfgImportSyncFirebaseAfter.disabled);
+
                             cfgBtnCarregarDados.disabled = true;
                             cfgBtnCarregarDados.innerHTML = '<span class="config-action-btn__icon"><i class="fas fa-spinner fa-spin"></i></span><span class="config-action-btn__text">Carregando…</span>';
 
-                            if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
+                            if (wantsCloudMerge && typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
                                 await dataService.waitForAPICheck();
                                 if (typeof dataService.waitForGoogleAuthReady === 'function') {
                                     await dataService.waitForGoogleAuthReady(15000);
@@ -1931,26 +2543,57 @@
                             }
 
                             replaceLocalStorageFromImport(importedData);
-                            await syncVtrOficinaIndexedDB(importedData);
+                            try {
+                                await syncVtrOficinaIndexedDB(importedData);
+                            } catch (vtrIdbErr) {
+                                const inner = vtrIdbErr && vtrIdbErr.message ? vtrIdbErr.message : String(vtrIdbErr);
+                                throw new Error(
+                                    'Falha ao gravar a VTR Oficina no IndexedDB após importar o ficheiro: ' + inner +
+                                    ' O localStorage deste navegador já foi atualizado com o backup; a aba VTR Oficina pode ficar desalinhada até o problema ser resolvido (ex.: espaço em disco, modo privado, extensões ou políticas do browser).'
+                                );
+                            }
 
-                            /** Evita substituir a nuvem pelo arquivo: mescla remoto + local (nuvem com prioridade no mesmo id), como em «Modo online». */
                             let importCloudMerged = false;
                             let importCloudSkippedOffline = false;
                             let importCloudMergeFailed = false;
+                            let importCloudSkippedUserChoice = false;
+                            let importFirebaseUnavailable = false;
+
                             try {
                                 if (typeof localStorage !== 'undefined' && localStorage.getItem(SOT_CONNECTION_MODE_KEY) === 'true') {
-                                    importCloudSkippedOffline = true;
-                                } else if (window.firebaseSot && typeof window.firebaseSot.get === 'function' && typeof window.firebaseSot.set === 'function') {
+                                    if (wantsCloudMerge) importCloudSkippedOffline = true;
+                                    wantsCloudMerge = false;
+                                }
+                            } catch (e) {}
+
+                            let runFirebaseMerge = wantsCloudMerge;
+                            if (runFirebaseMerge) {
+                                const fsOk = window.firebaseSot && typeof window.firebaseSot.get === 'function' && typeof window.firebaseSot.set === 'function';
+                                if (!fsOk) {
+                                    runFirebaseMerge = false;
+                                    importFirebaseUnavailable = true;
+                                } else if (!window.confirm(
+                                    'Confirmar fusão com o Firebase?\n\n' +
+                                    'Os dados do ficheiro já foram aplicados neste navegador. A seguir, o sistema funde com a nuvem: na mesma chave de registo a nuvem prevalece; registos só no ficheiro são acrescentados.\n\n' +
+                                    'Cancelar mantém apenas a cópia local (sem alterar o Firebase neste passo).'
+                                )) {
+                                    runFirebaseMerge = false;
+                                    importCloudSkippedUserChoice = true;
+                                }
+                            }
+
+                            if (runFirebaseMerge) {
+                                try {
                                     await syncOfflineReturnMergeToCloud();
                                     importCloudMerged = true;
+                                } catch (mergeErr) {
+                                    importCloudMergeFailed = true;
+                                    console.error('Mescla com Firebase após import:', mergeErr);
+                                    showGerenciamentoMessage(
+                                        'Dados aplicados neste navegador. A mescla com a nuvem falhou: ' + (mergeErr && mergeErr.message ? mergeErr.message : String(mergeErr)) + ' Use «Sincronizar (local ↔ Firebase)» ou «Enviar dados locais para Firebase» quando possível.',
+                                        'info'
+                                    );
                                 }
-                            } catch (mergeErr) {
-                                importCloudMergeFailed = true;
-                                console.error('Mescla com Firebase após import:', mergeErr);
-                                showGerenciamentoMessage(
-                                    'Dados aplicados neste navegador. A mescla com a nuvem falhou: ' + (mergeErr && mergeErr.message ? mergeErr.message : String(mergeErr)) + ' Use «Sincronizar (local ↔ Firebase)» ou «Enviar dados locais para Firebase» quando possível.',
-                                    'info'
-                                );
                             }
                             if (typeof dataService !== 'undefined' && typeof dataService.clearFirebaseReadCache === 'function' && importCloudMerged) {
                                 dataService.clearFirebaseReadCache();
@@ -1958,24 +2601,37 @@
 
                             if (importCloudSkippedOffline) {
                                 showGerenciamentoMessage(
-                                    'Dados do arquivo aplicados localmente (modo offline). A nuvem não foi alterada. Quando voltar ao modo online, use sincronização para fundir com o Firebase.',
+                                    'Dados do ficheiro aplicados localmente (modo offline SOT). A nuvem não foi alterada. Quando voltar ao modo online, pode marcar «Sincronizar com Firebase após importar» ou usar «Sincronizar» / «Enviar dados locais».',
                                     'success'
                                 );
                             } else if (importCloudMerged) {
                                 showGerenciamentoMessage(
-                                    'Dados do arquivo aplicados e fundidos com o Firebase: na mesma chave de registro a nuvem prevalece; itens só no arquivo foram acrescentados. O sistema será recarregado para alinhar as abas.',
+                                    'Dados do ficheiro aplicados e fundidos com o Firebase: na mesma chave de registo a nuvem prevalece; itens só no ficheiro foram acrescentados. O sistema será recarregado para alinhar as abas.',
                                     'success'
                                 );
-                            } else if (!importCloudMergeFailed) {
+                            } else if (importCloudSkippedUserChoice) {
                                 showGerenciamentoMessage(
-                                    'Dados do arquivo aplicados neste navegador. Firebase indisponível para mesclagem automática — use «Sincronizar» ou «Enviar dados locais para Firebase» depois.',
+                                    'Dados do ficheiro aplicados neste navegador. Fusão com Firebase cancelada — a nuvem não foi alterada. Pode sincronizar mais tarde com «Sincronizar» ou «Enviar dados locais para Firebase».',
+                                    'success'
+                                );
+                            } else if (!wantsCloudMerge && !importCloudMergeFailed) {
+                                showGerenciamentoMessage(
+                                    'Dados do ficheiro aplicados apenas neste navegador (localStorage e VTR Oficina). A nuvem não foi alterada. Para enviar à nuvem, use «Enviar dados locais» ou «Sincronizar».',
+                                    'success'
+                                );
+                            } else if (importFirebaseUnavailable && !importCloudMergeFailed) {
+                                showGerenciamentoMessage(
+                                    'Dados do ficheiro aplicados neste navegador. Firebase indisponível para mesclagem — use «Sincronizar» ou «Enviar dados locais para Firebase» quando possível.',
                                     'info'
                                 );
                             }
                             recordUsuarioAudit('config_import_replace_full', {
                                 keys: Object.keys(importedData).length,
                                 cloudMerged: importCloudMerged,
-                                cloudSkippedOffline: importCloudSkippedOffline
+                                cloudSkippedOffline: importCloudSkippedOffline,
+                                syncFirebaseAfterImportRequested: !!(cfgImportSyncFirebaseAfter && cfgImportSyncFirebaseAfter.checked),
+                                importSkippedFirebaseByUser: importCloudSkippedUserChoice,
+                                importFirebaseUnavailable: importFirebaseUnavailable
                             });
                             if (window.parent && window.parent.postMessage) {
                                 window.parent.postMessage({ type: 'reload_required' }, '*');
@@ -1990,13 +2646,25 @@
                             carregarDadosFileInput.value = '';
                         }
                     };
+                    reader.onerror = function () {
+                        console.error('FileReader (Carregar Dados):', reader.error);
+                        showFileReaderErrorMessage(reader, 'Carregar dados');
+                        try { carregarDadosFileInput.value = ''; } catch (e) {}
+                    };
                     reader.readAsText(file);
                 });
             }
 
             // Restaurar saídas do backup: substitui saidasAdministrativas e saidasAmbulancias no Firebase e local pelo conteúdo do arquivo
             if (restaurarSaidasBackupBtn && restaurarSaidasBackupFileInput) {
-                restaurarSaidasBackupBtn.addEventListener('click', () => restaurarSaidasBackupFileInput.click());
+                restaurarSaidasBackupBtn.addEventListener('click', () => {
+                    const msgRestaurarSaidas =
+                        'Restaurar saídas do backup substitui completamente as listas «saidasAdministrativas» e «saidasAmbulancias» neste navegador (localStorage) e, quando a nuvem estiver acessível, no Firebase.\n\n' +
+                        'Os dados atuais dessas duas saídas deixam de ser usados; não há desfazer automático. Guarde um backup ou exporte as saídas (JSON) se precisar do estado atual.\n\n' +
+                        'Deseja escolher o ficheiro e continuar?';
+                    if (!window.confirm(msgRestaurarSaidas)) return;
+                    restaurarSaidasBackupFileInput.click();
+                });
                 restaurarSaidasBackupFileInput.addEventListener('change', async (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -2032,7 +2700,7 @@
                                 localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdm));
                                 if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
                                     await dataService.setSaidasAdministrativas(saidasAdm);
-                                } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                     await window.firebaseSot.set('saidasAdministrativas', saidasAdm);
                                 }
                             }
@@ -2040,7 +2708,7 @@
                                 localStorage.setItem('saidasAmbulancias', JSON.stringify(saidasAmb));
                                 if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
                                     await dataService.setSaidasAmbulancias(saidasAmb);
-                                } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                                } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                     await window.firebaseSot.set('saidasAmbulancias', saidasAmb);
                                 }
                             }
@@ -2053,7 +2721,14 @@
                             const parts = [];
                             if (Array.isArray(saidasAdm) && saidasAdm.length) parts.push(`Saídas administrativas: ${saidasAdm.length}`);
                             if (Array.isArray(saidasAmb) && saidasAmb.length) parts.push(`Saídas ambulâncias: ${saidasAmb.length}`);
-                            const offlineNote = (!navigator.onLine) ? ' Modo offline: dados no navegador; ao conectar, use «Enviar dados locais para Firebase».' : '';
+                            let offlineNote = '';
+                            try {
+                                if (sotConfigFirebaseCloudWritesDisabled()) {
+                                    offlineNote = ' Modo offline (SOT): apenas dados locais; firebaseSot.set não grava na nuvem. Ao voltar online, use «Enviar dados locais para Firebase».';
+                                } else if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                                    offlineNote = ' Sem internet: dados no navegador; ao conectar, use «Enviar dados locais para Firebase».';
+                                }
+                            } catch (e) {}
                             showGerenciamentoMessage('Saídas restauradas com sucesso. ' + (parts.length ? parts.join('; ') : 'Nenhum dado de saída no arquivo.') + offlineNote, 'success');
                             recordUsuarioAudit('config_restaurar_saidas_backup', { total: parts.join('; ') });
                             if (window.parent && window.parent.postMessage) {
@@ -2064,6 +2739,11 @@
                             showGerenciamentoMessage('Erro ao processar o arquivo. Verifique se é um JSON válido do SOT (com saidasAdministrativas/saidasAmbulancias).', 'error');
                         }
                         restaurarSaidasBackupFileInput.value = '';
+                    };
+                    reader.onerror = function () {
+                        console.error('FileReader (Restaurar saídas):', reader.error);
+                        showFileReaderErrorMessage(reader, 'Restaurar saídas do backup');
+                        try { restaurarSaidasBackupFileInput.value = ''; } catch (e) {}
                     };
                     reader.readAsText(file);
                 });
@@ -2118,12 +2798,10 @@
                     showGerenciamentoMessage('Serviço de dados/Firebase não carregado. Verifique a conexão e recarregue o SOT.', 'error');
                     return;
                 }
-                try {
-                    if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true') {
-                        showGerenciamentoMessage('Modo offline ativo: envio ao Firebase está desativado.', 'error');
-                        return;
-                    }
-                } catch (e) {}
+                if (sotConfigFirebaseCloudWritesDisabled()) {
+                    showGerenciamentoMessage('Modo offline ativo: envio ao Firebase está desativado.', 'error');
+                    return;
+                }
 
                 try {
                     if (typeof dataService !== 'undefined' && dataService.waitForAPICheck) {
@@ -2169,7 +2847,7 @@
                         if (Array.isArray(lista) && lista.length > 0) {
                             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAdministrativas === 'function') {
                                 await dataService.setSaidasAdministrativas(lista);
-                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                 await window.firebaseSot.set('saidasAdministrativas', lista);
                             }
                             stats.saidasAdministrativas = lista.length;
@@ -2185,7 +2863,7 @@
                         if (Array.isArray(lista) && lista.length > 0) {
                             if (typeof dataService !== 'undefined' && typeof dataService.setSaidasAmbulancias === 'function') {
                                 await dataService.setSaidasAmbulancias(lista);
-                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                 await window.firebaseSot.set('saidasAmbulancias', lista);
                             }
                             stats.saidasAmbulancias = lista.length;
@@ -2201,7 +2879,7 @@
                         if (Array.isArray(lista) && lista.length > 0) {
                             if (typeof dataService !== 'undefined' && typeof dataService.saveViaturas === 'function') {
                                 await dataService.saveViaturas(lista);
-                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                 await window.firebaseSot.set('viaturasCadastradas', lista);
                             }
                             stats.viaturasCadastradas = lista.length;
@@ -2217,7 +2895,7 @@
                         if (Array.isArray(lista) && lista.length > 0) {
                             if (typeof dataService !== 'undefined' && typeof dataService.saveMotoristas === 'function') {
                                 await dataService.saveMotoristas(lista);
-                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                 await window.firebaseSot.set('motoristasCadastrados', lista);
                             }
                             stats.motoristasCadastrados = lista.length;
@@ -2257,7 +2935,7 @@
                             }
                         });
                         const lista = Array.from(byId.values());
-                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('vistoriasRealizadas', lista);
                             try {
                                 localStorage.setItem('vistoriasRealizadas', JSON.stringify(lista));
@@ -2273,7 +2951,7 @@
                     try {
                         const raw = localStorage.getItem('motoristasVistoria');
                         const lista = raw ? JSON.parse(raw) : [];
-                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('motoristasVistoria', lista);
                             stats.motoristasVistoria = lista.length;
                         }
@@ -2285,7 +2963,7 @@
                     try {
                         const raw = localStorage.getItem('abastecimentos');
                         const lista = raw ? JSON.parse(raw) : [];
-                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('abastecimentos', lista);
                             stats.abastecimentos = lista.length;
                         }
@@ -2295,7 +2973,7 @@
 
                     // Escala (todas as chaves YYYY-MM)
                     try {
-                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             const escalaObj = {};
                             const re = /^\d{4}-\d{2}$/;
                             for (let i = 0; i < localStorage.length; i++) {
@@ -2323,7 +3001,7 @@
                     try {
                         const raw = localStorage.getItem('avisos');
                         const lista = raw ? JSON.parse(raw) : [];
-                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('avisos', lista);
                             stats.avisos = lista.length;
                         }
@@ -2335,7 +3013,7 @@
                     try {
                         const raw = localStorage.getItem('lembretes_ativos');
                         const lista = raw ? JSON.parse(raw) : [];
-                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (Array.isArray(lista) && lista.length > 0 && window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('lembretes_ativos', lista);
                             stats.lembretes_ativos = lista.length;
                         }
@@ -2345,7 +3023,7 @@
 
                     // Escala de Pão (listas)
                     try {
-                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             const rawIntegrantes = localStorage.getItem('integrantesEscalaPao');
                             const integrantes = rawIntegrantes ? JSON.parse(rawIntegrantes) : [];
                             if (Array.isArray(integrantes) && integrantes.length > 0) {
@@ -2407,7 +3085,7 @@
 
                     // Equipamentos e itens personalizados
                     try {
-                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             const eqSupRaw = localStorage.getItem('equipamentosSuprimentos');
                             const eqSup = eqSupRaw ? JSON.parse(eqSupRaw) : null;
                             if (eqSup && typeof eqSup === 'object') {
@@ -2471,7 +3149,7 @@
                     try {
                         const now = new Date().toISOString();
                         localStorage.setItem('sot_last_sync_timestamp', now);
-                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             await window.firebaseSot.set('sot_last_sync_timestamp', now);
                         }
                     } catch (tsErr) {
@@ -2527,6 +3205,114 @@
             }
 
             // 2) Backup — flush em todas as abas (SOT5), estado global no JSON, download backup_sistema.json
+            /** Acima deste tamanho (caracteres UTF-16 do JSON compacto), evita indentação para reduzir tempo de CPU e tamanho do ficheiro. O import aceita ambos os formatos (JSON.parse). */
+            const SOT_BACKUP_PRETTY_JSON_MAX_CHARS = 480 * 1024;
+            /**
+             * Limiar para serializar o payload final num Web Worker (com fallback na main).
+             * Heurística: soma dos comprimentos das strings em `data` (valores já são sobretudo JSON em texto).
+             * Abaixo disto, o custo de `postMessage` (clone estruturado) + arranque do worker não compensa; acima,
+             * o `JSON.stringify` do objeto completo costuma bloquear a UI de forma perceptível.
+             * Ajustar em ambientes muito lentos ou com backups enormes (ex.: 512 * 1024).
+             */
+            const SOT_BACKUP_JSON_WORKER_MIN_ESTIMATED_CHARS = 256 * 1024;
+
+            function estimateSotBackupPayloadChars(data) {
+                if (!data || typeof data !== 'object') return 0;
+                let n = 0;
+                try {
+                    const keys = Object.keys(data);
+                    for (let i = 0; i < keys.length; i++) {
+                        const k = keys[i];
+                        const v = data[k];
+                        n += k.length + 4;
+                        if (typeof v === 'string') {
+                            n += v.length + 2;
+                        } else if (v != null && typeof v === 'object') {
+                            n += 32;
+                        } else {
+                            n += 8;
+                        }
+                    }
+                } catch (e) { /* ignorar */ }
+                return n;
+            }
+
+            function stringifyBackupPayloadOnMain(data, prettyMaxChars) {
+                const jsonCompact = JSON.stringify(data);
+                const usedCompactOnly = jsonCompact.length > prettyMaxChars;
+                const text = usedCompactOnly ? jsonCompact : JSON.stringify(data, null, 2);
+                return { text: text, usedCompactOnly: usedCompactOnly, jsonCompactLen: jsonCompact.length, usedWorker: false };
+            }
+
+            /** Worker inline: só `JSON.stringify` final (evita ficheiro extra e caminhos file://). */
+            var sotBackupJsonWorkerBlobUrl = null;
+            function getSotBackupJsonWorkerBlobUrl() {
+                if (sotBackupJsonWorkerBlobUrl) return sotBackupJsonWorkerBlobUrl;
+                var src = '(function(){\'use strict\';self.onmessage=function(e){var m=e.data||{},id=m.id,data=m.data,pm=m.prettyMaxChars;try{var c=JSON.stringify(data);var u=c.length>pm;var o=u?c:JSON.stringify(data,null,2);self.postMessage({id:id,ok:true,text:o,usedCompactOnly:u,jsonCompactLen:c.length});}catch(err){self.postMessage({id:id,ok:false,error:String(err&&err.message?err.message:err)});}};})();';
+                sotBackupJsonWorkerBlobUrl = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+                return sotBackupJsonWorkerBlobUrl;
+            }
+
+            function stringifyBackupPayloadViaWorker(data, prettyMaxChars) {
+                return new Promise(function (resolve, reject) {
+                    var blobUrl = getSotBackupJsonWorkerBlobUrl();
+                    var w = new Worker(blobUrl);
+                    var id = String(Date.now()) + '-' + String(Math.random()).slice(2);
+                    function cleanup() {
+                        try { w.terminate(); } catch (e2) {}
+                    }
+                    function onMsg(ev) {
+                        var d = ev.data;
+                        if (!d || d.id !== id) return;
+                        w.removeEventListener('message', onMsg);
+                        w.removeEventListener('error', onErr);
+                        cleanup();
+                        if (d.ok) {
+                            resolve({
+                                text: d.text,
+                                usedCompactOnly: !!d.usedCompactOnly,
+                                jsonCompactLen: d.jsonCompactLen || 0,
+                                usedWorker: true
+                            });
+                        } else {
+                            reject(new Error(d.error || 'Worker stringify falhou'));
+                        }
+                    }
+                    function onErr(err) {
+                        w.removeEventListener('message', onMsg);
+                        w.removeEventListener('error', onErr);
+                        cleanup();
+                        var em = err && err.message ? err.message : (err && err.type === 'error' ? 'Worker error' : String(err));
+                        reject(new Error(em));
+                    }
+                    w.addEventListener('message', onMsg);
+                    w.addEventListener('error', onErr);
+                    try {
+                        w.postMessage({ id: id, data: data, prettyMaxChars: prettyMaxChars });
+                    } catch (postErr) {
+                        cleanup();
+                        reject(postErr);
+                    }
+                });
+            }
+
+            async function stringifyBackupPayloadForDownload(data, prettyMaxChars) {
+                var est = estimateSotBackupPayloadChars(data);
+                var tryWorker = typeof Worker !== 'undefined' && est >= SOT_BACKUP_JSON_WORKER_MIN_ESTIMATED_CHARS;
+                if (tryWorker) {
+                    try {
+                        var wr = await stringifyBackupPayloadViaWorker(data, prettyMaxChars);
+                        wr.estimatedChars = est;
+                        return wr;
+                    } catch (e) {
+                        console.warn('Backup: stringify no Web Worker falhou; a usar main thread.', e);
+                    }
+                }
+                var main = stringifyBackupPayloadOnMain(data, prettyMaxChars);
+                main.estimatedChars = est;
+                return main;
+            }
+
             if (cfgBtnBackup) {
                 cfgBtnBackup.addEventListener('click', async () => {
                     const originalHtml = cfgBtnBackup.innerHTML;
@@ -2539,18 +3325,28 @@
                         }
                         const data = await buildFullBackupData();
                         const filename = 'backup_sistema.json';
-                        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                        const ser = await stringifyBackupPayloadForDownload(data, SOT_BACKUP_PRETTY_JSON_MAX_CHARS);
+                        const jsonOut = ser.text;
+                        const blob = new Blob([jsonOut], { type: 'application/json' });
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
                         a.download = filename;
                         a.click();
                         URL.revokeObjectURL(url);
-                        showGerenciamentoMessage('Download concluído: ' + filename, 'success');
+                        const compactNote = ser.usedCompactOnly
+                            ? ' (JSON compacto — ficheiro grande, sem indentação; importação inalterada)'
+                            : '';
+                        const workerNote = ser.usedWorker ? ' Serialização em segundo plano (Web Worker).' : '';
+                        showGerenciamentoMessage('Download concluído: ' + filename + compactNote + workerNote, 'success');
                         recordUsuarioAudit('config_export_download_backup', {
                             filename: filename,
                             flushOk: flushResult.ok,
-                            standalone: !!flushResult.standalone
+                            standalone: !!flushResult.standalone,
+                            jsonCompact: ser.usedCompactOnly,
+                            approxChars: jsonOut.length,
+                            backupJsonUsedWorker: ser.usedWorker,
+                            backupJsonEstimatedChars: ser.estimatedChars
                         });
                     } catch (error) {
                         console.error('Erro ao gerar download:', error);
@@ -2626,6 +3422,38 @@
                         hintOn.textContent = offline ? 'Priorizar nuvem' : 'Ativo — Firebase em tempo real';
                     }
                 }
+                const modeChip = document.getElementById('cfgConnectionModeChip');
+                const modeChipMain = document.getElementById('cfgConnectionModeChipMain');
+                const modeChipSub = document.getElementById('cfgConnectionModeChipSub');
+                if (modeChip && modeChipMain && modeChipSub) {
+                    modeChip.classList.toggle('config-connection-chip--offline', offline);
+                    modeChip.classList.toggle('config-connection-chip--online', !offline);
+                    const iconI = modeChip.querySelector('.config-connection-chip__icon i');
+                    if (iconI) {
+                        iconI.className = offline ? 'fas fa-wifi-slash' : 'fas fa-cloud';
+                    }
+                    if (offline) {
+                        modeChipMain.textContent = 'Modo offline';
+                        modeChipSub.textContent = 'Apenas dados neste dispositivo; Firebase e API desativados';
+                        modeChip.setAttribute('aria-label', 'Modo de ligação: offline, apenas dados locais');
+                        modeChip.setAttribute('title', 'Modo offline: dados só no navegador; sem escrita na nuvem');
+                    } else {
+                        modeChipMain.textContent = 'Modo online';
+                        modeChipSub.textContent = 'Firebase e sincronização disponíveis neste navegador';
+                        modeChip.setAttribute('aria-label', 'Modo de ligação: online com Firebase');
+                        modeChip.setAttribute('title', 'Modo online: dados locais sincronizáveis com a nuvem');
+                    }
+                }
+                if (cfgImportSyncFirebaseAfter && cfgImportFullOptionsRow) {
+                    cfgImportSyncFirebaseAfter.disabled = offline;
+                    cfgImportFullOptionsRow.classList.toggle('is-offline', offline);
+                    if (offline) {
+                        cfgImportSyncFirebaseAfter.checked = false;
+                        cfgImportSyncFirebaseAfter.setAttribute('aria-disabled', 'true');
+                    } else {
+                        cfgImportSyncFirebaseAfter.removeAttribute('aria-disabled');
+                    }
+                }
             }
             updateOfflineModeButtonsUi();
 
@@ -2648,7 +3476,7 @@
                 } catch (e) { console.warn('Auto-sync ao abrir Configurações:', e); }
             })();
 
-            // 4) Modo offline — flag global sot_offline_mode; leituras/escritas só em armazenamento local (data-service + firebase-sot bloqueiam rede)
+            // 4) Modo offline — C3: sot_offline_mode; firebaseSot.get/set bloqueiam rede; data-service alinha-se; UI evita chamar set quando firebaseSot.isOfflineMode()
             if (cfgBtnModoOffline) {
                 cfgBtnModoOffline.addEventListener('click', () => {
                     if (typeof dataService === 'undefined') {
@@ -2743,7 +3571,7 @@
                         try {
                             const nowIso = new Date().toISOString();
                             localStorage.setItem('sot_last_sync_timestamp', nowIso);
-                            if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                            if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                                 await window.firebaseSot.set('sot_last_sync_timestamp', nowIso);
                             }
                         } catch (tsErr) {
@@ -2828,7 +3656,7 @@
                             try { await dataService.saveMotoristas([]); } catch (e) { console.warn('Falha ao limpar motoristas:', e); }
                         }
 
-                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function') {
+                        if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
                             try { await window.firebaseSot.set('vistoriasRealizadas', []); } catch (e) { console.warn('Falha ao limpar vistoriasRealizadas:', e); }
                             try { await window.firebaseSot.set('abastecimentos', []); } catch (e) { console.warn('Falha ao limpar abastecimentos:', e); }
                             try { await window.firebaseSot.set('escalaData', {}); } catch (e) { console.warn('Falha ao limpar escalaData:', e); }

@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const allLembretes = [...completedLembretes, ...lembretes];
         localStorage.setItem('lembretes_ativos', JSON.stringify(allLembretes));
         try {
+            if (window.firebaseSot && window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode()) return;
             if (window.firebaseSot && typeof window.firebaseSot.set === 'function') await window.firebaseSot.set('lembretes_ativos', allLembretes);
         } catch (e) { console.warn('Lembretes: falha ao sincronizar com Firebase', e); }
         renderLembretes();

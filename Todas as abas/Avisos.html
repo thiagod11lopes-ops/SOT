@@ -329,6 +329,7 @@
 
             async function syncAvisosToFirebase() {
                 try {
+                    if (window.firebaseSot && window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode()) return;
                     if (window.firebaseSot && typeof window.firebaseSot.set === 'function') await window.firebaseSot.set('avisos', avisos);
                 } catch (e) { console.warn('Avisos: falha ao sincronizar com Firebase', e); }
             }

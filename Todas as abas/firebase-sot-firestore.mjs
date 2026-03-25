@@ -3,6 +3,13 @@
  * Compartilha persistência de Auth com firebase-auth.js no parent (mesmo origin),
  * para que request.auth nas regras do Firestore funcione.
  *
+ * C3 — Modo offline SOT (localStorage sot_offline_mode === 'true'): get/set/getConfig/setConfig
+ * e escritas em sot_agendamento_usuarios não acedem à rede; set/setConfig devolvem false.
+ * Alinhado a firebase-sot-service.js; use firebaseSot.isOfflineMode() na UI.
+ *
+ * Segurança: as regras Firestore (firestore.rules) são autoritárias; este módulo não duplica
+ * políticas de acesso como única proteção — o cliente pode ser contornado.
+ *
  * Mantenha firebaseConfig alinhado com firebase-config.js e firebase-auth.js.
  */
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
@@ -49,6 +56,14 @@ const CACHE_TTL_MS_SAIDAS_ADM_DAY_SHARD = 2 * 60 * 1000;
 const LOG_PREFIX = "[firebase-sot-modular]";
 /** Item 13 Quadro: nunca despejar payloads grandes na consola. */
 const LOG_DETAIL_MAX_LEN = 320;
+
+function isSotOfflineModeActive() {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem("sot_offline_mode") === "true";
+  } catch (e) {
+    return false;
+  }
+}
 
 const cache = new Map();
 const inFlightGets = new Map();
@@ -370,6 +385,8 @@ export async function installFirebaseSot() {
 
   window.firebaseSot = {
     authGateOk: authGateOk,
+    /** C3: true quando leituras/escritas Firestore via este módulo estão desativadas (modo offline SOT). */
+    isOfflineMode: isSotOfflineModeActive,
 
     isAvailable: function () {
       return !!db && typeof getDoc === "function";
@@ -399,6 +416,9 @@ export async function installFirebaseSot() {
     watchSaidasAdmDayShard: function (dateIso, callback) {
       var d = dateIso != null ? String(dateIso).slice(0, 10) : "";
       if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        return function () {};
+      }
+      if (isSotOfflineModeActive()) {
         return function () {};
       }
       if (!db || !authGateOk()) {
@@ -470,6 +490,10 @@ export async function installFirebaseSot() {
 
     get: async function (key) {
       const keyStr = String(key);
+      if (isSotOfflineModeActive()) {
+        log("log", "get bloqueado (modo offline)", keyStr);
+        return null;
+      }
       if (!authGateOk()) {
         return null;
       }
@@ -523,6 +547,10 @@ export async function installFirebaseSot() {
 
     set: async function (key, value) {
       const keyStr = String(key);
+      if (isSotOfflineModeActive()) {
+        log("log", "set bloqueado (modo offline)", keyStr);
+        return false;
+      }
       invalidateCache(keyStr);
       if (!authGateOk()) {
         return false;
@@ -583,6 +611,10 @@ export async function installFirebaseSot() {
     },
 
     getConfig: async function (chave) {
+      if (isSotOfflineModeActive()) {
+        log("log", "getConfig bloqueado (modo offline)", chave);
+        return null;
+      }
       if (!authGateOk()) return null;
       if (!db) return null;
       try {
@@ -599,6 +631,10 @@ export async function installFirebaseSot() {
     },
 
     setConfig: async function (chave, valor) {
+      if (isSotOfflineModeActive()) {
+        log("log", "setConfig bloqueado (modo offline)", chave);
+        return false;
+      }
       if (!authGateOk()) return false;
       if (!db) return false;
       try {
@@ -612,6 +648,7 @@ export async function installFirebaseSot() {
     },
 
     listAgendamentoUsuarios: async function () {
+      if (isSotOfflineModeActive()) return [];
       if (!authGateOk() || !db) return [];
       try {
         await ensureAuthTokenForFirestore();
@@ -630,6 +667,7 @@ export async function installFirebaseSot() {
     },
 
     saveAgendamentoUsuario: async function (docId, payload) {
+      if (isSotOfflineModeActive()) return false;
       if (!authGateOk() || !db) return false;
       const id = String(docId || "").trim();
       if (!id) return false;
