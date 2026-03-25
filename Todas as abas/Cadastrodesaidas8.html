@@ -65,6 +65,8 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
 <script src="data-service.js"></script>
 <script src="sot-saidas-indexeddb.js"></script>
 <script src="junta-saidas-service.js"></script>
+<script src="sot-sync.js"></script>
+<script src="sot-connection-mode.js"></script>
 <style>
 :root {
 --primary-blue: #4a69bd;
@@ -251,6 +253,13 @@ animation: cadastro-sync-pulse 1s ease-in-out infinite;
 .cadastro-sync-status-pill.is-ok .cadastro-sync-dot { background: #16a34a; }
 .cadastro-sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 .cadastro-sync-status-pill.is-error .cadastro-sync-dot { background: #dc2626; }
+.sot-connection-mode-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sot-conn-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; background: #fff; color: #334155; }
+.sot-conn-btn--offline:hover { background: #f1f5f9; }
+.sot-conn-btn--online:hover { background: #eff6ff; border-color: #93c5fd; }
+.sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-theme="dark"] .sot-conn-btn { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+body[data-theme="dark"] .sot-conn-chip { background: #0c4a6e; color: #7dd3fc; border-color: #0369a1; }
 .counters-container {
 display: flex;
 flex-direction: column;
@@ -1242,13 +1251,20 @@ body[data-theme="dark"] .cadastro-sync-status-pill.is-error { background: #450a0
 <div class="table-controls">
 <div class="table-controls-title-row">
 <h2 class="table-title" id="registerFormTitleRow">CADASTRAR NOVA SAÍDA</h2>
+<div class="cadastro-toolbar-right" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
 <div id="cadastroSyncStatusPill" class="cadastro-sync-status-pill is-loading" role="status" aria-live="polite" title="Estado de sincronização dos cadastros com a nuvem">
 <span class="cadastro-sync-dot" aria-hidden="true"></span>
 <span id="cadastroSyncStatusText">Carregando dados...</span>
 </div>
+<div class="sot-connection-mode-inline" role="group" aria-label="Modo de ligação SOT">
+<button type="button" id="sotConnModoOfflineCadastro" class="sot-conn-btn sot-conn-btn--offline" title="Operar só com dados neste dispositivo (localStorage e IndexedDB); Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
+<button type="button" id="sotConnModoOnlineCadastro" class="sot-conn-btn sot-conn-btn--online" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
+<span id="sotConnChipCadastro" class="sot-conn-chip" title="Estado atual da ligação"></span>
+</div>
 <button type="button" id="btnPreencherTeste" class="icon-btn-teste" title="Preencher formulário com dados aleatórios para teste (Data e Hora da Saída não são preenchidos)">
 <i class="fas fa-flask"></i>
 </button>
+</div>
 </div>
 </div>
 <div class="register-exit-form">
@@ -7754,6 +7770,18 @@ document.addEventListener('DOMContentLoaded', function() {
   }
  });
 })();
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.SOTConnectionMode && typeof window.SOTConnectionMode.install === 'function') {
+        window.SOTConnectionMode.install({
+            auditSource: 'Cadastrodesaidas8.html',
+            offlineBtnId: 'sotConnModoOfflineCadastro',
+            onlineBtnId: 'sotConnModoOnlineCadastro',
+            chipTextId: 'sotConnChipCadastro'
+        });
+    }
+});
 </script>
 
 </body>

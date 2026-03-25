@@ -13,6 +13,7 @@
     <script src="api-service.js"></script>
     <script src="data-service.js"></script>
     <script src="sot-sync.js"></script>
+    <script src="sot-connection-mode.js"></script>
     <style>
         :root {
             --primary-blue: #4a69bd;
@@ -727,7 +728,7 @@
                 </div>
             </div>
             <p class="config-section-lead">
-                Use os atalhos abaixo para <strong>backup</strong>, <strong>importar</strong> JSON, <strong>enviar</strong> dados para a nuvem e alternar <strong>modo offline</strong> / <strong>modo online</strong>. A legenda indica se a ação altera apenas este navegador ou também o Firebase.
+                Use os atalhos abaixo para <strong>backup</strong>, <strong>importar</strong> JSON e <strong>enviar</strong> dados para a nuvem. O modo offline/online (chave <code>sot_offline_mode</code>) é alterado nas abas Cadastro de Saídas, Saídas Administrativas e Saídas de Ambulâncias. A legenda indica se a ação altera apenas este navegador ou também o Firebase.
             </p>
             <div class="config-data-legend" role="note" aria-label="Legenda do âmbito das ações">
                 <strong>Legenda:</strong>
@@ -752,18 +753,6 @@
                     <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-cloud-upload-alt"></i></span>
                     <span class="config-action-btn__text">Enviar Dados para Nuvem</span>
                     <span class="config-action-btn__hint">Push local → nuvem</span>
-                    <span class="config-action-btn__scope config-action-btn__scope--cloud">Local + Firebase</span>
-                </button>
-                <button type="button" id="cfgBtnModoOffline" class="config-action-btn config-action-btn--offline" title="Operar só com dados neste dispositivo (localStorage e IndexedDB); Firebase e API desativados" aria-pressed="false">
-                    <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-wifi-slash"></i></span>
-                    <span class="config-action-btn__text">Modo Offline</span>
-                    <span class="config-action-btn__hint">Preferência de trabalho</span>
-                    <span class="config-action-btn__scope config-action-btn__scope--local">Só local — sem Firebase</span>
-                </button>
-                <button type="button" id="cfgBtnModoOnline" class="config-action-btn config-action-btn--online" title="Usar Firebase em tempo real (preferência salva no navegador)" aria-pressed="true">
-                    <span class="config-action-btn__icon" aria-hidden="true"><i class="fas fa-cloud"></i></span>
-                    <span class="config-action-btn__text">Modo Online</span>
-                    <span class="config-action-btn__hint">Preferência de trabalho</span>
                     <span class="config-action-btn__scope config-action-btn__scope--cloud">Local + Firebase</span>
                 </button>
             </div>
@@ -943,8 +932,6 @@
             const cfgBtnCarregarDados = document.getElementById('cfgBtnCarregarDados');
             const cfgBtnBackup = document.getElementById('cfgBtnBackup');
             const cfgBtnEnviarNuvem = document.getElementById('cfgBtnEnviarNuvem');
-            const cfgBtnModoOffline = document.getElementById('cfgBtnModoOffline');
-            const cfgBtnModoOnline = document.getElementById('cfgBtnModoOnline');
             const carregarDadosFileInput = document.getElementById('carregarDadosFileInput');
             const cfgImportSyncFirebaseAfter = document.getElementById('cfgImportSyncFirebaseAfter');
             const cfgImportFullOptionsRow = document.getElementById('cfgImportFullOptionsRow');
@@ -970,8 +957,6 @@
                 cfgBtnCarregarDados,
                 cfgBtnBackup,
                 cfgBtnEnviarNuvem,
-                cfgBtnModoOffline,
-                cfgBtnModoOnline,
                 clearAllDataBtn
             });
 
@@ -1525,40 +1510,7 @@
             });
  
             // ==================== FUNÇÕES AUXILIARES ====================
-
-            /** Aguarda o shell SOT5 pedir a todas as abas que persistam estado no localStorage antes do backup. */
-            function waitForParentBackupFlush(timeoutMs) {
-                const timeout = typeof timeoutMs === 'number' ? timeoutMs : 10000;
-                return new Promise(function (resolve) {
-                    if (window.parent === window) {
-                        resolve({ ok: true, standalone: true });
-                        return;
-                    }
-                    const requestId = 'sot_bak_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
-                    let settled = false;
-                    function finish(result) {
-                        if (settled) return;
-                        settled = true;
-                        window.removeEventListener('message', onMsg);
-                        clearTimeout(timer);
-                        resolve(result);
-                    }
-                    function onMsg(ev) {
-                        if (ev.data && ev.data.type === 'sot_prepare_backup_done' && ev.data.requestId === requestId) {
-                            finish({ ok: true, standalone: false });
-                        }
-                    }
-                    const timer = setTimeout(function () {
-                        finish({ ok: false, standalone: false, timedOut: true });
-                    }, timeout);
-                    window.addEventListener('message', onMsg);
-                    try {
-                        window.parent.postMessage({ type: 'sot_prepare_backup', requestId: requestId }, '*');
-                    } catch (e) {
-                        finish({ ok: false, standalone: false, error: String(e) });
-                    }
-                });
-            }
+            // Modo online/offline e mescla pós-offline: sot-connection-mode.js (window.SOTConnectionMode)
 
             function isBackupLocalValueEmpty(val) {
                 if (val === null || val === undefined) return true;
@@ -2225,303 +2177,6 @@
                 return Object.keys(flat).length;
             }
 
-            /** IndexedDB usado pela aba VTR Oficina — alinhado a vtr-oficina.html (SOT_VTR_Oficina / registros). */
-            function syncVtrOficinaIndexedDB(importedData) {
-                function idbErrToMessage(prefix, domErr) {
-                    var parts = [prefix];
-                    if (domErr && domErr.name) parts.push(domErr.name);
-                    if (domErr && domErr.message) parts.push(domErr.message);
-                    if (parts.length === 1) parts.push('motivo desconhecido');
-                    return parts.join(': ');
-                }
-                return new Promise(function (resolve, reject) {
-                    const DB_NAME = 'SOT_VTR_Oficina';
-                    const STORE = 'registros';
-                    let list = [];
-                    if (Object.prototype.hasOwnProperty.call(importedData, 'vtr_oficina_registros')) {
-                        const raw = importedData.vtr_oficina_registros;
-                        if (raw == null) {
-                            list = [];
-                        } else if (typeof raw === 'string') {
-                            try {
-                                const p = JSON.parse(raw);
-                                list = Array.isArray(p) ? p : [];
-                            } catch (_) {
-                                list = [];
-                            }
-                        } else if (Array.isArray(raw)) {
-                            list = raw;
-                        } else {
-                            list = [];
-                        }
-                    }
-                    const req = indexedDB.open(DB_NAME, 1);
-                    req.onerror = function () {
-                        reject(new Error(idbErrToMessage('Falha ao abrir IndexedDB (VTR Oficina)', req.error)));
-                    };
-                    req.onupgradeneeded = function (ev) {
-                        const db = ev.target.result;
-                        if (!db.objectStoreNames.contains(STORE)) {
-                            db.createObjectStore(STORE, { keyPath: 'id' });
-                        }
-                    };
-                    req.onsuccess = function () {
-                        const db = req.result;
-                        const tx = db.transaction([STORE], 'readwrite');
-                        const store = tx.objectStore(STORE);
-                        const clearReq = store.clear();
-                        clearReq.onerror = function () {
-                            try { db.close(); } catch (e) {}
-                            reject(new Error(idbErrToMessage('Falha ao limpar registos VTR Oficina no IndexedDB', clearReq.error)));
-                        };
-                        clearReq.onsuccess = function () {
-                            list.forEach(function (reg) {
-                                if (reg && typeof reg === 'object') store.put(reg);
-                            });
-                        };
-                        tx.oncomplete = function () {
-                            db.close();
-                            resolve(list.length);
-                        };
-                        tx.onabort = function () {
-                            try { db.close(); } catch (e) {}
-                            reject(new Error('Transação IndexedDB (VTR Oficina) foi abortada.'));
-                        };
-                        tx.onerror = function () {
-                            try { db.close(); } catch (e) {}
-                            reject(new Error(idbErrToMessage('Falha na transação IndexedDB (VTR Oficina)', tx.error)));
-                        };
-                    };
-                });
-            }
-
-            /** Lê todos os registros da VTR Oficina no IndexedDB (pendentes enquanto offline). */
-            function readVtrOficinaIndexedDBAll() {
-                return new Promise(function (resolve, reject) {
-                    const DB_NAME = 'SOT_VTR_Oficina';
-                    const STORE = 'registros';
-                    const req = indexedDB.open(DB_NAME, 1);
-                    req.onerror = function () { reject(req.error); };
-                    req.onupgradeneeded = function (ev) {
-                        const db = ev.target.result;
-                        if (!db.objectStoreNames.contains(STORE)) {
-                            db.createObjectStore(STORE, { keyPath: 'id' });
-                        }
-                    };
-                    req.onsuccess = function () {
-                        const db = req.result;
-                        if (!db.objectStoreNames.contains(STORE)) {
-                            db.close();
-                            resolve([]);
-                            return;
-                        }
-                        const tx = db.transaction([STORE], 'readonly');
-                        const st = tx.objectStore(STORE);
-                        const gr = st.getAll();
-                        gr.onerror = function () { db.close(); reject(gr.error); };
-                        gr.onsuccess = function () {
-                            db.close();
-                            resolve(Array.isArray(gr.result) ? gr.result : []);
-                        };
-                    };
-                });
-            }
-
-            /**
-             * Une IndexedDB + localStorage (vtr_oficina_registros) sem duplicar por id; grava no localStorage.
-             * Deve rodar com modo offline ainda ativo (sem Firebase).
-             */
-            function consolidateLocalVtrOficinaIntoStorage(idbRows) {
-                if (!window.sotDataMerge || typeof window.sotDataMerge.mergeArraysCloudPrimary !== 'function') return 0;
-                const m = window.sotDataMerge.mergeArraysCloudPrimary;
-                let fromLs = [];
-                try {
-                    const raw = localStorage.getItem('vtr_oficina_registros');
-                    if (raw) fromLs = JSON.parse(raw);
-                } catch (e) { fromLs = []; }
-                if (!Array.isArray(fromLs)) fromLs = [];
-                const idb = Array.isArray(idbRows) ? idbRows : [];
-                const pool = m(idb, fromLs, 'id');
-                try {
-                    localStorage.setItem('vtr_oficina_registros', JSON.stringify(pool));
-                } catch (e) {
-                    console.warn('consolidateLocalVtrOficinaIntoStorage', e);
-                }
-                return pool.length;
-            }
-
-            function normalizeVistoriasLocalStorageForMerge() {
-                if (!window.sotDataMerge || typeof window.sotDataMerge.mergeArraysCloudPrimary !== 'function') return;
-                const m = window.sotDataMerge.mergeArraysCloudPrimary;
-                let a = [];
-                let b = [];
-                try { a = JSON.parse(localStorage.getItem('vistoriasRealizadas') || '[]'); } catch (e) { a = []; }
-                try { b = JSON.parse(localStorage.getItem('vistorias') || '[]'); } catch (e) { b = []; }
-                if (!Array.isArray(a)) a = [];
-                if (!Array.isArray(b)) b = [];
-                const union = m(a, b, 'id');
-                try {
-                    localStorage.setItem('vistoriasRealizadas', JSON.stringify(union));
-                    localStorage.setItem('vistorias', JSON.stringify(union));
-                } catch (e) {}
-            }
-
-            /**
-             * Após remover sot_offline_mode: funde remoto + local por id (nuvem tem prioridade no mesmo id, evita duplicatas)
-             * e grava no Firebase + localStorage. Objetos: mescla com preferência aos valores locais pendentes.
-             */
-            async function syncOfflineReturnMergeToCloud() {
-                const fs = window.firebaseSot;
-                if (!fs || typeof fs.get !== 'function' || typeof fs.set !== 'function') {
-                    throw new Error('Firebase SOT indisponível.');
-                }
-                if (typeof fs.isOfflineMode === 'function' && fs.isOfflineMode()) {
-                    throw new Error('Modo offline SOT ativo: mesclagem com a nuvem não está disponível.');
-                }
-                if (!window.sotDataMerge || typeof window.sotDataMerge.mergeArraysCloudPrimary !== 'function') {
-                    throw new Error('Utilitário de mesclagem (sotDataMerge) não disponível.');
-                }
-                const m = window.sotDataMerge.mergeArraysCloudPrimary;
-
-                async function mergeArr(key, idField) {
-                    idField = idField || 'id';
-                    let local = [];
-                    try {
-                        const raw = localStorage.getItem(key);
-                        if (raw != null && raw !== '') local = JSON.parse(raw);
-                    } catch (e) { local = []; }
-                    if (!Array.isArray(local)) local = [];
-                    let remote = [];
-                    try {
-                        const r = await fs.get(key);
-                        remote = Array.isArray(r) ? r : [];
-                    } catch (e) { remote = []; }
-                    const merged = m(remote, local, idField);
-                    await fs.set(key, merged);
-                    localStorage.setItem(key, JSON.stringify(merged));
-                    return merged.length;
-                }
-
-                normalizeVistoriasLocalStorageForMerge();
-
-                const arrayPairs = [
-                    ['saidasAdministrativas', 'id'],
-                    ['saidasAmbulancias', 'id'],
-                    ['viaturasCadastradas', 'id'],
-                    ['motoristasCadastrados', 'id'],
-                    ['vistoriasRealizadas', 'id'],
-                    ['abastecimentos', 'id'],
-                    ['avisos', 'id'],
-                    ['lembretes_ativos', 'id'],
-                    ['motoristasVistoria', 'id'],
-                    ['integrantesEscalaPao', 'id'],
-                    ['feriadosEscalaPao', 'data'],
-                    ['escalaPaoInsercoes', 'data'],
-                    ['historicoEscalaPao', 'id']
-                ];
-                for (let i = 0; i < arrayPairs.length; i++) {
-                    await mergeArr(arrayPairs[i][0], arrayPairs[i][1]);
-                }
-
-                let localDias = [];
-                let remoteDias = [];
-                try { localDias = JSON.parse(localStorage.getItem('diasExcluidosEscalaPao') || '[]'); } catch (e) { localDias = []; }
-                try {
-                    const rd = await fs.get('diasExcluidosEscalaPao');
-                    remoteDias = Array.isArray(rd) ? rd : [];
-                } catch (e) { remoteDias = []; }
-                if (!Array.isArray(localDias)) localDias = [];
-                const diasMerged = Array.from(new Set([].concat(remoteDias, localDias))).sort();
-                await fs.set('diasExcluidosEscalaPao', diasMerged);
-                localStorage.setItem('diasExcluidosEscalaPao', JSON.stringify(diasMerged));
-
-                let localP = {};
-                let remoteP = {};
-                try { localP = JSON.parse(localStorage.getItem('puladosEscalaPao') || '{}'); } catch (e) { localP = {}; }
-                try {
-                    const rp = await fs.get('puladosEscalaPao');
-                    if (rp && typeof rp === 'object' && !Array.isArray(rp)) remoteP = rp;
-                } catch (e) { remoteP = {}; }
-                const puladosMerged = Object.assign({}, remoteP, localP);
-                await fs.set('puladosEscalaPao', puladosMerged);
-                localStorage.setItem('puladosEscalaPao', JSON.stringify(puladosMerged));
-
-                let localE = {};
-                let remoteE = {};
-                try {
-                    const raw = localStorage.getItem('escalaData');
-                    if (raw) localE = JSON.parse(raw);
-                } catch (e) { localE = {}; }
-                if (!localE || typeof localE !== 'object' || Array.isArray(localE)) localE = {};
-                try {
-                    const re = await fs.get('escalaData');
-                    if (re && typeof re === 'object' && !Array.isArray(re)) remoteE = re;
-                } catch (e) { remoteE = {}; }
-                const escalaMerged = Object.assign({}, remoteE, localE);
-                await fs.set('escalaData', escalaMerged);
-                localStorage.setItem('escalaData', JSON.stringify(escalaMerged));
-                Object.keys(escalaMerged).forEach(function (mk) {
-                    if (/^\d{4}-\d{2}$/.test(mk)) {
-                        try { localStorage.setItem(mk, JSON.stringify(escalaMerged[mk])); } catch (e) {}
-                    }
-                });
-
-                let lu = null;
-                let ru = null;
-                try { lu = JSON.parse(localStorage.getItem('ultimoIndiceEscala') || 'null'); } catch (e) { lu = null; }
-                try { ru = await fs.get('ultimoIndiceEscala'); } catch (e) { ru = null; }
-                const nu = Math.max(parseInt(lu, 10) || 0, parseInt(ru, 10) || 0);
-                await fs.set('ultimoIndiceEscala', nu);
-                localStorage.setItem('ultimoIndiceEscala', JSON.stringify(nu));
-
-                let lref = '';
-                let rref = '';
-                try { lref = String(localStorage.getItem('escalaPaoDataReferencia') || ''); } catch (e) { lref = ''; }
-                try {
-                    const rr = await fs.get('escalaPaoDataReferencia');
-                    rref = rr != null ? String(rr) : '';
-                } catch (e) { rref = ''; }
-                const pickNewer = function (a, b) {
-                    if (!a) return b || '';
-                    if (!b) return a || '';
-                    const da = new Date(a);
-                    const db = new Date(b);
-                    if (isNaN(da.getTime())) return b || a;
-                    if (isNaN(db.getTime())) return a || b;
-                    return db.getTime() >= da.getTime() ? b : a;
-                };
-                const refMerged = pickNewer(rref, lref);
-                if (refMerged) {
-                    await fs.set('escalaPaoDataReferencia', refMerged);
-                    localStorage.setItem('escalaPaoDataReferencia', refMerged);
-                }
-
-                const objectKeys = ['equipamentosSuprimentos', 'equipamentosMovements', 'equipamentosTabOrder', 'cadastroItensPersonalizados'];
-                for (let j = 0; j < objectKeys.length; j++) {
-                    const ok = objectKeys[j];
-                    let lo = null;
-                    let ro = null;
-                    try {
-                        const raw = localStorage.getItem(ok);
-                        if (raw) lo = JSON.parse(raw);
-                    } catch (e) { lo = null; }
-                    try { ro = await fs.get(ok); } catch (e) { ro = null; }
-                    if (lo == null && ro == null) continue;
-                    const lObj = lo && typeof lo === 'object' && !Array.isArray(lo) ? lo : {};
-                    const rObj = ro && typeof ro === 'object' && !Array.isArray(ro) ? ro : {};
-                    const obMerged = Object.assign({}, rObj, lObj);
-                    await fs.set(ok, obMerged);
-                    localStorage.setItem(ok, JSON.stringify(obMerged));
-                }
-
-                await mergeArr('vtr_oficina_registros', 'id');
-
-                if (typeof dataService !== 'undefined' && typeof dataService.clearFirebaseReadCache === 'function') {
-                    dataService.clearFirebaseReadCache();
-                }
-                if (typeof fs.invalidateAllCache === 'function') fs.invalidateAllCache();
-            }
-
             // 1) Carregar Dados — (A) localStorage + IndexedDB; (B) opcional fusão Firebase conforme checkbox + confirmação
             if (cfgBtnCarregarDados && carregarDadosFileInput) {
                 cfgBtnCarregarDados.addEventListener('click', () => {
@@ -2569,7 +2224,7 @@
 
                             replaceLocalStorageFromImport(importedData);
                             try {
-                                await syncVtrOficinaIndexedDB(importedData);
+                                await window.SOTConnectionMode.syncVtrOficinaIndexedDB(importedData);
                             } catch (vtrIdbErr) {
                                 const inner = vtrIdbErr && vtrIdbErr.message ? vtrIdbErr.message : String(vtrIdbErr);
                                 throw new Error(
@@ -2609,7 +2264,7 @@
 
                             if (runFirebaseMerge) {
                                 try {
-                                    await syncOfflineReturnMergeToCloud();
+                                    await window.SOTConnectionMode.syncOfflineReturnMergeToCloud();
                                     importCloudMerged = true;
                                 } catch (mergeErr) {
                                     importCloudMergeFailed = true;
@@ -3211,7 +2866,7 @@
                     showGerenciamentoMessage('Sincronizando com o Firebase: enviando dados locais para a nuvem. Aguarde…', 'info');
                     try {
                         if (window.parent !== window) {
-                            const flushResult = await waitForParentBackupFlush(12000);
+                            const flushResult = await window.SOTConnectionMode.waitForParentBackupFlush(12000);
                             if (!flushResult.ok && !flushResult.standalone) {
                                 console.warn('Envio à nuvem: flush das abas atrasou ou falhou; seguindo com o que já está no armazenamento local.', flushResult);
                             }
@@ -3347,7 +3002,7 @@
                     cfgBtnBackup.disabled = true;
                     cfgBtnBackup.innerHTML = '<span class="config-action-btn__icon"><i class="fas fa-spinner fa-spin"></i></span><span class="config-action-btn__text">Preparando…</span>';
                     try {
-                        const flushResult = await waitForParentBackupFlush(12000);
+                        const flushResult = await window.SOTConnectionMode.waitForParentBackupFlush(12000);
                         if (!flushResult.ok && !flushResult.standalone) {
                             console.warn('Backup: confirmação do shell atrasou ou falhou; usando dados já no armazenamento local.', flushResult);
                         }
@@ -3386,7 +3041,7 @@
                 });
             }
 
-            /** Última sync + modo online/offline (chave sot_offline_mode, alinhada aos botões e ao espelho na nuvem). */
+            /** Última sync + modo online/offline (chave sot_offline_mode; espelho na nuvem via sot-sync quando aplicável). */
             function updateSincronizacaoEConexaoDisplay() {
                 const elSync = document.getElementById('ultimaSincronizacaoTexto');
                 if (elSync && window.SOTSync && typeof window.SOTSync.getLastSyncDisplay === 'function') {
@@ -3492,24 +3147,6 @@
                         window.SOTOfflineMode.refreshFlag();
                     }
                 } catch (e) {}
-                if (cfgBtnModoOffline) {
-                    cfgBtnModoOffline.classList.toggle('is-active', offline);
-                    cfgBtnModoOffline.setAttribute('aria-pressed', offline ? 'true' : 'false');
-                    const hintOff = cfgBtnModoOffline.querySelector('.config-action-btn__hint');
-                    if (hintOff) {
-                        hintOff.textContent = offline
-                            ? 'Ativo — sem Firebase/API'
-                            : 'Dados só no aparelho';
-                    }
-                }
-                if (cfgBtnModoOnline) {
-                    cfgBtnModoOnline.classList.toggle('is-active', !offline);
-                    cfgBtnModoOnline.setAttribute('aria-pressed', offline ? 'false' : 'true');
-                    const hintOn = cfgBtnModoOnline.querySelector('.config-action-btn__hint');
-                    if (hintOn) {
-                        hintOn.textContent = offline ? 'Priorizar nuvem' : 'Ativo — Firebase em tempo real';
-                    }
-                }
                 const modeChip = document.getElementById('cfgConnectionModeChip');
                 const modeChipMain = document.getElementById('cfgConnectionModeChipMain');
                 const modeChipSub = document.getElementById('cfgConnectionModeChipSub');
@@ -3564,132 +3201,6 @@
                     await window.SOTSync.sync(true, { afterSync: updateSincronizacaoEConexaoDisplay });
                 } catch (e) { console.warn('Auto-sync ao abrir Configurações:', e); }
             })();
-
-            // 4) Modo offline — C3: sot_offline_mode; firebaseSot.get/set bloqueiam rede; data-service alinha-se; UI evita chamar set quando firebaseSot.isOfflineMode()
-            if (cfgBtnModoOffline) {
-                cfgBtnModoOffline.addEventListener('click', () => {
-                    if (typeof dataService === 'undefined') {
-                        showGerenciamentoMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
-                        return;
-                    }
-                    try {
-                        if (window.SOTOfflineMode && typeof window.SOTOfflineMode.setPersistedOffline === 'function') {
-                            window.SOTOfflineMode.setPersistedOffline(true);
-                        } else {
-                            localStorage.setItem('sot_offline_mode', 'true');
-                            if (window.SOTOfflineMode && typeof window.SOTOfflineMode.refreshFlag === 'function') {
-                                window.SOTOfflineMode.refreshFlag();
-                            }
-                        }
-                    } catch (e) {
-                        showGerenciamentoMessage('Não foi possível ativar o modo offline.', 'error');
-                        return;
-                    }
-                    try {
-                        dataService.setPreferLocalStorage(true);
-                    } catch (e) {}
-                    updateOfflineModeButtonsUi();
-                    showGerenciamentoMessage('Modo offline ativo: o sistema usará apenas dados locais (localStorage e IndexedDB nas telas). Firebase e API estão bloqueados. Recarregando…', 'success');
-                    recordUsuarioAudit('config_modo_offline_ativado', { source: 'Configuracoes.html' });
-                    setTimeout(() => {
-                        if (window.parent && window.parent.postMessage) window.parent.postMessage({ type: 'reload_required' }, '*');
-                    }, 900);
-                });
-            }
-
-            // 5) Modo online — desativa modo offline forçado e puxa da nuvem
-            if (cfgBtnModoOnline) {
-                cfgBtnModoOnline.addEventListener('click', async () => {
-                    if (typeof dataService === 'undefined') {
-                        showGerenciamentoMessage('Serviço de dados não carregado. Recarregue a página.', 'error');
-                        return;
-                    }
-                    if (!navigator.onLine) {
-                        showGerenciamentoMessage('Sem internet. Conecte-se para carregar os dados do Firebase.', 'error');
-                        return;
-                    }
-
-                    cfgBtnModoOnline.disabled = true;
-                    const originalHtml = cfgBtnModoOnline.innerHTML;
-                    cfgBtnModoOnline.innerHTML = '<span class="config-action-btn__icon"><i class="fas fa-spinner fa-spin"></i></span><span class="config-action-btn__text">Sincronizando…</span>';
-
-                    try {
-                        if (!window.sotDataMerge || typeof window.sotDataMerge.mergeArraysCloudPrimary !== 'function') {
-                            throw new Error('Módulo de mesclagem não disponível. Recarregue a página.');
-                        }
-
-                        if (window.parent !== window) {
-                            const flushResult = await waitForParentBackupFlush(12000);
-                            if (!flushResult.ok && !flushResult.standalone) {
-                                console.warn('Modo online: flush das abas atrasou ou falhou.', flushResult);
-                            }
-                        }
-
-                        const idbVtrRows = await readVtrOficinaIndexedDBAll();
-                        consolidateLocalVtrOficinaIntoStorage(idbVtrRows);
-                        normalizeVistoriasLocalStorageForMerge();
-
-                        try {
-                            if (window.SOTOfflineMode && typeof window.SOTOfflineMode.setPersistedOffline === 'function') {
-                                window.SOTOfflineMode.setPersistedOffline(false);
-                            } else {
-                                localStorage.setItem('sot_offline_mode', 'false');
-                            }
-                            updateOfflineModeButtonsUi();
-                        } catch (e) {}
-
-                        dataService.setPreferLocalStorage(false);
-                        if (window.firebaseSot && typeof window.firebaseSot.invalidateAllCache === 'function') {
-                            window.firebaseSot.invalidateAllCache();
-                        }
-                        await dataService.waitForAPICheck();
-                        if (typeof dataService.waitForGoogleAuthReady === 'function') {
-                            await dataService.waitForGoogleAuthReady(20000);
-                        }
-
-                        await syncOfflineReturnMergeToCloud();
-
-                        try {
-                            const rawVtr = localStorage.getItem('vtr_oficina_registros');
-                            const parsedVtr = rawVtr ? JSON.parse(rawVtr) : [];
-                            await syncVtrOficinaIndexedDB({ vtr_oficina_registros: Array.isArray(parsedVtr) ? parsedVtr : [] });
-                        } catch (vtrSyncErr) {
-                            console.warn('Espelhar VTR Oficina no IndexedDB após retorno online:', vtrSyncErr);
-                        }
-
-                        try {
-                            const nowIso = new Date().toISOString();
-                            localStorage.setItem('sot_last_sync_timestamp', nowIso);
-                            if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !sotConfigFirebaseCloudWritesDisabled()) {
-                                await window.firebaseSot.set('sot_last_sync_timestamp', nowIso);
-                            }
-                        } catch (tsErr) {
-                            console.warn('Timestamp de sincronização:', tsErr);
-                        }
-
-                        if (typeof updateSincronizacaoEConexaoDisplay === 'function') {
-                            updateSincronizacaoEConexaoDisplay();
-                        }
-
-                        recordUsuarioAudit('config_modo_online_merge_firebase', { source: 'Configuracoes.html' });
-                        showGerenciamentoMessage(
-                            'Modo online: dados locais e IndexedDB foram fundidos com o Firebase (mesmo id não duplica). Tempo real restaurado. Atualizando as abas…',
-                            'success'
-                        );
-                        setTimeout(() => {
-                            if (window.parent && window.parent.postMessage) {
-                                window.parent.postMessage({ type: 'refresh_all_data' }, '*');
-                            }
-                        }, 350);
-                    } catch (e) {
-                        console.error('Falha ao carregar dados do Firebase para local:', e);
-                        showGerenciamentoMessage('Erro ao carregar dados da nuvem. Verifique conexão/permissões.', 'error');
-                    } finally {
-                        cfgBtnModoOnline.disabled = false;
-                        cfgBtnModoOnline.innerHTML = originalHtml;
-                    }
-                });
-            }
 
             // ==================== APAGAR DADOS ====================
 

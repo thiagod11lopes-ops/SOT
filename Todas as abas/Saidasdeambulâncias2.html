@@ -9,6 +9,8 @@
 window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', document.baseURI).href).then(function (m) { return m.installFirebaseSot(); });
 </script>
 <script src="data-service.js?v=20260319-1" defer></script>
+<script src="sot-sync.js" defer></script>
+<script src="sot-connection-mode.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js" defer></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -135,6 +137,13 @@ main { margin: 20px 10px; }
 .sync-status-pill.is-ok .sync-dot { background: #16a34a; }
 .sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 .sync-status-pill.is-error .sync-dot { background: #dc2626; }
+.sot-connection-mode-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.sot-conn-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; background: #fff; color: #334155; }
+.sot-conn-btn--offline:hover { background: #f1f5f9; }
+.sot-conn-btn--online:hover { background: #eff6ff; border-color: #93c5fd; }
+.sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body[data-theme="dark"] .sot-conn-btn { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+body[data-theme="dark"] .sot-conn-chip { background: #0c4a6e; color: #7dd3fc; border-color: #0369a1; }
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.9); }
@@ -490,6 +499,11 @@ border: 1px solid transparent;
 <div id="syncStatusPillAmb" class="sync-status-pill is-loading" title="Status de sincronização da agenda">
   <span class="sync-dot" aria-hidden="true"></span>
   <span id="syncStatusTextAmb">Carregando dados...</span>
+</div>
+<div class="sot-connection-mode-inline" role="group" aria-label="Modo de ligação SOT">
+<button type="button" id="sotConnModoOfflineAmb" class="sot-conn-btn sot-conn-btn--offline" title="Operar só com dados neste dispositivo; Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
+<button type="button" id="sotConnModoOnlineAmb" class="sot-conn-btn sot-conn-btn--online" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
+<span id="sotConnChipAmb" class="sot-conn-chip" title="Estado atual da ligação"></span>
 </div>
 <div class="toolbar-actions">
 <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
@@ -2636,6 +2650,18 @@ document.addEventListener('click', function(e) {
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.SOTConnectionMode && typeof window.SOTConnectionMode.install === 'function') {
+        window.SOTConnectionMode.install({
+            auditSource: 'Saidasdeambulâncias2.html',
+            offlineBtnId: 'sotConnModoOfflineAmb',
+            onlineBtnId: 'sotConnModoOnlineAmb',
+            chipTextId: 'sotConnChipAmb'
+        });
+    }
+});
+</script>
 
 </body>
 </html>
