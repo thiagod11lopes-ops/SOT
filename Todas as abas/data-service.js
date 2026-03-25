@@ -535,7 +535,15 @@
                 }
                 if (window.__sotFirestoreBoot) {
                     try {
-                        await window.__sotFirestoreBoot;
+                        var bootMs = 15000;
+                        await Promise.race([
+                            window.__sotFirestoreBoot,
+                            new Promise(function (_, reject) {
+                                setTimeout(function () {
+                                    reject(new Error('Timeout ao carregar módulo Firestore (' + bootMs + ' ms)'));
+                                }, bootMs);
+                            })
+                        ]);
                     } catch (bootErr) {
                         log('warn', 'Boot Firestore modular', bootErr);
                     }

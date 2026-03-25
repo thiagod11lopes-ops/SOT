@@ -2225,9 +2225,20 @@ const waitForServices = async (timeoutMs) => {
     return false;
 };
 
+var sot5OverlayFailsafeTimer = null;
+function clearSot5OverlayFailsafe() {
+    if (sot5OverlayFailsafeTimer) {
+        clearTimeout(sot5OverlayFailsafeTimer);
+        sot5OverlayFailsafeTimer = null;
+    }
+}
+
 const finishOverlay = (state) => {
+    clearSot5OverlayFailsafe();
     if (updateLoader) updateLoader.classList.add('is-complete');
-    localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
+    try {
+        localStorage.setItem('sot5_build_id', SOT5_BUILD_ID);
+    } catch (e) {}
     const delay = state === 'success' ? 700 : 1800;
     setTimeout(() => {
         hideUpdateOverlay();
@@ -2237,7 +2248,10 @@ const finishOverlay = (state) => {
     }, delay);
 };
 
-const SOT_SIGNIN_WAIT_MS = 90000;
+/** Após este tempo o overlay fecha mesmo que alguma Promise fique pendente (rede/CDN/Firebase). */
+const SOT5_OVERLAY_FAILSAFE_MS = 75000;
+
+const SOT_SIGNIN_WAIT_MS = 45000;
 
 function isSotPersistedOfflineMode() {
     try {
@@ -2254,15 +2268,10 @@ const runInitialFirebaseLoad = async () => {
         const ready = await waitForServices(12000);
         if (!ready) throw new Error('Serviços de sincronização não ficaram disponíveis a tempo.');
 
-        /* Modo offline SOT: não bloquear no login Google nem na sincronização com a nuvem (evita overlay interminável). */
+        /* Modo offline SOT: não aguardar Firebase/API no shell — evita overlay preso em waitForAPICheck ou boot ESM. */
         if (isSotPersistedOfflineMode()) {
             trackSotHealth('initial_load_offline_short_circuit', {});
             setOverlayStatus('Modo offline', 'A iniciar o sistema com dados locais (sem esperar pela nuvem).', 'loading');
-            try {
-                await dataService.waitForAPICheck();
-            } catch (wc) {
-                console.warn('waitForAPICheck em modo offline (SOT5):', wc);
-            }
             setOverlayStatus('Sistema pronto', 'Modo offline ativo. Pode ligar à nuvem nas abas (interruptor Modo), se necessário.', 'success');
             trackSotHealth('initial_load_success_offline', { elapsedMs: Date.now() - sotPageBootAt });
             finishOverlay('success');
@@ -2353,6 +2362,19 @@ const runInitialFirebaseLoad = async () => {
         finishOverlay('error');
     }
 };
+
+sot5OverlayFailsafeTimer = setTimeout(function () {
+    sot5OverlayFailsafeTimer = null;
+    console.warn('SOT5: tempo máximo do overlay de arranque — a fechar para permitir uso do sistema.');
+    try {
+        trackSotHealth('initial_load_failsafe', { elapsedMs: Date.now() - sotPageBootAt });
+    } catch (e) {}
+    try {
+        if (updateLoader) updateLoader.classList.add('is-complete');
+        hideUpdateOverlay();
+        if (updateOverlay) updateOverlay.setAttribute('hidden', 'true');
+    } catch (e2) {}
+}, SOT5_OVERLAY_FAILSAFE_MS);
 
 setTimeout(runInitialFirebaseLoad, 0);
 
