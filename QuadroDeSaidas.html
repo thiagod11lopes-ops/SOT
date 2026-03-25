@@ -673,6 +673,82 @@
                 max-width: min(160px, 100%);
             }
         }
+
+        /* Aviso modal: lista só é mostrada após leitura confirmada do Firebase */
+        .quadro-firebase-error-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .quadro-firebase-error-modal.is-open {
+            display: flex;
+        }
+
+        .quadro-firebase-error-modal__backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.82);
+            backdrop-filter: blur(4px);
+        }
+
+        .quadro-firebase-error-modal__box {
+            position: relative;
+            max-width: 340px;
+            width: 100%;
+            padding: 20px 18px 16px;
+            border-radius: 16px;
+            background: linear-gradient(165deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.99));
+            border: 1px solid rgba(248, 113, 113, 0.45);
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(15, 23, 42, 0.9);
+            text-align: center;
+        }
+
+        .quadro-firebase-error-modal__icon {
+            font-size: 28px;
+            color: #f97373;
+            margin-bottom: 10px;
+        }
+
+        .quadro-firebase-error-modal__title {
+            margin: 0 0 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fecaca;
+            line-height: 1.35;
+        }
+
+        .quadro-firebase-error-modal__text {
+            margin: 0 0 18px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--muted);
+        }
+
+        .quadro-firebase-error-modal__btn {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            background: rgba(56, 189, 248, 0.2);
+            color: #e0f2fe;
+            border: 1px solid rgba(56, 189, 248, 0.55);
+        }
+
+        .quadro-firebase-error-modal__btn:focus {
+            outline: 2px solid rgba(56, 189, 248, 0.8);
+            outline-offset: 2px;
+        }
     </style>
 </head>
 <body>
@@ -731,6 +807,16 @@
                     <div id="emptyStateLine2" class="empty-state-line2"></div>
                 </div>
                 <div id="cardsContainer"></div>
+            </div>
+        </div>
+
+        <div id="quadroFirebaseErrorModal" class="quadro-firebase-error-modal" role="alertdialog" aria-modal="true" aria-labelledby="quadroFirebaseErrorTitle" aria-describedby="quadroFirebaseErrorText">
+            <div class="quadro-firebase-error-modal__backdrop" aria-hidden="true"></div>
+            <div class="quadro-firebase-error-modal__box">
+                <div class="quadro-firebase-error-modal__icon" aria-hidden="true"><i class="fas fa-triangle-exclamation"></i></div>
+                <h2 id="quadroFirebaseErrorTitle" class="quadro-firebase-error-modal__title">Dados não carregados do Firebase</h2>
+                <p id="quadroFirebaseErrorText" class="quadro-firebase-error-modal__text"></p>
+                <button type="button" id="quadroFirebaseErrorOk" class="quadro-firebase-error-modal__btn">Entendi</button>
             </div>
         </div>
     </div>
@@ -824,6 +910,12 @@
             const counterValue = document.getElementById('counterValue');
             const dateLabel = document.getElementById('dateLabel');
             const loading = document.getElementById('loading');
+            const quadroFirebaseErrorModalEl = document.getElementById('quadroFirebaseErrorModal');
+            const quadroFirebaseErrorTitleEl = document.getElementById('quadroFirebaseErrorTitle');
+            const quadroFirebaseErrorTextEl = document.getElementById('quadroFirebaseErrorText');
+            const quadroFirebaseErrorOkBtn = document.getElementById('quadroFirebaseErrorOk');
+            let quadroLastFirebaseFailHint = null;
+            let quadroLastFirebaseFailDetail = null;
             let lastKnownGoogleSignedIn = false;
             /** Fluxo KM (3 modais): declarado cedo para propagateSaidasKmChegadaChangeFromQuadro e updateSaidaField. */
             let quadroKmFlowActive = false;
@@ -886,6 +978,75 @@
                 emptyStateLine1.textContent = 'Sem informação para mostrar.';
                 emptyStateLine2.textContent = extra || '';
             }
+
+            function quadroFirebaseErrorModalCopy(loadHint) {
+                const title = 'Dados não carregados do Firebase';
+                let text = '';
+                switch (loadHint) {
+                    case 'sot_offline':
+                        text =
+                            'O modo offline do SOT está ativo ou a ligação à nuvem está desativada. Não é possível mostrar saídas sem confirmar os dados no Firebase.';
+                        break;
+                    case 'offline':
+                        text =
+                            'Sem ligação à internet. O quadro só exibe saídas depois de ler a lista com sucesso no Firebase.';
+                        break;
+                    case 'auth_required':
+                        text =
+                            'É necessário iniciar sessão com o Google para ler as saídas administrativas na nuvem.';
+                        break;
+                    case 'fetch_failed':
+                        text =
+                            'Ocorreu um erro ao contactar o Firebase. Verifique a rede, as regras do Firestore e tente novamente.';
+                        break;
+                    case 'exception':
+                        text =
+                            'Ocorreu um erro inesperado ao carregar. Nenhuma saída será mostrada até a leitura na nuvem ser bem-sucedida.';
+                        break;
+                    default:
+                        text =
+                            'Não foi possível obter a lista de saídas no Firebase. Confirme que está ligado à internet e autenticado.';
+                }
+                return { title, text };
+            }
+
+            function openQuadroFirebaseErrorModal(loadHint, detail) {
+                quadroLastFirebaseFailHint = loadHint || 'no_cloud';
+                quadroLastFirebaseFailDetail = detail != null && String(detail).trim() ? String(detail).trim() : null;
+                const copy = quadroFirebaseErrorModalCopy(quadroLastFirebaseFailHint);
+                quadroFirebaseErrorTitleEl.textContent = copy.title;
+                let body = copy.text;
+                if (quadroLastFirebaseFailHint === 'exception' && quadroLastFirebaseFailDetail) {
+                    body += ' Detalhe: ' + quadroLastFirebaseFailDetail;
+                }
+                quadroFirebaseErrorTextEl.textContent = body;
+                hideQuadroEmptyState();
+                quadroFirebaseErrorModalEl.classList.add('is-open');
+                try {
+                    quadroFirebaseErrorOkBtn.focus();
+                } catch (e) {}
+            }
+
+            function closeQuadroFirebaseErrorModalIfOpen() {
+                quadroFirebaseErrorModalEl.classList.remove('is-open');
+                quadroLastFirebaseFailHint = null;
+                quadroLastFirebaseFailDetail = null;
+            }
+
+            quadroFirebaseErrorOkBtn.addEventListener('click', function () {
+                const hint = quadroLastFirebaseFailHint;
+                const det = quadroLastFirebaseFailDetail;
+                quadroFirebaseErrorModalEl.classList.remove('is-open');
+                quadroLastFirebaseFailHint = null;
+                quadroLastFirebaseFailDetail = null;
+                if (hint === 'exception') showQuadroEmptyState('exception', det || '');
+                else if (hint === 'sot_offline') {
+                    showQuadroEmptyState('offline', 'Modo offline SOT ou Firebase desativado neste navegador.');
+                } else if (hint === 'offline') showQuadroEmptyState('offline');
+                else if (hint === 'auth_required') showQuadroEmptyState('auth_required');
+                else if (hint === 'fetch_failed') showQuadroEmptyState('fetch_failed');
+                else showQuadroEmptyState('no_cloud');
+            });
 
             /** Item 1 (melhorias Quadro): baseline de tamanho — ativar com ?quadroBaseline=1 ou localStorage sot_quadro_baseline_v1 = 1 */
             function quadroBaselineEnabled() {
@@ -1148,6 +1309,21 @@
                 let remoteList = [];
                 let remoteLoaded = false;
                 let hadFetchError = false;
+
+                try {
+                    if (
+                        window.firebaseSot &&
+                        typeof window.firebaseSot.isOfflineMode === 'function' &&
+                        window.firebaseSot.isOfflineMode()
+                    ) {
+                        return {
+                            saidas: [],
+                            remoteLoaded: false,
+                            loadMode: 'firebase_master',
+                            loadHint: 'sot_offline'
+                        };
+                    }
+                } catch (e) {}
 
                 try {
                     if (window.__sotFirestoreBoot) await window.__sotFirestoreBoot;
@@ -1769,19 +1945,15 @@
                         quadroLastListDateKey = selectedDate;
                         quadroSaidasById.clear();
                         if (remoteLoaded) {
+                            closeQuadroFirebaseErrorModalIfOpen();
                             showQuadroEmptyState('no_data');
-                        } else if (loadHint === 'offline') {
-                            showQuadroEmptyState('offline');
-                        } else if (loadHint === 'auth_required') {
-                            showQuadroEmptyState('auth_required');
-                        } else if (loadHint === 'fetch_failed') {
-                            showQuadroEmptyState('fetch_failed');
                         } else {
-                            showQuadroEmptyState('no_cloud');
+                            openQuadroFirebaseErrorModal(loadHint, null);
                         }
                         return;
                     }
 
+                    closeQuadroFirebaseErrorModalIfOpen();
                     hideQuadroEmptyState();
 
                     const useIncremental =
@@ -1803,7 +1975,8 @@
                     cardsContainer.replaceChildren();
                     quadroLastListDateKey = null;
                     quadroSaidasById.clear();
-                    showQuadroEmptyState('exception', error && error.message ? error.message : '');
+                    counterValue.textContent = '0';
+                    openQuadroFirebaseErrorModal('exception', error && error.message ? error.message : String(error));
                 } finally {
                     loading.style.display = 'none';
                 }
