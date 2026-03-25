@@ -2164,6 +2164,19 @@
                 } catch (e) {}
             });
 
+            // Ao voltar ao separador, relê o Firestore (BroadcastChannel pode falhar com aba em segundo plano).
+            var quadroVisibilityReloadTimer = null;
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState !== 'visible') return;
+                try { clearTimeout(quadroVisibilityReloadTimer); } catch (e) {}
+                quadroVisibilityReloadTimer = setTimeout(function () {
+                    quadroVisibilityReloadTimer = null;
+                    try {
+                        scheduleReloadQuadroFromExternal();
+                    } catch (e2) {}
+                }, 400);
+            });
+
             window.addEventListener('sot-firebase-auth-changed', function (ev) {
                 try {
                     var signedIn = ev && ev.detail && ev.detail.signedIn;

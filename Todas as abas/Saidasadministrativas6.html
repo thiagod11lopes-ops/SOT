@@ -1781,7 +1781,7 @@ function scheduleAutoSave() {
         } catch (e) {
             console.warn('Saídas Administrativas: falha no auto-save:', e);
         }
-    }, 30000); // 30 segundos
+    }, 5000); // 5s — atraso longo fazia o Quadro parecer “não atualizar” após edições que só agendavam auto-save
 }
 
 /** Grava Firebase/API já ao alterar KM/chegada — evita Quadro e sync usarem remoto desatualizado. */
@@ -3480,7 +3480,8 @@ if (keyToUpdate === 'kmSaida') { rowItem.km_saida = valueToSave; }
 if (keyToUpdate === 'kmChegada') { rowItem.km_chegada = valueToSave; }
 });
 saidasAdmCriticalOps.writeLocalCache();
-void saidasAdmCriticalOps.persistByIds(updatedIds, false);
+// immediateSync: gravar no Firebase e notificar Quadro sem esperar debounce longo
+void saidasAdmCriticalOps.persistByIds(updatedIds, true);
 atualizarEstiloDaLinha(row);
 
 // Se o destino, bairro ou setor foi alterado, limpar mensagens removidas apenas da saída alterada e reexibir avisos

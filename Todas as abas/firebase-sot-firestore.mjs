@@ -493,48 +493,91 @@ export async function installFirebaseSot() {
 
     /**
      * Ouve o documento mestre `sot_data/saidasAdministrativas` em tempo real.
-     * Atualiza a cache em memória (alinhada a `get`) e chama `callback` a cada mudança.
+     * Liga o onSnapshot quando o utilizador fica autenticado (evita no-op se auth ainda não estava pronta).
      * @returns {function} unsubscribe
      */
     watchSaidasAdministrativas: function (callback) {
-      if (isSotOfflineModeActive()) {
-        return function () {};
-      }
-      if (!db || !authGateOk()) {
+      if (!db) {
         return function () {};
       }
       var keyStr = "saidasAdministrativas";
-      var ref = doc(db, COL, keyStr);
-      var unsub = onSnapshot(
-        ref,
-        function (snap) {
-          try {
-            var value = null;
-            if (snapshotExists(snap)) {
-              var rawData = snap.data();
-              rememberDocGenerationForKey(keyStr, rawData);
-              value = valueFromFirestoreDocData(rawData);
-            } else {
-              if (SOT_F7_GENERATION_KEYS[keyStr]) {
-                docGenByKey.set(keyStr, 0);
-              }
-            }
-            setCache(keyStr, value);
-          } catch (e) {
-            log("warn", "watchSaidasAdministrativas parse key=" + keyStr, e && e.message);
-          }
-          try {
-            if (typeof callback === "function") callback();
-          } catch (e2) {}
-        },
-        function (err) {
-          log("warn", "watchSaidasAdministrativas listener key=" + keyStr, err && err.message);
-        }
-      );
-      return function () {
+      var closed = false;
+      var unsubSnap = null;
+      var unsubAuth = null;
+
+      function tearDownSnap() {
         try {
-          unsub();
+          if (unsubSnap) {
+            unsubSnap();
+            unsubSnap = null;
+          }
         } catch (e) {}
+      }
+
+      function applySnap(snap) {
+        if (closed || isSotOfflineModeActive()) return;
+        try {
+          var value = null;
+          if (snapshotExists(snap)) {
+            var rawData = snap.data();
+            rememberDocGenerationForKey(keyStr, rawData);
+            value = valueFromFirestoreDocData(rawData);
+          } else {
+            if (SOT_F7_GENERATION_KEYS[keyStr]) {
+              docGenByKey.set(keyStr, 0);
+            }
+          }
+          setCache(keyStr, value);
+        } catch (e) {
+          log("warn", "watchSaidasAdministrativas parse key=" + keyStr, e && e.message);
+        }
+        try {
+          if (typeof callback === "function") callback();
+        } catch (e2) {}
+      }
+
+      function tryAttach() {
+        if (closed || isSotOfflineModeActive()) {
+          tearDownSnap();
+          return;
+        }
+        if (!authGateOk()) {
+          tearDownSnap();
+          return;
+        }
+        if (unsubSnap) return;
+        var ref = doc(db, COL, keyStr);
+        unsubSnap = onSnapshot(
+          ref,
+          function (snap) {
+            applySnap(snap);
+          },
+          function (err) {
+            log("warn", "watchSaidasAdministrativas listener key=" + keyStr, err && err.message);
+          }
+        );
+      }
+
+      try {
+        if (auth && typeof onAuthStateChanged === "function") {
+          unsubAuth = onAuthStateChanged(auth, function () {
+            tryAttach();
+            if (!authGateOk()) tearDownSnap();
+          });
+        }
+      } catch (eAuth) {
+        log("warn", "watchSaidasAdministrativas onAuthStateChanged", eAuth && eAuth.message);
+      }
+
+      tryAttach();
+
+      return function () {
+        closed = true;
+        tearDownSnap();
+        try {
+          if (unsubAuth) unsubAuth();
+        } catch (e) {}
+        unsubAuth = null;
       };
     },
 
