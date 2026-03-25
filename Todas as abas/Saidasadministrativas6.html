@@ -434,13 +434,56 @@ animation: pulse-dot 1.2s ease-in-out infinite;
 .sync-status-pill.is-ok .sync-dot { background: #16a34a; }
 .sync-status-pill.is-error { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
 .sync-status-pill.is-error .sync-dot { background: #dc2626; }
-.sot-connection-mode-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.sot-conn-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; background: #fff; color: #334155; }
-.sot-conn-btn--offline:hover { background: #f1f5f9; }
-.sot-conn-btn--online:hover { background: #eff6ff; border-color: #93c5fd; }
-.sot-conn-chip { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-body[data-theme="dark"] .sot-conn-btn { background: #1e293b; color: #e2e8f0; border-color: #475569; }
-body[data-theme="dark"] .sot-conn-chip { background: #0c4a6e; color: #7dd3fc; border-color: #0369a1; }
+.sot-conn-unified {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  max-width: 100%;
+}
+.sot-conn-unified__sync { flex: 1 1 140px; min-width: 0; margin: 0; }
+.sot-conn-unified .sync-status-pill { max-width: 100%; }
+.sot-conn-unified__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sot-conn-inline-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  white-space: nowrap;
+}
+.sot-conn-toggle-slot { display: inline-flex; align-items: center; gap: 8px; }
+.sot-conn-toggle__cap { font-size: 12px; font-weight: 700; color: #94a3b8; user-select: none; transition: color .2s ease; }
+.sot-conn-toggle__track { position: relative; display: inline-block; width: 52px; height: 30px; border-radius: 15px; background: #cbd5e1; cursor: pointer; flex-shrink: 0; transition: background .25s ease, box-shadow .2s ease; box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.12); }
+.sot-conn-toggle__track.is-online { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 0 0 1px rgba(37, 99, 235, 0.35); }
+.sot-conn-toggle__track.is-busy { opacity: 0.75; pointer-events: none; cursor: wait; }
+.sot-conn-toggle__input { opacity: 0; width: 0; height: 0; position: absolute; }
+.sot-conn-toggle__thumb { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2); transition: transform .25s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: none; }
+.sot-conn-toggle__track.is-online .sot-conn-toggle__thumb { transform: translateX(22px); }
+.sot-conn-toggle__track:focus-within { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.sot-conn-toggle-slot--online .sot-conn-toggle__cap:last-of-type { color: #2563eb; }
+.sot-conn-toggle-slot:not(.sot-conn-toggle-slot--online) .sot-conn-toggle__cap:first-of-type { color: #c2410c; }
+body[data-theme="dark"] .sot-conn-unified {
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  border-color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+body[data-theme="dark"] .sot-conn-inline-label { color: #94a3b8; }
+body[data-theme="dark"] .sot-conn-toggle__track { background: #475569; }
+body[data-theme="dark"] .sot-conn-toggle__track.is-online { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+body[data-theme="dark"] .sot-conn-toggle__cap { color: #64748b; }
+body[data-theme="dark"] .sot-conn-toggle-slot--online .sot-conn-toggle__cap:last-of-type { color: #93c5fd; }
+body[data-theme="dark"] .sot-conn-toggle-slot:not(.sot-conn-toggle-slot--online) .sot-conn-toggle__cap:first-of-type { color: #fdba74; }
 .config-input-group {
 display: grid;
 grid-template-columns: 1fr 80px;
@@ -599,14 +642,22 @@ body[data-theme="dark"] .counter-badge {
 <div class="status-dot" id="statusTarde"></div>
 </div>
 </div>
-<div id="syncStatusPill" class="sync-status-pill is-loading" title="Status de sincronização da agenda">
+<div class="sot-conn-unified" role="group" aria-label="Sincronização e modo de ligação">
+<div id="syncStatusPill" class="sync-status-pill is-loading sot-conn-unified__sync" title="Status de sincronização da agenda">
 <span class="sync-dot" aria-hidden="true"></span>
 <span id="syncStatusText">Carregando dados...</span>
 </div>
-<div class="sot-connection-mode-inline" role="group" aria-label="Modo de ligação SOT">
-<button type="button" id="sotConnModoOfflineAdm" class="sot-conn-btn sot-conn-btn--offline" title="Operar só com dados neste dispositivo; Firebase desativado"><i class="fas fa-wifi-slash"></i> Offline</button>
-<button type="button" id="sotConnModoOnlineAdm" class="sot-conn-btn sot-conn-btn--online" title="Usar Firebase e fundir dados locais com a nuvem"><i class="fas fa-cloud"></i> Online</button>
-<span id="sotConnChipAdm" class="sot-conn-chip" title="Estado atual da ligação"></span>
+<div class="sot-conn-unified__toggle">
+<span class="sot-conn-inline-label" id="sotConnLabelAdm">Modo</span>
+<div class="sot-conn-toggle-slot" title="Offline: só este dispositivo. Online: Firebase e sincronização.">
+<span class="sot-conn-toggle__cap">Offline</span>
+<label class="sot-conn-toggle__track">
+<input type="checkbox" id="sotConnToggleAdm" class="sot-conn-toggle__input" aria-label="Alternar modo online (Firebase) ou offline (só local)" />
+<span class="sot-conn-toggle__thumb" aria-hidden="true"></span>
+</label>
+<span class="sot-conn-toggle__cap">Online</span>
+</div>
+</div>
 </div>
 <div class="toolbar-actions">
 <button type="button" id="showSvcRoBtn" class="btn-action btn-svc" title="Serviço / Rotina">SVC/RO</button>
@@ -616,7 +667,6 @@ body[data-theme="dark"] .counter-badge {
 <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
 <button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
 <button type="button" id="toggleSignaturesBtn" class="btn-action btn-sign" title="Exibir assinaturas"><i class="fas fa-signature"></i> Assinar</button>
-<button type="button" id="exportarCelularBtn" class="btn-action btn-pdf" title="Exportar agenda para o Quadro de Saídas (celular)"><i class="fas fa-mobile-alt"></i> Celular</button>
 <div class="counter-badge counter" id="saidasCounter">Número de Saídas: 0</div>
 </div>
 </div>
@@ -4639,16 +4689,6 @@ printModal.addEventListener('click', (e) => {
     }
 });
 
-document.getElementById('exportarCelularBtn').addEventListener('click', () => {
-    const json = JSON.stringify(saidasAdministrativas || [], null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'saidas-administrativas.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-});
-
 document.getElementById('toggleSignaturesBtn').addEventListener('click', () => {
 document.querySelector('.assinatura-container-geral').style.display = document.querySelector('.assinatura-container-geral').style.display === 'none' ? 'flex' : 'none';
 });
@@ -5129,9 +5169,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.SOTConnectionMode && typeof window.SOTConnectionMode.install === 'function') {
         window.SOTConnectionMode.install({
             auditSource: 'Saidasadministrativas6.html',
-            offlineBtnId: 'sotConnModoOfflineAdm',
-            onlineBtnId: 'sotConnModoOnlineAdm',
-            chipTextId: 'sotConnChipAdm'
+            toggleInputId: 'sotConnToggleAdm'
         });
     }
 });

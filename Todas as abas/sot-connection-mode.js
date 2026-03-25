@@ -482,20 +482,46 @@
         }, 900);
     }
 
+    function getToggleEl(opts) {
+        if (!opts || !opts.toggleInputId) return null;
+        return document.getElementById(opts.toggleInputId);
+    }
+
+    function syncToggleFromStorage(toggleEl) {
+        if (!toggleEl || toggleEl.type !== 'checkbox') return;
+        var off = false;
+        try {
+            off = localStorage.getItem('sot_offline_mode') === 'true';
+        } catch (e) {}
+        toggleEl.checked = !off;
+        var track = toggleEl.closest('.sot-conn-toggle__track');
+        if (track) track.classList.toggle('is-online', toggleEl.checked);
+        var slot = toggleEl.closest('.sot-conn-toggle-slot');
+        if (slot) slot.classList.toggle('sot-conn-toggle-slot--online', toggleEl.checked);
+    }
+
     async function activateOnlineMode(opts) {
         opts = opts || {};
         var onlineBtn = opts.onlineBtnId ? document.getElementById(opts.onlineBtnId) : null;
         var originalHtml = onlineBtn ? onlineBtn.innerHTML : '';
+        var toggleEl = getToggleEl(opts);
 
         if (typeof global.dataService === 'undefined') {
             notify('Serviço de dados não carregado. Recarregue a página.', 'error');
+            if (toggleEl) syncToggleFromStorage(toggleEl);
             return;
         }
         if (!navigator.onLine) {
             notify('Sem internet. Conecte-se para carregar os dados do Firebase.', 'error');
+            if (toggleEl) syncToggleFromStorage(toggleEl);
             return;
         }
 
+        if (toggleEl) {
+            toggleEl.disabled = true;
+            var tr = toggleEl.closest('.sot-conn-toggle__track');
+            if (tr) tr.classList.add('is-busy');
+        }
         if (onlineBtn) {
             onlineBtn.disabled = true;
             onlineBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando…';
@@ -575,6 +601,12 @@
             console.error('Falha ao carregar dados do Firebase para local:', e);
             notify('Erro ao carregar dados da nuvem. Verifique conexão/permissões.', 'error');
         } finally {
+            if (toggleEl) {
+                toggleEl.disabled = false;
+                var trBusy = toggleEl.closest('.sot-conn-toggle__track');
+                if (trBusy) trBusy.classList.remove('is-busy');
+                syncToggleFromStorage(toggleEl);
+            }
             if (onlineBtn) {
                 onlineBtn.disabled = false;
                 onlineBtn.innerHTML = originalHtml;
@@ -587,11 +619,16 @@
         var offId = opts.offlineBtnId;
         var onId = opts.onlineBtnId;
         var chipId = opts.chipTextId;
+        var toggleInputId = opts.toggleInputId;
         var offBtn = offId ? document.getElementById(offId) : null;
         var onBtn = onId ? document.getElementById(onId) : null;
+        var toggleIn = toggleInputId ? document.getElementById(toggleInputId) : null;
 
         function refresh() {
             updateChip(chipId);
+            if (toggleIn && toggleIn.type === 'checkbox') {
+                syncToggleFromStorage(toggleIn);
+            }
         }
         refresh();
         global.addEventListener('storage', function (ev) {
@@ -600,6 +637,17 @@
         global.addEventListener('sot-connection-mode-changed', function () {
             refresh();
         });
+
+        if (toggleIn && toggleIn.type === 'checkbox') {
+            toggleIn.addEventListener('change', function () {
+                var wantOnline = toggleIn.checked;
+                if (wantOnline) {
+                    activateOnlineMode(opts);
+                } else {
+                    activateOfflineMode(opts);
+                }
+            });
+        }
 
         if (offBtn) {
             offBtn.addEventListener('click', function () {
