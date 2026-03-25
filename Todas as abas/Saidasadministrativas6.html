@@ -1627,7 +1627,8 @@ async function saveState() {
         } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
             // Sem dataService, grava direto no Firebase como fonte principal (C3: não chamar set se modo offline SOT)
             var _admPayload = (window.sotDataMerge && typeof window.sotDataMerge.compactSaidasListForPersistence === 'function') ? window.sotDataMerge.compactSaidasListForPersistence(saidasAdministrativas) : saidasAdministrativas;
-            await window.firebaseSot.set('saidasAdministrativas', _admPayload);
+            var _okAdm = await window.firebaseSot.set('saidasAdministrativas', _admPayload);
+            if (!_okAdm) throw new Error('Firebase recusou gravação de saídas administrativas.');
             try { localStorage.setItem('saidasAdministrativas', JSON.stringify(_admPayload)); } catch (e) {}
         } else {
             // Fallback final: apenas localStorage
@@ -1640,7 +1641,8 @@ async function saveState() {
                 await dataService.setSaidasAdministrativas(saidasAdministrativas);
             } else if (window.firebaseSot && typeof window.firebaseSot.set === 'function' && !(window.firebaseSot.isOfflineMode && window.firebaseSot.isOfflineMode())) {
                 var _admPayload2 = (window.sotDataMerge && typeof window.sotDataMerge.compactSaidasListForPersistence === 'function') ? window.sotDataMerge.compactSaidasListForPersistence(saidasAdministrativas) : saidasAdministrativas;
-                await window.firebaseSot.set('saidasAdministrativas', _admPayload2);
+                var _okAdm2 = await window.firebaseSot.set('saidasAdministrativas', _admPayload2);
+                if (!_okAdm2) throw new Error('Firebase recusou gravação (retry).');
                 try { localStorage.setItem('saidasAdministrativas', JSON.stringify(_admPayload2)); } catch (e) {}
             } else {
                 localStorage.setItem('saidasAdministrativas', JSON.stringify(saidasAdministrativas));
@@ -1653,7 +1655,7 @@ async function saveState() {
         } else {
             setSyncUiState('error', 'Falha ao sincronizar', 3500);
         }
-        broadcastSaidasAdministrativasUpdated();
+        // Não avisar Quadro/outras abas: a nuvem pode não ter sido atualizada.
         return;
     }
     if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
@@ -1661,7 +1663,7 @@ async function saveState() {
     } else {
         setSyncUiState('ok', 'Sincronizado');
     }
-    broadcastSaidasAdministrativasUpdated();
+    notifySaidasAdministrativasChanged(false);
 }
 
 // Auto-save com debounce: evita chamar Firebase a cada edição de célula

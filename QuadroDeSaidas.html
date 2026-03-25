@@ -1997,10 +1997,11 @@
             dateInput.addEventListener('change', loadSaidasForSelectedDate);
 
             // Item 10 — contrato completo: CONTRATO-QUADRO-SAIDAS-SYNC.md
-            // Leitura do Quadro: lista mestre Firestore `saidasAdministrativas` (getAllSaidas); sem ler localStorage.
+            // Leitura do Quadro: lista mestre Firestore `saidasAdministrativas` (getAllSaidas); sem usar localStorage como fonte.
             // Recarrega quando o SOT ou outra aba sinalizar ou o Firestore mudar:
             // — postMessage refresh_all_data (iframe / mesma janela com pai)
             // — BroadcastChannel sot_saidas_administrativas (qualquer contexto mesmo origin)
+            // — storage saidasAdministrativas (outra aba gravou LS após Firebase — invalida e relê a nuvem)
             // — onSnapshot do mestre (watchSaidasAdministrativas): cache em memória do serviço já atualizada
             let reloadInFlight = false;
             let reloadQueued = false;
@@ -2101,6 +2102,7 @@
 
             window.addEventListener('storage', function (e) {
                 try {
+                    if (e.key === 'saidasAdministrativas') scheduleReloadQuadroFromExternal();
                     if (e.key === 'sot_offline_mode') {
                         if (e.newValue === 'true') stopQuadroSaidasMasterLiveWatch();
                         else startQuadroSaidasMasterLiveWatch();

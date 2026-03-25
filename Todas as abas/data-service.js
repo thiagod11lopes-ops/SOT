@@ -933,25 +933,56 @@
                             'saida'
                         )
                     );
-                    await this._setToFirebase('saidasAdministrativas', saidas);
-                    try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas)); } catch (e) {}
+                    const okApi = await this._setToFirebase('saidasAdministrativas', saidas);
+                    if (!okApi && !isForcedOfflineMode()) {
+                        var errFb = new Error('Falha ao gravar saídas administrativas no Firebase após API.');
+                        errFb.sotFirebasePersistFailed = true;
+                        throw errFb;
+                    }
+                    if (okApi || isForcedOfflineMode()) {
+                        try {
+                            localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+                        } catch (e) {}
+                    }
                     return result.data || saida;
                 } catch (e) {
                     log('warn', 'saveSaidaAdministrativa API', e);
+                    if (e && e.sotFirebasePersistFailed) throw e;
+                    if (e && e.message && /Falha ao gravar saídas administrativas no Firebase/i.test(String(e.message))) {
+                        throw e;
+                    }
                 }
             }
             const saidas = compactSaidasListForPersistence(
                 normalizeArrayRecords([].concat(await this.getSaidasAdministrativas(), [saida]), 'saida')
             );
-            await this._setToFirebase('saidasAdministrativas', saidas);
-            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas)); } catch (e) {}
+            const okSave = await this._setToFirebase('saidasAdministrativas', saidas);
+            if (!okSave && !isForcedOfflineMode()) {
+                var errSave = new Error('Falha ao gravar saída administrativa no Firebase (login, rede ou conflito de versão).');
+                errSave.sotFirebasePersistFailed = true;
+                throw errSave;
+            }
+            if (okSave || isForcedOfflineMode()) {
+                try {
+                    localStorage.setItem('saidasAdministrativas', JSON.stringify(saidas));
+                } catch (e) {}
+            }
             return saida;
         }
 
         async setSaidasAdministrativas(lista) {
             lista = compactSaidasListForPersistence(normalizeArrayRecords(lista, 'saida'));
-            await this._setToFirebase('saidasAdministrativas', lista);
-            try { localStorage.setItem('saidasAdministrativas', JSON.stringify(lista)); } catch (e) {}
+            const ok = await this._setToFirebase('saidasAdministrativas', lista);
+            if (!ok && !isForcedOfflineMode()) {
+                var errSet = new Error('Falha ao gravar saídas administrativas no Firebase (login, rede ou conflito de versão).');
+                errSet.sotFirebasePersistFailed = true;
+                throw errSet;
+            }
+            if (ok || isForcedOfflineMode()) {
+                try {
+                    localStorage.setItem('saidasAdministrativas', JSON.stringify(lista));
+                } catch (e) {}
+            }
             return true;
         }
 
