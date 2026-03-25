@@ -1903,9 +1903,13 @@ async function runSyncWithHealth(tag, immediate) {
 if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return false;
 var start = Date.now();
 try {
-await window.SOTSync.sync(!!immediate, { afterSync: function() {} });
-trackSotHealth('sync_success', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate });
-return true;
+    var ok = await window.SOTSync.sync(!!immediate, { afterSync: function() {} });
+    if (ok !== true) {
+        trackSotHealth('sync_skipped', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate, result: ok });
+        return false;
+    }
+    trackSotHealth('sync_success', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate });
+    return true;
 } catch (e) {
 trackSotHealth('sync_error', { tag: String(tag || ''), elapsedMs: Date.now() - start, immediate: !!immediate, message: e && e.message ? e.message : String(e) });
 throw e;
@@ -3757,7 +3761,7 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
     if (!window.SOTSync || typeof window.SOTSync.sync !== 'function') return;
     var started = Date.now();
     runSyncWithHealth('periodic_sync', true)
-      .then(function () { broadcastRefreshToIframes(); })
+      .then(function (didSync) { if (didSync) broadcastRefreshToIframes(); })
       .catch(function () {})
       .finally(function () {
         trackSotHealth('periodic_sync_cycle', { elapsedMs: Date.now() - started });
