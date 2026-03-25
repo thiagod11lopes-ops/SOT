@@ -3948,9 +3948,9 @@ if (existingIndex !== -1) {
         saida: formData.horaSaida, 
         horario: formData.horaSaida,
         hora: formData.horaSaida,
-        kmSaida: formData.kmSaida || saidaExistente.kmSaida || '',
-        kmChegada: formData.kmChegada || saidaExistente.kmChegada || '',
-        chegada: formData.chegada || saidaExistente.chegada || '',
+        kmSaida: formData.kmSaida ?? saidaExistente.kmSaida ?? '',
+        kmChegada: formData.kmChegada ?? saidaExistente.kmChegada ?? '',
+        chegada: formData.chegada ?? saidaExistente.chegada ?? '',
         isUnplanned,
         juntada: false // Garantir que não é mais juntada
     };
