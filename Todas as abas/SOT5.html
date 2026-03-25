@@ -4016,7 +4016,7 @@ window.__sotFirestoreBoot = import(new URL('firebase-sot-firestore.mjs', documen
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function() { setTimeout(run, 2000); });
   else setTimeout(run, 2000);
-  setInterval(run, window.SOTSync && window.SOTSync.AUTO_SYNC_INTERVAL_MS ? window.SOTSync.AUTO_SYNC_INTERVAL_MS : 600000);
+  setInterval(run, window.SOTSync && window.SOTSync.AUTO_SYNC_INTERVAL_MS ? window.SOTSync.AUTO_SYNC_INTERVAL_MS : 300000);
   window.addEventListener('online', function() {
     setTimeout(run, 1500);
   });

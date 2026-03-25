@@ -9,7 +9,7 @@
     'use strict';
 
     var SOT_LAST_SYNC_KEY = 'sot_last_sync_timestamp';
-    var AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
+    var AUTO_SYNC_INTERVAL_MS = 5 * 60 * 1000;
     var LOG_PREFIX = '[sot-sync]';
     var syncInFlight = false;
 
