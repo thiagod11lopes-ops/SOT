@@ -13,8 +13,21 @@
 
     const SOT_PREFER_LOCAL_KEY = 'sot_prefer_local_storage';
     /** Modo offline forçado: apenas persistência local (localStorage / IndexedDB nas telas); sem Firebase nem API. */
-    /** Persistido no localStorage: 'true' = modo offline (só local), 'false' = modo online (nuvem). Chave ausente = online. */
+    /** Persistido no localStorage: 'true' = modo offline (só local), 'false' = modo online (nuvem). Chave ausente → assume-se offline (ver ensureDefaultSotOfflineMode). */
     const SOT_OFFLINE_MODE_KEY = 'sot_offline_mode';
+
+    /** Primeira utilização (ou chave apagada): o SOT arranca em modo offline. */
+    function ensureDefaultSotOfflineMode() {
+        try {
+            if (typeof localStorage === 'undefined') return;
+            var v = localStorage.getItem(SOT_OFFLINE_MODE_KEY);
+            if (v === null || v === '') {
+                localStorage.setItem(SOT_OFFLINE_MODE_KEY, 'true');
+            }
+        } catch (e) {}
+    }
+
+    ensureDefaultSotOfflineMode();
 
     function isForcedOfflineMode() {
         try {

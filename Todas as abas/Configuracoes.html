@@ -3052,7 +3052,7 @@
                     let off = false;
                     try {
                         if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === null) {
-                            localStorage.setItem('sot_offline_mode', 'false');
+                            localStorage.setItem('sot_offline_mode', 'true');
                         }
                         off = typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === 'true';
                     } catch (e) {}
@@ -3134,7 +3134,7 @@
             function updateOfflineModeButtonsUi() {
                 try {
                     if (typeof localStorage !== 'undefined' && localStorage.getItem('sot_offline_mode') === null) {
-                        localStorage.setItem('sot_offline_mode', 'false');
+                        localStorage.setItem('sot_offline_mode', 'true');
                     }
                 } catch (e) {}
                 let offline = false;
