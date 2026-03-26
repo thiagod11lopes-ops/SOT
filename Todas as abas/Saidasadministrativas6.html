@@ -132,6 +132,26 @@ main { margin: 20px 10px; }
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.9); }
 }
+/* Theme-aware (exceto dark e oldRadar):
+   este iframe tinha backgrounds hardcoded nas ações e no contador;
+   ao trocar de tema, queremos que acompanhe as cores. */
+body:not([data-theme="dark"]):not([data-theme="oldRadar"]) .toolbar-actions {
+  background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(0,0,0,0.02) 100%);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+body:not([data-theme="dark"]):not([data-theme="oldRadar"]) .toolbar-actions .btn-action {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%) !important;
+}
+
+body:not([data-theme="dark"]):not([data-theme="oldRadar"]) .toolbar-actions .btn-action:hover {
+  background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%) !important;
+}
+
+body:not([data-theme="dark"]):not([data-theme="oldRadar"]) .counter-badge {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%) !important;
+}
+
 .date-filter-container { display: flex; align-items: center; gap: 15px; padding: 15px; border: 1px solid var(--gray); border-radius: 8px; background-color: var(--light-gray-bg); flex-wrap: wrap; justify-content: space-between; }
 .date-filter-container label { font-weight: bold; }
 .date-filter-container input[type="date"] { padding: 8px 12px; border: 1px solid #ced4da; border-radius: 5px; font-size: 16px; font-weight: bold; max-width: 180px; }
