@@ -5,6 +5,27 @@
 (function (global) {
     'use strict';
 
+    /** Evita abortar sync online→local quando o espelho em localStorage excede a quota (~5MB). Firebase já foi gravado com fs.set. */
+    function tryLocalStorageSetItem(key, valueStr, contextHint) {
+        try {
+            localStorage.setItem(key, valueStr);
+            return true;
+        } catch (e) {
+            if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+                console.warn(
+                    '[SOT] Armazenamento local sem espaço ao gravar "' +
+                        key +
+                        '"' +
+                        (contextHint ? ' (' + contextHint + ')' : '') +
+                        '. Dados na nuvem podem estar atualizados.',
+                    e
+                );
+                return false;
+            }
+            throw e;
+        }
+    }
+
     function notify(msg, type) {
         type = type || 'info';
         try {
@@ -302,7 +323,7 @@
                 merged = global.sotDataMerge.compactSaidasListForPersistence(merged);
             }
             await fs.set(key, merged);
-            localStorage.setItem(key, JSON.stringify(merged));
+            tryLocalStorageSetItem(key, JSON.stringify(merged), 'mergeArr');
             return merged.length;
         }
 
@@ -343,7 +364,7 @@
         if (!Array.isArray(localDias)) localDias = [];
         var diasMerged = Array.from(new Set([].concat(remoteDias, localDias))).sort();
         await fs.set('diasExcluidosEscalaPao', diasMerged);
-        localStorage.setItem('diasExcluidosEscalaPao', JSON.stringify(diasMerged));
+        tryLocalStorageSetItem('diasExcluidosEscalaPao', JSON.stringify(diasMerged), 'diasExcluidosEscalaPao');
 
         var localP = {};
         var remoteP = {};
@@ -360,7 +381,7 @@
         }
         var puladosMerged = Object.assign({}, remoteP, localP);
         await fs.set('puladosEscalaPao', puladosMerged);
-        localStorage.setItem('puladosEscalaPao', JSON.stringify(puladosMerged));
+        tryLocalStorageSetItem('puladosEscalaPao', JSON.stringify(puladosMerged), 'puladosEscalaPao');
 
         var localE = {};
         var remoteE = {};
@@ -379,7 +400,7 @@
         }
         var escalaMerged = Object.assign({}, remoteE, localE);
         await fs.set('escalaData', escalaMerged);
-        localStorage.setItem('escalaData', JSON.stringify(escalaMerged));
+        tryLocalStorageSetItem('escalaData', JSON.stringify(escalaMerged), 'escalaData');
         Object.keys(escalaMerged).forEach(function (mk) {
             if (/^\d{4}-\d{2}$/.test(mk)) {
                 try {
@@ -402,7 +423,7 @@
         }
         var nu = Math.max(parseInt(lu, 10) || 0, parseInt(ru, 10) || 0);
         await fs.set('ultimoIndiceEscala', nu);
-        localStorage.setItem('ultimoIndiceEscala', JSON.stringify(nu));
+        tryLocalStorageSetItem('ultimoIndiceEscala', JSON.stringify(nu), 'ultimoIndiceEscala');
 
         var lref = '';
         var rref = '';
@@ -429,7 +450,7 @@
         var refMerged = pickNewer(rref, lref);
         if (refMerged) {
             await fs.set('escalaPaoDataReferencia', refMerged);
-            localStorage.setItem('escalaPaoDataReferencia', refMerged);
+            tryLocalStorageSetItem('escalaPaoDataReferencia', refMerged, 'escalaPaoDataReferencia');
         }
 
         var objectKeys = ['equipamentosSuprimentos', 'equipamentosMovements', 'equipamentosTabOrder', 'cadastroItensPersonalizados'];
@@ -453,7 +474,7 @@
             var rObj = ro && typeof ro === 'object' && !Array.isArray(ro) ? ro : {};
             var obMerged = Object.assign({}, rObj, lObj);
             await fs.set(ok, obMerged);
-            localStorage.setItem(ok, JSON.stringify(obMerged));
+            tryLocalStorageSetItem(ok, JSON.stringify(obMerged), 'objectKeys merge');
         }
 
         await mergeArr('vtr_oficina_registros', 'id');
@@ -604,7 +625,14 @@
             }, 350);
         } catch (e) {
             console.error('Falha ao carregar dados do Firebase para local:', e);
-            notify('Erro ao carregar dados da nuvem. Verifique conexão/permissões.', 'error');
+            if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+                notify(
+                    'Armazenamento local cheio (quota do navegador). Libere espaço ou limpe dados do site; a nuvem pode já estar atualizada.',
+                    'error'
+                );
+            } else {
+                notify('Erro ao carregar dados da nuvem. Verifique conexão/permissões.', 'error');
+            }
         } finally {
             if (onlineBtn) {
                 onlineBtn.disabled = false;

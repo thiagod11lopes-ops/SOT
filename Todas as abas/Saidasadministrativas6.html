@@ -1407,6 +1407,10 @@ tarde: { ...statusThresholds.tarde, ...parsed.tarde }
 }
 }
 function saveStatusThresholds() {
+// Limites de saídas removidos da UI (Manhã/Tarde). Proteger para não quebrar o script.
+    if (!configStatusModal || !greenLimitInputManha || !orangeLimitInputManha || !greenLimitInputTarde || !orangeLimitInputTarde) {
+        return;
+    }
 const newGreenManha = parseInt(greenLimitInputManha.value, 10);
 const newOrangeManha = parseInt(orangeLimitInputManha.value, 10);
 const newGreenTarde = parseInt(greenLimitInputTarde.value, 10);
@@ -4718,7 +4722,8 @@ if (showEscalaRochaBtn) {
     showEscalaRochaBtn.addEventListener('click', showEscalaRocha);
 }
 
-document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+const downloadPdfBtnEl = document.getElementById('downloadPdfBtn');
+if (downloadPdfBtnEl) downloadPdfBtnEl.addEventListener('click', downloadPdf);
 
 // FUNCIONALIDADE DE IMPRESSÃO
 const printModal = document.getElementById('printModal');
@@ -4726,6 +4731,7 @@ const printDateList = document.getElementById('printDateList');
 const confirmPrintBtn = document.getElementById('confirmPrintBtn');
 const cancelPrintBtn = document.getElementById('cancelPrintBtn');
 const closePrintModal = document.getElementById('closePrintModal');
+const printBtnEl = document.getElementById('printBtn');
 
 function openPrintModal() {
     // Obter todas as datas únicas das saídas
@@ -4881,30 +4887,40 @@ function printSelectedDates() {
     printModal.style.display = 'none';
 }
 
-document.getElementById('printBtn').addEventListener('click', openPrintModal);
-confirmPrintBtn.addEventListener('click', printSelectedDates);
-cancelPrintBtn.addEventListener('click', () => { printModal.style.display = 'none'; });
-closePrintModal.addEventListener('click', () => { printModal.style.display = 'none'; });
-printModal.addEventListener('click', (e) => {
-    if (e.target === printModal) {
-        printModal.style.display = 'none';
-    }
-});
+if (printBtnEl && printModal && printDateList && confirmPrintBtn && cancelPrintBtn && closePrintModal) {
+    printBtnEl.addEventListener('click', openPrintModal);
+    confirmPrintBtn.addEventListener('click', printSelectedDates);
+    cancelPrintBtn.addEventListener('click', () => { printModal.style.display = 'none'; });
+    closePrintModal.addEventListener('click', () => { printModal.style.display = 'none'; });
+    printModal.addEventListener('click', (e) => {
+        if (e.target === printModal) {
+            printModal.style.display = 'none';
+        }
+    });
+}
 
-document.getElementById('exportarCelularBtn').addEventListener('click', () => {
-    const json = JSON.stringify(saidasAdministrativas || [], null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'saidas-administrativas.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-});
+const exportarCelularBtnEl = document.getElementById('exportarCelularBtn');
+if (exportarCelularBtnEl) {
+    exportarCelularBtnEl.addEventListener('click', () => {
+        const json = JSON.stringify(saidasAdministrativas || [], null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'saidas-administrativas.json';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    });
+}
 
-document.getElementById('toggleSignaturesBtn').addEventListener('click', () => {
-document.querySelector('.assinatura-container-geral').style.display = document.querySelector('.assinatura-container-geral').style.display === 'none' ? 'flex' : 'none';
-});
-saidasStatusContainer.addEventListener('click', () => {
+const toggleSignaturesBtnEl = document.getElementById('toggleSignaturesBtn');
+if (toggleSignaturesBtnEl) {
+    toggleSignaturesBtnEl.addEventListener('click', () => {
+        const assinaturaGeral = document.querySelector('.assinatura-container-geral');
+        if (!assinaturaGeral) return;
+        assinaturaGeral.style.display = assinaturaGeral.style.display === 'none' ? 'flex' : 'none';
+    });
+}
+if (saidasStatusContainer && configStatusModal && saveConfigBtn && cancelConfigBtn) { saidasStatusContainer.addEventListener('click', () => {
 if (isSystemLocked) {
 return;
 }
@@ -4924,11 +4940,12 @@ setTimeout(() => {
 saveConfigBtn.addEventListener('click', saveStatusThresholds);
 cancelConfigBtn.addEventListener('click', () => configStatusModal.style.display = 'none');
 configStatusModal.querySelector('.close-button').addEventListener('click', () => configStatusModal.style.display = 'none');
+}
 window.addEventListener('message', async (event) => {
 if (event.data?.type === 'lock_state_change') {
 isSystemLocked = event.data.locked;
 saidasTableBody.classList.toggle('table-locked', isSystemLocked);
-saidasStatusContainer.classList.toggle('locked', isSystemLocked);
+if (saidasStatusContainer) saidasStatusContainer.classList.toggle('locked', isSystemLocked);
 }
 else if (event.data?.type === 'refresh_data' || event.data?.type === 'refresh_all_data') { 
 scheduleSaidasAdmUnifiedReload('message_refresh', { needSelectRefresh: true, debounceMs: 180 });
