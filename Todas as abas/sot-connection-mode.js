@@ -503,28 +503,219 @@
             notify('Serviço de dados não carregado. Recarregue a página.', 'error');
             return;
         }
+
+        // Crucial: ao entrar em offline, vários módulos passam a ler apenas localStorage/IndexedDB.
+        // Se localStorage estiver com snapshot antigo, o usuário vê dados desatualizados.
+        // Por isso, pré-carregamos do Firebase (enquanto ainda está online/política offline ainda não foi ativada)
+        // e só então ligamos `sot_offline_mode=true`.
+        var alreadyOffline = false;
+        try {
+            alreadyOffline = localStorage && localStorage.getItem('sot_offline_mode') === 'true';
+        } catch (e) {
+            alreadyOffline = false;
+        }
+
+        async function preloadFirebasePrimaryForOffline() {
+            if (alreadyOffline) return { skipped: true, reason: 'already_offline' };
+            if (!global.firebaseSot || typeof global.firebaseSot.get !== 'function') {
+                return { skipped: true, reason: 'firebase_unavailable' };
+            }
+            if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+                return { skipped: true, reason: 'no_network' };
+            }
+            try {
+                if (typeof global.firebaseSot.authGateOk === 'function' && !global.firebaseSot.authGateOk()) {
+                    return { skipped: true, reason: 'auth_not_ready' };
+                }
+            } catch (eAuth) {
+                return { skipped: true, reason: 'auth_gate_error' };
+            }
+
+            var keysToPreload = [
+                // Coleções usadas nas telas com toggle de Offline/Online
+                'saidasAdministrativas',
+                'saidasAmbulancias',
+                'viaturasCadastradas',
+                'motoristasCadastrados'
+            ];
+
+            var t0 = Date.now();
+            var timeoutMs = typeof opts.preloadTimeoutMs === 'number' ? opts.preloadTimeoutMs : 7000;
+            var results = {};
+
+            // Sequential (menos concorrência pesada para o Firestore).
+            for (var i = 0; i < keysToPreload.length; i++) {
+                if (Date.now() - t0 > timeoutMs) break;
+                var k = keysToPreload[i];
+                try {
+                    results[k] = await global.firebaseSot.get(k);
+                } catch (e) {
+                    results[k] = null;
+                }
+            }
+
+            // Persistir em localStorage para que o reload em modo offline não use snapshot antigo.
+            var storageOk = true;
+            try {
+                if (typeof localStorage === 'undefined') storageOk = false;
+            } catch (eLs) {
+                storageOk = false;
+            }
+
+            if (storageOk) {
+                Object.keys(results).forEach(function (key) {
+                    var v = results[key];
+                    if (v === null || v === undefined) return;
+                    // Para estas chaves, os módulos offline esperam JSON array.
+                    var valueStr = null;
+                    try {
+                        valueStr = JSON.stringify(v);
+                    } catch (jsonErr) {
+                        storageOk = false;
+                        return;
+                    }
+                    var ok = tryLocalStorageSetItem(key, valueStr, 'preload_firebase_offline');
+                    if (!ok && (key === 'saidasAdministrativas' || key === 'saidasAmbulancias')) {
+                        // Se localStorage não couber, evitar "recair" em snapshot antigo.
+                        try {
+                            localStorage.removeItem(key);
+                        } catch (e2) {}
+                    }
+                });
+            }
+
+            // Cadastro usa espelho IndexedDB quando localStorage estiver vazio.
+            try {
+                if (global.sotSaidasIdb && typeof global.sotSaidasIdb.putCadastroSnapshot === 'function') {
+                    var adm = results.saidasAdministrativas;
+                    var amb = results.saidasAmbulancias;
+                    if (Array.isArray(adm) || Array.isArray(amb)) {
+                        void global.sotSaidasIdb.putCadastroSnapshot(Array.isArray(adm) ? adm : [], Array.isArray(amb) ? amb : []);
+                    }
+                }
+            } catch (eIdb) {}
+
+            return { skipped: false, stored: true };
+        }
+
         try {
             if (global.SOTOfflineMode && typeof global.SOTOfflineMode.setPersistedOffline === 'function') {
-                global.SOTOfflineMode.setPersistedOffline(true);
+                // Observação: mantemos offline=false durante o preload.
+                // Se o preload não conseguir (ex.: auth offline), continuamos mesmo assim.
+                // (o usuário pode ver dados antigos apenas se não houver como persistir o snapshot do Firebase)
+                    void preloadFirebasePrimaryForOffline()
+                        .then(function () {
+                            // Continua o fluxo de offline independentemente do resultado do preload.
+                            try {
+                                global.SOTOfflineMode.setPersistedOffline(true);
+                            } catch (eOff) {
+                                // Fallback para o modo offline clássico.
+                                try {
+                                    localStorage.setItem('sot_offline_mode', 'true');
+                                    if (
+                                        global.SOTOfflineMode &&
+                                        typeof global.SOTOfflineMode.refreshFlag === 'function'
+                                    ) {
+                                        global.SOTOfflineMode.refreshFlag();
+                                    }
+                                } catch (e2) {}
+                            }
+
+                            try {
+                                global.dataService.setPreferLocalStorage(true);
+                            } catch (e2) {}
+                            updateChip(opts.chipTextId);
+                            dispatchModeChanged({ offline: true });
+                            notify('Modo offline ativo. Firebase bloqueado. A recarregar…', 'success');
+                            audit('sot_modo_offline_ativado', {
+                                source: opts.auditSource || 'sot-connection-mode.js'
+                            });
+                            setTimeout(function () {
+                                try {
+                                    if (global.parent && global.parent.postMessage) {
+                                        global.parent.postMessage({ type: 'reload_required' }, '*');
+                                    }
+                                } catch (e) {}
+                            }, 900);
+                        })
+                        .catch(function () {
+                            // Se o preload falhar por qualquer exceção, ainda assim ativamos offline.
+                            try {
+                                global.SOTOfflineMode.setPersistedOffline(true);
+                            } catch (eOff2) {
+                                try {
+                                    localStorage.setItem('sot_offline_mode', 'true');
+                                } catch (e2) {}
+                            }
+                            try {
+                                global.dataService.setPreferLocalStorage(true);
+                            } catch (e2) {}
+                            updateChip(opts.chipTextId);
+                            dispatchModeChanged({ offline: true });
+                            notify('Modo offline ativo. Firebase bloqueado. A recarregar…', 'success');
+                            audit('sot_modo_offline_ativado', { source: opts.auditSource || 'sot-connection-mode.js' });
+                            setTimeout(function () {
+                                try {
+                                    if (global.parent && global.parent.postMessage) global.parent.postMessage({ type: 'reload_required' }, '*');
+                                } catch (e) {}
+                            }, 900);
+                        });
+                return;
             } else {
-                localStorage.setItem('sot_offline_mode', 'true');
-                if (global.SOTOfflineMode && typeof global.SOTOfflineMode.refreshFlag === 'function') {
-                    global.SOTOfflineMode.refreshFlag();
-                }
+                void preloadFirebasePrimaryForOffline()
+                    .then(function () {
+                        localStorage.setItem('sot_offline_mode', 'true');
+                        if (
+                            global.SOTOfflineMode &&
+                            typeof global.SOTOfflineMode.refreshFlag === 'function'
+                        ) {
+                            global.SOTOfflineMode.refreshFlag();
+                        }
+                        try {
+                            global.dataService.setPreferLocalStorage(true);
+                        } catch (e2) {}
+                        updateChip(opts.chipTextId);
+                        dispatchModeChanged({ offline: true });
+                        notify('Modo offline ativo. Firebase bloqueado. A recarregar…', 'success');
+                        audit('sot_modo_offline_ativado', { source: opts.auditSource || 'sot-connection-mode.js' });
+                        setTimeout(function () {
+                            try {
+                                if (global.parent && global.parent.postMessage)
+                                    global.parent.postMessage({ type: 'reload_required' }, '*');
+                            } catch (e) {}
+                        }, 900);
+                    })
+                    .catch(function () {
+                        try {
+                            localStorage.setItem('sot_offline_mode', 'true');
+                        } catch (e2) {}
+                        try {
+                            global.dataService.setPreferLocalStorage(true);
+                        } catch (e3) {}
+                        updateChip(opts.chipTextId);
+                        dispatchModeChanged({ offline: true });
+                        notify('Modo offline ativo. Firebase bloqueado. A recarregar…', 'success');
+                        audit('sot_modo_offline_ativado', { source: opts.auditSource || 'sot-connection-mode.js' });
+                        setTimeout(function () {
+                            try {
+                                if (global.parent && global.parent.postMessage)
+                                    global.parent.postMessage({ type: 'reload_required' }, '*');
+                            } catch (e4) {}
+                        }, 900);
+                    });
+                return;
             }
         } catch (e) {
             notify('Não foi possível ativar o modo offline.', 'error');
             return;
         }
+        // Fallback (quando SOTOfflineMode não existe): preserva o comportamento antigo.
         try {
             global.dataService.setPreferLocalStorage(true);
         } catch (e2) {}
         updateChip(opts.chipTextId);
         dispatchModeChanged({ offline: true });
-        notify(
-            'Modo offline ativo. Firebase bloqueado. A recarregar…',
-            'success'
-        );
+        notify('Modo offline ativo. Firebase bloqueado. A recarregar…', 'success');
         audit('sot_modo_offline_ativado', { source: opts.auditSource || 'sot-connection-mode.js' });
         setTimeout(function () {
             try {
