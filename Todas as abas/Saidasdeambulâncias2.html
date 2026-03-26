@@ -1135,6 +1135,14 @@ if (out.hash === buildAmbSnapshotHash(items)) setAmbOutbox(null);
 async function flushAmbOutbox() {
 if (ambOutboxFlushInFlight) return false;
 if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) return false;
+  // Respeitar offline "por política" (sot_offline_mode / firebaseSot.isOfflineMode)
+  try {
+    var sotOffline = localStorage.getItem('sot_offline_mode') === 'true';
+    if (!sotOffline && window.firebaseSot && typeof window.firebaseSot.isOfflineMode === 'function') {
+      sotOffline = !!window.firebaseSot.isOfflineMode();
+    }
+    if (sotOffline) return false;
+  } catch (e) {}
 const out = getAmbOutbox();
 if (!out || !Array.isArray(out.items)) return true;
 if (typeof dataService === 'undefined' || typeof dataService.setSaidasAmbulancias !== 'function') return false;

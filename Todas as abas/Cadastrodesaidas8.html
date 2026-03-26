@@ -2373,6 +2373,7 @@ function touchCadastroSaidaFieldUpdatedAtFromDiff(prev, next) {
 
 const cadastroActionLocks = new Set();
 const CADASTRO_OUTBOX_KEY = 'sot_cadastro_saidas_outbox_v1';
+const CADASTRO_IDB_REFRESH_FLAG_KEY = 'sot_cadastro_saidas_idb_refresh_v1';
 /** Tópico 17: buffer circular de telemetria operacional (diagnóstico em produção). */
 var CADASTRO_TELEMETRY_LOG_KEY = 'sot_cadastro_saidas_telemetry_v1';
 var CADASTRO_TELEMETRY_MAX = 300;
@@ -2676,12 +2677,24 @@ async function persistCadastroSaidasSnapshot(nextSaidasAdm, nextSaidasAmb) {
     result.errors.push('local_cache_write_failed');
   }
 
+  var idbOk = false;
   try {
     if (window.sotSaidasIdb && typeof window.sotSaidasIdb.putCadastroSnapshot === 'function') {
       await window.sotSaidasIdb.putCadastroSnapshot(adm, amb);
+      idbOk = true;
+      // Sinaliza para a próxima leitura (especialmente offline) preferir o snapshot do IDB.
+      try {
+        localStorage.setItem(CADASTRO_IDB_REFRESH_FLAG_KEY, '1');
+      } catch (eFlag) {}
     }
   } catch (eIdb) {
     result.errors.push('indexeddb_mirror_failed');
+  }
+
+  // Se o localStorage falhou, mas o IDB gravou, consideramos "local salvo" (para não perder alterações ao recarregar offline).
+  if (!result.localOk && idbOk) {
+    result.localOk = true;
+    result.errors.push('local_fallback_to_idb');
   }
 
   var authOkForWrite = await cadastroPrepareRemoteWriteAuth();
@@ -4714,11 +4727,19 @@ let remoteLoaded = false;
 try { lsSaidasAdm = JSON.parse(localStorage.getItem('saidasAdministrativas') || '[]'); } catch (e) { lsSaidasAdm = []; }
 try { lsSaidasAmb = JSON.parse(localStorage.getItem('saidasAmbulancias') || '[]'); } catch (e) { lsSaidasAmb = []; }
 
+  var sotOffline = false;
+  try { sotOffline = localStorage.getItem('sot_offline_mode') === 'true'; } catch (eOffline) {}
+  var outbox = null;
+  try { outbox = getCadastroOutbox(); } catch (eOb) { outbox = null; }
+  var idbRefreshFlag = false;
+  try { idbRefreshFlag = localStorage.getItem(CADASTRO_IDB_REFRESH_FLAG_KEY) === '1'; } catch (eFlag) {}
+  var forceIdbSnapshot = !!sotOffline || !!outbox || !!idbRefreshFlag;
+
 try {
   if (window.sotSaidasIdb && typeof window.sotSaidasIdb.getCadastroSnapshot === 'function') {
     var admLen = Array.isArray(lsSaidasAdm) ? lsSaidasAdm.length : 0;
     var ambLen = Array.isArray(lsSaidasAmb) ? lsSaidasAmb.length : 0;
-    if (admLen === 0 && ambLen === 0) {
+      if ((admLen === 0 && ambLen === 0) || forceIdbSnapshot) {
       var idbSnap = await window.sotSaidasIdb.getCadastroSnapshot();
       if (idbSnap && typeof idbSnap === 'object') {
         if (Array.isArray(idbSnap.saidasAdministrativas) && idbSnap.saidasAdministrativas.length) {
@@ -4731,6 +4752,12 @@ try {
     }
   }
 } catch (eIdbLoad) {}
+
+  // Limpa o flag quando tentamos (com sucesso ou não) buscar snapshot do IDB.
+  // Ajuda principalmente no caso de falhas intermitentes ou quotas.
+  if (forceIdbSnapshot) {
+    try { localStorage.removeItem(CADASTRO_IDB_REFRESH_FLAG_KEY); } catch (eClear) {}
+  }
 
 cadastroSyncLoadDepth++;
 setCadastroSyncUiState('loading', 'Carregando dados...');

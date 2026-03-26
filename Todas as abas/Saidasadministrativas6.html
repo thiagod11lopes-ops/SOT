@@ -1900,6 +1900,18 @@ async function flushSaidasAdmOutbox() {
         logSaidasAdmSync('outbox_skip_offline', { reason: 'navigator_offline' });
         return false;
     }
+    // Respeitar offline "por política" (SOTOfflineMode / sot_offline_mode).
+    try {
+        var sotOffline = localStorage.getItem('sot_offline_mode') === 'true';
+        if (!sotOffline && window.firebaseSot && typeof window.firebaseSot.isOfflineMode === 'function') {
+            sotOffline = !!window.firebaseSot.isOfflineMode();
+        }
+        if (sotOffline) {
+            setSyncUiState('offline', 'Offline (modo SOT ativo; mantendo fila)');
+            logSaidasAdmSync('outbox_skip_offline', { reason: 'sot_offline_mode' });
+            return false;
+        }
+    } catch (e) {}
     if (typeof dataService === 'undefined' || typeof dataService.saveSaidaAdministrativa !== 'function') {
         logSaidasAdmSync('outbox_skip_no_dataservice', {});
         return false;
@@ -2036,6 +2048,11 @@ async function persistSaidasAdministrativasByIds(ids, immediateSync) {
         if (rowToTouch) touchSaidaAdmRecord(rowToTouch);
     }
     enqueueSaidasAdmOutboxUpserts(idList);
+    // Garantia: mesmo offline/navegador sem rede, persistir imediatamente no localStorage.
+    // A sincronização remota roda via outbox quando voltar a conexão; sem this, recarregar perde as alterações.
+    try {
+        saidasAdmCriticalOps.writeLocalCache();
+    } catch (e) {}
     try {
         var ok = await flushSaidasAdmOutbox();
         if (ok) return;
@@ -4962,8 +4979,12 @@ else if (event.data?.type === 'new_saida_administrativa' || event.data?.type ===
 const saida = event.data.data;
 if (saida && typeof dataService !== 'undefined') {
 try {
-await dataService.saveSaidaAdministrativa(saida);
-saidasAdministrativas.push(saida);
+// Preferir o payload retornado pelo dataService (garante id/updatedAt consistentes)
+const saved = await dataService.saveSaidaAdministrativa(saida);
+saidasAdministrativas.push(saved);
+// Garantia de cache local: mesmo offline/rede falhando, o usuário não pode "perder" a edição.
+saidasAdministrativas = normalizeSaidasAdmMetadata(saidasAdministrativas);
+saidasAdmCriticalOps.writeLocalCache();
 await saveState();
 
 // Verificar se há saídas para juntar
@@ -4999,6 +5020,19 @@ populateTables();
 } catch (error) {
 console.error('Erro ao salvar nova saída:', error);
 saidasAdministrativas.push(saida);
+// Normalizar e persistir cache local mesmo se falhar o Firebase/rede.
+saidasAdministrativas = normalizeSaidasAdmMetadata(saidasAdministrativas);
+saidasAdmCriticalOps.writeLocalCache();
+
+// Enfileirar para sincronizar quando a rede/parte remota voltar.
+try {
+    var insertedId = saidasAdministrativas && saidasAdministrativas.length ? saidasAdministrativas[saidasAdministrativas.length - 1].id : null;
+    if (insertedId) {
+        enqueueSaidasAdmOutboxUpserts([insertedId]);
+        scheduleSaidasAdmOutboxFlush(0);
+    }
+} catch (outboxErr) {}
+
 persistSaidasAdministrativasImmediate();
 populateTables();
 }
