@@ -75,6 +75,54 @@ body[data-theme='oldRadar']::after {
     }
 }
 
+/* Barras de rolagem: fundo preto, polegar verde CRT */
+html:has(body[data-theme='oldRadar']),
+body[data-theme='oldRadar'] {
+    scrollbar-color: #00ff41 #000000;
+    scrollbar-width: thin;
+}
+
+html:has(body[data-theme='oldRadar'])::-webkit-scrollbar,
+body[data-theme='oldRadar']::-webkit-scrollbar,
+body[data-theme='oldRadar'] *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+html:has(body[data-theme='oldRadar'])::-webkit-scrollbar-track,
+body[data-theme='oldRadar']::-webkit-scrollbar-track,
+body[data-theme='oldRadar'] *::-webkit-scrollbar-track {
+    background: #000000;
+    border-left: 1px solid rgba(0, 255, 65, 0.25);
+}
+
+html:has(body[data-theme='oldRadar'])::-webkit-scrollbar-thumb,
+body[data-theme='oldRadar']::-webkit-scrollbar-thumb,
+body[data-theme='oldRadar'] *::-webkit-scrollbar-thumb {
+    background: #00ff41;
+    border: 1px solid rgba(0, 255, 65, 0.55);
+    border-radius: 0;
+    box-shadow: 0 0 6px rgba(0, 255, 65, 0.25);
+}
+
+html:has(body[data-theme='oldRadar'])::-webkit-scrollbar-thumb:hover,
+body[data-theme='oldRadar']::-webkit-scrollbar-thumb:hover,
+body[data-theme='oldRadar'] *::-webkit-scrollbar-thumb:hover {
+    background: #39ff14;
+    border-color: #39ff14;
+}
+
+html:has(body[data-theme='oldRadar'])::-webkit-scrollbar-corner,
+body[data-theme='oldRadar']::-webkit-scrollbar-corner,
+body[data-theme='oldRadar'] *::-webkit-scrollbar-corner {
+    background: #000000;
+}
+
+/* Saídas administrativas: ocultar mascote animado no tema CRT */
+body[data-theme='oldRadar'] #mascote-container {
+    display: none !important;
+}
+
 /* Tipografia monoespaçada em controles */
 body[data-theme='oldRadar'] input,
 body[data-theme='oldRadar'] select,
@@ -840,6 +888,31 @@ body[data-theme='oldRadar'] .tab-content table tbody tr:nth-child(even) {
 body[data-theme='oldRadar'] .tab-content table tbody td {
     background-color: #000000 !important;
     color: #00ff41 !important;
+}
+
+/* Saídas administrativas: linha com KM saída (saida-iniciada) — borda externa mais espessa */
+body[data-theme='oldRadar'] .tab-content table tbody tr.saida-iniciada,
+body[data-theme='oldRadar'] .tab-content table tbody tr.saida-iniciada:nth-child(even) {
+    background-color: transparent !important;
+}
+
+body[data-theme='oldRadar'] .tab-content table tbody tr.saida-iniciada td {
+    background-color: rgba(0, 255, 65, 0.1) !important;
+    border-color: rgba(0, 255, 65, 0.4) !important;
+    border-top-width: 3px !important;
+    border-bottom-width: 3px !important;
+    border-top-color: #00ff41 !important;
+    border-bottom-color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .tab-content table tbody tr.saida-iniciada td:first-child {
+    border-left-width: 3px !important;
+    border-left-color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .tab-content table tbody tr.saida-iniciada td:last-child {
+    border-right-width: 3px !important;
+    border-right-color: #00ff41 !important;
 }
 
 /* Modal alerta de quilometragem */
