@@ -1,6 +1,72 @@
 (function () {
+  try {
+    if (typeof window !== 'undefined' && window.top !== window.self) {
+      document.documentElement.classList.add('sot-in-iframe');
+    }
+  } catch (e) {
+    /* cross-origin */
+  }
+
   const THEME_ID_KEY = 'sot_theme_id';
   const THEME_VARS_KEY = 'sot_theme_variables';
+
+  /** Tema “Old Radar” (CRT): partilhado com Configurações. Efeitos visuais só com body[data-theme="oldRadar"]. */
+  var __SOT_OLD_RADAR_PROPS = {
+    '--primary-blue': '#00FF41',
+    '--secondary-blue': '#39FF14',
+    '--gray': 'rgba(0,255,65,0.35)',
+    '--dark-gray': '#00FF41',
+    '--white': '#000000',
+    '--light-gray-bg': '#000000',
+    '--tab-border': '1px solid #00FF41',
+    '--success-green': '#39FF14',
+    '--warning-orange': '#39FF14',
+    '--error-red': '#39FF14',
+    '--tab-text-color': '#00FF41',
+    '--tab-text-color-active': '#39FF14',
+    '--tab-text-color-hover': '#39FF14',
+    '--tab-bg-inactive': '#000000',
+    '--tab-bg-active': '#000000',
+    '--tab-hover-bg': '#0a140a',
+    '--tab-border-color': '#00FF41',
+    '--tab-border-color-active': '#39FF14',
+    '--tab-inactive-bg': '#000000',
+    '--tab-active-bg': '#000000',
+    '--delete-red': '#39FF14',
+    '--blink-red': '#39FF14',
+    '--export-excel': '#39FF14',
+    '--import-blue': '#00FF41',
+    '--modal-overlay': 'rgba(0,0,0,0.88)',
+    '--modal-bg': '#000000',
+    '--modal-radius': '0',
+    '--modal-shadow': '0 0 28px rgba(0,255,65,0.22)'
+  };
+  try {
+    window.__SOT_THEME_OLD_RADAR_PROPERTIES = __SOT_OLD_RADAR_PROPS;
+  } catch (e) {}
+
+  function injectOldRadarStylesheet() {
+    if (typeof document === 'undefined' || !document.head) return;
+    if (document.getElementById('sot-theme-old-radar-css')) return;
+    try {
+      var scr = document.currentScript;
+      var base = '';
+      if (scr && scr.src) {
+        base = scr.src.replace(/[^/]+$/, '');
+      } else {
+        base = '';
+      }
+      var link = document.createElement('link');
+      link.id = 'sot-theme-old-radar-css';
+      link.rel = 'stylesheet';
+      link.href = base + 'sot-theme-old-radar.css';
+      document.head.appendChild(link);
+    } catch (err) {
+      console.warn('SOT: não foi possível carregar sot-theme-old-radar.css', err);
+    }
+  }
+
+  injectOldRadarStylesheet();
 
   function getStoredTheme() {
     const id = safeGet(THEME_ID_KEY);

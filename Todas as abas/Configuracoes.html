@@ -161,6 +161,10 @@
             flex-wrap: wrap;
         }
 
+        .theme-old-radar-wrap {
+            margin-top: 8px;
+        }
+
         .theme-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -1115,6 +1119,42 @@
             const THEME_VARS_KEY = 'sot_theme_variables';
             const DEFAULT_THEME_ID = 'light';
 
+            function getOldRadarThemeProperties() {
+                if (typeof window !== 'undefined' && window.__SOT_THEME_OLD_RADAR_PROPERTIES) {
+                    return window.__SOT_THEME_OLD_RADAR_PROPERTIES;
+                }
+                return {
+                    '--primary-blue': '#00FF41',
+                    '--secondary-blue': '#39FF14',
+                    '--gray': 'rgba(0,255,65,0.35)',
+                    '--dark-gray': '#00FF41',
+                    '--white': '#000000',
+                    '--light-gray-bg': '#000000',
+                    '--tab-border': '1px solid #00FF41',
+                    '--success-green': '#39FF14',
+                    '--warning-orange': '#39FF14',
+                    '--error-red': '#39FF14',
+                    '--tab-text-color': '#00FF41',
+                    '--tab-text-color-active': '#39FF14',
+                    '--tab-text-color-hover': '#39FF14',
+                    '--tab-bg-inactive': '#000000',
+                    '--tab-bg-active': '#000000',
+                    '--tab-hover-bg': '#0a140a',
+                    '--tab-border-color': '#00FF41',
+                    '--tab-border-color-active': '#39FF14',
+                    '--tab-inactive-bg': '#000000',
+                    '--tab-active-bg': '#000000',
+                    '--delete-red': '#39FF14',
+                    '--blink-red': '#39FF14',
+                    '--export-excel': '#39FF14',
+                    '--import-blue': '#00FF41',
+                    '--modal-overlay': 'rgba(0,0,0,0.88)',
+                    '--modal-bg': '#000000',
+                    '--modal-radius': '0',
+                    '--modal-shadow': '0 0 28px rgba(0,255,65,0.22)'
+                };
+            }
+
             const themes = [
                 {
                     id: 'light',
@@ -1375,6 +1415,13 @@
                         '--tab-border-color': '#ffd8a8',
                         '--tab-border-color-active': '#fb8500'
                     }
+                },
+                {
+                    id: 'oldRadar',
+                    name: 'Old Radar',
+                    description: 'CRT / radar: preto puro, verde néon, grelha e uma linha de varredura (respeita “reduzir movimento”).',
+                    preview: 'linear-gradient(135deg, #000000 0%, #00ff41 45%, #39ff14 100%)',
+                    properties: getOldRadarThemeProperties()
                 }
             ];
 

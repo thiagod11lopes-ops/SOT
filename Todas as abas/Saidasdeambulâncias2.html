@@ -538,13 +538,26 @@ body[data-theme="dark"] .toolbar-actions {
   border-color: rgba(74, 105, 189, 0.25);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
-body[data-theme="dark"] .btn-action.btn-pdf { background: linear-gradient(135deg, #2a5a9e 0%, #1e4d8c 100%); }
-body[data-theme="dark"] .btn-action.btn-print { background: linear-gradient(135deg, #4a69bd 0%, #3668b0 100%); }
-body[data-theme="dark"] .btn-action.btn-sign { background: linear-gradient(135deg, #6c8fd4 0%, #5b7dc9 100%); }
 body[data-theme="dark"] .counter-badge {
-  background: linear-gradient(135deg, #3d5a9e 0%, #4a69bd 100%);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #1e1e1e 0%, #252525 100%) !important;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e8e8e8 !important;
 }
+body[data-theme="dark"] .counter-badge.counter {
+  color: #e8e8e8 !important;
+}
+body[data-theme="dark"] .toolbar-actions .btn-action {
+  background: linear-gradient(135deg, #1a2332 0%, #141c28 100%) !important;
+  border: 1px solid rgba(74, 105, 189, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+body[data-theme="dark"] .toolbar-actions .btn-action:hover {
+  background: linear-gradient(135deg, #243044 0%, #1a2332 100%) !important;
+  border-color: rgba(108, 143, 212, 0.5);
+}
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-pdf { background: linear-gradient(135deg, #1a2332 0%, #141c28 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-print { background: linear-gradient(135deg, #1a2332 0%, #141c28 100%) !important; }
+body[data-theme="dark"] .toolbar-actions .btn-action.btn-sign { background: linear-gradient(135deg, #1a2332 0%, #141c28 100%) !important; }
 .amb-notice {
 position: fixed;
 top: 14px;

@@ -1,0 +1,984 @@
+/**
+ * SOT — Tema único "Old Radar" (CRT / radar).
+ * Ativado com body[data-theme="oldRadar"].
+ * Variáveis CSS vêm de localStorage (Configurações / theme-listener.js).
+ */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
+@keyframes sotRadarGlowPulse {
+    0%,
+    100% {
+        box-shadow: 0 0 6px rgba(0, 255, 65, 0.35);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(57, 255, 20, 0.55);
+    }
+}
+
+/* Varredura: uma linha horizontal fina que desce (sem gradiente/glow/scanlines — evita “duas” faixas) */
+@keyframes sotRadarSweepLine {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(calc(100vh - 1px));
+    }
+}
+
+body[data-theme='oldRadar'] {
+    font-family: 'JetBrains Mono', 'Roboto Mono', ui-monospace, 'Cascadia Code', monospace;
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+    position: relative;
+    min-height: 100vh;
+    /* Grelha sutil */
+    background-image: linear-gradient(rgba(0, 255, 65, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 65, 0.07) 1px, transparent 1px) !important;
+    background-size: 32px 32px !important;
+    background-attachment: fixed !important;
+}
+
+body[data-theme='oldRadar'] .fa,
+body[data-theme='oldRadar'] .fas,
+body[data-theme='oldRadar'] .far,
+body[data-theme='oldRadar'] .fab,
+body[data-theme='oldRadar'] .fal {
+    font-family: 'Font Awesome 6 Free', 'Font Awesome 6 Brands' !important;
+}
+
+/* Páginas dentro de iframe (abas): sem varredura no documento interno — a linha vem só do documento pai (SOT5) */
+html.sot-in-iframe body[data-theme='oldRadar']::after {
+    content: none !important;
+    animation: none !important;
+}
+
+body[data-theme='oldRadar']::after {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    pointer-events: none;
+    z-index: 99999;
+    background: #39ff14;
+    box-shadow: none;
+    animation: sotRadarSweepLine 9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body[data-theme='oldRadar']::after {
+        animation: none;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0.5;
+    }
+}
+
+/* Tipografia monoespaçada em controles */
+body[data-theme='oldRadar'] input,
+body[data-theme='oldRadar'] select,
+body[data-theme='oldRadar'] textarea,
+body[data-theme='oldRadar'] button {
+    font-family: inherit;
+}
+
+body[data-theme='oldRadar'] a {
+    color: #39ff14;
+}
+
+body[data-theme='oldRadar'] a:hover {
+    color: #00ff41;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.45);
+}
+
+/* Botões / inputs genéricos */
+body[data-theme='oldRadar'] button,
+body[data-theme='oldRadar'] input:not([type='checkbox']):not([type='radio']),
+body[data-theme='oldRadar'] select,
+body[data-theme='oldRadar'] textarea {
+    border-radius: 0 !important;
+    border: 1px solid #00ff41 !important;
+    background: #000000 !important;
+    color: #00ff41 !important;
+    box-shadow: 0 0 6px rgba(0, 255, 65, 0.2);
+}
+
+body[data-theme='oldRadar'] button:hover,
+body[data-theme='oldRadar'] input:focus,
+body[data-theme='oldRadar'] select:focus,
+body[data-theme='oldRadar'] textarea:focus {
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.35);
+    border-color: #39ff14 !important;
+    outline: none;
+}
+
+/* ——— Shell SOT5 ——— */
+body[data-theme='oldRadar'] .top-bar {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border-bottom: 1px solid #00ff41;
+    box-shadow: 0 0 18px rgba(0, 255, 65, 0.25);
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.35);
+}
+
+body[data-theme='oldRadar'] .top-bar__title {
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.45);
+}
+
+body[data-theme='oldRadar'] .window-button {
+    color: #00ff41 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    border-radius: 0 !important;
+    background: #000 !important;
+}
+
+body[data-theme='oldRadar'] .window-button:hover {
+    background: #0a1a0a !important;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.35);
+}
+
+body[data-theme='oldRadar'] .window-button.close:hover {
+    background: #001a00 !important;
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .app-closed-message {
+    background: #000 !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .tab-button {
+    border-radius: 0 !important;
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+    text-shadow: 0 0 4px rgba(0, 255, 65, 0.35);
+}
+
+body[data-theme='oldRadar'] .tab-button:hover {
+    background: #0a140a !important;
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .tab-button.active {
+    background: #000000 !important;
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+    box-shadow: 0 0 14px rgba(57, 255, 20, 0.35);
+}
+
+body[data-theme='oldRadar'] .tab-content {
+    background: #000000 !important;
+}
+
+/* ——— Configurações: cartões e mensagens ——— */
+body[data-theme='oldRadar'] .config-section {
+    background: #000000 !important;
+    border: 1px solid #00ff41 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 0 14px rgba(0, 255, 65, 0.18);
+}
+
+body[data-theme='oldRadar'] .section-title {
+    color: #00ff41 !important;
+    border-bottom-color: #39ff14 !important;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.35);
+}
+
+body[data-theme='oldRadar'] .message.success {
+    color: #00ff41 !important;
+    background: #000 !important;
+    border: 1px solid #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .message.error {
+    color: #39ff14 !important;
+    background: #000 !important;
+    border: 1px dashed #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .message.info {
+    color: #00ff41 !important;
+    background: #000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.5) !important;
+}
+
+body[data-theme='oldRadar'] .info-box {
+    background: #000 !important;
+    border: 1px solid #00ff41 !important;
+    color: #00ff41 !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .theme-old-radar-single {
+    border: 1px solid #00ff41;
+    padding: 20px;
+    background: #000;
+    box-shadow: inset 0 0 24px rgba(0, 255, 65, 0.08);
+}
+
+body[data-theme='oldRadar'] .theme-old-radar-single h3 {
+    margin: 0 0 10px;
+    color: #39ff14;
+    text-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
+}
+
+body[data-theme='oldRadar'] .theme-old-radar-single p {
+    margin: 0;
+    color: #00ff41;
+    line-height: 1.55;
+    font-size: 14px;
+}
+
+body[data-theme='oldRadar'] .sub-tab-button {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .sub-tab-button.active {
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+/* Botões de ação em massa (Config) — só preto + verde */
+body[data-theme='oldRadar'] .config-action-btn {
+    border-radius: 0 !important;
+    border: 1px solid #00ff41 !important;
+    color: #00ff41 !important;
+    background: linear-gradient(180deg, #000000 0%, #050a05 100%) !important;
+    box-shadow: 0 0 12px rgba(0, 255, 65, 0.22);
+}
+
+body[data-theme='oldRadar'] .config-action-btn::after {
+    background: linear-gradient(135deg, rgba(0, 255, 65, 0.12) 0%, transparent 50%);
+}
+
+body[data-theme='oldRadar'] .config-action-btn:hover:not(:disabled) {
+    box-shadow: 0 0 18px rgba(57, 255, 20, 0.35);
+    border-color: #39ff14 !important;
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .config-action-btn--offline.is-active,
+body[data-theme='oldRadar'] .config-action-btn--online.is-active {
+    outline: 2px solid #39ff14;
+    outline-offset: 2px;
+    box-shadow: 0 0 20px rgba(57, 255, 20, 0.45);
+}
+
+body[data-theme='oldRadar'] .config-data-legend {
+    background: #000 !important;
+    border: 1px solid #00ff41 !important;
+    color: #00ff41 !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .config-advanced-details {
+    background: #000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.4) !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .config-scope-pill--local {
+    border-color: #39ff14 !important;
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .config-scope-pill--cloud {
+    border-color: #00ff41 !important;
+    color: #00ff41 !important;
+}
+
+/* ——— Cadastro de saídas: espelho do modo escuro com paleta radar ——— */
+body[data-theme='oldRadar'] .sot-connection-mode-inline {
+    background: transparent;
+}
+body[data-theme='oldRadar'] .sot-connection-mode-inline.sot-connection-mode-inline--with-sync {
+    background: #000;
+    border-color: #00ff41;
+}
+body[data-theme='oldRadar'] .sot-conn-btn {
+    color: #00ff41 !important;
+    background: #000 !important;
+    border-color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .sot-conn-btn--offline.is-active {
+    background: rgba(57, 255, 20, 0.12) !important;
+    color: #39ff14 !important;
+}
+body[data-theme='oldRadar'] .sot-conn-btn--online.is-active {
+    background: rgba(0, 255, 65, 0.12) !important;
+    color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .sot-conn-toggle-word {
+    color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .sot-conn-toggle-word--offline.is-active {
+    color: #39ff14 !important;
+}
+body[data-theme='oldRadar'] .sot-conn-toggle-word--online.is-active {
+    color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .sot-conn-toggle {
+    background: #000 !important;
+    border-color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .sot-connection-mode-inline.is-offline .sot-conn-toggle {
+    background: rgba(57, 255, 20, 0.08) !important;
+    border-color: rgba(57, 255, 20, 0.45) !important;
+}
+body[data-theme='oldRadar'] .sot-connection-mode-inline.is-online .sot-conn-toggle {
+    background: rgba(0, 255, 65, 0.08) !important;
+    border-color: rgba(0, 255, 65, 0.45) !important;
+}
+
+/* Saídas administrativas: Manhã / Tarde — mesmo cartão que o seletor online/offline */
+body[data-theme='oldRadar'] #saidasStatusContainer {
+    background: #000000 !important;
+    border: 1px solid #00ff41 !important;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.12) !important;
+}
+body[data-theme='oldRadar'] #saidasStatusContainer:hover {
+    background: #0a140a !important;
+}
+body[data-theme='oldRadar'] #saidasStatusContainer.locked:hover {
+    background: #000000 !important;
+}
+body[data-theme='oldRadar'] .status-periodo-label {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'],
+body[data-theme='oldRadar'] * {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+body[data-theme='oldRadar'] .container,
+body[data-theme='oldRadar'] main,
+body[data-theme='oldRadar'] .content-wrapper {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .tab-content,
+body[data-theme='oldRadar'] .form-container,
+body[data-theme='oldRadar'] .card {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+    border-color: #00ff41 !important;
+    border-radius: 0 !important;
+    box-shadow: 0 0 12px rgba(0, 255, 65, 0.12);
+}
+
+body[data-theme='oldRadar'] .tab-button {
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .sub-tab-button {
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] input,
+body[data-theme='oldRadar'] select,
+body[data-theme='oldRadar'] textarea {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+    border-color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] label {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] table {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] table th {
+    background-color: #000000 !important;
+    color: #39ff14 !important;
+    border-color: #00ff41 !important;
+    text-shadow: 0 0 4px rgba(57, 255, 20, 0.35);
+}
+
+body[data-theme='oldRadar'] table td {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .header-title,
+body[data-theme='oldRadar'] h1,
+body[data-theme='oldRadar'] h2,
+body[data-theme='oldRadar'] h3 {
+    color: #00ff41 !important;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.25);
+}
+
+body[data-theme='oldRadar'] .btn-primary,
+body[data-theme='oldRadar'] button[class*='btn']:not(.sot-conn-btn) {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.25);
+}
+
+body[data-theme='oldRadar'] .btn-primary:hover,
+body[data-theme='oldRadar'] button[class*='btn']:not(.sot-conn-btn):hover {
+    background-color: #0a140a !important;
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .cadastro-toast--success {
+    background: #000 !important;
+    color: #39ff14 !important;
+    border: 1px solid #39ff14 !important;
+}
+body[data-theme='oldRadar'] .cadastro-toast--error {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border: 1px dashed #39ff14 !important;
+}
+body[data-theme='oldRadar'] .cadastro-toast--warning {
+    background: #000 !important;
+    color: #39ff14 !important;
+    border: 1px solid #00ff41 !important;
+}
+body[data-theme='oldRadar'] .cadastro-toast--info {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border: 1px solid rgba(0, 255, 65, 0.5) !important;
+}
+
+body[data-theme='oldRadar'] #cadastroConfirmModal .cadastro-confirm-panel {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+}
+body[data-theme='oldRadar'] #cadastroConfirmModal .cadastro-confirm-panel p {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .cadastro-sync-status-pill.is-loading {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border-color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .cadastro-sync-status-pill.is-saving {
+    background: #000 !important;
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+}
+body[data-theme='oldRadar'] .cadastro-sync-status-pill.is-pending {
+    background: #000 !important;
+    color: #39ff14 !important;
+    border-color: #00ff41 !important;
+}
+body[data-theme='oldRadar'] .cadastro-sync-status-pill.is-offline {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border-color: rgba(0, 255, 65, 0.45) !important;
+}
+body[data-theme='oldRadar'] .cadastro-sync-status-pill.is-ok {
+    background: #000 !important;
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+}
+body[data-theme='oldRadar'] .cadastro-sync-status-pill.is-error {
+    background: #000 !important;
+    color: #00ff41 !important;
+    border-color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .incomplete-row {
+    background-color: #050d05 !important;
+}
+
+/* Botão vermelho piscante → pulso verde (radar) */
+body[data-theme='oldRadar'] .blink-red-button {
+    animation: sotRadarGlowPulse 1.2s ease-in-out infinite !important;
+    background-color: #000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body[data-theme='oldRadar'] .blink-red-button {
+        animation: none !important;
+        box-shadow: 0 0 0 1px #39ff14;
+    }
+}
+
+/* ========== SOT5 (shell): fundos claros/cinzas → mesmo preto da página ========== */
+body[data-theme='oldRadar'] header {
+    background-color: #000000 !important;
+    border-bottom-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] #datetime-container,
+body[data-theme='oldRadar'] #escala-pao-amanha-box,
+body[data-theme='oldRadar'] #lock-container,
+body[data-theme='oldRadar'] #google-login-container {
+    background-color: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    color: #00ff41 !important;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.15) !important;
+}
+
+body[data-theme='oldRadar'] #escala-pao-amanha-box:hover {
+    background-color: #0a140a !important;
+}
+
+body[data-theme='oldRadar'] #date,
+body[data-theme='oldRadar'] #time,
+body[data-theme='oldRadar'] #escala-pao-amanha-nome {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] #time {
+    border-left-color: rgba(0, 255, 65, 0.4) !important;
+}
+
+body[data-theme='oldRadar'] .tab-button.locked {
+    background-color: #050805 !important;
+    color: #39ff14 !important;
+}
+
+/* Modal Escala de Pão — células e conteúdo (cores fixas no SOT5) */
+body[data-theme='oldRadar'] .modal-escala-pao-content {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.5) !important;
+    box-shadow: 0 0 24px rgba(0, 255, 65, 0.2) !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-close {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-close:hover {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-nav button {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.35) !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia.ep-outro-mes {
+    background: #050505 !important;
+    color: #39ff14 !important;
+    opacity: 0.75;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia.ep-hoje {
+    background: #0a120a !important;
+    border-color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia.ep-feriado {
+    background: #0d1008 !important;
+    border-color: rgba(57, 255, 20, 0.55) !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia.ep-fds {
+    background: #080808 !important;
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia .ep-num {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia .ep-nome {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .modal-escala-pao-grid .ep-dia .ep-feriado-desc {
+    color: #39ff14 !important;
+}
+
+/* Overlay Escala global */
+body[data-theme='oldRadar'] #globalEscalaBox {
+    background: #000000 !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] #globalEscalaTableWrap {
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] #globalEscalaTable td {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border-color: rgba(0, 255, 65, 0.25) !important;
+}
+
+body[data-theme='oldRadar'] #globalEscalaTable tbody tr:nth-child(even) {
+    background: #050805 !important;
+}
+
+body[data-theme='oldRadar'] #globalEscalaTable td[contenteditable='true']:focus {
+    background: #0a140a !important;
+    outline-color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] #globalEscalaClose {
+    color: #39ff14 !important;
+}
+
+/* Resumo Firebase (modal) */
+body[data-theme='oldRadar'] .firebase-summary-card {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .firebase-summary-subtitle {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .firebase-summary-item {
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+    color: #00ff41 !important;
+}
+
+/* Modais RDV / backup (texto escuro sobre branco) */
+body[data-theme='oldRadar'] #backupModalContent {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+}
+
+body[data-theme='oldRadar'] #backupModalContent p {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .rdv-sem-edicao {
+    background: #000000 !important;
+    color: #39ff14 !important;
+    border-color: rgba(0, 255, 65, 0.4) !important;
+}
+
+body[data-theme='oldRadar'] #rdvModalFooter .rdv-nav-data {
+    color: #00ff41 !important;
+}
+
+/* Fainas / atribuições — painéis brancos */
+body[data-theme='oldRadar'] #fainasModalContent {
+    background: linear-gradient(180deg, #000000 0%, #050805 100%) !important;
+    border: 1px solid rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .fainas-body {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .fainas-select-group label,
+body[data-theme='oldRadar'] .fainas-select-group select {
+    color: #00ff41 !important;
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.45) !important;
+}
+
+body[data-theme='oldRadar'] #atribuicoesModalContent {
+    background: linear-gradient(180deg, #000000 0%, #050805 100%) !important;
+    border: 1px solid rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-body,
+body[data-theme='oldRadar'] .atribuicoes-select-wrap label {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-select-wrap select {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border-color: rgba(0, 255, 65, 0.45) !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-list {
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-item {
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.25) !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-item:hover {
+    background: #0a140a !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-item .atribuicoes-item-titulo {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .atribuicoes-form-panel {
+    background: #050805 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .atr-folha-container {
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .atr-folha-nums {
+    background: #000000 !important;
+    color: #39ff14 !important;
+    border-color: rgba(0, 255, 65, 0.25) !important;
+}
+
+body[data-theme='oldRadar'] .atr-folha {
+    color: #00ff41 !important;
+}
+
+/* Modal RDV (painel branco / rodapé cinza) */
+body[data-theme='oldRadar'] #rdvModalContent {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid rgba(0, 255, 65, 0.4) !important;
+}
+
+body[data-theme='oldRadar'] #rdvModalClose {
+    background: #000000 !important;
+    color: #39ff14 !important;
+    border: 1px solid rgba(0, 255, 65, 0.5) !important;
+    box-shadow: 0 0 12px rgba(0, 255, 65, 0.25) !important;
+}
+
+body[data-theme='oldRadar'] #rdvModalClose:hover {
+    background: #0a140a !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] #rdvModalBody th {
+    background: #0a140a !important;
+    color: #39ff14 !important;
+    border-color: rgba(0, 255, 65, 0.45) !important;
+}
+
+body[data-theme='oldRadar'] #rdvModalBody td {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border-color: rgba(0, 255, 65, 0.4) !important;
+}
+
+body[data-theme='oldRadar'] #rdvModalFooter {
+    background: #000000 !important;
+    border-top-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+/* ========== Cadastro de saídas: limite de saídas, contadores, zebras e modais claros ========== */
+
+body[data-theme='oldRadar'] .limite-saidas-modal-content {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    box-shadow: 0 0 28px rgba(0, 255, 65, 0.2) !important;
+}
+
+body[data-theme='oldRadar'] .limite-saidas-modal-content h3 {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .limite-saidas-modal-content h3::before {
+    filter: invert(1) hue-rotate(90deg) saturate(1.4) brightness(1.1);
+}
+
+body[data-theme='oldRadar'] .limite-saidas-modal-content p {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .limite-saidas-modal-content .limite-saidas-ok {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #39ff14 !important;
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.25) !important;
+}
+
+body[data-theme='oldRadar'] .limite-saidas-modal-content .limite-saidas-ok:hover {
+    background: #0a140a !important;
+    color: #39ff14 !important;
+}
+
+/* Contadores “Saídas Realizadas / Futuras / Incompletos” — bloco alinhado ao fundo */
+body[data-theme='oldRadar'] .counters-container {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.35) !important;
+    padding: 10px 14px !important;
+    border-radius: 0 !important;
+    box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.06);
+}
+
+body[data-theme='oldRadar'] .counter {
+    color: #00ff41 !important;
+}
+
+/* Linhas zebradas (#f8f9fa) e células — mesmo preto da página */
+body[data-theme='oldRadar'] .tab-content table tbody tr,
+body[data-theme='oldRadar'] .tab-content table tbody tr:nth-child(even) {
+    background-color: #000000 !important;
+}
+
+body[data-theme='oldRadar'] .tab-content table tbody td {
+    background-color: #000000 !important;
+    color: #00ff41 !important;
+}
+
+/* Modal alerta de quilometragem */
+body[data-theme='oldRadar'] .km-alert-modal-content {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+}
+
+body[data-theme='oldRadar'] .km-alert-modal-content h3 {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .km-alert-modal-content p {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .km-alert-cancel-btn {
+    background: #000000 !important;
+    color: #39ff14 !important;
+    border: 1px solid rgba(0, 255, 65, 0.5) !important;
+}
+
+/* Modal dados extraídos */
+body[data-theme='oldRadar'] .extracted-data-modal-content {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.4) !important;
+}
+
+body[data-theme='oldRadar'] .extracted-data-item {
+    background: #050805 !important;
+    border-left-color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .extracted-data-label {
+    color: #39ff14 !important;
+}
+
+body[data-theme='oldRadar'] .extracted-data-value {
+    color: #00ff41 !important;
+}
+
+/* Filtros da lista (caixa com fundo cinza claro no CSS base) */
+body[data-theme='oldRadar'] .date-filter-container {
+    background-color: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .date-filter-container label {
+    color: #00ff41 !important;
+}
+
+/* Botão ícone “teste” ao lado do título */
+body[data-theme='oldRadar'] .icon-btn-teste {
+    background: #000000 !important;
+    border-color: rgba(0, 255, 65, 0.45) !important;
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .icon-btn-teste:hover {
+    background: #0a140a !important;
+    color: #39ff14 !important;
+}
+
+/* ========== Saídas administrativas / ambulâncias: barra de ferramentas (SVC, Celular, etc.) e contador ========== */
+
+body[data-theme='oldRadar'] .toolbar-actions {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    box-shadow: 0 0 14px rgba(0, 255, 65, 0.12), inset 0 0 20px rgba(0, 255, 65, 0.04) !important;
+    border-radius: 0 !important;
+}
+
+/* Gradientes base .btn-action vencem o botão genérico — forçar CRT */
+body[data-theme='oldRadar'] .toolbar-actions .btn-action,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-svc,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-pso,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-escala-rocha,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-escala,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-pdf,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-print,
+body[data-theme='oldRadar'] .toolbar-actions .btn-action.btn-sign {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid #00ff41 !important;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.22) !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .toolbar-actions .btn-action:hover {
+    background: #0a140a !important;
+    color: #39ff14 !important;
+    border-color: #39ff14 !important;
+    box-shadow: 0 0 14px rgba(57, 255, 20, 0.35) !important;
+}
+
+body[data-theme='oldRadar'] .counter-badge {
+    background: #000000 !important;
+    color: #00ff41 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.2) !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .counter-badge.counter {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .counter-badge::before {
+    background: #39ff14 !important;
+    box-shadow: 0 0 6px rgba(57, 255, 20, 0.6);
+}
+
+/* Quadro de avisos (Saídas administrativas) */
+body[data-theme='oldRadar'] .notice-board-container {
+    background: #000000 !important;
+    border: 1px solid rgba(0, 255, 65, 0.45) !important;
+    box-shadow: 0 0 14px rgba(0, 255, 65, 0.12), inset 0 0 20px rgba(0, 255, 65, 0.04) !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .notice-board-container h2 {
+    color: #39ff14 !important;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.35);
+}
+
+body[data-theme='oldRadar'] .notice-item {
+    background: #050805 !important;
+    border: 1px solid rgba(0, 255, 65, 0.35) !important;
+    border-radius: 0 !important;
+}
+
+body[data-theme='oldRadar'] .notice-item-content {
+    color: #00ff41 !important;
+}
+
+body[data-theme='oldRadar'] .notice-item-date {
+    color: rgba(0, 255, 65, 0.8) !important;
+}
+
+body[data-theme='oldRadar'] .notice-list > li:not(.notice-item) {
+    color: #00ff41 !important;
+}
