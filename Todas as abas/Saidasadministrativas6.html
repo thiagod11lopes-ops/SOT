@@ -69,6 +69,22 @@ main { margin: 20px 10px; }
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 .btn-action:active { transform: translateY(0); }
+
+.btn-action.btn-toggle-options {
+  min-width: unset;
+  padding: 10px 12px;
+}
+
+.toolbar-options {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+.toolbar-options.is-hidden {
+  display: none !important;
+}
 /* Progressão de azuis: SVC/RO (1) → Retém (2) → Escala Roxa (3) → ESCALA (4) → Baixar (5) → Imprimir (6) → Assinar (7) */
 .btn-action.btn-svc {
   background: linear-gradient(135deg, #1e4d8c 0%, #173d70 100%);
@@ -811,16 +827,6 @@ body[data-theme="dark"] .notice-list > li:not(.notice-item) {
 <div id="saidasAdministrativasSection" class="tab-content active">
 <div class="table-controls">
 <h2 class="table-title">SAÍDAS ADMINISTRATIVAS</h2>
-<div id="saidasStatusContainer" title="Clique para configurar os limites de saídas">
-<div class="status-periodo">
-<span class="status-periodo-label">Manhã:</span>
-<div class="status-dot" id="statusManha"></div>
-</div>
-<div class="status-periodo">
-<span class="status-periodo-label">Tarde:</span>
-<div class="status-dot" id="statusTarde"></div>
-</div>
-</div>
 <div class="sot-connection-mode-inline sot-connection-mode-inline--with-sync" id="sotConnSelectorAdm" role="group" aria-label="Modo de ligação e sincronização SOT">
 <div id="syncStatusPill" class="cadastro-sync-status-pill is-loading" role="status" aria-live="polite" title="Status de sincronização da agenda">
 <span class="cadastro-sync-dot" aria-hidden="true"></span>
@@ -837,14 +843,17 @@ body[data-theme="dark"] .notice-list > li:not(.notice-item) {
 </div>
 </div>
 <div class="toolbar-actions">
-<button type="button" id="showSvcRoBtn" class="btn-action btn-svc" title="Serviço / Rotina">SVC/RO</button>
-<button type="button" id="showPsoBtn" class="btn-action btn-pso" title="Retém">Retém</button>
-<button type="button" id="showEscalaRochaBtn" class="btn-action btn-escala-rocha" title="Escala Roxa">Escala Roxa</button>
-<button type="button" id="showEscalaBtn" class="btn-action btn-escala" onclick="(window.openEscalaModal ? window.openEscalaModal() : (function(){var m=document.getElementById('escalaModal'); if(m){m.style.display='flex'; setTimeout(function(){m.scrollTop=0;},0);} else {alert('openEscalaModal não disponível e modal não encontrado.');}})())" title="Abrir escala"><i class="fas fa-calendar"></i> ESCALA</button>
-<button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
-<button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
-<button type="button" id="toggleSignaturesBtn" class="btn-action btn-sign" title="Exibir assinaturas"><i class="fas fa-signature"></i> Assinar</button>
-<button type="button" id="exportarCelularBtn" class="btn-action btn-pdf" title="Exportar agenda para o Quadro de Saídas (celular)"><i class="fas fa-mobile-alt"></i> Celular</button>
+<button type="button" id="toggleSaidasAdminOptionsBtn" class="btn-action btn-toggle-options" title="Ocultar/Mostrar opções" aria-expanded="true"><i class="fas fa-chevron-up" aria-hidden="true"></i></button>
+<div id="saidasAdminToolbarOptions" class="toolbar-options">
+  <button type="button" id="showSvcRoBtn" class="btn-action btn-svc" title="Serviço / Rotina">SVC/RO</button>
+  <button type="button" id="showPsoBtn" class="btn-action btn-pso" title="Retém">Retém</button>
+  <button type="button" id="showEscalaRochaBtn" class="btn-action btn-escala-rocha" title="Escala Roxa">Escala Roxa</button>
+  <button type="button" id="showEscalaBtn" class="btn-action btn-escala" onclick="(window.openEscalaModal ? window.openEscalaModal() : (function(){var m=document.getElementById('escalaModal'); if(m){m.style.display='flex'; setTimeout(function(){m.scrollTop=0;},0);} else {alert('openEscalaModal não disponível e modal não encontrado.');}})())" title="Abrir escala"><i class="fas fa-calendar"></i> ESCALA</button>
+  <button type="button" id="downloadPdfBtn" class="btn-action btn-pdf" title="Baixar PDF"><i class="fas fa-file-pdf"></i> Baixar</button>
+  <button type="button" id="printBtn" class="btn-action btn-print" title="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
+  <button type="button" id="toggleSignaturesBtn" class="btn-action btn-sign" title="Exibir assinaturas"><i class="fas fa-signature"></i> Assinar</button>
+  <button type="button" id="exportarCelularBtn" class="btn-action btn-pdf" title="Exportar agenda para o Quadro de Saídas (celular)"><i class="fas fa-mobile-alt"></i> Celular</button>
+</div>
 <div class="counter-badge counter" id="saidasCounter">Número de Saídas: 0</div>
 </div>
 </div>
@@ -923,47 +932,6 @@ body[data-theme="dark"] .notice-list > li:not(.notice-item) {
 </div>
 </div>
 </div>
-<div id="configStatusModal" class="obs-modal">
-<div class="obs-modal-content">
-<span class="close-button">&times;</span>
-<h2>Configurar Limites de Saídas</h2>
-<p>Defina a quantidade máxima de saídas para cada status e período.</p>
-<div class="config-section" style="margin-bottom: 16px;">
-<label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-<input type="checkbox" id="useAutoLimitsCheckbox">
-<span>Usar limites automáticos (conforme escala: motoristas com RO no dia + 2 vagas para manhã e tarde)</span>
-</label>
-</div>
-<div class="config-section">
-<span class="config-section-title">Período da Manhã</span>
-<div class="config-input-group">
-<label for="greenLimitInputManha">Status Verde (Normal) até:</label>
-<input type="number" id="greenLimitInputManha" min="0">
-</div>
-<div class="config-input-group">
-<label for="orangeLimitInputManha">Status Laranja (Atenção) até:</label>
-<input type="number" id="orangeLimitInputManha" min="0">
-</div>
-</div>
-<div class="config-section">
-<span class="config-section-title">Período da Tarde</span>
-<div class="config-input-group">
-<label for="greenLimitInputTarde">Status Verde (Normal) até:</label>
-<input type="number" id="greenLimitInputTarde" min="0">
-</div>
-<div class="config-input-group">
-<label for="orangeLimitInputTarde">Status Laranja (Atenção) até:</label>
-<input type="number" id="orangeLimitInputTarde" min="0">
-</div>
-</div>
-<p style="margin-top: 20px;">Valores acima do limite Laranja serão considerados Vermelho (Crítico).</p>
-<div class="modal-buttons">
-<button id="saveConfigBtn" class="save-obs-btn">Salvar</button>
-<button id="cancelConfigBtn" class="cancel-obs-btn">Cancelar</button>
-</div>
-</div>
-</div>
-
 <!-- NOVO MODAL PARA EXIBIR PROBLEMAS DA VIATURA -->
 <div id="problemasModal" class="obs-modal">
 <div class="obs-modal-content">
@@ -2330,8 +2298,6 @@ const filteredSaidas = filterDateAdmInput.value ? poolAdm.filter(s => s.dataSaid
 console.log(`[populateTables] Exibindo ${filteredSaidas.length} saídas (total em memória: ${saidasAdministrativas.length}, ativas: ${poolAdm.length})`);
 filteredSaidas.sort((a, b) => (a.saida || '').localeCompare(b.saida || ''));
 const groupedSaidas = groupSaidas(filteredSaidas);
-const dateForLimits = filterDateAdmInput.value || new Date().toISOString().slice(0, 10);
-updateSaidasStatus(groupedSaidas, dateForLimits);
 groupedSaidas.forEach(item => {
 const row = document.createElement('tr');
 row.dataset.id = item.juntada ? item.id : (item.isGroup ? item.ids.join(',') : item.id);
@@ -4453,6 +4419,38 @@ closeProblemasBtn.addEventListener('click', closeProblemasModal);
 problemasModal.querySelector('.close-button').addEventListener('click', closeProblemasModal);
 
 filterDateAdmInput.addEventListener('change', debounce(populateTables, 120));
+
+// Colapsar/expandir opções da barra (SVC/Retém/Escala roxa/ESCALA/Baixar/Imprimir/Assinar/Celular),
+// mantendo sempre visível o contador "Número de Saídas".
+const toggleSaidasAdminOptionsBtn = document.getElementById('toggleSaidasAdminOptionsBtn');
+const saidasAdminToolbarOptions = document.getElementById('saidasAdminToolbarOptions');
+if (toggleSaidasAdminOptionsBtn && saidasAdminToolbarOptions) {
+    const STORAGE_KEY = 'sot_saidas_admin_toolbar_options_hidden';
+    let shouldHide = false;
+    try {
+        shouldHide = localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch (e) {}
+
+    // Estado inicial após recarregar a página
+    saidasAdminToolbarOptions.classList.toggle('is-hidden', shouldHide);
+    toggleSaidasAdminOptionsBtn.setAttribute('aria-expanded', String(!shouldHide));
+    toggleSaidasAdminOptionsBtn.innerHTML = shouldHide
+        ? '<i class="fas fa-chevron-down" aria-hidden="true"></i>'
+        : '<i class="fas fa-chevron-up" aria-hidden="true"></i>';
+
+    toggleSaidasAdminOptionsBtn.addEventListener('click', () => {
+        const isHidden = saidasAdminToolbarOptions.classList.toggle('is-hidden');
+        toggleSaidasAdminOptionsBtn.setAttribute('aria-expanded', String(!isHidden));
+        toggleSaidasAdminOptionsBtn.innerHTML = isHidden
+            ? '<i class="fas fa-chevron-down" aria-hidden="true"></i>'
+            : '<i class="fas fa-chevron-up" aria-hidden="true"></i>';
+
+        try {
+            localStorage.setItem(STORAGE_KEY, String(isHidden));
+        } catch (e) {}
+    });
+}
+
 showSvcRoBtn.addEventListener('click', toggleSvcRoDisplay);
 
 // Função para exibir o nome do próximo integrante do PSO
